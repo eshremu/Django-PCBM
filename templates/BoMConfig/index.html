@@ -1,0 +1,23 @@
+{% extends "BoMConfig/template.html" %}
+		
+{% block content %}
+<div id="main-body">
+	<h4>ALERTS</h4>
+	{% if latest_alerts %}
+		{% for alert in latest_alerts %}
+			<p style="color:red">{% if alert.Title %}<strong>{{alert.Title}}: </strong>{% endif %}{{alert.Text}}</p>
+		{% endfor %}
+	{% else %}
+		<p>No recent alerts</p>
+	{% endif %}
+	<h4>RECENT NEWS</h4>
+	{% if latest_news %}
+		{% for news in latest_news %}
+			<p><strong style="color:red;">{{news.Title}}: </strong>{{news.Text}}</p>
+		{% endfor %}
+	{% else %}
+		<p>No recent news items</p>
+	{% endif %}
+</div>
+<!-- end div #main-body -->
+{% endblock %}

@@ -1,0 +1,173 @@
+{% extends "BoMConfig/template.html" %}
+{% load customtemplatetag %}
+		
+{% block content %}
+<div id="main-body">
+	{% if user.is_authenticated %}
+	{% load staticfiles %}
+    <div id="headersubform">
+		<form enctype="multipart/form-data" method="POST" onsubmit="$('#myModal').modal('show');" action="{% url 'bomconfig:baseline' %}">
+			{% csrf_token %}
+			{% for field in form %}
+				{{ field.label_tag }}{{ field }}
+			{% endfor %}
+            {% for field in form %}
+                {% for error in field.errors %}
+                <br/>
+				<span style="color: #ff0000;">{{ error }}</span>
+                {% endfor %}
+			{% endfor %}
+{#            <br/>#}
+			<input type="submit" value="Search" />
+		</form>
+	</div>
+    <div id="table-wrapper" style="overflow-x: auto">
+        {% if tables %}
+            <table>
+            <thead>
+                <tr>
+                    <th>Baseline</th>
+                </tr>
+                <tr>
+                {% for title in column_titles %}
+                    <th>{{ title }}</th>
+                {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for table in tables %}
+                {% if table.revisions %}
+                {% for revision in table.revisions %}
+                    <tr>
+                        <td colspan="3">{{ table.baseline }}{% if revision.revision %} REV {{ revision.revision }}{% endif %}</td>
+                    </tr>
+                    {% for header in revision.configs %}
+                    <tr style="{% if header.configuration_status == 'In Process' %}color: #22BB33;{% elif header.configuration_status != 'Active' %}color: #999999;{% endif %}">
+                        <td></td>
+                        <td></td>
+                        {% with header.configuration.get_first_line as firstline %}
+                        <td><a href="../search?link={{ header.pk|searchscramble }}">{{ header.configuration_designation|default:'None' }}</a></td>
+                        <td>{{ header.configuration_status|default:'None' }}</td>
+                        <td>{{ header.program.name|default:'None' }}</td>
+                        <td>{% if firstline and not header.pick_list %}{{ firstline.customer_number }}{% elif header.pick_list %}Multiple{% endif %}</td>
+                        <td>{{ header.model|default:'None' }}</td>
+                        <td>{{ header.model_description|default:'None' }}</td>
+{#                        <td>{% if header.configuration.net_value %}${% endif %}{{ header.configuration.net_value|iffloatformat:'2'|default:'None' }}</td>#}
+                        <td style="text-align: right;">
+                            {% if not header.pick_list and header.configuration.get_first_line %}
+                                {% if header.configuration.get_first_line.linepricing %}
+                                    {% if header.configuration.get_first_line.linepricing.override_price %}
+                                    $&nbsp;{{ header.configuration.get_first_line.linepricing.override_price|iffloatformat:'2'|default:'None' }}
+                                    {% else %}
+                                    {% if header.configuration.get_first_line.linepricing.unit_price %}$&nbsp;{% endif %}{{ header.configuration.get_first_line.linepricing.unit_price|iffloatformat:'2'|default:'None' }}
+                                    {% endif %}
+                                {% else %}
+                                {% if header.configuration.net_value %}$&nbsp;{% endif %}{{ header.configuration.net_value|iffloatformat:'2'|default:'None' }}
+                                {% endif %}
+                            {% else %}
+                                {% if header.configuration.net_value %}$&nbsp;{% endif %}{{ header.configuration.net_value|iffloatformat:'2'|default:'None' }}
+                            {% endif %}
+                        </td>
+                        <td>{{ header.inquiry_site_template|default:'None' }}</td>
+                        <td>{{ header.model_replaced|default:'None' }}</td>
+                        <td>{{ header.change_comments|default:'None' }}</td>
+                        {% if firstline and not header.pick_list %}
+                        <td>{% if firstline.condition_type == 'ZUST' %}${{ firstline.amount|floatformat:'2' }}{% endif %}</td>
+                        <td>{% if firstline.pcode %}{{ firstline.pcode|make_list|slice:"1:4"|join:'' }}{% endif %}</td>
+                        <td>{{ firstline.plant }}</td>
+                        {% endif %}
+                        {% endwith %}
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+                <tr><td><div style="min-height: 18px;"></div></td></tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+            </table>
+        {% else %}
+            {% if downloadable %}
+            <h5>No configurations found for baseline</h5>
+            {% endif %}
+        {% endif %}
+    </div>
+    {% if downloadable %}
+    <div id="action_buttons">
+        <form method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinedownload' %}">
+            {% csrf_token %}
+            <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
+            <input name="baseline" type="hidden" value="{{ tables.0.baseline }}"/>
+            <button id="download" type="submit">Download</button>
+        </form>
+    </div>
+    {% endif %}
+	{% else %}
+	<h4>You must be logged in to access this feature</h4>
+	{% endif %}
+</div>
+{% if user.is_authenticated %}
+    <script>
+        $('a.headtitle:contains("Baseline")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+
+        var timer;
+        $(document).ready(function() {
+            $(window).load(function () {
+                form_resize();
+            });
+
+            $(window).resize(function () {
+                form_resize();
+            });
+
+{#            $('#download').click(function(){#}
+{#                $('#myModal').modal('show');#}
+{#                $.ajax({#}
+{#                    url: "{% url 'bomconfig:baselinedownload' %}",#}
+{#                    type: "POST",#}
+{#                    data: {#}
+{#                        baseline: '{{ tables.0.baseline }}'#}
+{#                    },#}
+{#                    headers:{#}
+{#                        'X-CSRFToken': getcookie('csrftoken')#}
+{#                    },#}
+{#                    success: function() {#}
+{#                        $('#myModal').modal('hide');#}
+{#                    }#}
+{#                });#}
+{#            });#}
+        });
+
+        function downloadtoken(){
+            $('#myModal').modal('show');
+            timer = setInterval(function(){
+                if(document.cookie.split('fileMark=').length == 2 && document.cookie.split('fileMark=')[1].split(';')[0] == $('#cookie').val()) {
+                    clearInterval(timer);
+                    $('#myModal').modal('hide');
+                }
+            },1000);
+        }
+
+        function form_resize(){
+            var $header = $('#headersubform');
+            var topbuttonheight = $('#action_buttons').height();
+{#            var bottombuttonheight = $('#formbuttons').height();#}
+            var subformheight = $header.height() + parseInt($header.css('margin-top')) + parseInt($header.css('margin-bottom'));
+{#            var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));#}
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + subformheight);
+
+            $('#table-wrapper').css("height", tableheight);
+        }
+    </script>
+    <style>
+        td, th {
+            min-width: 50px;
+            padding:0 10px;
+            white-space: nowrap;
+            font-size: 8pt;
+        }
+    </style>
+{% endif %}
+<!-- end div #main-body -->
+{% endblock %}

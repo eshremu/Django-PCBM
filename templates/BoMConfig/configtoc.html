@@ -1,0 +1,243 @@
+{% extends "BoMConfig/entrylanding.html" %}
+{% load staticfiles %}
+{% block subcontent %}
+{% if toc_read_authorized %}
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+    <form id="tocform" method="POST" onsubmit="data_submit()">
+        {% csrf_token %}
+        <div id="headersubform">
+            <table>
+                <tbody>
+                    <tr>
+                        <td style="width:130px;"><b>REACT Request #:</b></td>
+                            <td style="border: 1px inset grey; width:180px;">{{ header.react_request }}</td>
+                        <td style="width:50px;"></td>
+                        <td style="width:170px;"><b>Projected Cut-over Date:</b></td>
+                            <td style="border: 1px inset grey; width:100px;">{% if header.projected_cutover %}{{ header.projected_cutover }}{% endif %}</td>
+                        <td style="width:50px;"></td>
+                        <td>{{ form.net_value.label_tag }}{{ form.net_value }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <table>
+                <tbody>
+                    <tr>
+                        <td style="width:125px;">{{ form.reassign.label_tag }}{{ form.reassign }}</td>
+                        <td style="width:150px;">{{ form.PSM_on_hold.label_tag }}{{ form.PSM_on_hold }}</td>
+                        <td style="width:225px;"></td>
+                        <td style="width:170px;"></td>
+                        <td style="width:300px;">{{ form.zpru_total.label_tag }}{{ form.zpru_total }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <input type="hidden" id="formaction" name="formaction" value="" />
+        <div id="breadcrumbs" style="margin-top: 10px; margin-bottom: 10px;">
+            <h5 id="copynote">NOTE: Data can only be copied/pasted using the Ctrl + C / Ctrl + V keyboard shortcuts</h5>
+            <h5 id="view-selector">
+                View Selection:
+                <a id="viewall" onclick="RepVis = StatVis = true; load_table();">All</a>
+                |
+                <a id="viewreplacement" onclick="RepVis = !RepVis; load_table();">Replacement</a>
+                |
+                <a id="viewstatus" onclick="StatVis = !StatVis; load_table();">Status & Notes</a>
+            </h5>
+        </div>
+        <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden"><div id="datatable"></div></div>
+        <div id="formbuttons">
+            {% if can_previous %}<input id="prevForm" type="button" value="Prev">{% endif %}
+            <input id="cancelForm" type="button" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">
+            {% if header.configuration_status == 'In Process' and toc_write_authorized %}
+            <input id="saveexitForm" type="button" value="Save & Exit">
+            <input id="saveForm" type="button" value="Save">
+            {% endif %}
+            {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
+            {% if status_message %}
+            <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
+                {{ status_message }}
+            </span>
+            <script>
+                setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
+            </script>
+            {% endif %}
+        </div>
+    </form>
+    <script>
+        $('button[value="toc"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        var RepVis, StatVis;
+        RepVis = StatVis = true;
+        var hot;
+        var data = {{ data_array|safe }};
+        var error_matrix = [];
+        var clean_form, clean_sub;
+        var form_save = false;
+        var valid = true;
+
+        $(document).ready(function(){
+            $(window).load(function(){
+                form_resize();
+            });
+
+            $(window).resize(function(){
+                form_resize();
+            });
+
+            $(window).bind('beforeunload', function(){
+                var dirty_form = JSON.parse(JSON.stringify(hot.getSourceData()));
+                $('[name="data_form"]').remove();
+                var dirty_sub = $('#tocform').serialize();
+                $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#tocform');
+
+                if(JSON.stringify(dirty_form) !== JSON.stringify(clean_form)|| JSON.stringify(dirty_sub) !== JSON.stringify(clean_sub)) {
+                    valid = false;
+                }
+
+                if (!valid && !form_save){
+                    return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";
+                }
+            });
+
+            $('#saveForm').click(function(){
+                    $('#formaction').val('save');
+                    $('#tocform').submit();
+            });
+
+            $('#saveexitForm').click(function(){
+                    $('#formaction').val('saveexit');
+                    $('#tocform').submit();
+            });
+
+            $('#nextForm').click(function(){
+                    $('#formaction').val('next');
+                    $('#tocform').submit();
+            });
+
+            $('#prevForm').click(function(){
+                    $('#formaction').val('prev');
+                    $('#tocform').submit();
+            });
+        });
+
+        function form_resize(){
+            var topbuttonheight = $('#action_buttons').height();
+            var bottombuttonheight = $('#formbuttons').height();
+            var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
+            var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + crumbheight + subformheight);
+
+            $('#table-wrapper').css("height", tableheight);
+            build_table();
+        }
+
+        function determineColumns(cols, headers, readonly){
+{#            var header = "<th colspan='1'><div class='relative'></div></th><th colspan='4'><div class='relative'><span>BoM</span></div></th>";#}
+            cols.push({data: 0}, {data: 1}, {data: 2}, {data: 3}, {data: 4});
+            headers.push('Configuration', 'Customer Designation', 'Technology', "Product Area 1", 'Product Area 2');
+            readonly.push(0, 1, 2, 3, 4);
+
+            var offset = 0;
+
+            if(RepVis === true){
+                cols.push({data: 5}, {data: 6}, {data: 7}, {data: 8}, {data: 9});
+                headers.push('Model', 'Model Description', 'What Model is this replacing?', 'BoM & Inquiry Details', 'BoM Request Type');
+                readonly.push(5, 6, 7, 8, 9);
+                offset += 5;
+{#                header += "<th colspan='5'><div class='relative'><span>SAP Doc</span></div></th>";#}
+                $('#viewreplacement').css('background-color', '#FFFF4D');
+            } else {
+                $('#viewreplacement').removeAttr('style');
+            }
+
+            if(StatVis === true){
+                cols.push({data: 10}, {data: 11}, {data: 12}, {data: 13}, {data: 14});
+                headers.push('Configuration/Ordering Status', 'Inquiry', 'Site Template', 'Int Notes', 'Ext Notes');
+                {% if toc_write_authorized %}
+                readonly.push(5 + offset, 6 + offset, 7 + offset);
+                {% else %}
+                readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset);
+                {% endif %}
+{#                offset += 5;#}
+                // readonly.push(9 + offset, 10 + offset, 11 + offset); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
+
+{#                header += "<th colspan='7'><div class='relative'><span>Attributes</span></div></th>";#}
+                $('#viewstatus').css('background-color', '#FFFF4D');
+            } else {
+                $('#viewstatus').removeAttr('style');
+            }
+        }
+
+        function readonlyRenderer(instance, td, row, col, prop, value, cellProperties) {
+            if (/<[a-z][\s\S/]*>/.test(value) === false) {
+                Handsontable.renderers.TextRenderer.apply(this, arguments);
+            } else {
+                Handsontable.renderers.HtmlRenderer.apply(this, arguments);
+            }
+
+            td.style.background = '#DDDDDD';
+        }
+
+        function build_table() {
+            var determined_cols = [];
+            var headers = [];
+            var readonly_columns = [];
+            determineColumns(determined_cols, headers, readonly_columns);
+            var container = document.getElementById('datatable');
+            hot = new Handsontable(container, {
+                data: data,
+                minRows: 1,
+                maxRows: 1,
+                minCols: 5,
+                maxCols: 15,
+                minSpareRows: 0,
+                rowHeaders: false,
+                colHeaders: headers,
+                columns: determined_cols,
+                contextMenu: ['undo', 'redo'],
+                comments: true,
+                cells: function(row, col, prop){
+                    var cellProperties = {};
+
+                    if({% if header.configuration_status != 'In Process' %}true || {% endif %}readonly_columns.indexOf(col) !== -1){
+                        cellProperties.readOnly = true;
+                        cellProperties.renderer = readonlyRenderer;
+                    }
+
+                    cellProperties.className = 'htCenter';
+                    if (['Configuration', 'Model', 'Model Description', 'Int Notes', 'Ext Notes'].indexOf(this.instance.getColHeader(col)) != -1){
+                        cellProperties.className = 'htLeft';
+                    }
+
+                    if(error_matrix.length !== 0 && typeof(error_matrix[row]) !== "undefined"){
+                        cellProperties.comment = error_matrix[row][col];
+                    }
+
+                    return cellProperties;
+                }
+            });
+            clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
+            $('[name="data_form"]').remove();
+            clean_sub = $('#tocform').serialize();
+        }
+
+        function load_table() {
+            hot.destroy();
+            build_table();
+        }
+
+        function data_submit(eventObj) {
+            $('[name="data_form"]').remove();
+            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#tocform');
+            form_save = true;
+            return true;
+        }
+    </script>
+{% else %}
+<div>
+    <h4>You do not have sufficient permissions to view this asset.</h4>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "BoMConfig/template.html" %}
+		
+{% block content %}
+{% if user.is_authenticated %}
+<div id="main-body">
+    {% if pricing_read_authorized %}
+    <div id="action_buttons">
+		<button class="btn" type="button" name="action" value="config_price" onclick="window.location.href='{% url 'bomconfig:pricing' %}'">Price Mgmt</button>
+		<button class="btn" type="button" name="action" value="baseline_report" onclick="window.location.href='{% url 'bomconfig:basepricing' %}'">Detailed Pricing</button>
+	</div>
+    {% block subcontent %}{% endblock %}
+    {% else %}
+    <h4>You do not have sufficient permissions to view this asset.</h4>
+    {% endif %}
+    <script>
+        $('a.headtitle:contains("Pricing")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+    </script>
+    <style>
+        #action_buttons button:hover {
+            background-color: #cccccc;
+        }
+    </style>
+</div>
+{% else %}
+<div>
+    <h4>You must log in to use this function</h4>
+</div>
+{% endif %}
+{% endblock %}

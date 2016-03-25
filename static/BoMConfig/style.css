@@ -1,0 +1,117 @@
+html, body {
+	min-width: 970px;
+}
+
+a {
+	color: #00285e;
+}
+
+a:hover {
+	color: #00285e;
+}
+
+.row {
+	margin-right: 0;
+}
+
+.nav .open > a, .nav .open > a:focus{
+	background-color:#dddddd;
+}
+
+.logo {
+	float:left;
+	margin: 5px;
+}
+
+.logo img {
+	width:50px;
+}
+
+.errorbox {
+	border: 2px solid red;
+}
+
+.title img {
+	position:absolute;
+	width: 600px;
+	padding-top: 20px;
+}
+
+.nav-pills > li > a:hover{
+	background-color: #cccccc;
+	color: #00285e;
+}
+
+.nav-pills > li > a, .nav-pills > li > a:focus{
+	background-color: #dddddd;
+	color: #00285e;
+}
+
+.handsontable .currentRow {
+	background: #fff4d8;
+}
+
+.handsontable thead th {
+	white-space: pre-line;
+	height: 50px;
+}
+
+#main-menu {
+	position:absolute;
+	bottom: 0;
+}
+
+#main-body{
+	margin: 0 10px;
+	padding: 0 10px;
+}
+
+#main-header {
+	background: #f3f3f3;
+	position: relative;
+	top: 0;
+	height: 150px;
+
+	width: 100%;
+	border-bottom: 2px ridge #cccccc;
+}
+
+#welcome {
+	position:absolute;
+	right: 0;
+	bottom: 0;
+}
+
+#welcome p, #welcome form {
+	padding-right:5px;
+	padding-bottom: 5px;
+	text-align:right;
+}
+
+#main-footer {
+	background: #f3f3f3;
+	position: absolute;
+	bottom: 0;
+	width: 100%;
+}
+
+@media (min-width: 1200px){
+	.container {
+		width: 860px;
+		margin: 0px;
+	}
+}
+
+@media (min-width: 970px){
+	.container {
+		width: 860px;
+		margin: 0px;
+	}
+}
+
+@media (max-width: 970px) {
+	.container {
+		width: 860px;
+		margin: 0px;
+	}
+}

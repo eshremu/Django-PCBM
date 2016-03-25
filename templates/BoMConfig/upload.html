@@ -1,0 +1,40 @@
+{% extends "BoMConfig/template.html" %}
+{% load customtemplatetag %}
+		
+{% block content %}
+<div id="main-body">
+	{% if user.is_authenticated %}
+	{% load staticfiles %}
+{#    <div>#}
+{#        <h4>Instructions</h4>#}
+{#        <pre>#}
+{#            Mass Uploader:#}
+{#            Select a Configuration file below to upload.#}
+{#            The uploader will attempt to load all data in the file.  When the uploader is finished,#}
+{#            you will receive a report detailing errors that may have occurred during upload.#}
+{#        </pre>#}
+{#    </div>#}
+    <div>
+		<form enctype="multipart/form-data" method="POST" onsubmit="$('#myModal').modal('show');" action="{% url 'bomconfig:upload' %}">
+			{% csrf_token %}
+			<h4 style="margin-top:0px;">Select a Configuration file:</h4>
+			{% for message in messages %}
+				<p style="color: #ff0000;">{{ message }}</p>
+			{% empty %}
+			{% endfor %}
+			{% for field in form %}
+				{{ field }}
+			{% endfor %}
+			<br/>
+			<input type="submit" value="Upload" />
+		</form>
+	</div>
+    <script>
+        $('a.headtitle:contains("Upload")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+    </script>
+	{% else %}
+	<h4>You must be logged in to access this feature</h4>
+	{% endif %}
+</div>
+<!-- end div #main-body -->
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends "BoMConfig/entrylanding.html" %}
+{% load staticfiles %}
+{% block subcontent %}
+{% if inquiry and inquiry_read_authorized or not inquiry and sitetemplate_read_authorized %}
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+    <form id="configform" method="POST">
+        {% csrf_token %}
+        <div id="headersubform">
+            <table>
+                <tbody>
+                    <tr>
+                        <td style="width:130px;"><b>REACT Request #:</b></td>
+                            <td style="border: 1px inset grey; width:180px;">{{ header.react_request }}</td>
+                        <td style="width:50px;"></td>
+                        <td style="width:170px;"><b>Projected Cut-over Date:</b></td>
+                            <td style="border: 1px inset grey; width:100px;">{% if header.projected_cutover %}{{ header.projected_cutover }}{% endif %}</td>
+                {% if inquiry %}
+                        <td style="width:50px;"></td>
+                        <td>{{ form.net_value.label_tag }}{{ form.net_value }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <table>
+                <tbody>
+                    <tr>
+                        <td style="width:125px;"></td>
+                        <td style="width:150px;"></td>
+                        <td style="width:225px;">{{ form.internal_external_linkage.label_tag }}{{ form.internal_external_linkage }}</td>
+                        <td style="width:170px;"></td>
+                        <td style="width:300px;">{{ form.zpru_total.label_tag }}{{ form.zpru_total }}</td>
+                {% endif %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <input type="hidden" id="formaction" name="formaction" value="" />
+        <div id="breadcrumbs" style="margin-top: 10px; margin-bottom: 10px;">
+        </div>
+        <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden"><div id="datatable"></div></div>
+        <div id="formbuttons">
+            {% if can_previous %}<input id="prevForm" type="button" value="Prev">{% endif %}
+            <input id="cancelForm" type="button" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">
+            {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
+            {% if status_message %}
+            <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
+                {{ status_message }}
+            </span>
+            <script>
+                setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
+            </script>
+            {% endif %}
+        </div>
+    </form>
+
+    <script>
+        {% if inquiry %}
+        $('button[value="inquiry"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        {% else %}
+        $('button[value="sitetemp"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        {% endif %}
+        var hot;
+        var header_html;
+        var data = {{ data_array|safe }};
+
+        $(document).ready(function(){
+            $(window).load(function(){
+                form_resize();
+            });
+
+            $(window).resize(function(){
+                form_resize();
+            });
+
+            $('#nextForm').click(function(){
+                    $('#formaction').val('next');
+                    $('#configform').submit();
+            });
+
+            $('#prevForm').click(function(){
+                    $('#formaction').val('prev');
+                    $('#configform').submit();
+            });
+        });
+
+
+
+        function form_resize(){
+            var topbuttonheight = $('#action_buttons').height();
+            var bottombuttonheight = $('#formbuttons').height();
+            var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
+            var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + crumbheight + subformheight);
+
+            $('#table-wrapper').css("height", tableheight);
+            build_table();
+        }
+
+        function determineColumns(cols, headers){
+
+            cols.push({data: 0}, {data: 1}, {data: 2}, {data: 3}, {data: 4}, {data: 5}, {data: 6});
+            headers.push('Line #', 'Product Number', "Product Description", 'Order Qty', 'Plant', 'SLOC', 'Item Cat');
+
+            {% if inquiry %}
+            cols.push({data: 7}, {data: 8}, {data: 9}, {data: 10}, {data: 11}, {data: 12});
+            headers.push('Unit Price', 'Net Value', "Material Group 5", 'Purchase Order Item Number', 'Condition Type', 'Amount');
+            {% else %}
+            cols.push({data: 7});
+            headers.push('Higher Level');
+            {% endif %}
+        }
+
+        function readonlyRenderer(instance, td, row, col, prop, value, cellProperties) {
+            customRenderer(instance, td, row, col, prop, value, cellProperties);
+
+            td.style.background = '#DDDDDD';
+        }
+
+        function customRenderer(instance, td, row, col, prop, value, cellProperties) {
+            if (/<[a-zA-Z][\s\S/]*>/.test(value) === false) {
+                Handsontable.renderers.TextRenderer.apply(this, arguments);
+            } else {
+                Handsontable.renderers.HtmlRenderer.apply(this, arguments);
+            }
+        }
+
+        function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
+            if (cellProperties.readOnly){
+                td.style.background = '#DDDDDD';
+            }
+
+            if (value != '' && value != undefined && value != null) {
+                var result;
+                var dummy = String(value).replace("$","").replace(',','').replace(' ','');
+                var decimal = dummy.indexOf('.');
+                var wholeDummy, fracDummy;
+
+                if (decimal != -1){
+                    wholeDummy = dummy.slice(0, decimal);
+                    fracDummy = dummy.slice(decimal + 1);
+                    if (fracDummy.length >= 2){
+                        fracDummy = fracDummy.slice(0,2);
+                    } else {
+                        fracDummy += '0';
+                    }
+                } else {
+                    wholeDummy = dummy;
+                    fracDummy = "00";
+                }
+                var negative = false;
+                if(wholeDummy.indexOf('-') != -1){
+                    negative = true;
+                    wholeDummy = wholeDummy.slice(wholeDummy.indexOf('-') + 1);
+                }
+                var start = wholeDummy.length % 3 == 0 ? 3 : wholeDummy.length % 3;
+
+                result = wholeDummy.slice(0,start);
+
+                for(var i = 0; i < wholeDummy.length - start; i++){
+                    if (i % 3 == 0){
+                        result += ',';
+                    }
+                    result += wholeDummy.charAt(i + start);
+                }
+
+                value = "$" + result + '.' + fracDummy;
+
+                if (negative){
+                    value = "(" + value + ")";
+                }
+            }
+            customRenderer(instance, td, row, col, prop, value, cellProperties);
+        }
+
+        function build_table() {
+            var determined_cols = [];
+            var headers = [];
+{#            header_html = determineColumns(determined_cols, headers);#}
+            determineColumns(determined_cols, headers);
+            var container = document.getElementById('datatable');
+{#            var $container = $('#datatable');#}
+{#            determined_cols.push({renderer: firstRowRenderer})#}
+            hot = new Handsontable(container, {
+                data: data,
+                minRows: 1,
+                minCols: 13,
+                maxCols: 13,
+                rowHeaders: false,
+                colHeaders: headers,
+                columns: determined_cols,
+                cells: function(row, col, prop){
+                    var cellProperties = {};
+
+                    cellProperties.readOnly = true;
+                    if (['Unit Price', 'Net Value','Amount'].indexOf(this.instance.getColHeader(col)) != -1){
+                            cellProperties.renderer = moneyRenderer;
+                    } else {
+                        cellProperties.renderer = readonlyRenderer;
+                    }
+
+                    cellProperties.className = 'htCenter';
+                    if (['Line #', 'Product Number', 'Product Description'].indexOf(this.instance.getColHeader(col)) != -1){
+                        cellProperties.className = 'htLeft';
+                    } else if (['Unit Price', 'Net Value','Amount'].indexOf(this.instance.getColHeader(col)) != -1){
+                        cellProperties.className = 'htRight';
+                    }
+
+                    return cellProperties;
+                }
+            });
+        }
+    </script>
+{% else %}
+<div>
+    <h4>You do not have sufficient permissions to view this asset.</h4>
+</div>
+{% endif %}
+{% endblock %}

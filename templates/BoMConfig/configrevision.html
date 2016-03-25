@@ -1,0 +1,188 @@
+{% extends "BoMConfig/entrylanding.html" %}
+{% load customtemplatetag %}
+{% load staticfiles %}
+{% block subcontent %}
+{% if revision_read_authorized %}
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+    <form id="revisionform" method="POST" onsubmit="data_submit()">
+        {% csrf_token %}
+        <div id="headersubform">
+            <table>
+                <tbody>
+                    <tr>
+                        <td style="width:130px;"><b>REACT Request #:</b></td>
+                        <td style="border: 1px inset grey; width:180px;">{{ header.react_request }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <input type="hidden" id="formaction" name="formaction" value="" />
+        <div id="breadcrumbs" style="margin-top: 10px; margin-bottom: 10px;">
+            <h5 id="copynote">NOTE: Data can only be copied/pasted using the Ctrl + C / Ctrl + V keyboard shortcuts</h5>
+        </div>
+        <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden"><div id="datatable"></div></div>
+        <div id="formbuttons">
+            {% if can_previous %}<input id="prevForm" type="button" value="Prev">{% endif %}
+            <input id="cancelForm" type="button" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">
+            {% if header.configuration_status == 'In Process' and revision_write_authorized %}
+            <input id="saveexitForm" type="button" value="Save & Exit">
+            <input id="saveForm" type="button" value="Save">
+            {% endif %}
+            {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
+            {% if status_message %}
+            <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
+                {{ status_message }}
+            </span>
+            <script>
+                setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
+            </script>
+            {% endif %}
+        </div>
+    </form>
+    <script>
+        $('button[value="revision"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        var hot;
+        var data = {{ data_array|safe }};
+        var error_matrix = {{ error_matrix|replace:"None null"|safe }};
+        var clean_form, clean_sub;
+        var form_save = false;
+        var valid = true;
+
+        $(document).ready(function(){
+            $(window).load(function(){
+                form_resize();
+            });
+
+            $(window).resize(function(){
+                form_resize();
+            });
+
+            $(window).bind('beforeunload', function(){
+                var dirty_form = JSON.parse(JSON.stringify(hot.getSourceData()));
+
+                if(JSON.stringify(dirty_form) !== JSON.stringify(clean_form) && !form_save){
+                    return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";
+                }
+            });
+
+            $('#saveForm').click(function(){
+                    $('#formaction').val('save');
+                    $('#revisionform').submit();
+            });
+
+            $('#saveexitForm').click(function(){
+                    $('#formaction').val('saveexit');
+                    $('#revisionform').submit();
+            });
+
+            $('#nextForm').click(function(){
+                    $('#formaction').val('next');
+                    $('#revisionform').submit();
+            });
+
+            $('#prevForm').click(function(){
+                    $('#formaction').val('prev');
+                    $('#revisionform').submit();
+            });
+        });
+
+        function form_resize(){
+            var topbuttonheight = $('#action_buttons').height();
+            var bottombuttonheight = $('#formbuttons').height();
+            var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
+            var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + crumbheight + subformheight);
+
+            $('#table-wrapper').css("height", tableheight);
+            build_table();
+        }
+
+        function determineColumns(cols, headers, readonly){
+            cols.push({data: 0}, {data: 1}, {data: 2}, {data: 3}, {data: 4}, {data: 5}, {data: 6});
+            headers.push('BoM Revision', 'Baseline Revision', 'Release Date', "Model", 'Customer Number', 'Changes/Comments', 'Person Responsible');
+            {% if revision_write_authorized %}
+            readonly.push(0, 1, 3, 4, 6);
+            {% else %}
+            readonly.push(0, 1, 2, 3, 4, 5, 6);
+            {% endif %}
+        }
+
+        function readonlyRenderer(instance, td, row, col, prop, value, cellProperties) {
+            if (/<[a-z][\s\S/]*>/.test(value) === false) {
+                Handsontable.renderers.TextRenderer.apply(this, arguments);
+            } else {
+                Handsontable.renderers.HtmlRenderer.apply(this, arguments);
+            }
+
+            td.style.background = '#DDDDDD';
+        }
+
+        function build_table() {
+            var determined_cols = [];
+            var headers = [];
+            var readonly_columns = [];
+            determineColumns(determined_cols, headers, readonly_columns);
+            var container = document.getElementById('datatable');
+            hot = new Handsontable(container, {
+                data: data,
+                minRows: 1,
+                minCols: 7,
+                maxCols: 7,
+                minSpareRows: 0,
+                rowHeaders: false,
+                colHeaders: headers,
+                columns: determined_cols,
+                contextMenu: ['undo', 'redo'],
+                comments: true,
+                cells: function(row, col, prop){
+                    var cellProperties = {};
+
+                    if({% if header.configuration_status != 'In Process' %}true || {% endif %}readonly_columns.indexOf(col) !== -1 || row > 0){
+                        cellProperties.readOnly = true;
+                        cellProperties.renderer = readonlyRenderer;
+                    }
+
+                    cellProperties.className = 'htCenter';
+                    if (['Model', 'Changes/Comments'].indexOf(this.instance.getColHeader(col)) != -1){
+                        cellProperties.className = 'htLeft';
+                    }
+
+                    if(error_matrix.length !== 0 && typeof(error_matrix[row]) !== "undefined"){
+                        cellProperties.comment = error_matrix[row][col];
+                    }
+
+                    if(this.instance.getColHeader(col) == 'Release Date'){
+                        cellProperties.type = 'date';
+                        cellProperties.correctFormat = true;
+                        cellProperties.dateFormat = 'YYYY-MM-DD';
+                        cellProperties.defaultDate = Date.now().toString();
+                    }
+
+                    return cellProperties;
+                }
+            });
+            clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
+        }
+
+        function load_table() {
+            hot.destroy();
+            build_table();
+        }
+
+        function data_submit(eventObj) {
+            $('[name="data_form"]').remove();
+            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#revisionform');
+            form_save = true;
+            return true;
+        }
+    </script>
+{% else %}
+<div>
+    <h4>You do not have sufficient permissions to view this asset.</h4>
+</div>
+{% endif %}
+{% endblock %}

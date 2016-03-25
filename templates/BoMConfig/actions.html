@@ -1,0 +1,231 @@
+{% extends "BoMConfig/template.html" %}
+{% load customtemplatetag %}
+{% block content %}
+<div id="main-body">
+    {% if user.is_authenticated %}
+        {% if viewauthorized %}
+
+        <ul class="btn" style="border: none; padding: 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for customer in customer_list %}
+                    <li><a href="#" onclick="cust_filter('{{ customer|replace:"& _"|replacewhitespace:"-_" }}');">{{ customer }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+
+        <h4>In Process</h4>
+            {% if in_process %}
+            <form id="in_process_action" onsubmit="return false;">
+                <button id="approval_submit" value="send_to_approve">Submit for Approval</button>
+                <button id="hold" value="hold">Place on Hold</button>
+                <button id="cancel" value="cancel">Cancel</button>
+                <button id="delete" value="delete">Delete</button>
+                <div><br/></div>
+                <table id="in_process_records">
+                    {% for record in in_process %}
+                        <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }}">
+                            <td><input class="inprocess" type="checkbox" data-index="{{ record.id }}"/></td>
+                            <td style="width:15px;"></td>
+                            <td><a href="../search?link={{ record.pk|searchscramble }}">{{ record.configuration_designation }}</a></td>
+                            <td style="width:25px;"></td>
+                            <td>{{ record.baseline|default:"(Not baselined)" }}</td>
+                            <td style="width:25px;"></td>
+                            <td>{{ record.person_responsible }}</td>
+                            <td style="width:25px;"></td>
+                            <td>{{ record.customer_unit.name }}</td>
+                            <td style="width:25px;"></td>
+                            <td>{{ record.customer_name|default:"" }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            </form>
+            {% else %}
+                <h5>NO IN-PROCESS RECORDS</h5>
+            {% endif %}
+
+        <h4>Active</h4>
+            {% if active %}
+            <form id="active_action" onsubmit="return false;">
+                <button id="clone" value="clone">Clone</button>
+                <div><br/></div>
+                <table>
+                    <tr><td style="width:25px"></td><td style="width:200px"></td><td style="width:500px"></td><td style="width:115px"></td><td style="width:115px"></td></tr>
+                {% for record in active %}
+                    <tr>
+                        <td><input class="active" type="checkbox" data-index="{{ record.id }}"/></td>
+                        <td>{{ record.configuration_designation }}</td>
+                        <td>{{ record.baseline }}</td>
+                        <td>{% if not record.inquiry_site_template %}<button>Create Inquiry</button></td><td><button>Create ST</button>{% endif %}</td>
+
+                    </tr>
+                {% endfor %}
+                </table>
+            </form>
+            {% else %}
+                <h5>NO ACTIVE RECORDS</h5>
+            {% endif %}
+
+        <h4>On Hold</h4>
+            {% if on_hold %}
+            <form id="hold_action" onsubmit="return false;">
+                <button id="unhold" value="unhold">Remove from Hold</button>
+                <table>
+                {% for record in on_hold %}
+                    <tr>
+                        <td><input class="hold" type="checkbox" data-index="{{ record.id }}"/></td>
+                        <td>{{ record.configuration_designation }} {{ record.baseline_version }}</td>
+                    </tr>
+                {% endfor %}
+                </table>
+            </form>
+            {% else %}
+                <h5>NO ON-HOLD RECORDS</h5>
+            {% endif %}
+        {% else %}
+        <h4>You do not have sufficient permissions to view this asset.</h4>
+        {% endif %}
+    {% else %}
+    <h4>You must log in to use this function</h4>
+    {% endif %}
+</div>
+{% if user.is_authenticated %}
+    <style>
+        th.rotate {
+            height:20px;
+            white-space: nowrap;
+            vertical-align: bottom;
+        }
+        th.rotate > div {
+            width:40px;
+            transform:
+                rotate(-45deg)
+                translate(45px, 25px)
+        }
+        th.rotate > div > span {
+            border-bottom: 1px solid black;
+            padding: 5px 0px;
+        }
+    </style>
+    <script>
+        $('a.headtitle:contains("Actions")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+
+        function cust_filter(customer){
+            if(customer !== 'All') {
+                $('tr').not('.' + customer).attr('style', 'display:none;');
+                $('tr:not(".' + customer + '") input').removeAttr('checked');
+                $('tr.' + customer).removeAttr('style');
+                $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
+            } else {
+                $('tr').removeAttr('style');
+                $('#cu_filter').html('Customer <span class="caret"></span>');
+            }
+        }
+
+        function process(action){
+            var records = [];
+
+            if(action === 'send_to_approve' || action === 'delete' || action === 'hold' || action === 'cancel') {
+                $('.inprocess:checked').each(function (index, element) {
+                    records.push(element.dataset.index);
+                });
+            } else if (action === 'clone'){
+                $('.active:checked').each(function (index, element) {
+                    records.push(element.dataset.index);
+                });
+            } else if (action === 'unhold'){
+                $('.hold:checked').each(function (index, element) {
+                    records.push(element.dataset.index);
+                });
+            }
+
+            $.ajax({
+                url: "{% url 'bomconfig:approve' %}",
+                type: "POST",
+                data: {
+                    action: action,
+                    data: JSON.stringify(records)
+                },
+                headers:{
+                    'X-CSRFToken': getcookie('csrftoken'),
+                },
+                success: function(data) {
+                    if(data){
+                        location.href = data;
+                    } else {
+                        location.reload(true);
+                    }
+                },
+                error: function(){
+                    alert('An error occured during submission.  Please try again or contact a tool admin.');
+                    $('#myModal').modal('hide');
+                }
+            });
+        }
+
+        $(document).ready(function(){
+            $('#approval_submit').click(function(){
+                if($('.inprocess:checked').length > 0) {
+                    if (confirm('Are you sure you wish to submit the selected records for approval?')) {
+                        $('#myModal').modal('show');
+                        process($(this).val());
+                    }
+                } else {
+                    alert('Please select at least 1 record for approval.');
+                }
+            });
+
+            $('#cancel').click(function(){
+                if($('.inprocess:checked').length > 0) {
+                    if (confirm('Are you sure you wish to cacnel the selected records?')) {
+                        $('#myModal').modal('show');
+                        process($(this).val());
+                    }
+                } else {
+                    alert('Please select at least 1 record for cancellation.');
+                }
+            });
+
+            $('#delete').click(function(){
+                if($('.inprocess:checked').length > 0) {
+                    if (confirm('STOP!!! Are you sure you wish to delete the selected records? This is permanent and CANNOT be undone.')) {
+                        $('#myModal').modal('show');
+                        process($(this).val());
+                    }
+                } else {
+                    alert('Please select at least 1 record for deletion.');
+                }
+            });
+
+            $('#clone').click(function(){
+                if($('.active:checked').length === 1) {
+                    $('#myModal').modal('show');
+                    process($(this).val());
+                } else {
+                    alert('Please select a single record for cloning.');
+                }
+            });
+
+            $('#hold').click(function(){
+                if($('.inprocess:checked').length > 0) {
+                    $('#myModal').modal('show');
+                    process($(this).val());
+                } else {
+                    alert('Please select at least 1 record to hold.');
+                }
+            });
+
+            $('#unhold').click(function(){
+                if($('.hold:checked').length > 0) {
+                    $('#myModal').modal('show');
+                    process($(this).val());
+                } else {
+                    alert('Please select at least 1 record to remove from hold.');
+                }
+            });
+        });
+    </script>
+{% endif %}
+{% endblock %}

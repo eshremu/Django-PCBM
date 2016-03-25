@@ -1,0 +1,119 @@
+{% extends "BoMConfig/template.html" %}
+{% load customtemplatetag %}
+{% block content %}
+<div id="main-body" xmlns="http://www.w3.org/1999/html">
+    {% if user.is_authenticated %}
+    <div id="action_buttons">
+		<button class="btn" type="button" name="action" value="basic" onclick="window.location.href='{% url 'bomconfig:search' %}'">Basic</button>
+		<button class="btn" type="button" name="action" value="advanced" onclick="window.location.href='{% url 'bomconfig:searchadv' %}'">Advanced</button>
+	</div>
+    <div id="search_filter">
+        <h5>NOTE: The asterisk (*) character can be used as multi-character wildcard, and the question mark (?) can be used for single-character wildcard</h5>
+        <form id="search_form" method="POST" onsubmit="return search()">
+            {% csrf_token %}
+            <label for="config">Configuration</label>
+            <input id="config" type="text" name="config"/>
+            <label for="person">Person Responsible</label>
+            <input id="person" type="text" name="person"/>
+            <label for="request">BoM Request Type</label>
+            <select id="request" name="request">
+                <option value="">-------</option>
+                <option value="New">New</option>
+                <option value="Update">Update</option>
+                <option value="Replacement">Replacement</option>
+                <option value="Discontinued">Discontinued</option>
+                <option value="Legacy">Legacy</option>
+            </select>
+            <label for="customer">Customer Unit</label>
+            <select id="customer" name="customer">
+                <option value="">-------</option>
+                <option value="AT&T">AT&T</option>
+                <option value="Verizon">Verizon</option>
+                <option value="Sprint">Sprint</option>
+                <option value="T-Mobile">T-Mobile</option>
+            </select>
+            <label for="status">Configuration/Ordering Status</label>
+            <select id="status" name="status">
+                <option value="">-------</option>
+                <option value="in_process">In Process</option>
+                <option value="active">Active</option>
+                <option value="on_hold">On Hold</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="discontinued">Discontinued</option>
+                <option value="obsolete">Obsolete</option>
+            </select>
+            <button id="search_button" class="btn" type="button" name="search_button" value="search">Search</button>
+        </form>
+    </div>
+    <div id="search_results">
+    <h3>Latest Configurations</h3>
+    {% if header_list %}
+        <table>
+        <thead>
+            <tr>
+                <th style="width:175px;">Configuration</th>
+                <th style="width:175px;">Version</th>
+                <th style="width:175px;">Person Responsible</th>
+                <th style="width:175px;">BoM Request Type</th>
+                <th style="width:175px;">Customer Unit</th>
+                <th style="width:175px;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for header in header_list %}
+        <tr>
+            <td><a href="?link={{ header.pk|searchscramble }}">{{ header.configuration_designation }}</a></td>
+            <td>{{ header.baseline_version }}</td>
+            <td>{{ header.person_responsible }}</td>
+            <td>{{ header.bom_request_type }}</td>
+            <td>{{ header.customer_unit }}</td>
+            <td>{{ header.configuration_status }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        </table>
+    {% else %}
+        <p>NO CONFIGURATIONS DEFINED</p>
+    {% endif %}
+    </div>
+    {% else %}
+    <h4>You must log in to use this function</h4>
+    {% endif %}
+</div>
+<script>
+    $('a.headtitle:contains("Search")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+    $('button[value="basic"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+    $(document).ready(function(){
+        $('#search_button').click(function(){
+           $('#search_form').submit();
+        });
+    });
+
+    function search(eventObj){
+        $('#myModal').modal('show');
+        $.ajax({
+            url: "{% url 'bomconfig:search' %}",
+            dataType: "html",
+            type: "POST",
+            data: {
+                config_design: $('#config').val(),
+                person: $('#person').val(),
+                customer: $('#customer').val(),
+                request: $('#request').val(),
+                status: $('#status').val()
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken'),
+            },
+            success: function(data) {
+                $('#search_results').empty();
+                $('#search_results').append($('<h3>Search Results</h3>'));
+                $('#search_results').append(data);
+                $('#myModal').modal('hide');
+                //bodyResize();
+            }
+        });
+        return false;
+    }
+</script>
+{% endblock %}
