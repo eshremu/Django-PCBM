@@ -82,4 +82,5 @@ def searchscramble(value):
 def random_string(length):
     count = int(length)
     return ''.join(random.choice(string.digits + string.ascii_letters) for i in range(count))
+
 # end def

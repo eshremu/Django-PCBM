@@ -116,7 +116,7 @@
                                 <h5>Push back to:</h5>
                                 <select data-index="{{ record.pk }}">
                                 {% for level in approval_seq %}
-                                    {% with level|add:"_approver"  as approved_level%}
+                                    {% with level|add:"_approver" as approved_level%}
                                     {% if record.latesttracker|getattr:approved_level %}
                                     <option value="{{ level }}">{{ namelist|getindex:forloop.counter0 }}</option>
                                     {% endif %}
