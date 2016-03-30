@@ -1,0 +1,337 @@
+{% extends "BoMConfig/template.html" %}
+{% load customtemplatetag %}
+{% load staticfiles %}
+{% block content %}
+<div id="main-body">
+    {% if user.is_authenticated %}
+        {% if viewauthorized %}
+        <div id="hintBox"></div>
+        <ul class="btn" style="border: none; padding: 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for customer in customer_list %}
+                    <li><a href="#" onclick="cust_filter('{{ customer|replace:"& _"|replacewhitespace:"-_" }}');">{{ customer }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+
+        <h4>In Process/Pending</h4>
+        {% if approval_wait %}
+        <form id="pending_approval_action" onsubmit="return false;">
+            <button id="approve" class="action_button" value="approve">Approve</button>
+            <button id="disapprove" class="action_button" value="disapprove">Disapprove</button>
+            {% if skip_authorized %}
+            <button id="skip" class="action_button" value="skip">Skip</button>
+            {% endif %}
+            <button id="hold" class="action_button" value="hold">Place on Hold</button>
+            <table id="pending_approval_records">
+                <thead>
+                    <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
+                        <th style="height: 160px;vertical-align: bottom;"></th>
+                        <th style="height: 160px;vertical-align: bottom;">Configuration</th>
+                        <td style="width:25px;"></td>
+                        <th style="height: 160px;vertical-align: bottom;">Baseline</th>
+                        {% for name in namelist %}
+                        <th class="rotate"><div><span>{{ name }}</span></div></th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                {% for record in approval_wait %}
+                    {% for tracker in record.get_all_trackers.all %}
+                    <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} config">
+                        {% if tracker == record.get_all_trackers.first %}
+                        <td><input class="pending" type="checkbox" data-index="{{ record.id }}"/><span>&nbsp;&nbsp;</span></td>
+                        <td><a onclick="window.open('../search?link={{ record.pk|searchscramble }}&readonly=1', '{{ record.configuration_designation }}', 'left=100,top=100,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no')">{{ record.configuration_designation }}</a></td>
+                        <td></td>
+                        <td>{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
+                        {% else %}
+                        <td></td><td></td><td></td><td></td>
+                        {% endif %}
+                        {% for level in approval_seq %}
+                        <td class="approval"><div data-id="{{ tracker.id }}" data-level="{{ level }}">
+                            {% with level|add:'_approver' as approver%}
+                            {% with level|add:'_approved_on' as approvedate%}
+                            {% with level|add:'_denied_approval' as disapprovedate%}
+                            {% if tracker|getattr:disapprovedate %}
+                            <span class="glyphicon glyphicon-remove" style="color:#DD0000;"></span>
+                            {% elif tracker|getattr:approvedate|date:"Y-M-D" == deaddate|date:"Y-M-D" %}
+                            <span class="glyphicon glyphicon-minus"></span>
+                            {% elif tracker|getattr:approver %}
+                            <span class="glyphicon glyphicon-ok" style="color:#00AA00;"></span>
+                            {% else %}
+                            <span style="color:#FFFFFF">_</span>
+                            {% endif %}
+                            {% endwith %}
+                            {% endwith %}
+                            {% endwith %}
+                        </div></td>
+                        {% endfor %}
+                        {% if tracker.disapproved_on %}
+                        <td class="approval">&nbsp;&nbsp;&nbsp;Disapproved on:&nbsp;&nbsp;{{ tracker.disapproved_on }}</td>
+                        {% endif %}
+                    </tr>
+
+                    {% endfor %}
+                    <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} config" style="height:10px;"></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </form>
+        <div class="modal fade" id="approval" role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog" role="document">
+            <!-- Modal content-->
+                <div class="modal-content">
+                    <div class="modal-header"><h4 class="modal-title" id="approvalLabel">Approve</h4></div>
+                    <div class="modal-body">
+                        {% for record in approval_wait %}
+                        <div data-index="{{ record.pk }}" style="display:none;">
+                            <h5 style="font-weight: bold">{{ record.configuration_designation }}</h5>
+                            <form class="approve-form">
+                                <h5>Comments:</h5>
+                                <textarea rows="2" cols="77" style="resize:none;" data-index="{{ record.pk }}" placeholder="Optional"></textarea>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" data-action="approve">Submit</button>
+                        <button class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="disapproval" role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+            <!-- Modal content-->
+                <div class="modal-content">
+                    <div class="modal-header"><h4 class="modal-title" id="approvalLabel">Disapprove</h4></div>
+                    <div class="modal-body">
+                        {% for record in approval_wait %}
+                        <div data-index="{{ record.pk }}" style="display:none;">
+                            <h5 style="font-weight: bold">{{ record.configuration_designation }}</h5>
+                            <form class="disapprove-form">
+                                <h5>Push back to:</h5>
+                                <select data-index="{{ record.pk }}">
+                                {% for level in approval_seq %}
+                                    {% with level|add:"_approver"  as approved_level%}
+                                    {% if record.latesttracker|getattr:approved_level %}
+                                    <option value="{{ level }}">{{ namelist|getindex:forloop.counter0 }}</option>
+                                    {% endif %}
+                                    {% endwith %}
+                                {% endfor %}
+                                </select>
+                                <h5>Comments:</h5>
+                                <textarea rows="2" cols="77" style="resize:none;" data-index="{{ record.pk }}" placeholder="Required"></textarea>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" data-action="disapprove">Submit</button>
+                        <button class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <style>
+            table#pending_approval_records td, table#pending_approval_records th{
+
+            }
+
+            table#pending_approval_records td.approval{
+                transform:
+                    translate(25px)
+            }
+            table#pending_approval_records td.approval > div{
+                border: 1px black solid;
+                text-align: center;
+            }
+            th.rotate {
+                height:20px;
+                white-space: nowrap;
+                vertical-align: bottom;
+            }
+            th.rotate > div {
+                width:40px;
+                transform:
+                    rotate(-45deg)
+                    translate(45px, 25px)
+            }
+            th.rotate > div > span {
+                border-bottom: 1px solid black;
+                padding: 5px 0px;
+            }
+        </style>
+        {% else %}
+        <h5>NO RECORDS PENDING APPROVAL</h5>
+        {% endif %}
+
+        {% else %}
+        <h4>You do not have sufficient permissions to view this asset.</h4>
+        {% endif %}
+    {% else %}
+    <h4>You must log in to use this function</h4>
+    {% endif %}
+</div>
+{% if user.is_authenticated %}
+    <script>
+        $('a.headtitle:contains("Approvals")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        var xhr;
+
+        function cleanDataCheck(link){
+            window.location.href = link.dataset.href;
+        }
+
+        function cust_filter(customer){
+            if(customer !== 'All') {
+                $('tr').css('display','');
+                $('tr').not('.' + customer).css('display','none');
+                $('tr:not(".' + customer + '") input').removeAttr('checked');
+                $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
+            } else {
+                $('tr').css('display','');
+                $('#cu_filter').html('Customer <span class="caret"></span>');
+            }
+        }
+
+        function process(action){
+            var records = [];
+            var comments = [];
+            var destination = [];
+
+            $('.pending:checked').each(function (index, element) {
+                var dataindex = element.dataset.index;
+                records.push(dataindex);
+                if(action === 'approve') {
+                    comments.push($('.approve-form textarea[data-index="' + dataindex + '"]').val());
+                } else if (action === 'disapprove') {
+                    comments.push($('.disapprove-form textarea[data-index="' + dataindex + '"]').val());
+                }
+
+                if (action === 'disapprove') {
+                    destination.push($('.disapprove-form select[data-index="' + dataindex + '"]').val());
+                }
+            });
+
+            $.ajax({
+                url: "{% url 'bomconfig:approve' %}",
+                type: "POST",
+                data: {
+                    action: action,
+                    data: JSON.stringify(records),
+                    comments: JSON.stringify(comments),
+                    destinations: JSON.stringify(destination)
+                },
+                headers:{
+                    'X-CSRFToken': getcookie('csrftoken'),
+                },
+                success: function(data) {
+                    location.reload(true);
+                },
+                error: function(){
+                    $('#myModal').modal('hide');
+                    massageToModal('Approval Error','An error occurred during submission. Please try again or contact a tool admin.',function(){});
+                }
+            });
+        }
+
+        $(document).ready(function(){
+            $('.action_button').click(function(){
+                if($('.pending:checked').length > 0) {
+                    if($(this).attr('id')=='approve'){
+                        $('#approval').modal('show');
+                    } else if ($(this).attr('id')=='disapprove'){
+                        $('#disapproval').modal('show');
+                    } else {
+                        $('#myModal').modal('show');
+                        process($(this).val());
+                    }
+                } else {
+                    alert('Please select at least 1 record for processing.')
+                }
+            });
+
+            $('.btn.btn-primary').click(function(){
+                $(this).closest('.modal').modal('hide');
+                $('#myModal').modal('show');
+                process($(this)[0].dataset.action);
+            });
+
+            $('input.pending').change(function(){
+                var index = $(this)[0].dataset.index;
+                $('div[data-index="' + index + '"]').toggle();
+            });
+
+            $('.approval div').mouseenter(function(e) {
+                var hovertext ='';
+                if($(this).find('.glyphicon').length > 0){
+                    xhr = $.ajax({
+                        url: "{% url 'bomconfig:approve_info' %}",
+                        type: "POST",
+                        data: {
+                            id: this.dataset.id,
+                            level: this.dataset.level
+                        },
+                        headers:{
+                            'X-CSRFToken': getcookie('csrftoken')
+                        },
+                        success: function(data) {
+                            hovertext = 'By: ' + data.person + "<br/>";
+
+                            if(data.type != 'S'){
+                                hovertext += "On: " + data.date + "<br/>";
+                                hovertext += 'Comments: ' + data.comments + "<br/>";
+                                if(data.type == 'A'){
+                                    $('#hintBox').css('background-color', 'rgba(0,150,0,0.9)');
+                                } else {
+                                    $('#hintBox').css('background-color', 'rgba(150,0,0,0.9)');
+                                }
+                            } else {
+                                $('#hintBox').css('background-color', 'rgba(0,0,0,0.9)');
+                            }
+                            xhr = undefined;
+                            $('#hintBox').html(hovertext).show();
+                            $('#hintBox').css('top', e.clientY+20).css('left', e.clientX-210);
+                        },
+                        error: function(){
+                            hovertext = '<span>Could not find</span>';
+                            $('#hintBox').css('background-color', 'rgba(0,0,0,0.9)');
+                        }
+                    });
+                }
+
+                if (hovertext != '') {
+                    $('#hintBox').html(hovertext).show();
+                    $('#hintBox').css('top', e.clientY+20).css('left', e.clientX-210);
+                }
+            }).mousemove(function(e){
+                $('#hintBox').css('top', e.clientY+20).css('left', e.clientX-210);
+            }).mouseleave(function() {
+                $('#hintBox').hide();
+                if (xhr !== undefined){
+                    xhr.abort();
+                    xhr = undefined;
+                }
+            });
+
+        });
+    </script>
+    <style>
+        #hintBox {
+            display: none;
+            position: absolute;
+            font-size: 10pt;
+            width: 200px;
+            background-color: rgba(0,0,0,0.9);
+            color: rgba(255,255,255,1);
+            border: 1px solid grey;
+            padding: 8px;
+            border-radius: 10px;
+            z-index: 999;
+        }
+    </style>
+{% endif %}
+{% endblock %}

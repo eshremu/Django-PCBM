@@ -1,0 +1,16 @@
+{% extends "BoMConfig/template.html" %}
+{% load customtemplatetag %}
+		
+{% block content %}
+<div id="main-body">
+    <div>
+        <h4>{{ title }} uploaded successfully</h4>
+	</div>
+</div>
+    <script>
+        $(document).ready(function(){
+            setTimeout("window.location.href='{% url 'bomconfig:upload' %}'", 5000);
+        });
+    </script>
+<!-- end div #main-body -->
+{% endblock %}

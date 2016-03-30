@@ -1,0 +1,51 @@
+{% extends "BoMConfig/template.html" %}
+		
+{% block content %}
+{% if user.is_authenticated %}
+<div id="main-body">
+    {% if pricing_read_authorized %}
+    <div id="action_buttons">
+        <button class="btn" type="button" name="action" value="part_price" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:pricing' %}'>Unit Price Mgmt</button>
+		<button class="btn" type="button" name="action" value="config_price" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configpricing' %}'>Configuration Price Mgmt</button>
+		<button class="btn" type="button" name="action" value="baseline_report" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:basepricing' %}'>Pricing Overview</button>
+	</div>
+    {% block subcontent %}{% endblock %}
+    {% else %}
+    <h4>You do not have sufficient permissions to view this asset.</h4>
+    {% endif %}
+    <script>
+        $('a.headtitle:contains("Pricing")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+
+        function cleanDataCheck(link){
+            var dirty_form = JSON.stringify(hot.getSourceData());
+            if(dirty_form != clean_form && !form_save){
+                messageToModal('Unsaved changes detected',
+                        "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
+                        function(){window.location.href = link.dataset.href;}
+                );
+            } else {
+                window.location.href = link.dataset.href;
+            }
+        }
+
+        $(document).ready(function(){
+            $(window).on('beforeunload', function(){
+                var dirty_form = JSON.stringify(hot.getSourceData());
+                if(closeButton && dirty_form != clean_form && !form_save){
+                    return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";
+                }
+            });
+        });
+    </script>
+    <style>
+        #action_buttons button:hover {
+            background-color: #cccccc;
+        }
+    </style>
+</div>
+{% else %}
+<div>
+    <h4>You must log in to use this function</h4>
+</div>
+{% endif %}
+{% endblock %}

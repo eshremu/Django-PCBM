@@ -1,0 +1,639 @@
+{% extends "BoMConfig/entrylanding.html" %}
+{% load staticfiles %}
+{% block subcontent %}
+{% if config_read_authorized %}
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+    <style>
+        .handsontable .currentRow {
+            background: #fff4d8;
+        }
+
+        .handsontable thead th {
+            white-space: pre-line;
+            height: 50px;
+        }
+    </style>
+    <form id="configform" method="POST" onsubmit="data_submit();">
+        {% csrf_token %}
+        {{ form.needs_zpru.as_hidden }}
+        <div id="headersubform">
+            <table>
+                <tbody>
+                    <tr>
+                        <td style="width:130px;"><b>REACT Request #:</b></td>
+                            <td style="border: 1px inset grey; width:180px;">{{ header.react_request }}</td>
+                        <td style="width:50px;"></td>
+                        <td style="width:170px;"><b>Projected Cut-over Date:</b></td>
+                            <td style="border: 1px inset grey; width:100px;">{% if header.projected_cutover %}{{ header.projected_cutover }}{% endif %}</td>
+                        <td style="width:50px;"></td>
+                        <td>{{ form.net_value.label_tag }}{{ form.net_value }}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <table>
+                <tbody>
+                    <tr>
+                        <td style="width:125px;">{{ form.reassign.label_tag }}{{ form.reassign }}</td>
+                        <td style="width:150px;">{{ form.PSM_on_hold.label_tag }}{{ form.PSM_on_hold }}</td>
+                        <td style="width:225px;">{{ form.internal_external_linkage.label_tag }}{{ form.internal_external_linkage }}</td>
+                        <td style="width:170px;"></td>
+                        <td style="width:300px;">{{ form.zpru_total.label_tag }}{{ form.zpru_total }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <input type="hidden" id="formaction" name="formaction" value="" />
+        <div id="breadcrumbs" style="margin-top: 10px; margin-bottom: 10px;">
+            <h5 id="copynote">NOTE: Data can only be copied/pasted using the Ctrl + C / Ctrl + V keyboard shortcuts</h5>
+            <h5 id="view-selector">
+                View Selection:
+                <a id="viewall" onclick="if(!validating) {SAPVis = AttrVis = PriceVis = CustVis = BaselineVis = true; load_table();}">All</a>
+                {% if config_sap_read_authorized %}
+                |
+                <a id="viewsap" onclick="if(!validating) {SAPVis = !SAPVis; load_table();}">SAP Doc</a>
+                {% endif %}
+                {% if config_attr_read_authorized %}
+                |
+                <a id="viewattr" onclick="if(!validating) {AttrVis = !AttrVis; load_table();}">Attributes</a>
+                {% endif %}
+                {% if config_price_read_authorized %}
+                |
+                <a id="viewprice" onclick="if(!validating) {PriceVis = !PriceVis; load_table();}">Price Links</a>
+                {% endif %}
+                {% if config_cust_read_authorized %}
+                |
+                <a id="viewcust" onclick="if(!validating) {CustVis = !CustVis; load_table();}">Customer Data</a>
+                {% endif %}
+                {% if config_baseline_read_authorized %}
+                |
+                <a id="viewbase" onclick="if(!validating) {BaselineVis = !BaselineVis; load_table();}">Baseline</a>
+                {% endif %}
+            </h5>
+        </div>
+        <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden"><div id="datatable"></div></div>
+        <div id="formbuttons">
+            {% if can_previous %}<input id="prevForm" type="button" value="Prev">{% endif %}
+            <input id="cancelForm" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
+            {% if header.configuration_status.name == 'In Process' and config_write_authorized and not frame_readonly %}
+            <input id="saveexitForm" type="button" value="Save & Exit">
+            <input id="saveForm" type="button" value="Save">
+            {% endif %}
+            {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
+
+            <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
+                {% if status_message %}{{ status_message }}{% endif %}
+            </span>
+            {% if status_message %}
+            <script>
+                setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
+            </script>
+            {% endif %}
+            {% if header.configuration_status.name == 'In Process' and not frame_readonly %}
+            <input id="validate" type="button" value="Validate" style="margin-left:500px;" title="Validate current input, prefill empty cells, and update totals."/>
+            <span style="padding-left: 25px;">Status: </span>
+            <span id="status" style="padding-left: 10px;"></span>
+            {% endif %}
+        </div>
+    </form>
+
+    <script>
+        $('button[value="config"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        var SAPVis, AttrVis, PriceVis, CustVis, BaselineVis;
+        SAPVis = AttrVis = PriceVis = CustVis = BaselineVis = true;
+        var hot;
+        var header_html;
+        var data = {{ data_array|safe }};
+        var error_matrix = [];
+        var clean_form, clean_sub;
+        var form_save = false;
+        var validating = false;
+        var valid = true;
+        var firstLoad = true;
+
+        function cleanDataCheck(link){
+            var dirty_form = hot.getSourceData();
+            $('[name="data_form"]').remove();
+            var dirty_sub = $('#configform').serialize();
+            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(dirty_form)).appendTo('#configform');
+
+            if(JSON.stringify(dirty_form) !== JSON.stringify(clean_form)|| JSON.stringify(dirty_sub) !== JSON.stringify(clean_sub)) {
+                valid = false;
+            }
+
+            if (!valid && !form_save){
+                messageToModal('Unsaved changes detected',
+                        "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
+                        function(){window.location.href = link.dataset.href;}
+                );
+            } else {
+                window.location.href = link.dataset.href;
+            }
+        }
+
+        $(document).ready(function(){
+            $(window).load(function(){
+                form_resize();
+{#                {% if header.configuration_status == 'In Process' %}data_validate();{% endif %}#}
+                data_validate();
+                clean_form = hot.getSourceData();
+                $('[name="data_form"]').remove();
+                clean_sub = $('#configform').serialize();
+            });
+
+            $(window).on('beforeunload',function(){
+                var dirty_form = hot.getSourceData();
+                $('[name="data_form"]').remove();
+                var dirty_sub = $('#configform').serialize();
+
+                if(JSON.stringify(dirty_form) !== JSON.stringify(clean_form)|| JSON.stringify(dirty_sub) !== JSON.stringify(clean_sub)) {
+                    valid = false;
+                }
+
+                if (closeButton && !valid && !form_save){
+                    return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";
+                }
+            });
+
+            $(window).resize(function(){
+                form_resize();
+            });
+
+            $('#saveForm').click(function(){
+                if(!validating) {
+                    $('#formaction').val('save');
+                    {% if header.configuration_status.name != 'In Process' %}
+                    $('#configform').submit();
+                    {% else %}
+                    data_validate(true);
+                    {% endif %}
+                }
+            });
+
+            $('#saveexitForm').click(function(){
+                if(!validating) {
+                    $('#formaction').val('saveexit');
+                    {% if header.configuration_status.name != 'In Process' %}
+                    $('#configform').submit();
+                    {% else %}
+                    data_validate(true);
+                    {% endif %}
+                }
+            });
+
+            $('#nextForm').click(function(){
+                if(!validating) {
+                    $('#formaction').val('next');
+                    {% if header.configuration_status.name != 'In Process' %}
+                    $('#configform').submit();
+                    {% else %}
+                    data_validate(true);
+                    {% endif %}
+                }
+            });
+
+            $('#prevForm').click(function(){
+                if(!validating) {
+                    $('#formaction').val('prev');
+                    {% if header.configuration_status.name != 'In Process' %}
+                    $('#configform').submit();
+                    {% else %}
+                    data_validate(true);
+                    {% endif %}
+                }
+            });
+
+            $('#validate').click(function(){
+                data_validate();
+            });
+        });
+
+        function floatFormat(number){
+            var array = String(number).split('.');
+            if (array.length > 1){
+                return String(number);
+            } else {
+                return String(number) + '.0';
+            }
+        }
+
+
+        function form_resize(){
+            var topbuttonheight = $('#action_buttons').height();
+            var bottombuttonheight = $('#formbuttons').height();
+            var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
+            var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + crumbheight + subformheight);
+
+            $('#table-wrapper').css("height", tableheight);
+            build_table();
+        }
+
+        function determineColumns(cols, headers, readonly){
+{#            var header = "<th colspan='1'><div class='relative'></div></th><th colspan='4'><div class='relative'><span>BoM</span></div></th>";#}
+            cols.push({data: 0}, {data: 1}, {data: 2}, {data: 3}, {data: 4});
+            headers.push('Status', 'Line #', 'Product Number', "Product Description", 'Order Qty');
+            {% if config_bom_write_authorized %}
+            readonly.push(0);
+            {% else %}
+            readonly.push(0, 1, 2, 3, 4);
+            {% endif %}
+
+            var offset = 0;
+
+            if(SAPVis === true && {{ config_sap_read_authorized|lower }}){
+                cols.push({data: 5}, {data: 6}, {data: 7}, {data: 8}, {data: 9});
+                headers.push('UoM', 'Plant', 'SLOC', 'Item Cat', 'P-Code - Fire Code, Desc');
+                {% if config_sap_write_authorized %}
+{#                readonly.push(5, 9);#}
+                readonly.push(5);
+                {% else %}
+                readonly.push(5, 6, 7, 8, 9);
+                {% endif %}
+                offset += 5;
+{#                header += "<th colspan='5'><div class='relative'><span>SAP Doc</span></div></th>";#}
+                $('#viewsap').css('background-color', '#FFFF4D');
+            } else {
+                $('#viewsap').removeAttr('style');
+            }
+
+            if(AttrVis === true && {{ config_attr_read_authorized|lower }}){
+                cols.push({data: 10}, {data: 11}, {data: 12}, {data: 13}, {data: 14}, {data: 15}, {data: 16});
+                headers.push('HW/SW Ind', 'Prod Pkg Type', 'SPUD', 'RE-Code', 'MU-Flag', "X-Plant Mat'l Stat", 'Int Notes');
+                {% if config_attr_write_authorized %}
+                readonly.push(9 + offset, 10 + offset);
+                {% else %}
+                readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset, 10 + offset, 11 + offset);
+                {% endif %}
+                offset += 7;
+                // readonly.push(9 + offset, 10 + offset, 11 + offset); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
+
+{#                header += "<th colspan='7'><div class='relative'><span>Attributes</span></div></th>";#}
+                $('#viewattr').css('background-color', '#FFFF4D');
+            } else {
+                $('#viewattr').removeAttr('style');
+            }
+
+            if(PriceVis === true && {{ config_price_read_authorized|lower }}) {
+                cols.push({data: 17}, {data: 18}, {data: 19}, {data: 20}, {data: 21}, {data: 22});
+                headers.push('Unit Price', "Higher Level Item", 'Material Group 5', 'Purchase Order Item No', 'Condition Type', 'Amount');
+                {% if not config_price_write_authorized %}
+                readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset, 10 + offset);
+                {% endif %}
+                offset += 6;
+{#                header += "<th colspan='6'><div class='relative'><span>Price Links</span></div></th>";#}
+                $('#viewprice').css('background-color', '#FFFF4D');
+            } else {
+                $('#viewprice').removeAttr('style');
+            }
+
+            if(CustVis === true && {{ config_cust_read_authorized|lower }}) {
+                cols.push({data: 23}, {data: 24}, {data: 25}, {data: 26}, {data: 27});
+                headers.push('Traceability Req. (Serialization)', 'Customer Asset?', 'Customer Asset tagging Requirement', 'Customer Number', 'Second Customer Number');
+                //readonly.push(5 + offset); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
+                {% if not config_cust_write_authorized %}
+                readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset);
+                {% endif %}
+                offset += 5;
+{#                header += "<th colspan='5'><div class='relative'><span>Customer Data</span></div></th>";#}
+                $('#viewcust').css('background-color', '#FFFF4D');
+            } else {
+                $('#viewcust').removeAttr('style');
+            }
+
+            if(BaselineVis === true && {{ config_baseline_read_authorized|lower }}){
+                cols.push({data: 28}, {data: 29}, {data: 30});
+                headers.push('Vendor Article Number', 'Comments', 'Additional Reference (if required)');
+                {% if not config_baseline_write_authorized %}
+                readonly.push(5 + offset, 6 + offset, 7 + offset);
+                {% endif %}
+{#                header += "<th colspan='3'><div class='relative'><span>Baseline</span></div></th>";#}
+                $('#viewbase').css('background-color', '#FFFF4D');
+            } else {
+                $('#viewbase').removeAttr('style');
+            }
+
+{#            return header;#}
+        }
+
+        function readonlyRenderer(instance, td, row, col, prop, value, cellProperties) {
+            customRenderer(instance, td, row, col, prop, value, cellProperties);
+
+            td.style.background = '#DDDDDD';
+        }
+
+        function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
+            if (cellProperties.readOnly){
+                td.style.background = '#DDDDDD';
+            }
+
+            if (value != '' && value != undefined && value != null) {
+                var result;
+                var dummy = String(value).replace("$","").replace(',','').replace(' ','');
+                var decimal = dummy.indexOf('.');
+                var wholeDummy, fracDummy;
+
+                if (decimal != -1){
+                    wholeDummy = dummy.slice(0, decimal);
+                    fracDummy = dummy.slice(decimal + 1);
+                    if (fracDummy.length >= 2){
+                        fracDummy = fracDummy.slice(0,2);
+                    } else {
+                        fracDummy += '0';
+                    }
+                } else {
+                    wholeDummy = dummy;
+                    fracDummy = "00";
+                }
+                var negative = false;
+                if(wholeDummy.indexOf('-') != -1){
+                    negative = true;
+                    wholeDummy = wholeDummy.slice(wholeDummy.indexOf('-') + 1);
+                }
+                var start = wholeDummy.length % 3 == 0 ? 3 : wholeDummy.length % 3;
+
+                result = wholeDummy.slice(0,start);
+
+                for(var i = 0; i < wholeDummy.length - start; i++){
+                    if (i % 3 == 0){
+                        result += ',';
+                    }
+                    result += wholeDummy.charAt(i + start);
+                }
+
+                value = "$" + result + '.' + fracDummy;
+
+                if (negative){
+                    value = "(" + value + ")";
+                }
+            }
+            customRenderer(instance, td, row, col, prop, value, cellProperties);
+        }
+
+        function customRenderer(instance, td, row, col, prop, value, cellProperties) {
+            if (row === 0 && col === 17 && typeof(value) == 'string' && value.charAt(0)==='!' && PriceVis){
+                value = value.slice(1);
+                cellProperties.comment = '! - CPM override in effect.\n';
+            }
+
+            if (/<[a-zA-Z][\s\S/]*>/.test(value) === false) {
+                Handsontable.renderers.TextRenderer.apply(this, arguments);
+            } else {
+                Handsontable.renderers.HtmlRenderer.apply(this, arguments);
+            }
+        }
+
+        function build_table() {
+            var determined_cols = [];
+            var headers = [];
+            var readonly_columns = [];
+{#            header_html = determineColumns(determined_cols, headers);#}
+            determineColumns(determined_cols, headers, readonly_columns);
+            var container = document.getElementById('datatable');
+{#            var $container = $('#datatable');#}
+{#            determined_cols.push({renderer: firstRowRenderer})#}
+            hot = new Handsontable(container, {
+                data: data,
+                minRows: 1,
+                minCols: 31,
+                maxCols: 31,
+                minSpareRows: {% if config_write_authorized and not frame_readonly %}5{% else %}0{% endif %},
+                rowHeaders: false,
+                colHeaders: headers,
+                fixedColumnsLeft: 3,
+                currentRowClassName: 'currentRow',
+                columns: determined_cols,
+                manualColumnResize: true,
+                {% if header.configuration_status.name == 'In Process' %}contextMenu: {
+                        items: {
+                            'undo': {},
+                            'redo': {},
+                            'row_above': {
+                                disabled: function () {
+                                    {% if not header.pick_list %}return this.getSelected()[0] === 0;{% endif %}
+                                }
+                            },
+                            'row_below': {},
+                            'remove_row': {
+                                disabled: function () {
+                                    {% if not header.pick_list %}return this.getSelected()[0] === 0;{% endif %}
+                                }
+                            }
+                        }
+                },
+                {% endif %}
+                comments: true,
+                cells: function(row, col, prop){
+                    var cellProperties = {};
+
+                    if({% if header.configuration_status.name != 'In Process' %}true || {% endif %}{% if not header.pick_list %}(row === 0 && [1,2,4].indexOf(col)!== -1) || {% endif %}readonly_columns.indexOf(col) !== -1){
+                        cellProperties.readOnly = true;
+                        if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){//(col == 17 || col == 22) && PriceVis){
+                            cellProperties.renderer = moneyRenderer;
+                        } else {
+                            cellProperties.renderer = readonlyRenderer;
+                        }
+                    } else {
+                        if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
+                            cellProperties.renderer = moneyRenderer;
+                        } else {
+                            cellProperties.renderer = customRenderer;
+                        }
+                    }
+
+                    if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
+                        cellProperties.validator = function(value, callback){
+                            if(/^(?:-)?(?:\$)?\d{1,3}(?:,\d{3})*(?:\.\d{2})?$|^(?:-)?\d+(?:\.\d{2})?$|^$|^null$|^undefined$/.test(value)){
+                                callback(true);
+                            } else {
+                                callback(false);
+                            }
+                        };
+                    }
+
+                    if(this.instance.getColHeader(col) == 'Order Qty'){
+                        cellProperties.validator = /^\d+(?:\.\d+)?$|^null$|^$/
+                    }
+
+                    cellProperties.className = 'htCenter';
+                    if (['Line #', 'Product Number', 'Product Description', 'Int Notes','P-Code - Fire Code, Desc', 'Vendor Article Number','Comments','Additional Reference (if required)'].indexOf(this.instance.getColHeader(col)) != -1){ //
+                        cellProperties.className = 'htLeft';
+                    } else if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
+                        cellProperties.className = 'htRight';
+                    }
+
+                    if(error_matrix.length !== 0 && typeof(error_matrix[row]) !== "undefined"){
+                        cellProperties.comment = error_matrix[row][col];
+                    }
+
+                    if(this.instance.getColHeader(col) == 'Condition Type'){
+                        cellProperties.type = 'dropdown';
+                        cellProperties.source = [''].concat({{ condition_list|safe }});
+                    }
+
+                    if(this.instance.getColHeader(col) == 'Material Group 5'){
+                        cellProperties.type = 'dropdown';
+                        cellProperties.source = [''].concat({{ material_group_list|safe }});
+                    }
+
+                    if(this.instance.getColHeader(col) == 'Prod Pkg Type'){
+                        cellProperties.type = 'dropdown';
+                        cellProperties.source = [''].concat({{ product_pkg_list|safe }});
+                    }
+
+                    if(this.instance.getColHeader(col) == 'SPUD'){
+                        cellProperties.type = 'dropdown';
+                        cellProperties.source = [''].concat({{ spud_list|safe }});
+                    }
+
+                    return cellProperties;
+                },
+                afterValidate: function(isValid, value, row, prop, source){
+                    if (!isValid){
+                        $('#prevForm').attr('disabled', 'disabled').css('color','gray');
+                        $("#saveexitForm").attr('disabled', 'disabled').css('color','gray');
+                        $("#saveForm").attr('disabled', 'disabled').css('color','gray');
+                        $("#nextForm").attr('disabled', 'disabled').css('color','gray');
+                    }
+                },
+                afterChange: function(){
+                    if($('.htInvalid').length == 0){
+                        $('#prevForm').removeAttr('disabled').css('color','');
+                        $("#saveexitForm").removeAttr('disabled').css('color','');
+                        $("#saveForm").removeAttr('disabled').css('color','');
+                        $("#nextForm").removeAttr('disabled').css('color','');
+                    }
+                },
+                beforeValidate: function(value, row, prop, source){
+                    if(['Unit Price','Amount'].indexOf(this.getColHeader(prop)) != -1){
+                        value = value.replace(/$/g,'').replace(/,/g,'').replace(/\s/g,'');
+                        if (!isNaN(parseFloat(value))) {
+                            value = String(parseFloat(value).toFixed(2));
+                        }
+                    }
+                    if (['Product Number'].indexOf(this.getColHeader(prop)) != -1) {
+                        value = value.replace(/\s/g,'');
+                    }
+
+                    return value;
+                },
+                beforeChange: function(changes, source){
+                    for(var i = 0; i < changes.length; i++) {
+                        if (['Unit Price', 'Amount'].indexOf(this.getColHeader(changes[i][1])) != -1) {
+                            changes[i][3] = changes[i][3].replace(/$/g,'').replace(/,/g,'').replace(/\s/g,'');
+                            if (!isNaN(parseFloat(changes[i][3]))) {
+                                changes[i][3] = String(parseFloat(changes[i][3]).toFixed(2));
+                            }
+                        }
+                        if (['Product Number'].indexOf(this.getColHeader(changes[i][1])) != -1) {
+                            changes[i][3] = changes[i][3].replace(/\s/g,'');
+                        }
+                    }
+                }
+
+            });
+            hot.getPlugin('comments').editor.editorStyle.zIndex = "10000";
+{#            hot.validateCells(function(isValid, value, row, prop, source) {#}
+{#                if (!isValid) {#}
+{#                    $('#prevForm').attr('disabled', 'disabled').css('color', 'gray');#}
+{#                    $("#saveexitForm").attr('disabled', 'disabled').css('color', 'gray');#}
+{#                    $("#saveForm").attr('disabled', 'disabled').css('color', 'gray');#}
+{#                    $("#nextForm").attr('disabled', 'disabled').css('color', 'gray');#}
+{#                }#}
+{#            });#}
+            if(firstLoad) {
+                clean_form = hot.getSourceData();
+                $('[name="data_form"]').remove();
+                clean_sub = $('#configform').serialize();
+            }
+        }
+
+        function load_table() {
+            hot.destroy();
+            build_table();
+        }
+
+        function data_submit(eventObj) {
+            $('[name="data_form"]').remove();
+            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#configform');
+            form_save = true;
+        }
+
+        function data_validate(submit){
+            submit = typeof submit !== 'undefined' ? submit:false;
+
+            validating = true;
+            $('#validate').attr('disabled','disabled').attr('value','Validating...').css('color','gray');
+            $('#myModal').modal('show');
+            $.ajax({
+                type: "POST",
+                url: "{% url 'bomconfig:validator' %}",
+{#                async: false,#}
+                data: {
+                    entered_data: JSON.stringify(hot.getSourceData(), function(key, value){return value;})
+                },
+                headers:{
+                    'X-CSRFToken': getcookie('csrftoken')
+                },
+                success: function (return_data) {
+                    var returndata = JSON.parse(return_data);
+                    data = returndata.data;
+                    error_matrix = returndata.errors;
+                    load_table();
+                    $('#id_net_value').attr('value', floatFormat(returndata.nettotal));
+                    $('#id_zpru_total').attr('value', floatFormat(returndata.zprutotal));
+                    $('#id_needs_zpru').attr('value', returndata.zpru);
+
+                    if( returndata.zpru == true && returndata.nettotal != returndata.zprutotal){
+                        $('#id_net_value').css('border', '3px solid red');
+                        $('#id_zpru_total').css('border', '3px solid red');
+                    } else {
+                        $('#id_net_value').removeAttr('style');
+                        $('#id_zpru_total').removeAttr('style');
+                    }
+
+                    $('#status').html(returndata.status);
+                    if(returndata.status === 'ERROR'){
+                        $('#status').css('color','#DD0000');
+                    } else if (returndata.status === 'WARNING') {
+                        $('#status').css('color','#FF8800');
+                    } else {
+                        $('#status').css('color','#00AA00');
+                    }
+
+                    validating = false;
+                    valid = true;
+                    $('#validate').removeAttr('disabled').attr('value','Validate').css('color','');
+                    $('#myModal').modal('hide');
+                    if(firstLoad){
+                        clean_form = hot.getSourceData();
+                        $('[name="data_form"]').remove();
+                        clean_sub = $('#configform').serialize();
+                        firstLoad = false;
+                    }
+                    if(submit && returndata.status !== 'ERROR'){
+                        $('#configform').submit();
+                    } else if (submit){
+                        $('#statuses').html('Error(s) found. Save failed.');
+                        setTimeout(function(){$('#statuses').fadeOut('slow')}, 10000);
+                    }
+                },
+                error: function(){
+                    $('#validate').removeAttr('disabled').attr('value','Validate').css('color','');
+                    $('#myModal').modal('hide');
+                    $('#statuses').html('Error during validation. Try again');
+                    setTimeout(function(){$('#statuses').fadeOut('slow')}, 10000);
+                }
+            });
+        }
+
+    </script>
+{% else %}
+<div>
+    <h4>You do not have sufficient permissions to view this asset.</h4>
+</div>
+{% endif %}
+{% endblock %}
