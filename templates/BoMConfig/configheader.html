@@ -148,7 +148,7 @@
 
         $('#id_customer_unit').change(function(){
             list_react_filler('customer_unit', 'customer_name');
-            list_filler('customer_unit', 'program')
+            list_filler('customer_unit', 'program');
             list_filler('customer_unit', 'baseline_impacted', 1);
         });
 
@@ -194,15 +194,15 @@
                 data: {
                     parent: parent,
                     id: $('#id_' + parent).val(),
-                    child: child,
+                    child: child
                 },
                 headers:{
-                    'X-CSRFToken': getcookie('csrftoken'),
+                    'X-CSRFToken': getcookie('csrftoken')
                 },
                 success: function(data) {
                     var $child = $('#id_' + child);
                     $child.find('option:gt(' + index + ')').remove();
-                    for (key in data){
+                    for (var key in data){
                         if(data.hasOwnProperty(key)){
                             $child.append($('<option>',{value:key,text:data[key]}));
                         }
@@ -230,15 +230,15 @@
                 data: {
                     parent: parent,
                     id: $('#id_' + parent).val(),
-                    child: child,
+                    child: child
                 },
                 headers:{
-                    'X-CSRFToken': getcookie('csrftoken'),
+                    'X-CSRFToken': getcookie('csrftoken')
                 },
                 success: function(data) {
                     var $child = $('#id_' + child);
                     $child.find('option:gt(' + index + ')').remove();
-                    for (key in data){
+                    for (var key in data){
                         if(data.hasOwnProperty(key)){
                             $child.append($('<option>',{value:key,text:data[key]}));
                         }
@@ -284,7 +284,7 @@
                     psm_req: $({{ headerForm.react_request.auto_id }}).val()
                 },
                 headers:{
-                    'X-CSRFToken': getcookie('csrftoken'),
+                    'X-CSRFToken': getcookie('csrftoken')
                 },
                 success: function(data) {
                     var returned = JSON.parse(data);

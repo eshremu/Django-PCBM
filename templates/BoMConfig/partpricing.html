@@ -2,10 +2,11 @@
 {% load staticfiles %}
 {% block subcontent %}
     <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <script src="{% static 'BoMConfig/js/part_pricing.js' %}"></script>
     <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
 
     <form id="headersubform"
-          {% if partlines %}onsubmit="return FormSubmit();"{% endif %}
+          {% if partlines %}onsubmit="return formSubmit();"{% endif %}
           method="post">
         {% csrf_token %}
         <label for="part">Part Number</label>
@@ -17,12 +18,12 @@
     <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
 
     <div id="formbuttons">
-        {% if partlines %}
+        {% if partlines.0 %}
         <button id="cancelForm" name="action" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>
         <button id="saveForm" type="submit" name="action" form="headersubform" value="save">Save</button>
         {% endif %}
         {% if status_message %}
-        <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:50px;">
+        <span id="statuses" style="color:red; font-size:20px; font-weight: bold; padding-left:50px;">
             {{ status_message }}
         </span>
         <script>
@@ -32,173 +33,9 @@
     </div>
 
     <script>
-        $('button[value="part_price"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
-
-        var hot, clean_form;
-        var form_save = false, first_run = true;
-
-        function customRenderer(instance, td, row, col, prop, value, cellProperties){
-            if (col !== 4){
-                td.style.background = '#DDDDDD';
-                if(instance.getDataAtCell(row - 1, col) == value)
-                {
-                    value = '';
-                }
-            }
-            Handsontable.renderers.TextRenderer.apply(this, arguments);
-        }
-
-        function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
-            if (cellProperties.readOnly){
-                td.style.background = '#DDDDDD';
-            }
-
-            if (value != '' && value != undefined && value != null) {
-                var result;
-                var dummy = String(value).replace("$","").replace(',','').replace(' ','');
-                var decimal = dummy.indexOf('.');
-                var wholeDummy, fracDummy;
-
-                if (decimal != -1){
-                    wholeDummy = dummy.slice(0, decimal);
-                    fracDummy = dummy.slice(decimal + 1);
-                    if (fracDummy.length >= 2){
-                        fracDummy = fracDummy.slice(0,2);
-                    } else {
-                        fracDummy += '0';
-                    }
-                } else {
-                    wholeDummy = dummy;
-                    fracDummy = "00";
-                }
-                var negative = false;
-                if(wholeDummy.indexOf('-') != -1){
-                    negative = true;
-                    wholeDummy = wholeDummy.slice(wholeDummy.indexOf('-') + 1);
-                }
-                var start = wholeDummy.length % 3 == 0 ? 3 : wholeDummy.length % 3;
-
-                result = wholeDummy.slice(0,start);
-
-                for(var i = 0; i < wholeDummy.length - start; i++){
-                    if (i % 3 == 0){
-                        result += ',';
-                    }
-                    result += wholeDummy.charAt(i + start);
-                }
-
-                value = result + '.' + fracDummy;
-
-                if (negative){
-                    value = "(" + value + ")";
-                }
-            }
-            customRenderer(instance, td, row, col, prop, value, cellProperties);
-        }
-
-        function FormSubmit(event){
-            if($(document.activeElement).val() == 'save' && $('#part').val() !== $('#initial').val()){
-                messageToModal('The part number may have changed',
-                        "You have made changes to the form.  These changes will apply to the last searched part.",
-                        function(){$('#part').val($('initial').val()); $('#headersubform').submit();}
-                );
-                return false;
-            } else {
-                var clean_array = JSON.parse(clean_form);
-                var dirty_array = hot.getSourceData();
-                var changed_rows = [];
-
-                for (var i = 0; i < clean_array.length, i < dirty_array.length; i++) {
-                    if (JSON.stringify(clean_array[i]) !== JSON.stringify(dirty_array[i])) {
-                        changed_rows.push(dirty_array[i]);
-                    }
-                }
-
-                $('<input/>').attr('id', 'data_form').attr('type', 'hidden').attr('name', 'data_form').attr('value', JSON.stringify(changed_rows)).appendTo('#headersubform');
-                form_save = true;
-                return true;
-            }
-        }
-
-        $(document).ready(function(){
-            definebodysize();
-
-            $(window).load(function(){
-                form_resize();
-                {% if partlines %}
-                clean_form = JSON.stringify(hot.getSourceData());
-                {% endif %}
-            });
-
-            $(window).resize(function(){
-                form_resize();
-            });
-
-            function form_resize() {
-                var topbuttonheight = $('#action_buttons').height();
-                var bottombuttonheight = $('#formbuttons').height();
-                var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
-                var crumbheight = 0;//$('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
-                var bodyheight = $('#main-body').height();
-
-                var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + crumbheight + subformheight);
-
-                $('#table-wrapper').css("height", tableheight);
-
-                hot = new Handsontable($('#datatable')[0], {
-                    data: {{ partlines|safe }},
-                    colHeaders: ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Latest Unit Price ($)'],
-                    cells: function(row, col, prop){
-                        var cellProperties = [];
-                        if(col !== 4){
-                            cellProperties.readOnly = true;
-                            cellProperties.renderer = customRenderer;
-                        } else {
-                            cellProperties.renderer = moneyRenderer;
-                        }
-
-                        return cellProperties
-                    }
-                });
-            }
-
-{#            var iCount = 0;#}
-{#            var firstCall = true;#}
-{#            var timer = setTimeout(getTableRows, 500);#}
-{##}
-{#            function getTableRows(){#}
-{#                if(!$('#myModal').hasClass('in') && firstCall) {#}
-{#                    $('#myModal').modal('show');#}
-{#                }#}
-{#                $.ajax({#}
-{#                    type: "POST",#}
-{#                    url: "{% url 'bomconfig:priceretrieve' %}",#}
-{#                    data: {#}
-{#                        count: iCount#}
-{#                    },#}
-{#                    headers:{#}
-{#                        'X-CSRFToken': getcookie('csrftoken')#}
-{#                    },#}
-{#                    success: function (return_data) {#}
-{#                        if(return_data.length != 0) {#}
-{#                            var existing_data = hot.getSourceData();#}
-{#                            if(existing_data[0].length > 0) {#}
-{#                                for(var i=0; i < return_data.length; i++)#}
-{#                                existing_data.push(return_data[i]);#}
-{#                            } else {#}
-{#                                existing_data = return_data;#}
-{#                                firstCall = false;#}
-{#                                $('#myModal').modal('hide');#}
-{#                            }#}
-{#                            hot.loadData(existing_data);#}
-{#                            iCount++;#}
-{#                            timer = setTimeout(getTableRows, 500);#}
-{#                        } else {#}
-{#                            $('#myModal').modal('hide');#}
-{#                        }#}
-{#                    }#}
-{#                });#}
-{#            }#}
-        });
+        var spud_list, cust_list, orig_data;
+        orig_data = {{ partlines|safe }};
+        cust_list = [''].concat({{ customer_list|safe }});
+        spud_list = [''].concat({{ spud_list|safe }});
     </script>
 {% endblock %}

@@ -7,7 +7,7 @@
     <div id="action_buttons">
         <button class="btn" type="button" name="action" value="part_price" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:pricing' %}'>Unit Price Mgmt</button>
 		<button class="btn" type="button" name="action" value="config_price" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configpricing' %}'>Configuration Price Mgmt</button>
-		<button class="btn" type="button" name="action" value="baseline_report" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:basepricing' %}'>Pricing Overview</button>
+		<button class="btn" type="button" name="action" value="price_report" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:basepricing' %}'>Pricing Overview</button>
 	</div>
     {% block subcontent %}{% endblock %}
     {% else %}
@@ -17,8 +17,8 @@
         $('a.headtitle:contains("Pricing")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 
         function cleanDataCheck(link){
-            var dirty_form = JSON.stringify(hot.getSourceData());
-            if(dirty_form != clean_form && !form_save){
+            var dirty_form = hot != undefined ? JSON.stringify(hot.getSourceData()) : undefined;
+            if(clean_form != undefined && dirty_form != clean_form && !form_save){
                 messageToModal('Unsaved changes detected',
                         "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
                         function(){window.location.href = link.dataset.href;}
@@ -30,9 +30,11 @@
 
         $(document).ready(function(){
             $(window).on('beforeunload', function(){
-                var dirty_form = JSON.stringify(hot.getSourceData());
-                if(closeButton && dirty_form != clean_form && !form_save){
-                    return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";
+                if(hot != undefined) {
+                    var dirty_form = JSON.stringify(hot.getSourceData());
+                    if (closeButton && dirty_form != clean_form && !form_save) {
+                        return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";
+                    }
                 }
             });
         });

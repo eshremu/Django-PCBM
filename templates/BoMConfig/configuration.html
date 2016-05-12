@@ -404,6 +404,7 @@
                 rowHeaders: false,
                 colHeaders: headers,
                 fixedColumnsLeft: 3,
+                manualColumnFreeze: true,
                 currentRowClassName: 'currentRow',
                 columns: determined_cols,
                 manualColumnResize: true,
@@ -544,6 +545,9 @@
 {#                    $("#nextForm").attr('disabled', 'disabled').css('color', 'gray');#}
 {#                }#}
 {#            });#}
+{#            hot.getPlugin('manualColumnFreeze').freezeColumn(0);#}
+{#            hot.getPlugin('manualColumnFreeze').freezeColumn(1);#}
+{#            hot.getPlugin('manualColumnFreeze').freezeColumn(2);#}
             if(firstLoad) {
                 clean_form = hot.getSourceData();
                 $('[name="data_form"]').remove();

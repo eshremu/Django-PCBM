@@ -328,29 +328,29 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                                                                               oPrevLine.order_qty, oCurrLine.order_qty))
             # end if
 
-            if oCurrLine.plant != oPrevLine.plant:
-                dUpdates[sHeader].append('{0} - Changed plant from {1} to {2}'.format(oCurrLine.line_number,
-                                                                              oPrevLine.plant,
-                                                                              oCurrLine.plant))
-            # end if
-
-            if oCurrLine.sloc != oPrevLine.sloc:
-                dUpdates[sHeader].append('{0} - Changed SLOC from {1} to {2}'.format(oCurrLine.line_number,
-                                                                              oPrevLine.sloc,
-                                                                              oCurrLine.sloc))
-            # end if
-
-            if oCurrLine.item_category != oPrevLine.item_category:
-                dUpdates[sHeader].append('{0} - Changed Item Cat. from {1} to {2}'.format(oCurrLine.line_number,
-                                                                              oPrevLine.item_category,
-                                                                              oCurrLine.item_category))
-            # end if
-
-            if oCurrLine.pcode != oPrevLine.pcode:
-                dUpdates[sHeader].append('{0} - Changed P-Code from {1} to {2}'.format(oCurrLine.line_number,
-                                                                              oPrevLine.pcode,
-                                                                              oCurrLine.pcode))
-            # end if
+            # if oCurrLine.plant != oPrevLine.plant:
+            #     dUpdates[sHeader].append('{0} - Changed plant from {1} to {2}'.format(oCurrLine.line_number,
+            #                                                                   oPrevLine.plant,
+            #                                                                   oCurrLine.plant))
+            # # end if
+            #
+            # if oCurrLine.sloc != oPrevLine.sloc:
+            #     dUpdates[sHeader].append('{0} - Changed SLOC from {1} to {2}'.format(oCurrLine.line_number,
+            #                                                                   oPrevLine.sloc,
+            #                                                                   oCurrLine.sloc))
+            # # end if
+            #
+            # if oCurrLine.item_category != oPrevLine.item_category:
+            #     dUpdates[sHeader].append('{0} - Changed Item Cat. from {1} to {2}'.format(oCurrLine.line_number,
+            #                                                                   oPrevLine.item_category,
+            #                                                                   oCurrLine.item_category))
+            # # end if
+            #
+            # if oCurrLine.pcode != oPrevLine.pcode:
+            #     dUpdates[sHeader].append('{0} - Changed P-Code from {1} to {2}'.format(oCurrLine.line_number,
+            #                                                                   oPrevLine.pcode,
+            #                                                                   oCurrLine.pcode))
+            # # end if
 
             if GrabValue(oCurrLine,'linepricing.pricing_object') and GrabValue(oPrevLine,'linepricing.pricing_object')\
                     and oCurrLine.linepricing.pricing_object.unit_price != oPrevLine.linepricing.pricing_object.unit_price:
@@ -392,7 +392,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
 def GrabValue(oStartObj, sAttrChain):
     import functools
     try:
-        return functools.reduce(lambda x,y:getattr(x, y),sAttrChain.split('.'),oStartObj) or None
+        return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj) or None
     except AttributeError:
         return None
 # end def

@@ -6,6 +6,7 @@ from django.utils import timezone
 
 # Create your models here.
 
+
 class ParseException(Exception):
     pass
 
@@ -13,8 +14,9 @@ class ParseException(Exception):
 class OrderedManager(models.Manager):
     def get_queryset(self):
         return super().get_queryset().order_by('name')
-    #end def
+    # end def
 # end class
+
 
 class Alert(models.Model):
     Title = models.CharField(max_length=200, blank=True)
@@ -23,8 +25,9 @@ class Alert(models.Model):
 
     def __str__(self):
         return self.Title
-    #end def
-#end class
+    # end def
+# end class
+
 
 class NewsItem(models.Model):
     Title = models.CharField(max_length=200)
@@ -33,8 +36,9 @@ class NewsItem(models.Model):
 
     def __str__(self):
         return self.Title
-    #end def
-#end class
+    # end def
+# end class
+
 
 class REF_CUSTOMER(models.Model):
     class Meta:
@@ -50,6 +54,7 @@ class REF_CUSTOMER(models.Model):
     # end def
 # end class
 
+
 class REF_REQUEST(models.Model):
     class Meta:
         verbose_name = 'REF Request Type'
@@ -63,6 +68,7 @@ class REF_REQUEST(models.Model):
         return self.name
     # end def
 # end class
+
 
 class REF_TECHNOLOGY(models.Model):
     class Meta:
@@ -79,6 +85,7 @@ class REF_TECHNOLOGY(models.Model):
     # end def
 # end class
 
+
 class REF_PRODUCT_AREA_1(models.Model):
     class Meta:
         verbose_name = 'REF Product Area'
@@ -92,6 +99,7 @@ class REF_PRODUCT_AREA_1(models.Model):
         return self.name
     # end def
 # end class
+
 
 class REF_PRODUCT_AREA_2(models.Model):
     class Meta:
@@ -108,6 +116,7 @@ class REF_PRODUCT_AREA_2(models.Model):
     # end def
 # end class
 
+
 class REF_CUSTOMER_NAME(models.Model):
     class Meta:
         verbose_name = 'REF Customer Name'
@@ -122,6 +131,7 @@ class REF_CUSTOMER_NAME(models.Model):
         return self.name
     # end def
 # end class
+
 
 class REF_PROGRAM(models.Model):
     class Meta:
@@ -138,6 +148,7 @@ class REF_PROGRAM(models.Model):
     # end def
 # end class
 
+
 class REF_CONDITION(models.Model):
     class Meta:
         verbose_name = 'REF Condition'
@@ -151,6 +162,7 @@ class REF_CONDITION(models.Model):
         return self.name
     # end def
 # end class
+
 
 class REF_PRODUCT_PKG(models.Model):
     class Meta:
@@ -166,6 +178,7 @@ class REF_PRODUCT_PKG(models.Model):
     # end def
 # end class
 
+
 class REF_MATERIAL_GROUP(models.Model):
     class Meta:
         verbose_name = 'REF Material Group'
@@ -179,6 +192,7 @@ class REF_MATERIAL_GROUP(models.Model):
         return self.name
     # end def
 # end class
+
 
 class REF_SPUD(models.Model):
     class Meta:
@@ -194,6 +208,7 @@ class REF_SPUD(models.Model):
     # end def
 # end class
 
+
 class REF_RADIO_BAND(models.Model):
     class Meta:
         verbose_name = 'REF Radio Band'
@@ -205,6 +220,7 @@ class REF_RADIO_BAND(models.Model):
         return self.name
     # end def
 # end class
+
 
 class REF_RADIO_FREQUENCY(models.Model):
     class Meta:
@@ -219,6 +235,7 @@ class REF_RADIO_FREQUENCY(models.Model):
     # end def
 # end class
 
+
 class REF_STATUS(models.Model):
     class Meta:
         verbose_name = 'REF Status'
@@ -229,6 +246,7 @@ class REF_STATUS(models.Model):
 
     def __str__(self):
         return self.name
+
 
 class Baseline(models.Model):
     title = models.CharField(max_length=50, unique=True)
@@ -262,9 +280,10 @@ class Baseline(models.Model):
     # end def
 # end class
 
+
 class Baseline_Revision(models.Model):
     class Meta:
-        verbose_name='Baseline Revision'
+        verbose_name = 'Baseline Revision'
     # end class
 
     baseline = models.ForeignKey(Baseline, db_constraint=False)
@@ -282,9 +301,10 @@ class Baseline_Revision(models.Model):
     # end def
 
     def __str__(self):
-        return self.title + "_Rev_" + self.version + (self.completed_date.strftime('%m/%d/%Y') + 'C' if self.completed_date else '')
+        return self.title + "_Rev_" + self.version + '_' + (self.completed_date.strftime('%m/%d/%Y') + 'C' if self.completed_date else '')
     # end def
 # end class
+
 
 class Header(models.Model):
     person_responsible = models.CharField(max_length=50, verbose_name='Person Responsible')
@@ -423,6 +443,7 @@ class Header(models.Model):
     # end def
 # end class
 
+
 class Configuration(models.Model):
     reassign = models.BooleanField(default=False, verbose_name="Reassign?")
     PSM_on_hold = models.BooleanField(default=False, verbose_name="PSM On Hold?")
@@ -462,6 +483,7 @@ class Configuration(models.Model):
     # end def
 # end class
 
+
 class PartBase(models.Model):
     product_number = models.CharField(max_length=50, unique=True)
     unit_of_measure = models.CharField(max_length=50, blank=True, null=True)
@@ -470,6 +492,7 @@ class PartBase(models.Model):
         return self.product_number
     # end def
 # end class
+
 
 class Part(models.Model):
     product_description = models.CharField(max_length=100, blank=True, null=True)
@@ -483,6 +506,7 @@ class Part(models.Model):
         return str(self.pk) + " - " + self.base.product_number + " - " + (self.product_description if self.product_description else '(None)')
     # end def
 # end class
+
 
 class ConfigLine(models.Model):
     line_number = models.CharField(max_length=50)
@@ -514,12 +538,13 @@ class ConfigLine(models.Model):
     REcode = models.CharField(max_length=50, blank=True, null=True)
     mu_flag = models.CharField(max_length=50, blank=True, null=True)
     x_plant = models.CharField(max_length=50, blank=True, null=True)
-    traceability_req = models.CharField(max_length=50, blank=True, null=True) # TODO: Move to PartBase
+    traceability_req = models.CharField(max_length=50, blank=True, null=True)  # TODO: Move to PartBase
 
     def __str__(self):
         return str(self.config) + "_" + self.line_number
     # end def
 # end class
+
 
 class RevisionHistory(models.Model):
     revision = models.CharField(max_length=50)
@@ -527,7 +552,7 @@ class RevisionHistory(models.Model):
     history = models.TextField()
 
     class Meta:
-        unique_together = ('revision','baseline')
+        unique_together = ('revision', 'baseline')
     # end class
 
     def __str__(self):
@@ -535,30 +560,39 @@ class RevisionHistory(models.Model):
     # end def
 # end class
 
+
 class LinePricing(models.Model):
-    #unit_price = models.FloatField(blank=True, null=True)
+    # unit_price = models.FloatField(blank=True, null=True)
     override_price = models.FloatField(blank=True, null=True)
     pricing_object = models.ForeignKey('PricingObject', null=True)
     config_line = models.OneToOneField(ConfigLine)
 
     def __str__(self):
-        return str(self.config_line) + "_" + str(self.pricing_object.unit_price)
+        return str(self.config_line) + ("_" + str(self.pricing_object.unit_price) if self.pricing_object else '')
     # end def
 # end class
 
+
 class PricingObject(models.Model):
     unit_price = models.FloatField(blank=True, null=True, default=0.0)
-    #override_price = models.FloatField(blank=True, null=True)
+    # override_price = models.FloatField(blank=True, null=True)
     customer = models.ForeignKey(REF_CUSTOMER, to_field='id')
     sold_to = models.IntegerField(blank=True, null=True)
-    spud = models.ForeignKey(REF_SPUD, to_field='id')
+    spud = models.ForeignKey(REF_SPUD, to_field='id', null=True, blank=True)
     part = models.ForeignKey(PartBase, to_field='id')
     date_entered = models.DateTimeField(default=timezone.now)
     previous_pricing_object = models.ForeignKey('PricingObject', null=True, blank=True)
     is_current_active = models.BooleanField(default=False)
+    cutover_date = models.DateField(null=True, blank=True)
+    valid_from_date = models.DateField(null=True, blank=True)
+    valid_to_date = models.DateField(null=True, blank=True)
+    price_erosion = models.BooleanField(default=False)
+    erosion_rate = models.FloatField(null=True, blank=True)
+    comments = models.TextField(null=True, blank=True)
 
     def __str__(self):
         return str(self.part) + "_" + str(self.customer) + "_" + str(self.sold_to) + "_" + str(self.spud) + "_" + self.date_entered.strftime('%m/%d/%Y')
+
 
 class HeaderLock(models.Model):
     header = models.OneToOneField(Header)
@@ -569,9 +603,10 @@ class HeaderLock(models.Model):
     # end def
 # end class
 
+
 class SecurityPermission(models.Model):
     class Meta:
-        unique_together=('read','write','title')
+        unique_together = ('read', 'write', 'title')
     # end class
 
     read = models.BooleanField(default=False)
@@ -594,14 +629,13 @@ class SecurityPermission(models.Model):
     # end def
 # end class
 
+
 class HeaderTimeTracker(models.Model):
     header = models.ForeignKey(Header, db_constraint=False)
     created_on = models.DateTimeField(default=timezone.now, blank=True, null=True)
 
     submitted_for_approval = models.DateTimeField(blank=True, null=True)
     psm_config_approver = models.CharField(max_length=50, blank=True, null=True)
-    # psm_config_denied_approval = models.DateTimeField(blank=True, null=True)
-    # psm_config_approved_on = models.DateTimeField(blank=True, null=True)
 
     scm1_approver = models.CharField(max_length=50, blank=True, null=True)
     scm1_denied_approval = models.DateTimeField(blank=True, null=True)
@@ -665,39 +699,38 @@ class HeaderTimeTracker(models.Model):
         return str(self.header)
     # end def
 
-
-
     @classmethod
     def approvals(cls):
-        return ['psm_config','scm1','scm2','csr','cpm','acr','blm','cust1','cust2','cust_whse','evar','brd']
+        return ['psm_config', 'scm1', 'scm2', 'csr', 'cpm', 'acr', 'blm', 'cust1', 'cust2', 'cust_whse', 'evar', 'brd']
     # end def
 
     @classmethod
     def permission_map(cls):
         return {
-            'psm_config':['PSM_Approval_Write'],
-            'scm1':['SCM_Approval_Write'],
-            'scm2':['SCM_Approval_Write'],
-            'csr':['CSR_Approval_Write'],
-            'cpm':['CPM_Approval_Write'],
-            'acr':['ACR_Approval_Write'],
-            'blm':['BLM_Approval_Write'],
-            'cust1':['Customer_Approval_Write'],
-            'cust2':['Customer_Approval_Write'],
-            'cust_whse':['Cust_Whse_Approval_Write'],
-            'evar':['VAR_Approval_Write'],
-            'brd':['BOM_Approval_Write']
+            'psm_config': ['PSM_Approval_Write'],
+            'scm1': ['SCM_Approval_Write'],
+            'scm2': ['SCM_Approval_Write'],
+            'csr': ['CSR_Approval_Write'],
+            'cpm': ['CPM_Approval_Write'],
+            'acr': ['ACR_Approval_Write'],
+            'blm': ['BLM_Approval_Write'],
+            'cust1': ['Customer_Approval_Write'],
+            'cust2': ['Customer_Approval_Write'],
+            'cust_whse': ['Cust_Whse_Approval_Write'],
+            'evar': ['VAR_Approval_Write'],
+            'brd': ['BOM_Approval_Write']
         }
     # end def
 
     @classmethod
-    def permission_entry(cls,key):
+    def permission_entry(cls, key):
         """Given key, return the SecurityPermission list associated"""
         if key in cls.permission_map():
             return cls.permission_map()[key]
         return
     # end def
 # end class
+
 
 def sessionstr(self):
     if '_auth_user_id' in self.get_decoded():

@@ -1,7 +1,7 @@
 from django import forms
 from django.db import connections
 
-from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER
+from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject
 
 import datetime
 import os
@@ -142,10 +142,10 @@ class HeaderForm(forms.ModelForm):
         # # end if
 
         oCursor = connections['BCAMDB'].cursor()
-        sQuery = """SELECT [Sales Office Description], t1.[Sales Office], [Sales Group]
-                    FROM dbo.REF_SALES_OFFICE t1 INNER JOIN dbo.REF_SALES_GROUP t2
-                    ON t1.[Sales Office] = t2.[Sales Office]
-                    WHERE [Sales Office Description] = %s"""
+        sQuery = ("SELECT [Sales Office Description], t1.[Sales Office], [Sales Group]"
+                  " FROM dbo.REF_SALES_OFFICE t1 INNER JOIN dbo.REF_SALES_GROUP t2"
+                  " ON t1.[Sales Office] = t2.[Sales Office]"
+                  " WHERE [Sales Office Description] = %s")
 
         if 'customer_unit' in data and data['customer_unit']:
             oCursor.execute(sQuery, [REF_CUSTOMER.objects.get(name=data['customer_unit']).name])
@@ -162,6 +162,7 @@ class HeaderForm(forms.ModelForm):
         return data
     # end def
 # end def
+
 
 class ConfigForm(forms.ModelForm):
     class Meta:
@@ -183,10 +184,12 @@ class ConfigForm(forms.ModelForm):
     # end def
 # end class
 
+
 class DateForm(forms.Form):
     date = forms.DateField(input_formats=['%b. %d, %Y', '%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y', '%b %d %Y', '%b %d, %Y',
                                           '%d %b %Y', '%d %b, %Y', '%B %d %Y', '%B %d, %Y', '%d %B %Y', '%d %B, %Y'])
 # end class
+
 
 class FileUploadForm(forms.Form):
 
@@ -201,6 +204,7 @@ class FileUploadForm(forms.Form):
         # end if
     # end def
 # end class
+
 
 class SubmitForm(forms.Form):
     baseline_title = forms.CharField(max_length=50, label='Baseline')
@@ -219,3 +223,21 @@ class SubmitForm(forms.Form):
         return data
 # end class
 
+
+class LinePricingForm(forms.ModelForm):
+    class Meta:
+        model = LinePricing
+        fields = '__all__'
+    # end class
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # If this is not a new LinePricing instance (add in admin)
+        if self.instance.id:
+            self.fields['config_line'].widget.choices = [(self.instance.config_line.id, str(self.instance.config_line))]
+            self.fields['pricing_object'].widget.choices = [('', '--------')] + [(obj.id, str(obj)) for obj in PricingObject.objects.filter(
+                is_current_active=True, part=self.instance.config_line.part.base)]
+        # end if
+    # end def
+# end class
