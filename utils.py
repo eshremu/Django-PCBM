@@ -1,13 +1,16 @@
 __author__ = 'epastag'
 from django.utils import timezone
-from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision
+from django.db.models import Q
+from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS
 from copy import deepcopy
+import datetime
 from functools import cmp_to_key
 
 stringisless = lambda x,y:bool(len(x.strip('1234567890')) < len(y.strip('1234567890'))
                                                                  or list(x.strip('1234567890')) < (['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) +
                                                                                                    list(y.strip('1234567890')))) \
                               or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y))
+
 
 def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=None):
     if not isinstance(oRecord,(Baseline, Header)):
@@ -23,7 +26,7 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
         try:
             oCurrActiveRev = Baseline_Revision.objects.get(**{'baseline':oRecord, 'version': sCurrentActiveRev})
             aHeaders = oCurrActiveRev.header_set.exclude(configuration_status__name='Discontinued')\
-                .exclude(configuration_status__name='Cancelled').exclude(configuration_status__name='Obsolete')
+                .exclude(configuration_status__name='Cancelled').exclude(configuration_status__name='Inactive')
         except Baseline_Revision.DoesNotExist:
             aHeaders = []
 
@@ -38,7 +41,7 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
         (oNewInprocRev, _) = Baseline_Revision.objects.get_or_create(**{'baseline':oRecord, 'version': sNewInprocessRev})
 
         # Move in-process & in-process/pending records from current in-process rev to new in-process rev
-        aHeadersToMoveToInProc = oCurrInprocRev.header_set.filter(configuration_status__name__in=['In Process', 'In Process/Pending'])
+        aHeadersToMoveToInProc = oCurrInprocRev.header_set.filter(configuration_status__name__in=['In Process', 'In Process/Pending', 'On Hold'])
 
         for oHeader in aHeadersToMoveToInProc:
             oHeader.baseline = oNewInprocRev
@@ -84,7 +87,7 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
         # end if
 
         # 'Obsolete' current active version of records
-        oHeader.configuration_status.name = 'Obsolete'
+        oHeader.configuration_status = REF_STATUS.objects.get(name='Inactive')
         if oHeader.change_comments:
             oHeader.change_comments += '\n'
         else:
@@ -109,29 +112,74 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
     # end if
 # end def
 
+
 def IncrementRevision(sRevision):
-    assert isinstance(sRevision, str)
+    if not isinstance(sRevision, str):
+        raise TypeError("Function must be passed type 'str'. Unrecognized type: " + str(type(sRevision)))
+
     if not sRevision.isalpha():
         sRevision = sRevision.rstrip('1234567890')
     # end if
 
-    bCarry = False
-    aCurrent = list(sRevision)
-    iIndex = -1
+    sRevision = sRevision.upper()
 
-    while True:
-        bCarry = aCurrent[iIndex] == 'Z'
-        aCurrent[iIndex] = chr((ord(aCurrent[iIndex]) - 63) % 27 + (64 if aCurrent[iIndex] != 'Z' else 65))
-        iIndex -= 1
-        if not bCarry or iIndex < -(len(aCurrent)):
-            break
-    # end while
+    return GetLetterCode(char_to_num(sRevision) + 1)
 
-    if bCarry:
-        return 'A' + ''.join(aCurrent)
+
+def char_to_num(sString):
+    """Converts Base 26 sString (Using A-Z) to Base 10 decimal."""
+    # if not sString:
+    #     return 0
+    #
+    # return char_to_num(sString[:-1])*26 + (ord(sString[-1]) - 64)
+    i = 0
+    for iIndex, sLetter in enumerate(sString):
+        i += (ord(sLetter) - 64) * (26 ** (len(sString) - iIndex - 1))
+    return i
+
+
+def GetLetterCode(iColumn):
+    """Converts iColumn to its corresponding letter(s) value."""
+    if not 1 <= iColumn:
+        raise ValueError("Invalid column number: " + str(iColumn))
+    # end if
+
+    if iColumn > 26:
+        # The return value of iColumn // 26 is one greater than what it
+        # should be on each multiple of 26. For example, GetLetterCode(52)
+        # should return AZ, but because 52 // 26 is 2, it instead returns
+        # B@. So, a minor correction is required for cases in which iColumn
+        # is a multiple of 26.
+        if iColumn % 26 == 0:
+            iModifier = (iColumn // 26) - 1
+            iConvertToChar = 26
+        else:
+            iModifier = (iColumn // 26)
+            iConvertToChar = iColumn % 26
+        # end if
+
+        return GetLetterCode(iModifier) + chr(iConvertToChar + 64)
     else:
-        return ''.join(aCurrent)
+        return chr(iColumn + 64)
+    # end if
 # end def
+
+
+def DecrementRevision(sRevision):
+    if not isinstance(sRevision, str):
+        raise TypeError("Function must be passed type 'str'. Unrecognized type: " + str(type(sRevision)))
+
+    if not sRevision.strip():
+        raise Exception('Revision cannot be decremented any further')
+
+    if not sRevision.isalpha():
+        raise ValueError('String must not contain non-alphabet characters')
+    # end if
+
+    sRevision = sRevision.upper()
+
+    return GetLetterCode(char_to_num(sRevision) - 1)
+
 
 def MassUploaderUpdate(oBaseline=None):
     """
@@ -237,6 +285,7 @@ def MassUploaderUpdate(oBaseline=None):
         # end for
     # end for
 # end def
+
 
 def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     """
@@ -396,3 +445,179 @@ def GrabValue(oStartObj, sAttrChain):
     except AttributeError:
         return None
 # end def
+
+
+def RollbackBaseline(oBaseline):
+    """
+    Function rolls back a baseline to the previous revision.
+    All headers that were copied forward as part of an UpRev will be
+    deleted, headers that were a part of the release that triggered
+    the UpRev will be returned to an "In Procees/Pending" state.
+    Headers that were made inactive in the previous active revision
+    will returned to Active state.
+    """
+
+    aExistingRevs = sorted(
+        list(set([oBaseRev.version for oBaseRev in oBaseline.baseline_revision_set.order_by('version')])),
+        key=cmp_to_key(lambda x, y: (-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
+                                           or list(x.strip('1234567890')) < (
+        [''] * (len(x.strip('1234567890')) - len(y.strip('1234567890'))) +
+        list(y.strip('1234567890')))
+                                           or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(
+            y)) else 0 if x == y else 1))
+    )
+
+    oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
+                        oHead.headertimetracker_set.all() if oTrack.completed_on])
+    oCurrentActive = oBaseline.latest_revision
+    oCurrentInprocess = Baseline_Revision.objects.get(baseline=oBaseline, version=oBaseline.current_inprocess_version)
+    oPreviousActive = None
+
+    iPrevIndex = aExistingRevs.index(oBaseline.current_active_version) - 1
+    if iPrevIndex >= 0:
+        oPreviousActive = Baseline_Revision.objects.get(baseline=oBaseline, version=aExistingRevs[iPrevIndex])
+
+    # print('Determined release date to be:', str(oReleaseDate))
+    for oHead in oCurrentActive.header_set.all():
+        if any([oTrack for oTrack in oHead.headertimetracker_set.all() if
+                abs(oTrack.created_on - oReleaseDate) < datetime.timedelta(minutes=1)]):
+            oHead.delete()
+            # print('Deleting:', str(oHead))
+        else:
+            oHead.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
+            oHead.save()
+            # print('Changing to "In Process/Pending":', str(oHead))
+
+            oLatestTracker = oHead.headertimetracker_set.last()
+            if oLatestTracker.completed_on:
+                oLatestTracker.completed_on = None
+                oLatestTracker.brd_approver = None
+                oLatestTracker.brd_approved_on = None
+                oLatestTracker.brd_comment = None
+                oLatestTracker.save()
+                # print('Removing "Completed On" tracker info:', str(oLatestTracker))
+            # end if
+        # end if
+    # end for
+
+    for oHead in oCurrentInprocess.header_set.all():
+        oHead.baseline = oCurrentActive
+        oHead.baseline_version = oBaseline.current_active_version
+        oHead.save()
+        # print('Reverting from in-process revision:', str(oHead))
+    # end for
+
+    if oPreviousActive:
+        for oHead in oPreviousActive.header_set.all():
+            if oHead.configuration_status.name in ('Inactive', 'Obsolete'):
+                oHead.configuration_status = REF_STATUS.objects.get(name='Active')
+                oHead.change_comments = oHead.change_comments.replace('\nBaseline revision increment', '')\
+                    .replace('Baseline revision increment', '')
+                oHead.save()
+                # print('Returning to "Active":', str(oHead))
+            # end if
+        # end for
+    # end if
+
+    oCurrentActive.completed_on = None
+    oCurrentActive.save()
+    # print('Removing Baseline revision release date:', str(oCurrentActive))
+    oCurrentInprocess.delete()
+    # print('Deleting Baseline revision:', str(oCurrentInprocess))
+
+    RevisionHistory.objects.filter(baseline=oBaseline, revision__in=aExistingRevs[aExistingRevs
+                                   .index(oBaseline.current_active_version):]).delete()
+    # print('Deleting revision history:', *aExistingRevs[aExistingRevs.index(oBaseline.current_active_version):])
+
+    oBaseline.current_inprocess_version = oBaseline.current_active_version
+    if oPreviousActive:
+        oBaseline.current_active_version = aExistingRevs[iPrevIndex]
+    else:
+        oBaseline.current_active_version = ''
+    # end if
+    oBaseline.save()
+    # print('Reverting Baseline to current as {} and in-process as {}'.format(
+    #     aExistingRevs[iPrevIndex] if oPreviousActive else '(None)', oBaseline.current_active_version))
+
+
+def GenRevSummary2(oBaseline, sPrevious, sCurrent):
+    oDiscontinued = Q(configuration_status__name='Discontinued')
+    oToDiscontinue = Q(bom_request_type__name='Discontinue')
+    aDiscontinuedHeaders = [oHead for oHead in Baseline_Revision
+        .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(oDiscontinued|oToDiscontinue)
+        .exclude(program__name__in=('DTS',))]
+    aAddedHeaders = [oHead for oHead in Baseline_Revision
+        .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='New')
+        .exclude(program__name__in=('DTS',))]
+    aUpdatedHeaders = [oHead for oHead in Baseline_Revision
+        .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='Update')
+        .exclude(oDiscontinued).exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold')]
+
+    aPrevHeaders = []
+    aPrevButNotCurrent = []
+    aCurrButNotPrev = []
+    for oHead in aUpdatedHeaders:
+        try:
+            obj = Baseline_Revision.objects.get(baseline=oBaseline, version=sPrevious).header_set\
+                .get(configuration_designation=oHead.configuration_designation, program=oHead.program)
+            if not (obj.configuration_designation, obj.program) in aDiscontinuedHeaders:
+                aPrevHeaders.append(obj)
+            else:
+                aPrevButNotCurrent.append(obj)
+            # end if
+        except Header.DoesNotExist:
+            aCurrButNotPrev.append(oHead)
+        # end try
+
+    print(aDiscontinuedHeaders)
+    print(aAddedHeaders)
+    print(aUpdatedHeaders)
+    print(aPrevHeaders)
+    print(aPrevButNotCurrent)
+    print(aCurrButNotPrev)
+
+    sNewSummary = 'Added:\n'
+    sRemovedSummary = 'Removed:\n'
+
+    for oHead in aAddedHeaders:
+        if oHead.model_replaced:
+            sNewSummary += '\t{} replaces {}\n'.format(
+                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else ''),
+                oHead.model_replaced
+            )
+            sRemovedSummary += '\t{} is replaced by {}\n'.format(
+                oHead.model_replaced,
+                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
+            )
+        else:
+            sNewSummary += '\t{} added\n'.format(
+                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
+            )
+        # end if
+    # end for
+
+    for oHead in aCurrButNotPrev:
+        sNewSummary += '\t{} added\n'.format(
+            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
+        )
+    # end for
+
+    for oHead in aDiscontinuedHeaders:
+        sRemovedSummary += '\t{} discontinued\n'.format(
+            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
+        )
+    # end for
+
+    for oHead in aPrevButNotCurrent:
+        sRemovedSummary += '\t{} removed\n'.format(
+            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
+        )
+    # end for
+
+    # if aDiscontinuedHeaders:
+    #     for oHead in aDiscontinuedHeaders:
+    #         sRemovedSummary += '\t{} is replaced by {}\n'.format(oHead.model_replaced, oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else ''))
+        # end for
+    # end if
+
+    print(sNewSummary, sRemovedSummary, sep='\n')

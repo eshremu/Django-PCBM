@@ -357,6 +357,7 @@ class Header(models.Model):
     model = models.CharField(max_length=50, verbose_name='Model', blank=True, null=True)
     model_description = models.CharField(max_length=50, verbose_name='Model Description', blank=True, null=True)
     model_replaced = models.CharField(max_length=50, verbose_name='What Model is this replacing?', blank=True, null=True)
+    model_replaced_link = models.ForeignKey('Header', blank=True, null=True)
     initial_revision = models.CharField(max_length=50, verbose_name='Initial Revision', blank=True, null=True)  # This is the root model
     # configuration_status = models.CharField(max_length=50, default='In Process', verbose_name='Configuration/Ordering Status')
     configuration_status = models.ForeignKey(REF_STATUS, verbose_name='Configuration/Ordering Status',
@@ -381,11 +382,11 @@ class Header(models.Model):
     baseline = models.ForeignKey(Baseline_Revision, blank=True, null=True)
 
     class Meta:
-        unique_together = ['configuration_designation', 'baseline_version', 'baseline','program']
+        unique_together = ['configuration_designation', 'baseline_version', 'baseline', 'program']
     # end class
 
     def __str__(self):
-        return self.configuration_designation + ("__" + self.baseline_version if self.baseline_version else '')
+        return self.configuration_designation + ("_{}".format(self.program.name) if self.program else '') + ("__" + self.baseline_version if self.baseline_version else '')
     # end def
 
     def save(self, *args, **kwargs):

@@ -1,5 +1,6 @@
 from django import forms
 from django.db import connections
+from django.utils.safestring import mark_safe
 
 from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject
 
@@ -12,6 +13,7 @@ class HeaderForm(forms.ModelForm):
         model = Header
         exclude = ['internal_notes', 'external_notes', 'baseline_version', 'bom_version', 'release_date',
                    'change_comments', 'baseline', 'old_configuration_status']
+        widgets = {'model_replaced_link': forms.HiddenInput()}
     # end class
 
     def __init__(self, *args, **kwargs):
@@ -32,7 +34,7 @@ class HeaderForm(forms.ModelForm):
         self.fields['react_request'].widget.attrs['size'] = 25
         self.fields['model_description'].widget.attrs['size'] = 45
 
-        if (hasattr(self.instance,'configuration_status') and self.instance.configuration_status.name != 'In Process') or bReadOnly:
+        if (hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name != 'In Process') or bReadOnly:
             for field in self.fields.keys():
                 self.fields[field].widget.attrs['readonly'] = 'True'
                 self.fields[field].widget.attrs['style'] = 'border:none;'
@@ -45,6 +47,16 @@ class HeaderForm(forms.ModelForm):
                     if isinstance(self.fields[field].widget, (forms.widgets.Select)):
                         self.fields[field].widget.attrs['style'] += '-webkit-appearance:none;'
             # end for
+        else:
+            self.fields['model_replaced'].widget = AutocompleteInput(
+                'header_list',
+                list([(head.id,
+                       head.configuration_designation +
+                       (" (" + str(head.program) + ")" if head.program else ''),
+                       (str(head.baseline.baseline.title) if head.baseline else '')
+                       ) for head in Header.objects.filter(configuration_status__name='Active')]),
+                attrs=self.fields['model_replaced'].widget.attrs
+            )
         # end if
     # end def
 
@@ -240,4 +252,26 @@ class LinePricingForm(forms.ModelForm):
                 is_current_active=True, part=self.instance.config_line.part.base)]
         # end if
     # end def
+# end class
+
+
+class AutocompleteInput(forms.TextInput):
+    def __init__(self, name, choices=(), *args, **kwargs):
+        super(AutocompleteInput, self).__init__(*args, **kwargs)
+        self._name = name
+        self._choices = choices
+        self.attrs.update({'list': 'list_{}'.format(self._name)})
+    # end def
+
+    def render(self, name, value, attrs=None):
+        input_html = super(AutocompleteInput, self).render(name, value, attrs=attrs)
+        datatlist_html = '<datalist id="list_{}">'.format(self._name)
+        for item in self._choices:
+            if isinstance(item, (list, tuple)):
+                datatlist_html += '<option data-value="{}" value="{}">{}</option>'.format(item[0], item[1], item[2])
+            else:
+                datatlist_html += '<option value="{}"/>'.format(item)
+        # end for
+
+        return mark_safe(input_html + datatlist_html)
 # end class
