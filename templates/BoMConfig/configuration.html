@@ -136,7 +136,7 @@
             $(window).load(function(){
                 form_resize();
 {#                {% if header.configuration_status == 'In Process' %}data_validate();{% endif %}#}
-                data_validate();
+                {% if not frame_readonly %}data_validate();{% endif %}
                 clean_form = hot.getSourceData();
                 $('[name="data_form"]').remove();
                 clean_sub = $('#configform').serialize();

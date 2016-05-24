@@ -36,11 +36,17 @@ def Search(oRequest, advanced=False):
     config = oRequest.GET.get('config', None)
     if link or config:
         if link:
-            oRequest.session['existing'] = link[5:-10]
-            return redirect(reverse('bomconfig:configheader') + ('?readonly=1' if readonly else ''))
+            if not readonly:
+                oRequest.session['existing'] = link[5:-10]
+                return redirect(reverse('bomconfig:configheader'))
+            else:
+                return redirect(reverse('bomconfig:configheader') + ('?id=' + str(link[5:-10]) + '&readonly=1'))
         else:
-            oRequest.session['existing'] = config[5:-10]
-            return redirect(reverse('bomconfig:config') + ('?readonly=1' if readonly else ''))
+            if not readonly:
+                oRequest.session['existing'] = config[5:-10]
+                return redirect(reverse('bomconfig:config'))
+            else:
+                return redirect(reverse('bomconfig:config') + ('?id=' + str(config[5:-10]) + '&readonly=1'))
         # end if
     # end if
 

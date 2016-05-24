@@ -296,11 +296,18 @@ def DownloadBaseline(oRequest):
             sHistory = oBaseline.revisionhistory_set.get(revision=sRev).history
             if not sHistory or not sHistory.strip():
                 continue
-            oSheet['A' + str(iRow)] = 'Revision ' + sRev + ':\n' + oBaseline.revisionhistory_set.get(revision=sRev).history
-            oSheet['A' + str(iRow)].alignment = Alignment(wrap_text=True)
-            oSheet['A' + str(iRow)].fill = GradientFill(type='linear', stop=[Color(aColors[iColorIndex]), Color(aColors[iColorIndex])])
-            oSheet['B' + str(iRow)].fill = GradientFill(type='linear', stop=[Color(aColors[iColorIndex]), Color(aColors[iColorIndex])])
-            oSheet['C' + str(iRow)].fill = GradientFill(type='linear', stop=[Color(aColors[iColorIndex]), Color(aColors[iColorIndex])])
+            # TODO: Print revision in multiple rows, not single cell
+            sRevHistory = 'Revision ' + sRev + ':\n' + oBaseline.revisionhistory_set.get(revision=sRev).history
+            aLines = sRevHistory.split('\n')
+            for sLine in aLines:
+                # oSheet['A' + str(iRow)] = 'Revision ' + sRev + ':\n' + oBaseline.revisionhistory_set.get(revision=sRev).history
+                oSheet['A' + str(iRow)] = sLine
+                oSheet['A' + str(iRow)].alignment = Alignment(wrap_text=True)
+                oSheet['A' + str(iRow)].fill = GradientFill(type='linear', stop=[Color(aColors[iColorIndex]), Color(aColors[iColorIndex])])
+                oSheet['B' + str(iRow)].fill = GradientFill(type='linear', stop=[Color(aColors[iColorIndex]), Color(aColors[iColorIndex])])
+                oSheet['C' + str(iRow)].fill = GradientFill(type='linear', stop=[Color(aColors[iColorIndex]), Color(aColors[iColorIndex])])
+                iRow += 1
+
             if Baseline_Revision.objects.get(baseline=oBaseline, version=sRev).completed_date:
                 oSheet['C' + str(iRow)] = Baseline_Revision.objects.get(baseline=oBaseline, version=sRev).completed_date.strftime('%m/%d/%Y')
                 oSheet['C' + str(iRow)].alignment = oCentered

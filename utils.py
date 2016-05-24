@@ -538,9 +538,10 @@ def RollbackBaseline(oBaseline):
     oBaseline.save()
     # print('Reverting Baseline to current as {} and in-process as {}'.format(
     #     aExistingRevs[iPrevIndex] if oPreviousActive else '(None)', oBaseline.current_active_version))
+# end def
 
 
-def GenRevSummary2(oBaseline, sPrevious, sCurrent):
+def GenerateRevisionSummary2(oBaseline, sPrevious, sCurrent):
     oDiscontinued = Q(configuration_status__name='Discontinued')
     oToDiscontinue = Q(bom_request_type__name='Discontinue')
     aDiscontinuedHeaders = [oHead for oHead in Baseline_Revision
@@ -569,13 +570,6 @@ def GenRevSummary2(oBaseline, sPrevious, sCurrent):
             aCurrButNotPrev.append(oHead)
         # end try
 
-    print(aDiscontinuedHeaders)
-    print(aAddedHeaders)
-    print(aUpdatedHeaders)
-    print(aPrevHeaders)
-    print(aPrevButNotCurrent)
-    print(aCurrButNotPrev)
-
     sNewSummary = 'Added:\n'
     sRemovedSummary = 'Removed:\n'
 
@@ -583,10 +577,14 @@ def GenRevSummary2(oBaseline, sPrevious, sCurrent):
         if oHead.model_replaced:
             sNewSummary += '\t{} replaces {}\n'.format(
                 oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else ''),
-                oHead.model_replaced
+                oHead.model_replaced_link.configuration_designation +
+                (" ({})".format(oHead.model_replaced_link.program.name) if
+                 oHead.model_replaced_link.program else '') if oHead.model_replaced_link else oHead.model_replaced
             )
             sRemovedSummary += '\t{} is replaced by {}\n'.format(
-                oHead.model_replaced,
+                oHead.model_replaced_link.configuration_designation +
+                (" ({})".format(oHead.model_replaced_link.program.name) if
+                 oHead.model_replaced_link.program else '') if oHead.model_replaced_link else oHead.model_replaced,
                 oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
             )
         else:
@@ -603,6 +601,9 @@ def GenRevSummary2(oBaseline, sPrevious, sCurrent):
     # end for
 
     for oHead in aDiscontinuedHeaders:
+        if any([obj in oHead.header_set.all() for obj in aAddedHeaders]):
+            continue
+
         sRemovedSummary += '\t{} discontinued\n'.format(
             oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
         )
@@ -620,4 +621,164 @@ def GenRevSummary2(oBaseline, sPrevious, sCurrent):
         # end for
     # end if
 
-    print(sNewSummary, sRemovedSummary, sep='\n')
+    sUpdateSummary = "Updated:\n"
+    for oHead in aUpdatedHeaders:
+        # print(oHead)
+        sTemp = ''
+        aPotentialMatches = []
+        try:
+            oPrev = oHead.model_replaced_link or Header.objects.get(
+                configuration_designation=oHead.configuration_designation,
+                program=oHead.program,
+                baseline_version=sPrevious
+            )
+        except Header.DoesNotExist:
+            oPrev = None
+        # end try
+
+        if oPrev:
+            """
+            Creating a dictionary for previous and current revision, keyed on (Part #, Line #), value of
+            [Qty, Price, (Grandparent Part #, Parent Part #), Matching line key].
+            This will be used to find a match between revisions, and track when a line has been moved rather than
+            removed or replaced.
+            """
+            dPrevious = {}
+            dCurrent = {}
+
+            for oConfigLine in oHead.configuration.configline_set.all():
+                dCurrent[(oConfigLine.part.base.product_number, oConfigLine.line_number)] = [
+                    oConfigLine.order_qty,
+                    oConfigLine.linepricing.override_price or GrabValue(oConfigLine, 'linepricing.pricing_object.unit_price') or None,
+                    (
+                        oHead.configuration.configline_set.get(line_number=oConfigLine.line_number[:oConfigLine.line_number.find('.')]).part.base.product_number if oConfigLine.is_grandchild else None,
+                        oHead.configuration.configline_set.get(line_number=oConfigLine.line_number[:oConfigLine.line_number.rfind('.')]).part.base.product_number if oConfigLine.is_child else None
+                    ),
+                    None
+                ]
+
+            for oConfigLine in oPrev.configuration.configline_set.all():
+                dPrevious[(oConfigLine.part.base.product_number, oConfigLine.line_number)] = [
+                    oConfigLine.order_qty,
+                    oConfigLine.linepricing.override_price or GrabValue(oConfigLine,
+                                                                        'linepricing.pricing_object.unit_price') or None,
+                    (
+                        oHead.configuration.configline_set.get(
+                            line_number=oConfigLine.line_number[
+                                        :oConfigLine.line_number.find(
+                                            '.')]).part.base.product_number if oConfigLine.is_grandchild and
+                                                                               oHead.configuration.configline_set.filter(line_number=oConfigLine.line_number[
+                                                                                                                                     :oConfigLine.line_number.find(
+                                                                                                                                         '.')]) else None,
+                        oHead.configuration.configline_set.get(
+                            line_number=oConfigLine.line_number[
+                                        :oConfigLine.line_number.rfind(
+                                            '.')]).part.base.product_number if oConfigLine.is_child and
+                                                                               oHead.configuration.configline_set.filter(line_number=oConfigLine.line_number[
+                                                                                                                                  :oConfigLine.line_number.rfind(
+                                                                                                                                      '.')]) else None
+                    ),
+                    None
+                ]
+
+            # print(dPrevious, dCurrent, sep='\n')
+
+            for (sPart, sLine) in dPrevious.keys():
+                if (sPart, sLine) in dCurrent.keys():
+                    dCurrent[(sPart, sLine)][3] = dPrevious[(sPart, sLine)][3] = (sPart, sLine)
+                    if dCurrent[(sPart, sLine)][0] != dPrevious[(sPart, sLine)][0] or dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
+                        # print('Qty/Price change for:', sLine, sPart)
+                        if dCurrent[(sPart, sLine)][0] != dPrevious[(sPart, sLine)][0]:
+                            sTemp += '\t\t{} - {} quantity changed from {} to {}\n'.format(sLine, sPart,
+                                                                                     dPrevious[(sPart, sLine)][0],
+                                                                                     dCurrent[(sPart, sLine)][0])
+
+                        if dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
+                            sTemp += '\t\t{} - {} line price changed from {} to {}\n'.format(sLine, sPart,
+                                                                                       dPrevious[(sPart, sLine)][1],
+                                                                                       dCurrent[(sPart, sLine)][1])
+
+                else:
+                    if any(sPart == key[0] and dPrevious[(sPart, sLine)][2] == dCurrent[key][2] and not dCurrent[key][3] for key in dCurrent.keys()):
+                        for key in dCurrent.keys():
+                            if key[0] == sPart and dPrevious[(sPart, sLine)][2] == dCurrent[key][2] and not dCurrent[key][3]:
+                                dPrevious[(sPart, sLine)][3] = key
+                                dCurrent[key][3] = (sPart, sLine)
+                                if key in [curr for (_,curr,_) in aPotentialMatches]:
+                                    aPotentialMatches[list([curr for (_,curr,_) in aPotentialMatches]).index(key)][2] = False
+                                break
+
+                        if dCurrent[dPrevious[(sPart, sLine)][3]][0] != dPrevious[(sPart, sLine)][0] or dCurrent[dPrevious[(sPart, sLine)][3]][1] != dPrevious[(sPart, sLine)][1]:
+                            # print('Qty/Price change for:', sLine, sPart)
+                            if dCurrent[dPrevious[(sPart, sLine)][3]][0] != dPrevious[(sPart, sLine)][0]:
+                                sTemp += '\t\t{} - {} quantity changed from {} to {}\n'.format(sLine, sPart,
+                                                                                         dPrevious[(sPart, sLine)][0],
+                                                                                         dCurrent[dPrevious[(sPart, sLine)][3]][0])
+
+                            if dCurrent[dPrevious[(sPart, sLine)][3]][1] != dPrevious[(sPart, sLine)][1]:
+                                sTemp += '\t\t{} - {} line price changed from {} to {}\n'.format(sLine, sPart,
+                                                                                           dPrevious[(sPart, sLine)][1],
+                                                                                           dCurrent[dPrevious[(sPart, sLine)][3]][1])
+
+                    else:
+                        """
+                        If part is not in new version, but line number still is, the part may have been replaced.
+                        However, the new version's matching line number may be a part in the previous version that has
+                        not been reached in the key list, so we will add the potential match to a list of possible
+                        matches.  After the the whole dictionary has been checked, entries without matches will be
+                        checked against the list of potential matches."""
+                        if any(sLine == sLnum for (_, sLnum) in dCurrent.keys()):
+                            for key in dCurrent.keys():
+                                if key[1] == sLine:
+                                    aPotentialMatches.append([(sPart, sLine), key, True])
+
+            # One more check of potential matches to make sure none were missed
+            for key in dCurrent.keys():
+                if key in [curr for (_, curr, _) in aPotentialMatches] and dCurrent[key][3]:
+                    aPotentialMatches[list([curr for (_, curr, _) in aPotentialMatches]).index(key)][2] = False
+
+            for key in dPrevious.keys():
+                if not dPrevious[key][3]:
+                    for aEntry in aPotentialMatches:
+                        if key == aEntry[0] and aEntry[2]:
+                            aEntry[2] = False
+                            dPrevious[key][3] = aEntry[1]
+                            dCurrent[aEntry[1]][3] = key
+                            # print(key[1], key[0], 'replaced by', dPrevious[key][3][0])
+                            sTemp += '\t\t{} - {} replaced by {}\n'.format(key[1], key[0], dPrevious[key][3][0])
+                            break
+
+            for key in dPrevious.keys():
+                if not dPrevious[key][3]:
+                    # print(key[1], key[0], 'removed')
+                    sTemp += '\t\t{} - {} removed{}\n'.format(key[1], key[0], ' (line number remained)' if key in [prev for (prev, _, _) in aPotentialMatches] else '')
+
+            for key in dCurrent.keys():
+                if not dCurrent[key][3]:
+                    # print(key[1], key[0], 'added')
+                    sTemp += '\t\t{} - {} added\n'.format(key[1], key[0])
+            # print()
+        # end if
+
+        if sTemp:
+            sUpdateSummary += '\t{}:\n'.format(oHead.configuration_designation + (' ({})'.format(oHead.program) if oHead.program else ''))
+            sUpdateSummary += sTemp
+            sTemp = ''
+        # end if
+    # end for
+
+    # print(sNewSummary, sRemovedSummary, sUpdateSummary, sep='\n')
+    sHistory = ''
+
+    if sNewSummary != 'Added:\n':
+        sHistory += sNewSummary
+    if sRemovedSummary != 'Removed:\n':
+        sHistory += sRemovedSummary
+    if sUpdateSummary != "Updated:\n":
+        sHistory += sUpdateSummary
+
+    # print(sHistory)
+    (oNew, _) = RevisionHistory.objects.get_or_create(baseline=oBaseline, revision=sCurrent)
+    oNew.history = sHistory
+    oNew.save()
+# end def

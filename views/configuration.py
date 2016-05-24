@@ -15,6 +15,7 @@ from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
     REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_STATUS
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException
+from BoMConfig.utils import GrabValue
 
 import copy
 from itertools import chain
@@ -27,6 +28,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
     # Status message allows another view to redirect to here with an error message explaining the redirect
 
     bFrameReadOnly = oRequest.GET.get('readonly', None) == '1'
+    iFrameID = oRequest.GET.get('id', None)
 
     bCanReadHeader = bool(SecurityPermission.objects.filter(title='Config_Header_Read').filter(user__in=oRequest.user.groups.all()))
     if bFrameReadOnly:
@@ -47,7 +49,10 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
     if sTemplate == 'BoMConfig/entrylanding.html':
         return redirect(reverse('bomconfig:configheader'))
     else:
-        oExisting = oRequest.session.get('existing', None)
+        if bFrameReadOnly:
+            oExisting = iFrameID
+        else:
+            oExisting = oRequest.session.get('existing', None)
         status_message = oRequest.session.get('status', None)
 
         if status_message:
@@ -58,7 +63,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             if oExisting:
                 if not bFrameReadOnly:
                     Lock(oRequest, oExisting)
-                oExisting = Header.objects.get(pk=oRequest.session['existing'])
+                oExisting = Header.objects.get(pk=oExisting)
             # end if
 
             if oRequest.method == 'POST' and oRequest.POST:
@@ -146,7 +151,8 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                             oRequest.session['existing'] = oHeader.pk
                             return redirect('bomconfig:index')
                         elif oRequest.POST['formaction'] == 'next':
-                            oRequest.session['existing'] = oHeader.pk
+                            if not bFrameReadOnly:
+                                oRequest.session['existing'] = oHeader.pk
                             sDestination = 'bomconfig:configheader'
                             if bCanReadConfig:
                                 sDestination = 'bomconfig:config'
@@ -160,7 +166,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                 sDestination = 'bomconfig:configsite'
                             # end if
 
-                            return redirect(sDestination)
+                            return redirect(reverse(sDestination) + ('?id=' + str(oHeader.id) + '&readonly=1' if bFrameReadOnly else ''))
                         # end if
                     # end if
                 else:
@@ -213,10 +219,13 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 
 
 def AddConfig(oRequest):
-    oHeader = oRequest.session.get('existing', None)
     status_message = oRequest.session.get('status', None)
 
     bFrameReadOnly = oRequest.GET.get('readonly', None) == '1'
+    if bFrameReadOnly:
+        oHeader = oRequest.GET.get('id', None)
+    else:
+        oHeader = oRequest.session.get('existing', None)
 
     bCanReadConfigBOM = bool(SecurityPermission.objects.filter(title='Config_Entry_BOM_Read').filter(user__in=oRequest.user.groups.all()))
     bCanReadConfigSAP = bool(SecurityPermission.objects.filter(title='Config_Entry_SAPDoc_Read').filter(user__in=oRequest.user.groups.all()))
@@ -351,23 +360,27 @@ def AddConfig(oRequest):
                 # end if
             #end if
             if oRequest.POST['formaction'] == 'prev':
-                oRequest.session['existing'] = oHeader.pk
+                if not bFrameReadOnly:
+                    oRequest.session['existing'] = oHeader.pk
                 sDestination = 'bomconfig:config'
                 if bCanReadHeader:
                     sDestination = 'bomconfig:configheader'
                 # end if
 
-                return redirect(sDestination)
+                return redirect(reverse(sDestination) + ('?id=' + str(oHeader.id) + '&readonly=1' if bFrameReadOnly else ''))
             elif oRequest.POST['formaction'] == 'saveexit':
-                oRequest.session['existing'] = oHeader.pk
+                if not bFrameReadOnly:
+                    oRequest.session['existing'] = oHeader.pk
                 return redirect('bomconfig:index')
             elif oRequest.POST['formaction'] == 'save':
-                oRequest.session['existing'] = oHeader.pk
+                if not bFrameReadOnly:
+                    oRequest.session['existing'] = oHeader.pk
                 if 'status' in oRequest.session:
                     del oRequest.session['status']
                 # end if
             elif oRequest.POST['formaction'] == 'next':
-                oRequest.session['existing'] = oHeader.pk
+                if not bFrameReadOnly:
+                    oRequest.session['existing'] = oHeader.pk
                 sDestination = 'bomconfig:config'
                 if bCanReadTOC:
                     sDestination = 'bomconfig:configtoc'
@@ -379,7 +392,7 @@ def AddConfig(oRequest):
                     sDestination = 'bomconfig:configsite'
                 # end if
 
-                return redirect(sDestination)
+                return redirect(reverse(sDestination) + ('?id=' + str(oHeader.id) + '&readonly=1' if bFrameReadOnly else ''))
             # end if
         else:
             status_message = configForm.errors['__all__'].as_text()
@@ -423,10 +436,13 @@ def AddConfig(oRequest):
 
 
 def AddTOC(oRequest):
-    oHeader = oRequest.session.get('existing', None)
     status_message = oRequest.session.get('status', None)
 
     bFrameReadOnly = oRequest.GET.get('readonly', None) == '1'
+    if bFrameReadOnly:
+        oHeader = oRequest.GET.get('id', None)
+    else:
+        oHeader = oRequest.session.get('existing', None)
 
     bCanReadTOC = bool(SecurityPermission.objects.filter(title='Config_ToC_Read').filter(user__in=oRequest.user.groups.all()))
 
@@ -490,7 +506,8 @@ def AddTOC(oRequest):
             # end if
 
             if oRequest.POST['formaction'] == 'prev':
-                oRequest.session['existing'] = oHeader.pk
+                if not bFrameReadOnly:
+                    oRequest.session['existing'] = oHeader.pk
                 sDestination = 'bomconfig:configtoc'
                 if bCanReadConfig:
                     sDestination = 'bomconfig:config'
@@ -500,15 +517,18 @@ def AddTOC(oRequest):
 
                 return redirect(sDestination)
             elif oRequest.POST['formaction'] == 'saveexit':
-                oRequest.session['existing'] = oHeader.pk
+                if not bFrameReadOnly:
+                    oRequest.session['existing'] = oHeader.pk
                 return redirect('bomconfig:index')
             elif oRequest.POST['formaction'] == 'save':
-                oRequest.session['existing'] = oHeader.pk
+                if not bFrameReadOnly:
+                    oRequest.session['existing'] = oHeader.pk
                 if 'status' in oRequest.session:
                     del oRequest.session['status']
                 # end if
             elif oRequest.POST['formaction'] == 'next':
-                oRequest.session['existing'] = oHeader.pk
+                if not bFrameReadOnly:
+                    oRequest.session['existing'] = oHeader.pk
                 sDestination = 'bomconfig:configtoc'
                 if bCanReadRevision:
                     sDestination = 'bomconfig:configrevision'
@@ -518,7 +538,7 @@ def AddTOC(oRequest):
                     sDestination = 'bomconfig:configsite'
                 # end if
 
-                return redirect(sDestination)
+                return redirect(reverse(sDestination) + ('?id=' + str(oHeader.id) + '&readonly=1' if bFrameReadOnly else ''))
             # end if
         # end if
     else:
@@ -549,10 +569,14 @@ def AddRevision(oRequest):
     error_matrix = []
     valid = True
     oForm = None
-    oHeader = oRequest.session.get('existing', None)
+
     status_message = oRequest.session.get('status', None)
 
     bFrameReadOnly = oRequest.GET.get('readonly', None) == '1'
+    if bFrameReadOnly:
+        oHeader = oRequest.GET.get('id', None)
+    else:
+        oHeader = oRequest.session.get('existing', None)
 
     bCanReadRevision = bool(SecurityPermission.objects.filter(title='Config_Revision_Read').filter(user__in=oRequest.user.groups.all()))
     if bFrameReadOnly:
@@ -635,7 +659,7 @@ def AddRevision(oRequest):
                         sDestination = 'bomconfig:configsite'
                     # end if
 
-                    return redirect(sDestination)
+                    return redirect(reverse(sDestination) + ('?id=' + str(oHeader.id) + '&readonly=1' if bFrameReadOnly else ''))
                 # end if
             except IntegrityError:
                 status_message = 'Configuration already exists in Baseline'
@@ -662,10 +686,13 @@ def AddRevision(oRequest):
 
 
 def AddInquiry(oRequest, inquiry):
-    oHeader = oRequest.session.get('existing', None)
     status_message = oRequest.session.get('status', None)
 
     bFrameReadOnly = oRequest.GET.get('readonly', None) == '1'
+    if bFrameReadOnly:
+        oHeader = oRequest.GET.get('id', None)
+    else:
+        oHeader = oRequest.session.get('existing', None)
 
     # Determine which pages to which the user is able to move forward
     bCanReadHeader = bool(SecurityPermission.objects.filter(title='Config_Header_Read').filter(user__in=oRequest.user.groups.all()))
@@ -710,14 +737,14 @@ def AddInquiry(oRequest, inquiry):
                 sDestination = 'bomconfig:configheader'
             # end if
 
-            return redirect(sDestination)
+            return redirect(reverse(sDestination) + ('?id=' + str(oHeader.id) + '&readonly=1' if bFrameReadOnly else ''))
         elif oRequest.POST['formaction'] == 'next':
             sDestination = 'bomconfig:configinquiry' if inquiry else 'bomconfig:configsite'
             if bCanReadSiteTemplate and inquiry:
                 sDestination = 'bomconfig:configsite'
             # end if
 
-            return redirect(sDestination)
+            return redirect(reverse(sDestination) + ('?id=' + str(oHeader.id) + '&readonly=1' if bFrameReadOnly else ''))
     # end if
 
     data = BuildDataArray(oHeader=oHeader, inquiry=inquiry, site=not inquiry)
@@ -777,8 +804,8 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                         '15': ('0' * (2 - len(Line.x_plant))) + Line.x_plant if Line.x_plant else '',
                         '16': Line.internal_notes,
                         '17': "!" + str(Line.linepricing.override_price) if str(Line.line_number) == '10' and
-                                hasattr(Line,'linepricing') and Line.linepricing.override_price else
-                                Line.linepricing.pricing_object.unit_price if hasattr(Line,'linepricing.pricing_object') else '',
+                                hasattr(Line,'linepricing') and GrabValue(Line,'linepricing.override_price') else
+                                GrabValue(Line, 'linepricing.pricing_object.unit_price') if hasattr(Line,'linepricing.pricing_object') else '',
                         '18': Line.higher_level_item, '19': Line.material_group_5,
                         '20': Line.purchase_order_item_num, '21': Line.condition_type, '22': Line.amount,
                         '23': Line.traceability_req, '24': Line.customer_asset, '25': Line.customer_asset_tagging,
@@ -801,7 +828,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                     if inquiry:
                         dLine.update({'7': Line.linepricing.override_price if
                                         str(Line.line_number) == '10' and hasattr(Line,'linepricing') and
-                                        Line.linepricing.override_price else Line.linepricing.pricing_object.unit_price if
+                                        GrabValue(Line,'linepricing.override_price') else GrabValue(Line,'linepricing.pricing_object.unit_price') if
                                         hasattr(Line,'linepricing') else '',
                                       '9': Line.material_group_5, '10': Line.purchase_order_item_num,
                                       '11': Line.condition_type, '12': Line.amount})

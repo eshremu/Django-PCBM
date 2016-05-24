@@ -5,12 +5,12 @@
 <div id="main-body">
     {% if header_read_authorized or config_read_authorized or toc_read_authorized or revision_read_authorized or inquiry_read_authorized or sitetemplate_read_authorized %}
     <div id="action_buttons">
-		{% if header_read_authorized %}<button class="btn" type="button" name="action" value="header" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configheader' %}{% if frame_readonly %}?readonly=1{% endif %}'>Header</button>{% endif %}
-		{% if config_read_authorized %}<button class="btn" type="button" name="action" value="config" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:config' %}{% if frame_readonly %}?readonly=1{% endif %}'>Configuration</button>{% endif %}
-        {% if toc_read_authorized %}<button class="btn" type="button" name="action" value="toc" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configtoc' %}{% if frame_readonly %}?readonly=1{% endif %}'>Table of Contents</button>{% endif %}
-		{% if revision_read_authorized %}<button class="btn" type="button" name="action" value="revision" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configrevision' %}{% if frame_readonly %}?readonly=1{% endif %}'>Revisions</button>{% endif %}
-        {% if inquiry_read_authorized %}<button class="btn" type="button" name="action" value="inquiry" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configinquiry' %}{% if frame_readonly %}?readonly=1{% endif %}'>Inquiry</button>{% endif %}
-        {% if sitetemplate_read_authorized %}<button class="btn" type="button" name="action" value="sitetemp" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configsite' %}{% if frame_readonly %}?readonly=1{% endif %}'>Site Template</button>{% endif %}
+		{% if header_read_authorized %}<button class="btn" type="button" name="action" value="header" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configheader' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Header</button>{% endif %}
+		{% if config_read_authorized %}<button class="btn" type="button" name="action" value="config" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:config' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Configuration</button>{% endif %}
+        {% if toc_read_authorized %}<button class="btn" type="button" name="action" value="toc" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configtoc' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Table of Contents</button>{% endif %}
+		{% if revision_read_authorized %}<button class="btn" type="button" name="action" value="revision" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configrevision' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Revisions</button>{% endif %}
+        {% if inquiry_read_authorized %}<button class="btn" type="button" name="action" value="inquiry" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configinquiry' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Inquiry</button>{% endif %}
+        {% if sitetemplate_read_authorized %}<button class="btn" type="button" name="action" value="sitetemp" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configsite' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Site Template</button>{% endif %}
 	</div>
     {% block subcontent %}{% endblock %}
     {% else %}

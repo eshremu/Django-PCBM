@@ -65,7 +65,7 @@ class HeaderForm(forms.ModelForm):
 
         data['sales_office'] = data['sales_office'].upper()
         data['sales_group'] = data['sales_group'].upper()
-
+        # print(data)
         if self.fields['bom_request_type'].widget.attrs.get('disabled', None) == 'True':
             keys = [key for key in self.errors]
             for key in keys:

@@ -61,7 +61,7 @@
                         <td class="body_dummy1" style="visibility: hidden;">{{ table.baseline }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
                         <td class="body_dummy2"></td>
                         {% with header.configuration.get_first_line as firstline %}
-                        <td><a onclick="window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '{{ header.configuration_designation }}', 'left=100,top=100,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no')" style="cursor: pointer">{{ header.configuration_designation|default:'None' }}</a></td>
+                        <td><a onclick="window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '_blank', 'left=100,top=100,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes')" style="cursor: pointer">{{ header.configuration_designation|default:'None' }}</a></td>
                         <td>{{ header.configuration_status|default:'' }}</td>
                         <td>{{ header.bom_request_type }}</td>
                         <td>{{ header.program.name|default:'' }}</td>
