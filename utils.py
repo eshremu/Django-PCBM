@@ -2,6 +2,7 @@ __author__ = 'epastag'
 from django.utils import timezone
 from .models import Header, Baseline, RevisionHistory, Baseline_Revision
 from copy import deepcopy
+import datetime
 from functools import cmp_to_key
 
 stringisless = lambda x,y:bool(len(x.strip('1234567890')) < len(y.strip('1234567890'))
@@ -373,4 +374,96 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     (oNew, _) = RevisionHistory.objects.get_or_create(baseline=oBaseline, revision=sCurrent)
     oNew.history = sHistory
     oNew.save()
+# end def
+
+
+def RollbackBaseline(oBaseline):
+    """
+    Function rolls back a baseline to the previous revision.
+    All headers that were copied forward as part of an UpRev will be
+    deleted, headers that were a part of the release that triggered
+    the UpRev will be returned to an "In Procees/Pending" state.
+    Headers that were made inactive in the previous active revision
+    will returned to Active state.
+    """
+
+    aExistingRevs = sorted(
+        list(set([oBaseRev.version for oBaseRev in oBaseline.baseline_revision_set.order_by('version')])),
+        key=cmp_to_key(lambda x,y:(-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
+                                                                or list(x.strip('1234567890')) < (['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) +
+                                                                                                  list(y.strip('1234567890')))
+                                                                or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y)) else 0 if x == y else 1))
+    )
+
+    oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
+                        oHead.headertimetracker_set.all() if oTrack.completed_on])
+    oCurrentActive = oBaseline.latest_revision
+    oCurrentInprocess = Baseline_Revision.objects.get(baseline=oBaseline, version=oBaseline.current_inprocess_version)
+    oPreviousActive = None
+
+    iPrevIndex = aExistingRevs.index(oBaseline.current_active_version) - 1
+    if iPrevIndex >= 0:
+        oPreviousActive = Baseline_Revision.objects.get(baseline=oBaseline, version=aExistingRevs[iPrevIndex])
+
+    # print('Determined release date to be:', str(oReleaseDate))
+    for oHead in oCurrentActive.header_set.all():
+        if any([oTrack for oTrack in oHead.headertimetracker_set.all() if
+                abs(oTrack.created_on - oReleaseDate) < datetime.timedelta(minutes=1)]):
+            oHead.delete()
+            # print('Deleting:', str(oHead))
+        else:
+            oHead.configuration_status = 'In Process/Pending'
+            oHead.save()
+            # print('Changing to "In Process/Pending":', str(oHead))
+
+            oLatestTracker = oHead.headertimetracker_set.last()
+            if oLatestTracker.completed_on:
+                oLatestTracker.completed_on = None
+                oLatestTracker.brd_approver = None
+                oLatestTracker.brd_approved_on = None
+                oLatestTracker.brd_comment = None
+                oLatestTracker.save()
+                # print('Removing "Completed On" tracker info:', str(oLatestTracker))
+            # end if
+        # end if
+    # end for
+
+    for oHead in oCurrentInprocess.header_set.all():
+        oHead.baseline = oCurrentActive
+        oHead.baseline_version = oBaseline.current_active_version
+        oHead.save()
+        # print('Reverting from in-process revision:', str(oHead))
+    # end for
+
+    if oPreviousActive:
+        for oHead in oPreviousActive.header_set.all():
+            if oHead.configuration_status in ('Inactive', 'Obsolete'):
+                oHead.configuration_status = 'Active'
+                oHead.change_comments = oHead.change_comments.replace('\nBaseline revision increment', '')\
+                    .replace('Baseline revision increment', '')
+                oHead.save()
+                # print('Returning to "Active":', str(oHead))
+            # end if
+        # end for
+    # end if
+
+    oCurrentActive.completed_on = None
+    oCurrentActive.save()
+    # print('Removing Baseline revision release date:', str(oCurrentActive))
+    oCurrentInprocess.delete()
+    # print('Deleting Baseline revision:', str(oCurrentInprocess))
+
+    RevisionHistory.objects.filter(baseline=oBaseline, revision__in=aExistingRevs[aExistingRevs
+                                   .index(oBaseline.current_active_version):]).delete()
+    # print('Deleting revision history:', *aExistingRevs[aExistingRevs.index(oBaseline.current_active_version):])
+
+    oBaseline.current_inprocess_version = oBaseline.current_active_version
+    if oPreviousActive:
+        oBaseline.current_active_version = aExistingRevs[iPrevIndex]
+    else:
+        oBaseline.current_active_version = ''
+    # end if
+    oBaseline.save()
+    # print('Reverting Baseline to current as {} and in-process as {}'.format(
+    #     aExistingRevs[iPrevIndex] if oPreviousActive else '(None)', oBaseline.current_active_version))
 # end def
