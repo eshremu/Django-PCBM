@@ -1,5 +1,3 @@
-__author__ = 'epastag'
-
 from django.shortcuts import redirect
 from django.http import HttpResponse, QueryDict, JsonResponse, Http404
 from django.core.urlresolvers import reverse
@@ -8,19 +6,57 @@ from django.db.models import Q
 from django.db import connections, IntegrityError
 from django import forms
 from django.forms import fields
-
 from django.contrib.auth.models import User
+
 from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
     PartBase, Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, SecurityPermission,\
     REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_STATUS
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException
-from BoMConfig.utils import GrabValue
+from BoMConfig.utils import GrabValue, HeaderComparison, RevisionCompare
 
 import copy
 from itertools import chain
 import json
 import re
+
+
+def UpdateConfigRevisionData(oHeader):
+    oPrev = None
+    try:
+        if oHeader.model_replaced_link:
+            oPrev = oHeader.model_replaced_link
+        elif oHeader.baseline.previous_revision:
+            oPrev = oHeader.baseline.previous_revision.header_set.get(configuration_designation=oHeader.model_replaced or oHeader.configuration_designation,
+                                                                      program=oHeader.program)
+        else:
+            aExistingRevs = sorted(
+                list(set([oBaseRev.version for oBaseRev in
+                          oHeader.baseline.baseline.baseline_revision_set.order_by('version')])),
+                key=RevisionCompare)
+
+            iPrev = aExistingRevs.index(oHeader.baseline_version) - 1
+
+            if iPrev >= 0:
+                sPrevious = aExistingRevs[iPrev]
+
+                oPrev = Header.objects.get(
+                    configuration_designation=oHeader.configuration_designation,
+                    program=oHeader.program,
+                    baseline_version=sPrevious
+                )
+            # end if
+        # end if
+    except Header.DoesNotExist:
+        pass
+    # end try
+
+    if oPrev:
+        sTemp = HeaderComparison(oHeader, oPrev)
+        oHeader.change_notes = sTemp
+        oHeader.save()
+    # end if
+# end def
 
 
 def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
@@ -145,13 +181,16 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 
                     if bSuccess:
                         if oRequest.POST['formaction'] == 'save':
+                            UpdateConfigRevisionData(oHeader)
                             oRequest.session['existing'] = oHeader.pk
                             oExisting = oHeader
                         elif oRequest.POST['formaction'] == 'saveexit':
+                            UpdateConfigRevisionData(oHeader)
                             oRequest.session['existing'] = oHeader.pk
-                            return redirect('bomconfig:index')
+                            return redirect(reverse('bomconfig:index'))
                         elif oRequest.POST['formaction'] == 'next':
                             if not bFrameReadOnly:
+                                UpdateConfigRevisionData(oHeader)
                                 oRequest.session['existing'] = oHeader.pk
                             sDestination = 'bomconfig:configheader'
                             if bCanReadConfig:
@@ -361,6 +400,7 @@ def AddConfig(oRequest):
             #end if
             if oRequest.POST['formaction'] == 'prev':
                 if not bFrameReadOnly:
+                    UpdateConfigRevisionData(oHeader)
                     oRequest.session['existing'] = oHeader.pk
                 sDestination = 'bomconfig:config'
                 if bCanReadHeader:
@@ -370,16 +410,19 @@ def AddConfig(oRequest):
                 return redirect(reverse(sDestination) + ('?id=' + str(oHeader.id) + '&readonly=1' if bFrameReadOnly else ''))
             elif oRequest.POST['formaction'] == 'saveexit':
                 if not bFrameReadOnly:
+                    UpdateConfigRevisionData(oHeader)
                     oRequest.session['existing'] = oHeader.pk
-                return redirect('bomconfig:index')
+                return redirect(reverse('bomconfig:index'))
             elif oRequest.POST['formaction'] == 'save':
                 if not bFrameReadOnly:
+                    UpdateConfigRevisionData(oHeader)
                     oRequest.session['existing'] = oHeader.pk
                 if 'status' in oRequest.session:
                     del oRequest.session['status']
                 # end if
             elif oRequest.POST['formaction'] == 'next':
                 if not bFrameReadOnly:
+                    UpdateConfigRevisionData(oHeader)
                     oRequest.session['existing'] = oHeader.pk
                 sDestination = 'bomconfig:config'
                 if bCanReadTOC:
@@ -515,11 +558,11 @@ def AddTOC(oRequest):
                     sDestination = 'bomconfig:configheader'
                 # end if
 
-                return redirect(sDestination)
+                return redirect(reverse(sDestination) + ('?id=' + str(oHeader.id) + '&readonly=1' if bFrameReadOnly else ''))
             elif oRequest.POST['formaction'] == 'saveexit':
                 if not bFrameReadOnly:
                     oRequest.session['existing'] = oHeader.pk
-                return redirect('bomconfig:index')
+                return redirect(reverse('bomconfig:index'))
             elif oRequest.POST['formaction'] == 'save':
                 if not bFrameReadOnly:
                     oRequest.session['existing'] = oHeader.pk
@@ -644,9 +687,9 @@ def AddRevision(oRequest):
                         sDestination = 'bomconfig:configheader'
                     # end if
 
-                    return redirect(sDestination)
+                    return redirect(reverse(sDestination) + ('?id=' + str(oHeader.id) + '&readonly=1' if bFrameReadOnly else ''))
                 elif oRequest.POST['formaction'] == 'saveexit':
-                    return redirect('bomconfig:index')
+                    return redirect(reverse('bomconfig:index'))
                 elif oRequest.POST['formaction'] == 'save':
                     if 'status' in oRequest.session:
                         del oRequest.session['status']
@@ -864,30 +907,54 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
             return [{}]
         else:
             data = []
-            aPrev = Header.objects.filter(configuration_designation=oHeader.configuration_designation).filter(program=oHeader.program).order_by('baseline_version')
-
-            for header in aPrev:
-                if header == oHeader:
-                    break
-
+            while oHeader and hasattr(oHeader, 'configuration'):
                 data.append({
-                    '0': header.bom_version, '1': header.baseline_version, '2': header.release_date.strftime('%b. %d, %Y') if header.release_date else '',
-                    '3': header.model if not header.pick_list else 'None', '6': header.person_responsible,
-                    '4': header.configuration.configline_set.filter(line_number='10')[0].customer_number if
-                        not header.pick_list and oHeader.configuration.configline_set.filter(line_number='10')[0].customer_number else '',
-                    '5': header.change_comments or ''
+                    '0': oHeader.bom_version, '1': oHeader.baseline_version,
+                    '2': oHeader.release_date.strftime('%b. %d, %Y') if oHeader.release_date else '',
+                    '3': oHeader.model if not oHeader.pick_list else 'None',
+                    '4': oHeader.configuration.configline_set.filter(line_number='10')[0].customer_number if
+                    not oHeader.pick_list and oHeader.configuration.configline_set.filter(line_number='10')[
+                        0].customer_number else '',
+                    '5': oHeader.change_notes or '',
+                    '6': oHeader.change_comments or '',
+                    '7': oHeader.person_responsible,
                 })
-            # end for
+                aExistingRevs = sorted(
+                    list(set([oBaseRev.version for oBaseRev in
+                              oHeader.baseline.baseline.baseline_revision_set.order_by('version')])),
+                    key=RevisionCompare)
 
-            data.append({
-                '0': oHeader.bom_version, '1': oHeader.baseline_version, '2': oHeader.release_date.strftime('%b. %d, %Y') if oHeader.release_date else '',
-                '3': oHeader.model if not oHeader.pick_list else 'None', '6': oHeader.person_responsible,
-                '4': oHeader.configuration.configline_set.filter(line_number='10')[0].customer_number if
-                    not oHeader.pick_list and oHeader.configuration.configline_set.filter(line_number='10')[0].customer_number else '',
-                '5': oHeader.change_comments or ''
-            })
+                iPrev = aExistingRevs.index(oHeader.baseline_version) - 1
 
-            return list(reversed(data))
+                if oHeader.model_replaced_link:
+                    oHeader = oHeader.model_replaced_link
+                elif iPrev >= 0:
+                    sPrevious = aExistingRevs[iPrev]
+
+                    oQmodel = Q(configuration_designation=oHeader.model_replaced)
+                    oQconfig = Q(configuration_designation=oHeader.configuration_designation)
+                    oQprogram = Q(program=oHeader.program)
+                    oQbaseline = Q(baseline=oHeader.baseline.previous_revision)
+                    oQbaselineVer = Q(baseline_impacted=oHeader.baseline_impacted, baseline_version=sPrevious)
+                    try:
+                        oHeader = Header.objects.get(oQmodel,
+                                                     oQprogram,
+                                                     oQbaseline | oQbaselineVer)
+                    except Header.DoesNotExist:
+                        try:
+                            oHeader = Header.objects.get(
+                                oQconfig,
+                                oQprogram,
+                                oQbaseline | oQbaselineVer)
+                        except Header.DoesNotExist:
+                            oHeader = None
+                    # end try
+                else:
+                    oHeader = None
+                # end if
+            # end while
+
+            return data
         # end if
     # end if
 

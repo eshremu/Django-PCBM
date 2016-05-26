@@ -83,6 +83,10 @@
                     closeButton = false;
                 });
 
+                $(window).on('beforeunload',(function(){
+                    $('#myModal').modal('show');
+                }));
+
                 $(window).unload(function(){
                     $.ajax({
                         type: "POST",

@@ -12,7 +12,7 @@ class HeaderForm(forms.ModelForm):
     class Meta:
         model = Header
         exclude = ['internal_notes', 'external_notes', 'baseline_version', 'bom_version', 'release_date',
-                   'change_comments', 'baseline', 'old_configuration_status']
+                   'change_notes', 'change_comments', 'baseline', 'old_configuration_status']
         widgets = {'model_replaced_link': forms.HiddenInput()}
     # end class
 

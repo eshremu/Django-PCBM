@@ -56,6 +56,13 @@ class HeaderLockAdmin(admin.ModelAdmin):
 class LinePriceAdmin(admin.ModelAdmin):
     form = LinePricingForm
 
+
+class RevisionAdmin(admin.ModelAdmin):
+    def render_change_form(self, request, context, *args, **kwargs):
+        print(context)
+        context['adminform'].form.fields['previous_revision'].queryset = Baseline_Revision.objects.exclude(pk=context['original'].pk).order_by('baseline__title', 'version')
+        return super(RevisionAdmin, self).render_change_form(request, context, *args, **kwargs)
+
 admin.site.register(Alert)
 admin.site.register(NewsItem)
 admin.site.register(Header, HeaderAdmin)
@@ -64,7 +71,7 @@ admin.site.register(ConfigLine)
 admin.site.register(Part, PartAdmin)
 admin.site.register(PartBase, PartBaseAdmin)
 admin.site.register(Baseline)
-admin.site.register(Baseline_Revision)
+admin.site.register(Baseline_Revision, RevisionAdmin)
 admin.site.register(RevisionHistory)
 admin.site.register(LinePricing, LinePriceAdmin)
 admin.site.register(PricingObject, PriceObjAdmin)

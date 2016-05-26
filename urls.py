@@ -27,6 +27,7 @@ urlpatterns = patterns(
     url(r'^reactsearch/$', views.ReactSearch, name='reactsearch'),
     url(r'^upload/$', views.Upload, name='upload'),
     url(r'^baseline/$', views.BaselineMgmt, name='baseline'),
+    url(r'^baseload/$', views.BaselineLoad, name='baseload'),
     url(r'^baselinedwnld/$', views.DownloadBaseline, name='baselinedownload'),
     url(r'^configretrieve/$', views.GetConfigLines, name='configretrieve'),
     url(r'^unlock/$', views.FinalUnlock, name='finalunlock'),

@@ -289,6 +289,7 @@ class Baseline_Revision(models.Model):
     baseline = models.ForeignKey(Baseline, db_constraint=False)
     version = models.CharField(max_length=50, default='A')
     completed_date = models.DateField(blank=True, null=True)
+    previous_revision = models.ForeignKey('Baseline_Revision', blank=True, null=True, related_name='next_revision')
 
     @property
     def title(self):
@@ -378,6 +379,7 @@ class Header(models.Model):
     baseline_version = models.CharField(max_length=50, blank=True, null=True)
     bom_version = models.CharField(max_length=50, blank=True, null=True)
     release_date = models.DateField(blank=True, null=True)
+    change_notes = models.TextField(blank=True, null=True)
     change_comments = models.TextField(blank=True, null=True)
     baseline = models.ForeignKey(Baseline_Revision, blank=True, null=True)
 

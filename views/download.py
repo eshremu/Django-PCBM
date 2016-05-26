@@ -296,17 +296,17 @@ def DownloadBaseline(oRequest):
             sHistory = oBaseline.revisionhistory_set.get(revision=sRev).history
             if not sHistory or not sHistory.strip():
                 continue
-            # TODO: Print revision in multiple rows, not single cell
+
             sRevHistory = 'Revision ' + sRev + ':\n' + oBaseline.revisionhistory_set.get(revision=sRev).history
             aLines = sRevHistory.split('\n')
-            for sLine in aLines:
-                # oSheet['A' + str(iRow)] = 'Revision ' + sRev + ':\n' + oBaseline.revisionhistory_set.get(revision=sRev).history
+            for i, sLine in enumerate(aLines):
                 oSheet['A' + str(iRow)] = sLine
                 oSheet['A' + str(iRow)].alignment = Alignment(wrap_text=True)
                 oSheet['A' + str(iRow)].fill = GradientFill(type='linear', stop=[Color(aColors[iColorIndex]), Color(aColors[iColorIndex])])
                 oSheet['B' + str(iRow)].fill = GradientFill(type='linear', stop=[Color(aColors[iColorIndex]), Color(aColors[iColorIndex])])
                 oSheet['C' + str(iRow)].fill = GradientFill(type='linear', stop=[Color(aColors[iColorIndex]), Color(aColors[iColorIndex])])
-                iRow += 1
+                if i != len(aLines) - 1:
+                    iRow += 1
 
             if Baseline_Revision.objects.get(baseline=oBaseline, version=sRev).completed_date:
                 oSheet['C' + str(iRow)] = Baseline_Revision.objects.get(baseline=oBaseline, version=sRev).completed_date.strftime('%m/%d/%Y')
@@ -381,6 +381,7 @@ def DownloadBaseline(oRequest):
                              bottom=Side(color=colors.BLACK, border_style=borders.BORDER_THIN))
 
             oFirstRowColor = GradientFill(type='linear', stop=[Color('77b6e3'), Color('77b6e3')])
+            oOffRowColor = GradientFill(type='linear', stop=[Color('e6e6e6'), Color('e6e6e6')])
 
             # Add line items (ordered by line number)
             aLineItems = oHeader.configuration.configline_set.all().order_by('line_number')
@@ -393,98 +394,121 @@ def DownloadBaseline(oRequest):
                 if oLineItem == oFirstItem:
                     oSheet['A' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['A' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['A' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['B' + str(iCurrentRow)] = ('..' if oLineItem.is_grandchild else '.' if oLineItem.is_child else '') + oLineItem.part.base.product_number
                 oSheet['B' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['B' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['B' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['B' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['C' + str(iCurrentRow)] = oLineItem.part.product_description
                 oSheet['C' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['C' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['C' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['C' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['D' + str(iCurrentRow)] = oLineItem.order_qty
                 oSheet['D' + str(iCurrentRow)].alignment = oCentered
                 oSheet['D' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['D' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['D' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['D' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['E' + str(iCurrentRow)] = oLineItem.part.base.unit_of_measure
                 oSheet['E' + str(iCurrentRow)].alignment = oCentered
                 oSheet['E' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['E' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['E' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['E' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['F' + str(iCurrentRow)] = oLineItem.commodity_type
                 oSheet['F' + str(iCurrentRow)].alignment = oCentered
                 oSheet['F' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['F' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['F' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['F' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem,'linepricing.pricing_object.unit_price') if oHeader.pick_list else ''
                 oSheet['G' + str(iCurrentRow)].number_format = '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
                 oSheet['G' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['G' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['G' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['G' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['H' + str(iCurrentRow)] = oLineItem.traceability_req
                 oSheet['H' + str(iCurrentRow)].alignment = oCentered
                 oSheet['H' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['H' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['H' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['H' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['I' + str(iCurrentRow)] = oLineItem.customer_asset
                 oSheet['I' + str(iCurrentRow)].alignment = oCentered
                 oSheet['I' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['I' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['I' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['I' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['J' + str(iCurrentRow)] = oLineItem.customer_asset_tagging
                 oSheet['J' + str(iCurrentRow)].alignment = oCentered
                 oSheet['J' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['J' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['J' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['J' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['K' + str(iCurrentRow)] = oLineItem.customer_number
                 oSheet['K' + str(iCurrentRow)].alignment = oCentered
                 oSheet['K' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['K' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['K' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['K' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['L' + str(iCurrentRow)] = oLineItem.sec_customer_number
                 oSheet['L' + str(iCurrentRow)].alignment = oCentered
                 oSheet['L' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['L' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['L' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['L' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['M' + str(iCurrentRow)] = oLineItem.vendor_article_number
                 oSheet['M' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['M' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['M' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['M' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['N' + str(iCurrentRow)] = oLineItem.comments
                 oSheet['N' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['N' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['N' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['N' + str(iCurrentRow)].fill = oOffRowColor
                 oSheet['O' + str(iCurrentRow)] = oLineItem.additional_ref
                 oSheet['O' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem:
                     oSheet['O' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['O' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['O' + str(iCurrentRow)].fill = oOffRowColor
                 iCurrentRow += 1
             # end for
             if not oHeader.pick_list:
                 oSheet['G2'] = GrabValue(oHeader.configuration.get_first_line(),'linepricing.override_price') or \
                                GrabValue(oHeader.configuration.get_first_line(),'linepricing.pricing_object.unit_price') or ''
             # end if
-
-            # if oHeader.customer_unit.name == 'AT&T':
-            #     oSheet['H1'] = 'Transportation Fee'
-            #     oTransport = oHeader.configuration.configline_set.filter(condition_type__iexact='ZUST')
-            #     if oTransport:
-            #         oSheet['H2'] = oTransport[0].amount
-            #     # end if
         # end for
 
         oSheet = oFile.create_sheet(0, 'ToC')

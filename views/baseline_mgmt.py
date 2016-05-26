@@ -13,6 +13,11 @@ from functools import cmp_to_key
 aHeaderList = None
 
 
+def BaselineLoad(oRequest):
+    """This method is used as a landing page for Baseline Management while the useful view loads"""
+    return Default(oRequest, sTemplate='BoMConfig/baselineload.html')
+
+
 def BaselineMgmt(oRequest):
     if 'existing' in oRequest.session:
         try:
