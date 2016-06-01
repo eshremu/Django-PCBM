@@ -447,7 +447,7 @@ def RollbackBaseline(oBaseline):
         # end for
     # end if
 
-    oCurrentActive.completed_on = None
+    oCurrentActive.completed_date = None
     oCurrentActive.save()
     # print('Removing Baseline revision release date:', str(oCurrentActive))
     oCurrentInprocess.delete()
