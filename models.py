@@ -502,7 +502,7 @@ class Part(models.Model):
     base = models.ForeignKey(PartBase, blank=True, null=True)
 
     class Meta:
-        unique_together = ('product_description','base')
+        unique_together = ('product_description', 'base')
     # end class
 
     def __str__(self):

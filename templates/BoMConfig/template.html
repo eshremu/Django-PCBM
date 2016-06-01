@@ -251,7 +251,9 @@
             $('.modal_submit').off('click');
             $('.modal_submit').click(function(){
                 $('#messageModal').modal('hide');
-                callback.apply(this, params);
+                if(callback != undefined) {
+                    callback.apply(this, params);
+                }
             });
             $('#messageModal').modal('show');
         }

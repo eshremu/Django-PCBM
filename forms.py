@@ -6,6 +6,7 @@ from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, Line
 
 import datetime
 import os
+import re
 
 
 class HeaderForm(forms.ModelForm):
@@ -73,8 +74,13 @@ class HeaderForm(forms.ModelForm):
             # end for
             return data
 
-        if 'configuration_designation' in data and len(data['configuration_designation']) > 18 and not data['pick_list']:
-            self.add_error('configuration_designation', forms.ValidationError('Configuration title exceeds 18 characters'))
+        if 'configuration_designation' in data:
+            if re.search(r"_+CLONE_*$", data['configuration_designation'].upper()):
+                self.add_error('configuration_designation', forms.ValidationError('Cloned configurations require rename ("_CLONE" still in name)'))
+            elif data['configuration_designation'].upper().endswith('_'):
+                self.add_error('configuration_designation', forms.ValidationError('Configuration designation cannot end with underscore ("_")'))
+            elif len(data['configuration_designation']) > 18 and not data['pick_list']:
+                self.add_error('configuration_designation', forms.ValidationError('Configuration title exceeds 18 characters'))
         # end if
 
         if 'model' in data and len(data['model']) > 18 and not data['pick_list']:
@@ -83,8 +89,8 @@ class HeaderForm(forms.ModelForm):
 
         if 'valid_to_date' in data and 'valid_from_date' in data and data['valid_to_date'] and\
                 data['valid_from_date'] and data['valid_to_date'] < data['valid_from_date']:
-            self.add_error('valid_to_date',forms.ValidationError('Valid-to Date cannot be BEFORE Valid-from Date'))
-            self.add_error('valid_from_date',forms.ValidationError('Valid-to Date cannot be BEFORE Valid-from Date'))
+            self.add_error('valid_to_date', forms.ValidationError('Valid-to Date cannot be BEFORE Valid-from Date'))
+            self.add_error('valid_from_date', forms.ValidationError('Valid-to Date cannot be BEFORE Valid-from Date'))
         # end if
 
         if 'projected_cutover' in data and data['projected_cutover'] and data['projected_cutover'] < datetime.date.today():

@@ -61,7 +61,7 @@
                         <td class="body_dummy1" style="visibility: hidden;">{{ table.baseline }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
                         <td class="body_dummy2"></td>
                         {% with header.configuration.get_first_line as firstline %}
-                        <td><a onclick="window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '_blank', 'left=100,top=100,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes')" style="cursor: pointer">{{ header.configuration_designation|default:'None' }}</a></td>
+                        <td><a onclick="window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes')" style="cursor: pointer">{{ header.configuration_designation|default:'None' }}</a></td>
                         <td>{{ header.configuration_status|default:'' }}</td>
                         <td>{{ header.bom_request_type }}</td>
                         <td>{{ header.program.name|default:'' }}</td>
@@ -125,6 +125,11 @@
             <input name="version" type="hidden" value=""/>
             <button id="download" type="button" onclick="downloadModal()">Download</button>
         </form>
+        <form id="rollbackform">
+            {% csrf_token %}
+            <input name="baseline" type="hidden" value="{{ tables.0.baseline }}"/>
+            <button id="rollback" type="button" onclick="rollbackModal()">Rollback</button>
+        </form>
     </div>
     {% endif %}
 	{% else %}
@@ -133,6 +138,7 @@
 </div>
 <script>
     var revision_list = '{% for revision in tables.0.revisions %}<option value="{{ revision.revision.version }}">{{ revision.revision.version }}</option>{% endfor %}';
+    var rollback_url = "{% url 'bomconfig:baselinerollback' %}";
 </script>
 
 <style>

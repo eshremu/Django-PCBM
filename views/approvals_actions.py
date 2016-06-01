@@ -70,20 +70,20 @@ def ApprovalData(oRequest):
             'comments': ''
         }
 
-        oUser = User.objects.get(username=getattr(oHeadTracker,oRequest.POST['level']+"_approver"))
+        oUser = User.objects.get(username=getattr(oHeadTracker, oRequest.POST['level']+"_approver"))
         dResult['person'] = oUser.first_name + " " + oUser.last_name
 
         if oRequest.POST['level'] != 'psm_config':
-            dResult['comments'] = getattr(oHeadTracker,oRequest.POST['level']+"_comments", 'N/A')
-            if getattr(oHeadTracker,oRequest.POST['level']+"_approved_on"):
-                dResult['date'] = getattr(oHeadTracker,oRequest.POST['level']+"_approved_on").strftime('%m/%d/%Y')
+            dResult['comments'] = getattr(oHeadTracker, oRequest.POST['level']+"_comments", 'N/A')
+            if getattr(oHeadTracker, oRequest.POST['level']+"_approved_on"):
+                dResult['date'] = getattr(oHeadTracker, oRequest.POST['level']+"_approved_on").strftime('%m/%d/%Y')
 
-                if getattr(oHeadTracker,oRequest.POST['level']+"_approved_on").date() == timezone.datetime(1900,1,1).date():
+                if getattr(oHeadTracker, oRequest.POST['level']+"_approved_on").date() == timezone.datetime(1900, 1, 1).date():
                     dResult['type'] = 'S'
                 else:
                     dResult['type'] = 'A'
-            elif getattr(oHeadTracker,oRequest.POST['level']+"_denied_approval"):
-                dResult['date'] = getattr(oHeadTracker,oRequest.POST['level']+"_denied_approval").strftime('%m/%d/%Y')
+            elif getattr(oHeadTracker, oRequest.POST['level']+"_denied_approval"):
+                dResult['date'] = getattr(oHeadTracker, oRequest.POST['level']+"_denied_approval").strftime('%m/%d/%Y')
                 dResult['type'] = 'D'
         else:
             dResult['type'] = 'A'
@@ -97,7 +97,7 @@ def ApprovalData(oRequest):
 
 def AjaxApprove(oRequest):
     if oRequest.method == 'POST' and oRequest.POST:
-        if oRequest.POST.get('action', None) not in ('approve','disapprove','skip','clone','delete','send_to_approve', 'hold', 'unhold', 'cancel'):
+        if oRequest.POST.get('action', None) not in ('approve', 'disapprove', 'skip', 'clone', 'delete', 'send_to_approve', 'hold', 'unhold', 'cancel'):
             raise Http404
         sAction = oRequest.POST.get('action')
         aRecords = [int(record) for record in json.loads(oRequest.POST.get('data'))]
@@ -224,40 +224,41 @@ def AjaxApprove(oRequest):
             # end for
         elif sAction == 'clone':
             oOldHeader = Header.objects.get(pk=aRecords[0])
-            oNewHeader = copy.deepcopy(oOldHeader)
-            oNewHeader.pk = None
-            oNewHeader.configuration_designation = oOldHeader.configuration_designation + '_______CLONE_______'
-            oNewHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
-            if oNewHeader.react_request is None:
-                oNewHeader.react_request = ''
-            # end if
-
-            if oNewHeader.baseline_impacted:
-                oNewHeader.baseline = Baseline_Revision.objects.get(baseline=Baseline.objects.get(title=oNewHeader.baseline_impacted),
-                                                                    version=Baseline.objects.get(title=oNewHeader.baseline_impacted).current_inprocess_version)
-                oNewHeader.baseline_version = oNewHeader.baseline.version
-            # end if
-
-            oNewHeader.save()
-
-            oNewConfig = copy.deepcopy(oOldHeader.configuration)
-            oNewConfig.pk = None
-            oNewConfig.header = oNewHeader
-            oNewConfig.save()
-
-            for oConfigLine in oOldHeader.configuration.configline_set.all():
-                oNewLine = copy.deepcopy(oConfigLine)
-                oNewLine.pk = None
-                oNewLine.config = oNewConfig
-                oNewLine.save()
-
-                if hasattr(oConfigLine,'linepricing'):
-                    oNewPrice = copy.deepcopy(oConfigLine.linepricing)
-                    oNewPrice.pk = None
-                    oNewPrice.config_line = oNewLine
-                    oNewPrice.save()
-                # end if
-            # end for
+            oNewHeader = CloneHeader(oOldHeader)
+            # oNewHeader = copy.deepcopy(oOldHeader)
+            # oNewHeader.pk = None
+            # oNewHeader.configuration_designation = oOldHeader.configuration_designation + '_______CLONE_______'
+            # oNewHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
+            # if oNewHeader.react_request is None:
+            #     oNewHeader.react_request = ''
+            # # end if
+            #
+            # if oNewHeader.baseline_impacted:
+            #     oNewHeader.baseline = Baseline_Revision.objects.get(baseline=Baseline.objects.get(title=oNewHeader.baseline_impacted),
+            #                                                         version=Baseline.objects.get(title=oNewHeader.baseline_impacted).current_inprocess_version)
+            #     oNewHeader.baseline_version = oNewHeader.baseline.version
+            # # end if
+            #
+            # oNewHeader.save()
+            #
+            # oNewConfig = copy.deepcopy(oOldHeader.configuration)
+            # oNewConfig.pk = None
+            # oNewConfig.header = oNewHeader
+            # oNewConfig.save()
+            #
+            # for oConfigLine in oOldHeader.configuration.configline_set.all():
+            #     oNewLine = copy.deepcopy(oConfigLine)
+            #     oNewLine.pk = None
+            #     oNewLine.config = oNewConfig
+            #     oNewLine.save()
+            #
+            #     if hasattr(oConfigLine,'linepricing'):
+            #         oNewPrice = copy.deepcopy(oConfigLine.linepricing)
+            #         oNewPrice.pk = None
+            #         oNewPrice.config_line = oNewLine
+            #         oNewPrice.save()
+            #     # end if
+            # # end for
 
             oRequest.session['existing'] = oNewHeader.pk
             return HttpResponse(reverse('bomconfig:configheader'))
@@ -276,4 +277,45 @@ def AjaxApprove(oRequest):
         return HttpResponse()
     else:
         raise Http404()
+# end def
+
+
+def CloneHeader(oHeader):
+    oOldHeader = oHeader
+    oNewHeader = copy.deepcopy(oOldHeader)
+    oNewHeader.pk = None
+    oNewHeader.configuration_designation = oOldHeader.configuration_designation + '_______CLONE_______'
+    oNewHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
+    if oNewHeader.react_request is None:
+        oNewHeader.react_request = ''
+    # end if
+
+    if oNewHeader.baseline_impacted:
+        oNewHeader.baseline = Baseline_Revision.objects.get(
+            baseline=Baseline.objects.get(title=oNewHeader.baseline_impacted),
+            version=Baseline.objects.get(title=oNewHeader.baseline_impacted).current_inprocess_version)
+        oNewHeader.baseline_version = oNewHeader.baseline.version
+    # end if
+
+    oNewHeader.save()
+
+    oNewConfig = copy.deepcopy(oOldHeader.configuration)
+    oNewConfig.pk = None
+    oNewConfig.header = oNewHeader
+    oNewConfig.save()
+
+    for oConfigLine in oOldHeader.configuration.configline_set.all():
+        oNewLine = copy.deepcopy(oConfigLine)
+        oNewLine.pk = None
+        oNewLine.config = oNewConfig
+        oNewLine.save()
+
+        if hasattr(oConfigLine, 'linepricing'):
+            oNewPrice = copy.deepcopy(oConfigLine.linepricing)
+            oNewPrice.pk = None
+            oNewPrice.config_line = oNewLine
+            oNewPrice.save()
+        # end if
+    # end for
+    return oNewHeader
 # end def

@@ -1,13 +1,15 @@
 __author__ = 'epastag'
 
-from django.http import JsonResponse, Http404
+from django.http import JsonResponse, Http404, QueryDict
+from django.db import IntegrityError
 
 from BoMConfig.models import Header, Baseline, SecurityPermission, Baseline_Revision
 from BoMConfig.forms import SubmitForm
 from BoMConfig.views.landing import Unlock, Default
-from BoMConfig.utils import GrabValue
+from BoMConfig.utils import GrabValue, RollbackBaseline
 
 from functools import cmp_to_key
+import json
 
 
 aHeaderList = None
@@ -106,6 +108,28 @@ def BaselineMgmt(oRequest):
 
     return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html', dContext={'form': form, 'tables': aTable, 'downloadable': bDownloadable, 'column_titles': aTitles})
 # end def
+
+
+def BaselineRollback(oRequest):
+    data = QueryDict(oRequest.POST.get('form'))
+    # data = json.loads(oRequest.POST.get('form'))
+
+    oBaseline = Baseline.objects.get(title=data['baseline'])
+
+    dResult = {
+        'status': 0,
+        'revision': '',
+        'errors': []
+    }
+
+    try:
+        RollbackBaseline(oBaseline)
+        dResult['status'] = 1
+        dResult['revision'] = oBaseline.current_active_version
+    except (ValueError,) as ex:
+        dResult['errors'].append(str(ex))
+
+    return JsonResponse(dResult)
 
 
 def OverviewPricing(oRequest):

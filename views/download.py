@@ -260,7 +260,7 @@ def DownloadBaseline(oRequest):
         oFile = openpyxl.Workbook()
 
         oCentered = Alignment(horizontal='center')
-        oRevFont = Font(name='Arial',size=10, bold=True)
+        oRevFont = Font(name='Arial', size=10, bold=True)
 
         # Fill Revision tab
         oSheet = oFile.active

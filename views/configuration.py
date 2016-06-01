@@ -13,6 +13,7 @@ from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
     REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_STATUS
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException
+from BoMConfig.views.approvals_actions import CloneHeader
 from BoMConfig.utils import GrabValue, HeaderComparison, RevisionCompare
 
 import copy
@@ -250,7 +251,8 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             'header_read_authorized': bCanReadHeader,
             'can_continue': bCanMoveForward,
             'base_template': 'BoMConfig/frame_template.html' if bFrameReadOnly else 'BoMConfig/template.html',
-            'frame_readonly': bFrameReadOnly
+            'frame_readonly': bFrameReadOnly,
+            'non_clonable': ['In Process', 'In Process/Pending']
         }
 
         return Default(oRequest, sTemplate, dContext)
@@ -1404,9 +1406,34 @@ def ListREACTFill(oRequest):
         oCursor = connections['REACT'].cursor()
         oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',[oParent.name])
         tResults = oCursor.fetchall()
-        result = {obj:obj for obj in chain.from_iterable(tResults)}
+        result = {obj: obj for obj in chain.from_iterable(tResults)}
         return JsonResponse(result)
     else:
         raise Http404
     # end if
 #end def
+
+
+def Clone(oRequest):
+    dResult = {
+        'status': 0,
+        'name': '',
+        'errors': []
+    }
+
+    oOld = Header.objects.get(id=oRequest.POST.get('header'))
+    try:
+        oNew = CloneHeader(oOld)
+        dResult['name'] = oNew.configuration_designation
+        dResult['status'] = 1
+    except IntegrityError as ex:
+        match = re.search(r"'dbo\.BoMConfig_(.+?)'", str(ex))
+        if match:
+            if match.group(1).lower() == 'header':
+                dResult['errors'].append('Duplicate Configuration already exists. (Ensure that previous clones have been renamed)')
+        else:
+            dResult['errors'].append('Undetermined database error')
+    except Exception as ex:
+        dResult['errors'].append(str(ex))
+
+    return JsonResponse(dResult)

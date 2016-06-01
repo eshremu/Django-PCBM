@@ -460,8 +460,12 @@ def RollbackBaseline(oBaseline):
         key=RevisionCompare
     )
 
-    oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
-                        oHead.headertimetracker_set.all() if oTrack.completed_on])
+    try:
+        oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
+                            oHead.headertimetracker_set.all() if oTrack.completed_on])
+    except ValueError:
+        raise Exception('No release date could be determined')
+
     oCurrentActive = oBaseline.latest_revision
     oCurrentInprocess = Baseline_Revision.objects.get(baseline=oBaseline, version=oBaseline.current_inprocess_version)
     oPreviousActive = None
@@ -482,7 +486,7 @@ def RollbackBaseline(oBaseline):
             # print('Changing to "In Process/Pending":', str(oHead))
 
             oLatestTracker = oHead.headertimetracker_set.last()
-            if oLatestTracker.completed_on:
+            if oLatestTracker and oLatestTracker.completed_on:
                 oLatestTracker.completed_on = None
                 oLatestTracker.brd_approver = None
                 oLatestTracker.brd_approved_on = None
@@ -512,7 +516,7 @@ def RollbackBaseline(oBaseline):
         # end for
     # end if
 
-    oCurrentActive.completed_on = None
+    oCurrentActive.completed_date = None
     oCurrentActive.save()
     # print('Removing Baseline revision release date:', str(oCurrentActive))
     oCurrentInprocess.delete()

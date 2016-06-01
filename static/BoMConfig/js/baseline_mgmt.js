@@ -4,7 +4,7 @@
 
 $('a.headtitle:contains("Baseline")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 
-var timer, table;
+var timer, table, submitActor;
 $(document).ready(function() {
     $(window).load(function () {
         form_resize();
@@ -56,6 +56,47 @@ function downloadModal(){
             function(){
                 $("#downloadform input[name='version']").val($('#messageModal .modal-body select').val());
                 $('#downloadform').submit();
+            }
+    );
+}
+
+function rollbackModal(){
+    messageToModal('Rollback Baseline',
+            'You are about to rollback the latest revision of this baseline. This will return the latest "Active" revision to an "In-process" state.<br/><br/>'+
+            '<em style="color: red; text-decoration: underline;">This CANNOT be undone!</em><br/><br/>'+
+            'Are you sure you wish to proceed?',
+            function(){
+                $('#myModal').modal('show');
+                $.ajax({
+                    url: rollback_url,
+                    dataType: "json",
+                    type: "POST",
+                    data: {
+                        form: $('#rollbackform').serialize()
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(returned) {
+                        // var returned = JSON.parse(data);
+                        if(returned.status == 1) {
+                            messageToModal('Rollback completed', 'Baseline has been rolled back to revision "' + returned.revision + '".',
+                                function(){$('#id_baseline_title').val($('#rollbackform input[name="baseline"]').val()); $('#headersubform form').submit();}
+                            );
+                        } else {
+                            var errorMessage = 'The following errors occurred:';
+                            for(var index in returned.errors){
+                                errorMessage += '<br/>' + returned.errors[index];
+                            }
+                            messageToModal('Rollback failed', errorMessage);
+                        }
+                        $('#myModal').modal('hide');
+                    },
+                    error: function(){
+                        messageToModal('Unknown error', 'An error occurred during rollback.  If this issue persists, contact a tool admin.');
+                        $('#myModal').modal('hide');
+                    }
+                });
             }
     );
 }

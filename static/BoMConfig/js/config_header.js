@@ -279,3 +279,35 @@ function req_search(){
         });
     }
 }
+
+function cloneHeader(headerId){
+    $('myModal').modal('show');
+    $.ajax({
+        url: clone_url,
+        dataType: "json",
+        type: "POST",
+        data: {
+            header: headerId
+        },
+        headers:{
+            'X-CSRFToken': getcookie('csrftoken')
+        },
+        success: function(returned) {
+            // var returned = JSON.parse(data);
+            if(returned.status == 1) {
+                messageToModal('Cloning completed', 'Configuration "' + returned.name + '" has been created.');
+            } else {
+                var errorMessage = 'The following errors occurred:';
+                for(var index in returned.errors){
+                    errorMessage += '<br/>' + returned.errors[index];
+                }
+                messageToModal('Cloning failed', errorMessage);
+            }
+            $('#myModal').modal('hide');
+        },
+        error: function(){
+            messageToModal('Unknown error', 'An error occurred during cloning.  If this issue persists, contact a tool admin.');
+            $('#myModal').modal('hide');
+        }
+    });
+}
