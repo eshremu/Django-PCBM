@@ -59,8 +59,10 @@ class LinePriceAdmin(admin.ModelAdmin):
 
 class RevisionAdmin(admin.ModelAdmin):
     def render_change_form(self, request, context, *args, **kwargs):
-        print(context)
-        context['adminform'].form.fields['previous_revision'].queryset = Baseline_Revision.objects.exclude(pk=context['original'].pk).order_by('baseline__title', 'version')
+        context['adminform'].form.fields['previous_revision'].queryset = Baseline_Revision.objects\
+            .filter(baseline__title=context['original'].baseline.title)\
+            .exclude(pk=context['original'].pk)\
+            .order_by('baseline__title', 'version')
         return super(RevisionAdmin, self).render_change_form(request, context, *args, **kwargs)
 
 admin.site.register(Alert)

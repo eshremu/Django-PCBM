@@ -80,7 +80,7 @@ function rollbackModal(){
                     success: function(returned) {
                         // var returned = JSON.parse(data);
                         if(returned.status == 1) {
-                            messageToModal('Rollback completed', 'Baseline has been rolled back to revision "' + returned.revision + '".',
+                            messageToModal('Rollback completed', 'Baseline has been rolled back ' + returned.revision,
                                 function(){$('#id_baseline_title').val($('#rollbackform input[name="baseline"]').val()); $('#headersubform form').submit();}
                             );
                         } else {

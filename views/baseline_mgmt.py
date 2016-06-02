@@ -115,6 +115,7 @@ def BaselineRollback(oRequest):
     # data = json.loads(oRequest.POST.get('form'))
 
     oBaseline = Baseline.objects.get(title=data['baseline'])
+    tOld = (oBaseline.current_active_version, oBaseline.current_inprocess_version)
 
     dResult = {
         'status': 0,
@@ -124,9 +125,10 @@ def BaselineRollback(oRequest):
 
     try:
         RollbackBaseline(oBaseline)
+        tNew = (oBaseline.current_active_version, oBaseline.current_inprocess_version)
         dResult['status'] = 1
-        dResult['revision'] = oBaseline.current_active_version
-    except (ValueError,) as ex:
+        dResult['revision'] = 'from<br/><br/>{}<br/><br/>to<br/><br/>{}'.format(*('Active: {} / Inprocess: {}'.format(active, inproc) for (active, inproc) in (tOld, tNew)))
+    except Exception as ex:
         dResult['errors'].append(str(ex))
 
     return JsonResponse(dResult)
