@@ -98,7 +98,7 @@ def ParseUpload(oSourceFile):
         # Delete temporary file
         os.remove(Temp.name)
 
-        if oBOM.dHeaderData['Configuration/Ordering Status'] not in ['In Process','Obsolete','Active','Discontinued','Cancelled']:
+        if oBOM.dHeaderData['Configuration/Ordering Status'] not in ['In Process','Active','Discontinued','Cancelled','Inactive']:
             raise ParseException(str(oBOM.dHeaderData['Configuration/Ordering Status']) + " is not a valid Configuration/Ordering Status")
 
         oBaseline = None

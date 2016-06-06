@@ -6,229 +6,252 @@ from BoMConfig.templatetags.customtemplatetags import searchscramble
 from BoMConfig.utils import GenerateRevisionSummary, GrabValue
 from BoMConfig.views.configuration import BuildDataArray
 
+import datetime
+from io import StringIO, BytesIO
 from itertools import chain
 import openpyxl
 from openpyxl import utils
 from openpyxl.styles import Font, Color, colors, Border, Alignment, Side, borders, GradientFill
 import os
 from functools import cmp_to_key
+from urllib.parse import unquote
+import zipfile
 
 
-def Download(oRequest):
-    download = oRequest.GET.get('download', None)
-    if download:
-        oHeader = download[5:-10]
-    else:
-        oHeader = oRequest.session.get('existing', None)
+def WriteConfigToFile(oHeader, sHyperlinkURL=''):
+    sCurrentDir = os.getenv('PYTHONPATH', os.getcwd()).split(';')[0]
+    oFile = openpyxl.load_workbook(
+        str(os.path.join(sCurrentDir,
+                         ('BoMConfig/' if not sCurrentDir.endswith('BoMConfig') else '')+
+                         'static/BoMConfig/PSM BoM Upload Template PA5 FORMULAS.xlsx'))
+    )
+
+    # Populate Header data
+    oFile.active = oFile.sheetnames.index('1) BOM Config Header')
+    oFile.active['B1'] = oHeader.person_responsible
+    oFile.active['B2'] = oHeader.react_request
+    oFile.active['B3'] = oHeader.bom_request_type.name
+    oFile.active['B4'] = oHeader.customer_unit.name
+    oFile.active['B5'] = oHeader.customer_name
+    oFile.active['B6'] = oHeader.sales_office
+    oFile.active['B7'] = oHeader.sales_group
+    oFile.active['B8'] = oHeader.sold_to_party
+    oFile.active['B9'] = oHeader.ship_to_party
+    oFile.active['B10'] = oHeader.bill_to_party
+    oFile.active['B11'] = oHeader.ericsson_contract
+    oFile.active['B12'] = oHeader.payment_terms
+
+    oFile.active['B14'] = oHeader.projected_cutover
+    oFile.active['B15'] = oHeader.program.name if oHeader.program else None
+    oFile.active['B16'] = oHeader.configuration_designation
+    oFile.active['B17'] = oHeader.customer_designation
+    oFile.active['B18'] = oHeader.technology.name if oHeader.technology else None
+    oFile.active['B19'] = oHeader.product_area1.name if oHeader.product_area1 else None
+    oFile.active['B20'] = oHeader.product_area2.name if oHeader.product_area2 else None
+    oFile.active['B21'] = oHeader.radio_frequency.name if oHeader.radio_frequency else None
+    oFile.active['B22'] = oHeader.radio_band.name if oHeader.radio_band else None
+    oFile.active['B23'] = oHeader.optional_free_text1
+    oFile.active['B24'] = oHeader.optional_free_text2
+    oFile.active['B25'] = oHeader.optional_free_text3
+    oFile.active['B26'] = oHeader.inquiry_site_template
+    oFile.active['B27'] = oHeader.readiness_complete / 100 if oHeader.readiness_complete else oHeader.readiness_complete
+    oFile.active['B28'] = ('X' if oHeader.complete_delivery else None)
+    oFile.active['B29'] = ('X' if oHeader.no_zip_routing else None)
+    oFile.active['B30'] = oHeader.valid_to_date
+    oFile.active['B31'] = oHeader.valid_from_date
+    oFile.active['B32'] = oHeader.shipping_condition
+
+    oFile.active['B34'] = oHeader.baseline_impacted
+    oFile.active['B35'] = oHeader.model
+    oFile.active['B36'] = oHeader.model_description
+    oFile.active['B37'] = oHeader.model_replaced
+    oFile.active['B38'] = oHeader.initial_revision
+
+    oFile.active['B40'] = oHeader.configuration_status.name
+
+    oFile.active['B42'] = oHeader.workgroup
+    oFile.active['B43'] = oHeader.name
+
+    oFile.active['B45'] = ('X' if oHeader.pick_list else None)
+    oFile.active.sheet_view.showGridLines = False
+
+    # Populate Config Entry tab
+    oFile.active = oFile.sheetnames.index('2) BOM Config Entry')
+    oFile.active.sheet_view.showGridLines = False
+    # img = Image(static('config_boxes.png'))
+    # img.anchor(oFile.active['A1'])
+    if oHeader.configuration:
+        oFile.active['D5'] = ('X' if oHeader.configuration.reassign else None)
+        oFile.active['D8'] = ('X' if oHeader.configuration.PSM_on_hold else None)
+        oFile.active['N4'] = ('X' if oHeader.configuration.internal_external_linkage else None)
+        oFile.active['Q4'] = (
+        '$ ' + str(oHeader.configuration.zpru_total) if oHeader.configuration.zpru_total else '$ xx,xxx.xx')
+
+        iRow = 13
+        aConfigLines = ConfigLine.objects.filter(config=oHeader.configuration).order_by('line_number')
+        aConfigLines = sorted(aConfigLines, key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
+        for oConfigLine in aConfigLines:
+            oFile.active['A' + str(iRow)] = oConfigLine.line_number
+            oFile.active['B' + str(iRow)] = (
+                                            '..' if oConfigLine.is_grandchild else '.' if oConfigLine.is_child else '') + oConfigLine.part.base.product_number
+            oFile.active['C' + str(iRow)] = oConfigLine.part.product_description
+            oFile.active['D' + str(iRow)] = oConfigLine.order_qty
+            oFile.active['E' + str(iRow)] = oConfigLine.part.base.unit_of_measure
+            oFile.active['F' + str(iRow)] = oConfigLine.plant
+            oFile.active['G' + str(iRow)] = oConfigLine.sloc
+            oFile.active['H' + str(iRow)] = oConfigLine.item_category
+            oFile.active['I' + str(iRow)] = oConfigLine.pcode
+            oFile.active['J' + str(iRow)] = oConfigLine.commodity_type
+            oFile.active['K' + str(iRow)] = oConfigLine.package_type
+            oFile.active['L' + str(iRow)] = oConfigLine.spud
+            oFile.active['M' + str(iRow)] = oConfigLine.REcode
+            oFile.active['N' + str(iRow)] = oConfigLine.mu_flag
+            oFile.active['O' + str(iRow)] = oConfigLine.x_plant
+            oFile.active['P' + str(iRow)] = oConfigLine.internal_notes
+            # oFile.active['Q' + str(iRow)] = oConfigLine.linepricing.unit_price
+            oFile.active['Q' + str(iRow)] = str(oConfigLine.linepricing.override_price) if str(
+                oConfigLine.line_number) == '10' and \
+                                                                                           hasattr(oConfigLine,
+                                                                                                   'linepricing') and oConfigLine.linepricing.override_price else oConfigLine.linepricing.pricing_object.unit_price \
+                if GrabValue(oConfigLine, 'linepricing.pricing_object') else ''
+            oFile.active['R' + str(iRow)] = oConfigLine.higher_level_item
+            oFile.active['S' + str(iRow)] = oConfigLine.material_group_5
+            oFile.active['T' + str(iRow)] = oConfigLine.purchase_order_item_num
+            oFile.active['U' + str(iRow)] = oConfigLine.condition_type
+            oFile.active['V' + str(iRow)] = oConfigLine.amount
+            oFile.active['W' + str(iRow)] = oConfigLine.traceability_req
+            oFile.active['X' + str(iRow)] = oConfigLine.customer_asset
+            oFile.active['Y' + str(iRow)] = oConfigLine.customer_asset_tagging
+            oFile.active['Z' + str(iRow)] = oConfigLine.customer_number
+            oFile.active['AA' + str(iRow)] = oConfigLine.sec_customer_number
+            oFile.active['AB' + str(iRow)] = oConfigLine.vendor_article_number
+            oFile.active['AC' + str(iRow)] = oConfigLine.comments
+            oFile.active['AD' + str(iRow)] = oConfigLine.additional_ref
+            iRow += 1
+            # end for
     # end if
 
+    # Populate Config ToC tab
+    oFile.active = oFile.sheetnames.index('2a) BoM Config ToC')
+    oFile.active.sheet_view.showGridLines = False
+    if oHeader.configuration:
+        oFile.active['D5'] = ('X' if oHeader.configuration.reassign else None)
+        oFile.active['D8'] = ('X' if oHeader.configuration.PSM_on_hold else None)
+        oFile.active['A13'] = oHeader.configuration_designation
+        oFile.active['B13'] = oHeader.customer_designation or None
+        oFile.active['C13'] = oHeader.technology.name if oHeader.technology else None
+        oFile.active['D13'] = oHeader.product_area1.name if oHeader.product_area1 else None
+        oFile.active['E13'] = oHeader.product_area2.name if oHeader.product_area2 else None
+        oFile.active['F13'] = oHeader.model or None
+        oFile.active['G13'] = oHeader.model_description or None
+        oFile.active['H13'] = oHeader.model_replaced or None
+        oFile.active['J13'] = oHeader.bom_request_type.name
+        oFile.active['K13'] = oHeader.configuration_status.name or None
+        oFile.active['L13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith(
+            '1') else None
+        oFile.active['M13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith(
+            '4') else None
+        oFile.active['N13'] = oHeader.internal_notes
+        oFile.active['O13'] = oHeader.external_notes
+        if sHyperlinkURL:
+            oFile.active['I13'] = '=HYPERLINK("' + sHyperlinkURL + '","' + sHyperlinkURL + '")'
+    # end if
+
+    # Populate Config Revision tab
+    oFile.active = oFile.sheetnames.index('2b) BoM Config Revision')
+    oFile.active.sheet_view.showGridLines = False
+    if oHeader.configuration:
+        iRow = 13
+        aRevData = BuildDataArray(oHeader, revision=True)
+        for oRev in aRevData:
+            oFile.active['A' + str(iRow)] = oRev['0']
+            oFile.active['B' + str(iRow)] = oRev['1']
+            oFile.active['C' + str(iRow)] = oRev['2']
+            oFile.active['D' + str(iRow)] = oRev['3']
+            oFile.active['E' + str(iRow)] = oRev['4']
+            oFile.active['F' + str(iRow)] = oRev['5']
+            oFile.active['G' + str(iRow)] = oRev['6']
+            # end for
+    # end if
+
+    # Populate SAP inquiry tab
+    oFile.active = oFile.sheetnames.index('3a) SAP Inquiry Creation')
+    oFile.active.sheet_view.showGridLines = False
+    if oHeader.configuration:
+        oFile.active['I4'] = ('X' if oHeader.configuration.internal_external_linkage else None)
+        oFile.active['M4'] = (
+        '$ ' + str(oHeader.configuration.zpru_total) if oHeader.configuration.zpru_total else '$ xx,xxx.xx')
+
+        iRow = 13
+        aConfigLines = ConfigLine.objects.filter(config=oHeader.configuration).order_by('line_number')
+        aConfigLines = sorted(aConfigLines, key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
+        for oConfigLine in aConfigLines:
+            if '.' in oConfigLine.line_number:
+                continue
+            oFile.active['A' + str(iRow)] = oConfigLine.line_number
+            oFile.active['B' + str(iRow)] = oConfigLine.part.base.product_number
+            oFile.active['C' + str(iRow)] = oConfigLine.part.product_description
+            oFile.active['D' + str(iRow)] = oConfigLine.order_qty
+            oFile.active['E' + str(iRow)] = oConfigLine.plant
+            oFile.active['F' + str(iRow)] = oConfigLine.sloc
+            oFile.active['G' + str(iRow)] = oConfigLine.item_category
+            # oFile.active['H' + str(iRow)] = oConfigLine.linepricing.unit_price
+            oFile.active['H' + str(iRow)] = str(oConfigLine.linepricing.override_price) if str(
+                oConfigLine.line_number) == '10' and \
+                                                                                           hasattr(oConfigLine,
+                                                                                                   'linepricing') and oConfigLine.linepricing.override_price else oConfigLine.linepricing.pricing_object.unit_price \
+                if GrabValue(oConfigLine, 'linepricing.pricing_object') else ''
+            oFile.active['J' + str(iRow)] = oConfigLine.material_group_5
+            oFile.active['K' + str(iRow)] = oConfigLine.purchase_order_item_num
+            oFile.active['L' + str(iRow)] = oConfigLine.condition_type
+            oFile.active['M' + str(iRow)] = oConfigLine.amount
+            iRow += 1
+            # end for
+    # end if
+
+    # Populate SAP Site Template tab
+    oFile.active = oFile.sheetnames.index('3b) SAP ST Creation')
+    oFile.active.sheet_view.showGridLines = False
+    if oHeader.configuration:
+        iRow = 13
+        aConfigLines = ConfigLine.objects.filter(config=oHeader.configuration).order_by('line_number')
+        aConfigLines = sorted(aConfigLines, key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
+        for oConfigLine in aConfigLines:
+            if '.' in oConfigLine.line_number:
+                continue
+
+            oFile.active['A' + str(iRow)] = oConfigLine.line_number
+            oFile.active['B' + str(iRow)] = oConfigLine.part.base.product_number
+            oFile.active['C' + str(iRow)] = oConfigLine.part.product_description
+            oFile.active['D' + str(iRow)] = oConfigLine.order_qty
+            oFile.active['E' + str(iRow)] = oConfigLine.plant
+            oFile.active['F' + str(iRow)] = oConfigLine.sloc
+            oFile.active['G' + str(iRow)] = oConfigLine.item_category
+            oFile.active['H' + str(iRow)] = oConfigLine.higher_level_item
+            iRow += 1
+            # end for
+    # end if
+
+    return oFile
+
+
+def Download(oRequest, iHeaderId=None):
+    if iHeaderId:
+        oHeader = iHeaderId
+    else:
+        download = oRequest.GET.get('download', None)
+        if download:
+            oHeader = download[5:-10]
+        else:
+            oHeader = oRequest.session.get('existing', None)
+        # end if
 
     if oHeader:
         oHeader = Header.objects.get(pk=oHeader)
-        sFileName = oHeader.configuration_designation + ".xlsx"
+        sFileName = oHeader.configuration_designation + ('_' + oHeader.program.name if oHeader.program else '') + '.xlsx'
 
-        oFile = openpyxl.load_workbook(
-            str(os.path.join(os.getenv('PYTHONPATH', os.getcwd()).split(';')[0], 'BoMConfig/static/BoMConfig/PSM BoM Upload Template PA5 FORMULAS.xlsx'))
-        )
-
-        # Populate Header data
-        oFile.active = oFile.sheetnames.index('1) BOM Config Header')
-        oFile.active['B1'] = oHeader.person_responsible
-        oFile.active['B2'] = oHeader.react_request
-        oFile.active['B3'] = oHeader.bom_request_type.name
-        oFile.active['B4'] = oHeader.customer_unit.name
-        oFile.active['B5'] = oHeader.customer_name
-        oFile.active['B6'] = oHeader.sales_office
-        oFile.active['B7'] = oHeader.sales_group
-        oFile.active['B8'] = oHeader.sold_to_party
-        oFile.active['B9'] = oHeader.ship_to_party
-        oFile.active['B10'] = oHeader.bill_to_party
-        oFile.active['B11'] = oHeader.ericsson_contract
-        oFile.active['B12'] = oHeader.payment_terms
-
-        oFile.active['B14'] = oHeader.projected_cutover
-        oFile.active['B15'] = oHeader.program.name if oHeader.program else None
-        oFile.active['B16'] = oHeader.configuration_designation
-        oFile.active['B17'] = oHeader.customer_designation
-        oFile.active['B18'] = oHeader.technology.name if oHeader.technology else None
-        oFile.active['B19'] = oHeader.product_area1.name if oHeader.product_area1 else None
-        oFile.active['B20'] = oHeader.product_area2.name if oHeader.product_area2 else None
-        oFile.active['B21'] = oHeader.radio_frequency.name if oHeader.radio_frequency else None
-        oFile.active['B22'] = oHeader.radio_band.name if oHeader.radio_band else None
-        oFile.active['B23'] = oHeader.optional_free_text1
-        oFile.active['B24'] = oHeader.optional_free_text2
-        oFile.active['B25'] = oHeader.optional_free_text3
-        oFile.active['B26'] = oHeader.inquiry_site_template
-        oFile.active['B27'] = oHeader.readiness_complete / 100 if oHeader.readiness_complete else oHeader.readiness_complete
-        oFile.active['B28'] = ('X' if oHeader.complete_delivery else None)
-        oFile.active['B29'] = ('X' if oHeader.no_zip_routing else None)
-        oFile.active['B30'] = oHeader.valid_to_date
-        oFile.active['B31'] = oHeader.valid_from_date
-        oFile.active['B32'] = oHeader.shipping_condition
-
-        oFile.active['B34'] = oHeader.baseline_impacted
-        oFile.active['B35'] = oHeader.model
-        oFile.active['B36'] = oHeader.model_description
-        oFile.active['B37'] = oHeader.model_replaced
-        oFile.active['B38'] = oHeader.initial_revision
-
-        oFile.active['B40'] = oHeader.configuration_status.name
-
-        oFile.active['B42'] = oHeader.workgroup
-        oFile.active['B43'] = oHeader.name
-
-        oFile.active['B45'] = ('X' if oHeader.pick_list else None)
-        oFile.active.sheet_view.showGridLines = False
-
-        # Populate Config Entry tab
-        oFile.active = oFile.sheetnames.index('2) BOM Config Entry')
-        oFile.active.sheet_view.showGridLines = False
-        # img = Image(static('config_boxes.png'))
-        # img.anchor(oFile.active['A1'])
-        if oHeader.configuration:
-            oFile.active['D5'] = ('X' if oHeader.configuration.reassign else None)
-            oFile.active['D8'] = ('X' if oHeader.configuration.PSM_on_hold else None)
-            oFile.active['N4'] = ('X' if oHeader.configuration.internal_external_linkage else None)
-            oFile.active['Q4'] = ('$ ' + str(oHeader.configuration.zpru_total) if oHeader.configuration.zpru_total else '$ xx,xxx.xx')
-
-            iRow = 13
-            aConfigLines = ConfigLine.objects.filter(config=oHeader.configuration).order_by('line_number')
-            aConfigLines = sorted(aConfigLines, key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
-            for oConfigLine in aConfigLines:
-                oFile.active['A' + str(iRow)] = oConfigLine.line_number
-                oFile.active['B' + str(iRow)] = ('..' if oConfigLine.is_grandchild else '.' if oConfigLine.is_child else '') + oConfigLine.part.base.product_number
-                oFile.active['C' + str(iRow)] = oConfigLine.part.product_description
-                oFile.active['D' + str(iRow)] = oConfigLine.order_qty
-                oFile.active['E' + str(iRow)] = oConfigLine.part.base.unit_of_measure
-                oFile.active['F' + str(iRow)] = oConfigLine.plant
-                oFile.active['G' + str(iRow)] = oConfigLine.sloc
-                oFile.active['H' + str(iRow)] = oConfigLine.item_category
-                oFile.active['I' + str(iRow)] = oConfigLine.pcode
-                oFile.active['J' + str(iRow)] = oConfigLine.commodity_type
-                oFile.active['K' + str(iRow)] = oConfigLine.package_type
-                oFile.active['L' + str(iRow)] = oConfigLine.spud
-                oFile.active['M' + str(iRow)] = oConfigLine.REcode
-                oFile.active['N' + str(iRow)] = oConfigLine.mu_flag
-                oFile.active['O' + str(iRow)] = oConfigLine.x_plant
-                oFile.active['P' + str(iRow)] = oConfigLine.internal_notes
-                # oFile.active['Q' + str(iRow)] = oConfigLine.linepricing.unit_price
-                oFile.active['Q' + str(iRow)] = str(oConfigLine.linepricing.override_price) if str(oConfigLine.line_number) == '10' and\
-                    hasattr(oConfigLine,'linepricing') and oConfigLine.linepricing.override_price else oConfigLine.linepricing.pricing_object.unit_price\
-                    if GrabValue(oConfigLine,'linepricing.pricing_object') else ''
-                oFile.active['R' + str(iRow)] = oConfigLine.higher_level_item
-                oFile.active['S' + str(iRow)] = oConfigLine.material_group_5
-                oFile.active['T' + str(iRow)] = oConfigLine.purchase_order_item_num
-                oFile.active['U' + str(iRow)] = oConfigLine.condition_type
-                oFile.active['V' + str(iRow)] = oConfigLine.amount
-                oFile.active['W' + str(iRow)] = oConfigLine.traceability_req
-                oFile.active['X' + str(iRow)] = oConfigLine.customer_asset
-                oFile.active['Y' + str(iRow)] = oConfigLine.customer_asset_tagging
-                oFile.active['Z' + str(iRow)] = oConfigLine.customer_number
-                oFile.active['AA' + str(iRow)] = oConfigLine.sec_customer_number
-                oFile.active['AB' + str(iRow)] = oConfigLine.vendor_article_number
-                oFile.active['AC' + str(iRow)] = oConfigLine.comments
-                oFile.active['AD' + str(iRow)] = oConfigLine.additional_ref
-                iRow += 1
-            # end for
-        # end if
-
-        # Populate Config ToC tab
-        oFile.active = oFile.sheetnames.index('2a) BoM Config ToC')
-        oFile.active.sheet_view.showGridLines = False
-        if oHeader.configuration:
-            oFile.active['D5'] = ('X' if oHeader.configuration.reassign else None)
-            oFile.active['D8'] = ('X' if oHeader.configuration.PSM_on_hold else None)
-            oFile.active['A13'] = oHeader.configuration_designation
-            oFile.active['B13'] = oHeader.customer_designation or None
-            oFile.active['C13'] = oHeader.technology.name if oHeader.technology else None
-            oFile.active['D13'] = oHeader.product_area1.name if oHeader.product_area1 else None
-            oFile.active['E13'] = oHeader.product_area2.name if oHeader.product_area2 else None
-            oFile.active['F13'] = oHeader.model or None
-            oFile.active['G13'] = oHeader.model_description or None
-            oFile.active['H13'] = oHeader.model_replaced or None
-            oFile.active['J13'] = oHeader.bom_request_type.name
-            oFile.active['K13'] = oHeader.configuration_status.name or None
-            oFile.active['L13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('1') else None
-            oFile.active['M13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('4') else None
-            oFile.active['N13'] = oHeader.internal_notes
-            oFile.active['O13'] = oHeader.external_notes
-            oFile.active['I13'] = '=HYPERLINK("' + oRequest.build_absolute_uri(reverse('bomconfig:search')) +\
-                                  '?config=' + searchscramble(oHeader.pk) + '","' +\
-                                  oRequest.build_absolute_uri(reverse('bomconfig:search')) + '?config=' +\
-                                  searchscramble(oHeader.pk) + '")'
-        # end if
-
-        # Populate Config Revision tab
-        oFile.active = oFile.sheetnames.index('2b) BoM Config Revision')
-        oFile.active.sheet_view.showGridLines = False
-        if oHeader.configuration:
-            iRow = 13
-            aRevData = BuildDataArray(oHeader, revision=True)
-            for oRev in aRevData:
-                oFile.active['A' + str(iRow)] = oRev['0']
-                oFile.active['B' + str(iRow)] = oRev['1']
-                oFile.active['C' + str(iRow)] = oRev['2']
-                oFile.active['D' + str(iRow)] = oRev['3']
-                oFile.active['E' + str(iRow)] = oRev['4']
-                oFile.active['F' + str(iRow)] = oRev['5']
-                oFile.active['G' + str(iRow)] = oRev['6']
-            # end for
-        # end if
-
-        # Populate SAP inquiry tab
-        oFile.active = oFile.sheetnames.index('3a) SAP Inquiry Creation')
-        oFile.active.sheet_view.showGridLines = False
-        if oHeader.configuration:
-            oFile.active['I4'] = ('X' if oHeader.configuration.internal_external_linkage else None)
-            oFile.active['M4'] = ('$ ' + str(oHeader.configuration.zpru_total) if oHeader.configuration.zpru_total else '$ xx,xxx.xx')
-
-            iRow = 13
-            aConfigLines = ConfigLine.objects.filter(config=oHeader.configuration).order_by('line_number')
-            aConfigLines = sorted(aConfigLines, key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
-            for oConfigLine in aConfigLines:
-                if '.' in oConfigLine.line_number:
-                    continue
-                oFile.active['A' + str(iRow)] = oConfigLine.line_number
-                oFile.active['B' + str(iRow)] = oConfigLine.part.base.product_number
-                oFile.active['C' + str(iRow)] = oConfigLine.part.product_description
-                oFile.active['D' + str(iRow)] = oConfigLine.order_qty
-                oFile.active['E' + str(iRow)] = oConfigLine.plant
-                oFile.active['F' + str(iRow)] = oConfigLine.sloc
-                oFile.active['G' + str(iRow)] = oConfigLine.item_category
-                # oFile.active['H' + str(iRow)] = oConfigLine.linepricing.unit_price
-                oFile.active['H' + str(iRow)] = str(oConfigLine.linepricing.override_price) if str(oConfigLine.line_number) == '10' and\
-                    hasattr(oConfigLine,'linepricing') and oConfigLine.linepricing.override_price else oConfigLine.linepricing.pricing_object.unit_price\
-                    if GrabValue(oConfigLine,'linepricing.pricing_object') else ''
-                oFile.active['J' + str(iRow)] = oConfigLine.material_group_5
-                oFile.active['K' + str(iRow)] = oConfigLine.purchase_order_item_num
-                oFile.active['L' + str(iRow)] = oConfigLine.condition_type
-                oFile.active['M' + str(iRow)] = oConfigLine.amount
-                iRow += 1
-            # end for
-        # end if
-
-        # Populate SAP Site Template tab
-        oFile.active = oFile.sheetnames.index('3b) SAP ST Creation')
-        oFile.active.sheet_view.showGridLines = False
-        if oHeader.configuration:
-            iRow = 13
-            aConfigLines = ConfigLine.objects.filter(config=oHeader.configuration).order_by('line_number')
-            aConfigLines = sorted(aConfigLines, key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
-            for oConfigLine in aConfigLines:
-                if '.' in oConfigLine.line_number:
-                    continue
-
-                oFile.active['A' + str(iRow)] = oConfigLine.line_number
-                oFile.active['B' + str(iRow)] = oConfigLine.part.base.product_number
-                oFile.active['C' + str(iRow)] = oConfigLine.part.product_description
-                oFile.active['D' + str(iRow)] = oConfigLine.order_qty
-                oFile.active['E' + str(iRow)] = oConfigLine.plant
-                oFile.active['F' + str(iRow)] = oConfigLine.sloc
-                oFile.active['G' + str(iRow)] = oConfigLine.item_category
-                oFile.active['H' + str(iRow)] = oConfigLine.higher_level_item
-                iRow += 1
-            # end for
-        # end if
+        oFile = WriteConfigToFile(oHeader, oRequest.build_absolute_uri(reverse('bomconfig:search')) +
+                                  '?config=' + searchscramble(oHeader.pk))
 
         response = HttpResponse(content_type='application/ms-excel')
         response['Content-Disposition'] = 'attachment;filename="{0}"'.format(sFileName)
@@ -238,6 +261,32 @@ def Download(oRequest):
     else:
         return HttpResponse()
 # end def
+
+
+def DownloadMultiple(oRequest):
+    records = unquote(oRequest.GET.get('list')).split(',')
+    records = list(set(records))
+
+    if len(records) == 1:
+        return Download(oRequest, records[0])
+
+    sFilename = 'PCBM_{}_{}.zip'.format(oRequest.user.username, datetime.datetime.now().strftime('%d%m%Y%H%M%S'))
+    zipStream = BytesIO()
+    zf = zipfile.ZipFile(zipStream, "w")
+
+    for headID in records:
+        oHeader = Header.objects.get(id=headID)
+        sHeaderName = oHeader.configuration_designation + ('_' + oHeader.program.name if oHeader.program else '') + '.xlsx'
+        oFile = WriteConfigToFile(oHeader)
+        fileStream = BytesIO()
+        oFile.save(fileStream)
+        zf.writestr(sHeaderName, fileStream.getvalue())
+        fileStream.close()
+
+    zf.close()
+    response = HttpResponse(zipStream.getvalue(), content_type='application/x-zip-compressed')
+    response['Content-Disposition'] = 'attachment;filename="{0}"'.format(sFilename)
+    return response
 
 
 def DownloadBaseline(oRequest):
@@ -328,7 +377,7 @@ def DownloadBaseline(oRequest):
             ).header_set.exclude(configuration_status__name__in=('On Hold',)).order_by('configuration_status', 'pick_list', 'configuration_designation'), aHeaders))
         else:
             aHeaders = oBaseline.baseline_revision_set.get(version=sVersion) \
-                .header_set.exclude(configuration_status__name__in=('On Hold',)).exclude(  # 'Discontinued', 'Obsolete',
+                .header_set.exclude(configuration_status__name__in=('On Hold',)).exclude(  # 'Discontinued', 'Inactive',
                 program__name__in=('DTS',)) \
                 .order_by('configuration_status', 'pick_list', 'configuration_designation')
             aHeaders = list(aHeaders)
@@ -347,7 +396,7 @@ def DownloadBaseline(oRequest):
             elif oHeader.configuration_status.name == 'Discontinued' and 'Discontinued' not in oFile.get_sheet_names():
                 oSheet = oFile.create_sheet(title="Discontinued")
                 oSheet.sheet_properties.tabColor = 'FF0000'
-            elif oHeader.configuration_status.name == 'Obsolete':
+            elif oHeader.configuration_status.name == 'Inactive':
                 continue
 
             iCurrentRow = 2

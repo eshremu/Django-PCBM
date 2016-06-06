@@ -87,7 +87,7 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
             # end for
         # end if
 
-        # 'Obsolete' current active version of records
+        # 'Inactive' current active version of records
         oHeader.configuration_status = REF_STATUS.objects.get(name='Inactive')
         if oHeader.change_comments:
             oHeader.change_comments += '\n'
@@ -191,7 +191,7 @@ def MassUploaderUpdate(oBaseline=None):
                 I.E.: If a configuration is Active on revision AD, and another configuration is active on AF, and the
                 baseline is on revision AF, then the AD config needs to be on AF, but we also need to create a copy on
                 revision AE, so that we can maintain a historical track of what configs were on which revisions, etc.
-            -- Historical entries will be corrected to show status as 'Obsolete' so that only the most recent revision
+            -- Historical entries will be corrected to show status as 'Inactive' so that only the most recent revision
                 is active, but historical data still exists
             -- Revision History items will be generated/updated for each baseline revision from earliest to current
         - If 'oBaseline' is provided, the above will only be done for the Baseline provided
@@ -230,7 +230,7 @@ def MassUploaderUpdate(oBaseline=None):
                     else:
                         dHeadersToMoveForward[key] = [[rev, '','']]
                     # end if
-                elif oHeader.configuration_status.name in ('Discontinued', 'Cancelled', 'Obsolete'):
+                elif oHeader.configuration_status.name in ('Discontinued', 'Cancelled', 'Inactive'):
                     if key in dHeadersToMoveForward:
                         if dHeadersToMoveForward[key][-1][1] == '':
                             dHeadersToMoveForward[key][-1][1] = rev
@@ -265,7 +265,7 @@ def MassUploaderUpdate(oBaseline=None):
 
                 if iFrom != len(aExistingRevs) - 1:
                     oHeader = Header.objects.get(configuration_designation=config_name, baseline_version=aExistingRevs[iFrom], program=prog)
-                    oHeader.configuration_status.name = 'Obsolete'
+                    oHeader.configuration_status = REF_STATUS.objects.get(name='Inactive')
                     if oHeader.change_comments:
                         oHeader.change_comments += '\nBaseline revision increment'
                     else:

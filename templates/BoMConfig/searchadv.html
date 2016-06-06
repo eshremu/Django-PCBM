@@ -1,5 +1,5 @@
 {% extends "BoMConfig/template.html" %}
-{% load customtemplatetag %}
+{% load customtemplatetags %}
 {% block content %}
 <div id="main-body" xmlns="http://www.w3.org/1999/html">
     {% if user.is_authenticated %}
@@ -51,7 +51,7 @@
                                 <option value="on_hold">On Hold</option>
                                 <option value="cancelled">Cancelled</option>
                                 <option value="discontinued">Discontinued</option>
-                                <option value="obsolete">Obsolete</option>
+                                <option value="inactive">Inactive</option>
                             </select></li>
                         <li><label for="inquiry_site">Inquiry / Site Template Number</label>
                             <input id="inquiry_site" type="text" name="inquiry_site"/></li>
@@ -139,6 +139,33 @@
                 $(this).prev().find('.caret').css({transform: 'rotate(0deg)'});
             }
         });
+
+        $(document).on('click', '.selectall', function(){
+            if($(this).prop('checked')){
+                $('.recordselect').attr('checked', 'checked');
+            } else {
+                $('.recordselect').removeAttr('checked');
+            }
+            $($('.recordselect')[0]).change();
+        });
+
+        $(document).on('click change', '.recordselect',function(){
+            if($('.recordselect:checked').length > 0) {
+                $('#download').removeAttr('disabled');
+            } else {
+                $('#download').attr('disabled', 'disabled');
+            }
+        });
+
+        $(document).on('click', '#download', function(){
+            var destination = "{% url 'bomconfig:downloadmulti' %}";
+            var list = '';
+            $('.recordselect:checked').each(function(i, elem){
+                list += $(elem).val() + ',';
+            });
+            destination += '?list=' + encodeURIComponent(list.slice(0, -1));
+            window.open(destination, '_blank','left=100,top=100,height=150,width=500,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no');
+        });
     });
 
     function search(eventObj){
@@ -202,4 +229,9 @@
         window.location.href = link.dataset.href;
     }
 </script>
+<style>
+    button:disabled {
+        color: #999999;
+    }
+</style>
 {% endblock %}

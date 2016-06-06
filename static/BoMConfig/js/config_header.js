@@ -37,6 +37,10 @@ $(document).ready(function(){
         form_resize();
     });
 
+    $('#download').click(function(){
+        window.open(download_url, '_blank','left=100,top=100,height=150,width=500,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no');
+    });
+
     $('#saveForm').click(function(){
         $('#formaction').val('save');
         $('#headerform').submit();
@@ -53,34 +57,62 @@ $(document).ready(function(){
     });
 
     $('#headerform').submit(function(){
-        var $model_replaced = $('#id_model_replaced');
-        if(model_replace_changed) {
-            $('#id_model_replaced_link').val($('#list_header_list [value="' + $model_replaced.val() + '"]').data('value'));
-            var aMatch = String($model_replaced.val()).match(/\s\(.+\)/);
-            if (aMatch && aMatch.length > 0) {
-                $model_replaced.val(String($model_replaced.val()).replace(aMatch[0], ""));
+        if(!model_replace_override){
+            var $model_replaced = $('#id_model_replaced');
+            if(model_replace_changed) {
+                $('#id_model_replaced_link').val($('#list_header_list [value="' + $model_replaced.val() + '"]').data('value'));
+                var aMatch = String($model_replaced.val()).match(/\s\(.+\)/);
+                if (aMatch && aMatch.length > 0) {
+                    $model_replaced.val(String($model_replaced.val()).replace(aMatch[0], ""));
+                }
             }
-        }
 
-        if(['Update','Discontinue','Replacement'].indexOf($('#id_bom_request_type option:selected').text()) != -1 && $model_replaced.val() == "" && !model_replace_override){
-            messageToModal('No replaced model',
-                    'Record request type is "Update", "Discontinue", or "Replacement" ' +
-                    'but "What Model is this replacing?" field is blank.  Are you sure this is what you intended?',
+            if(['Update','Discontinue','Replacement'].indexOf($('#id_bom_request_type option:selected').text()) != -1){
+                if($model_replaced.val() == "") {
+                    messageToModal('No replaced model',
+                        'Record request type is "Update", "Discontinue", or "Replacement" ' +
+                        'but "What Model is this replacing?" field is blank.  Are you sure this is what you intended?',
+                        function () {
+                            model_replace_override = true;
+                            $('#headerform').submit();
+                        }
+                    );
+                    return false;
+                } else if ($model_replaced.val() != $('#id_configuration_designation').val()){
+                    messageToModal('Replaced model mismatch',
+                        'Record request type is "Update", "Discontinue", or "Replacement" ' +
+                        'but "What Model is this replacing?" field does not match the "Configuration Designation" field.  Are you sure this is what you intended?',
+                        function () {
+                            model_replace_override = true;
+                            $('#headerform').submit();
+                        }
+                    );
+                    return false;
+                } else {
+                    save_form();
+                }
+            } else if($('#id_bom_request_type option:selected').text() == 'New' && $model_replaced.val() != "" && !alreadyDiscontinued){
+                messageToModal('Discontinuation imminent',
+                    'Record request type is "New" ' +
+                    'but "What Model is this replacing?" field is not blank.  This will cause the replaced model to be discontinued.  Are you sure this is what you intended?',
                     function(){
                         model_replace_override = true;
                         $('#headerform').submit();
                     }
-            );
-            return false;
-        } else if(model_replace_changed && $('#id_model_replaced_link').val() == "" && !model_replace_override){
-            messageToModal('No matching model found',
+                );
+                return false;
+            }else if(model_replace_changed && $('#id_model_replaced_link').val() == "") {
+                messageToModal('No matching model found',
                     "The model you intend to replace is not recognized as a currently active model.  Are you sure this is what you intended?",
-                    function(){
+                    function () {
                         model_replace_override = true;
                         $('#headerform').submit();
                     }
-            );
-            return false;
+                );
+                return false;
+            } else {
+                save_form();
+            }
         } else {
             save_form();
         }

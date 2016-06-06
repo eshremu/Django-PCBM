@@ -10,7 +10,7 @@ from django.contrib.auth.models import User
 
 from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
     PartBase, Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, SecurityPermission,\
-    REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_STATUS
+    REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_STATUS, REF_REQUEST
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException
 from BoMConfig.views.approvals_actions import CloneHeader
@@ -83,6 +83,8 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 
     bCanMoveForward = bCanReadConfig or bCanReadTOC or bCanReadRevision or bCanReadInquiry or bCanReadSiteTemplate
 
+    bDiscontinuationAlreadyCreated = False
+
     if sTemplate == 'BoMConfig/entrylanding.html':
         return redirect(reverse('bomconfig:configheader'))
     else:
@@ -101,6 +103,11 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 if not bFrameReadOnly:
                     Lock(oRequest, oExisting)
                 oExisting = Header.objects.get(pk=oExisting)
+                bDiscontinuationAlreadyCreated = True if oExisting.model_replaced_link and \
+                                                         oExisting.model_replaced_link.header_set.filter(
+                                                             bom_request_type__name='Discontinue',
+                                                             configuration_designation=oExisting.model_replaced_link.configuration_designation
+                                                         ) else False
             # end if
 
             if oRequest.method == 'POST' and oRequest.POST:
@@ -127,6 +134,20 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                             if bCanWriteHeader:
                                 oHeader = headerForm.save(commit=False)
                                 oHeader.shipping_condition = '71'
+                                if not bDiscontinuationAlreadyCreated and \
+                                        oHeader.bom_request_type.name in ('New', 'Discontinue') and \
+                                        oHeader.model_replaced_link:
+
+                                    oDiscontinued = CloneHeader(oHeader.model_replaced_link)
+                                    oDiscontinued.bom_request_type = REF_REQUEST.objects.get(name='Discontinue')
+                                    oDiscontinued.configuration_designation = oHeader.model_replaced_link.configuration_designation
+                                    oDiscontinued.model_replaced = oHeader.model_replaced_link.configuration_designation
+                                    oDiscontinued.model_replaced_link = oHeader.model_replaced_link
+                                    try:
+                                        oDiscontinued.save()
+                                        bDiscontinuationAlreadyCreated = True
+                                    except Exception as ex:
+                                        print(ex)
                                 oHeader.save()
 
                                 if not hasattr(oHeader, 'configuration'):
@@ -146,6 +167,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                     })
                                 else:
                                     if not oHeader.pick_list and oHeader.configuration.get_first_line().part.base.product_number != oHeader.configuration_designation:
+                                        # TODO: Update config line 10
                                         print('--> NEED TO UPDATE CONFIG LINE 10 <--')
                                         # (oPartBase,_) = PartBase.objects.get_or_create(**{'product_number':oHeader.configuration_designation})
                                         # oPartBase.unit_of_measure = 'PC'
@@ -252,7 +274,8 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             'can_continue': bCanMoveForward,
             'base_template': 'BoMConfig/frame_template.html' if bFrameReadOnly else 'BoMConfig/template.html',
             'frame_readonly': bFrameReadOnly,
-            'non_clonable': ['In Process', 'In Process/Pending']
+            'non_clonable': ['In Process', 'In Process/Pending'],
+            'discontinuation_done': int(bDiscontinuationAlreadyCreated)
         }
 
         return Default(oRequest, sTemplate, dContext)

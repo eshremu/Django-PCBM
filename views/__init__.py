@@ -7,5 +7,5 @@ from BoMConfig.views.baseline_mgmt import BaselineMgmt, BaselineLoad, BaselineRo
 from BoMConfig.views.pricing import ConfigPricing, OverviewPricing, PartPricing, GetConfigLines#, GetPartLine
 from BoMConfig.views.reporting import Report
 from BoMConfig.views.upload import Upload
-from BoMConfig.views.download import Download, DownloadBaseline
+from BoMConfig.views.download import Download, DownloadBaseline, DownloadMultiple
 from BoMConfig.views.approvals_actions import Approval, Action, AjaxApprove, ApprovalData

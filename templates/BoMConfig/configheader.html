@@ -56,9 +56,11 @@
             {% endif %}
             {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
             <span><span style="color: red;font-size:14pt;">*</span> = Required</span>
-            {% if headerForm.instance.pk and not frame_readonly %}
-            <input id="download" type="button" value="Download" onclick="window.location.href='{% url 'bomconfig:download' %}'"/>
-            {%  endif %}
+            {% if headerForm.instance.pk %}
+            {% if not frame_readonly or user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_BPMA_Architect" %}
+            <input id="download" type="button" value="Download"/>
+            {% endif %}
+            {% endif %}
             {% if header.configuration_status.name not in non_clonable %}
             {% if user|has_group:"BOM_PSM_" or user|has_group:"BOM_BPMA_Architect" %}
             <input id="clone" type="button" value="Clone" onclick="cloneHeader({{ header.id }});"/>
@@ -93,6 +95,7 @@
     var listfill_url = "{% url 'bomconfig:list_fill' %}";
     var listreactfill_url = "{% url 'bomconfig:list_react_fill' %}";
     var clone_url = "{% url 'bomconfig:configclone' %}";
+    var download_url = '{% url 'bomconfig:download' %}';
     var reactrequest_id = "#{{ headerForm.react_request.auto_id }}";
     var personresponsible_id = "#{{ headerForm.person_responsible.auto_id }}";
     var customername_id = "#{{ headerForm.customer_name.auto_id }}";
@@ -105,6 +108,7 @@
     var workgroup_id = "#{{ headerForm.workgroup.auto_id }}";
     var customerunit_id = "#{{ headerForm.customer_unit.auto_id }}";
     var ericssoncontract_id = "#{{ headerForm.ericsson_contract.auto_id }}";
+    var alreadyDiscontinued = {{ discontinuation_done }};
 </script>
 {% else %}
 <div>
