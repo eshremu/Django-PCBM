@@ -1,7 +1,8 @@
 from django.contrib import admin
+from django import forms
 
 from BoMConfig.models import *
-from BoMConfig.forms import LinePricingForm
+from BoMConfig.forms import LinePricingForm, DistroForm
 from django.contrib.sessions.models import Session
 
 # Register your models here.
@@ -65,6 +66,11 @@ class RevisionAdmin(admin.ModelAdmin):
             .order_by('baseline__title', 'version')
         return super(RevisionAdmin, self).render_change_form(request, context, *args, **kwargs)
 
+
+class DistroAdmin(admin.ModelAdmin):
+    form = DistroForm
+    filter_horizontal = ('users_included',)
+
 admin.site.register(Alert)
 admin.site.register(NewsItem)
 admin.site.register(Header, HeaderAdmin)
@@ -95,3 +101,4 @@ admin.site.register(REF_MATERIAL_GROUP)
 admin.site.register(REF_RADIO_FREQUENCY)
 admin.site.register(REF_RADIO_BAND)
 admin.site.register(REF_STATUS)
+admin.site.register(DistroList, DistroAdmin)

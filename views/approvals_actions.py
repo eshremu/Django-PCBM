@@ -127,6 +127,7 @@ def AjaxApprove(oRequest):
                 oHeader.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
                 oHeader.save()
         elif sAction in ('approve', 'disapprove', 'skip'):
+            from BoMConfig.views.download import EmailDownload
             aChain = HeaderTimeTracker.approvals()
             aBaselinesCompleted = []
             for index in range(len(aRecords)):
@@ -221,6 +222,7 @@ def AjaxApprove(oRequest):
             aBaselinesToComplete = Baseline.objects.filter(title__in=aBaselinesCompleted)
             for oBaseline in aBaselinesToComplete:
                 UpRev(oBaseline)
+                EmailDownload(oBaseline)
             # end for
         elif sAction == 'clone':
             oOldHeader = Header.objects.get(pk=aRecords[0])

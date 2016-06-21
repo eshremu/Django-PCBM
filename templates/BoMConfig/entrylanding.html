@@ -44,31 +44,6 @@
         });
     });
 </script>
-{#<script>#}
-{#    var closeButton = false;#}
-{#    $(document).ready(function(){#}
-{#        $(window).mouseout(function(){#}
-{#            closeButton = true;#}
-{#        });#}
-{##}
-{#        $(window).mouseover(function(){#}
-{#            closeButton = false;#}
-{#        });#}
-{##}
-{#        $(window).unload(function(){#}
-{#            if(closeButton){#}
-{#                $.ajax({#}
-{#                    type: "POST",#}
-{#                    async: false,#}
-{#                    headers:{#}
-{#                        'X-CSRFToken': getcookie('csrftoken')#}
-{#                    },#}
-{#                    url: "{% url 'bomconfig:finalunlock' %}"#}
-{#                });#}
-{#            }#}
-{#        });#}
-{#    });#}
-{#</script>#}
 {% else %}
 <div>
     <h4>You must log in to use this function</h4>

@@ -167,16 +167,16 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                     })
                                 else:
                                     if not oHeader.pick_list and oHeader.configuration.get_first_line().part.base.product_number != oHeader.configuration_designation:
-                                        # TODO: Update config line 10
-                                        print('--> NEED TO UPDATE CONFIG LINE 10 <--')
-                                        # (oPartBase,_) = PartBase.objects.get_or_create(**{'product_number':oHeader.configuration_designation})
-                                        # oPartBase.unit_of_measure = 'PC'
-                                        # oPartBase.save()
-                                        # (oPart,_) = Part.objects.get_or_create(**{'base': oPartBase,'product_description':oHeader.model_description})
-                                        # oFirstLine = oHeader.configuration.get_first_line()
-                                        # oFirstLine.part = oPart
-                                        # oFirstLine.vendor_article_number = oHeader.configuration_designation
-                                        # oFirstLine.save()
+                                        # DONE: TODO: Update config line 10
+                                        # print('--> NEED TO UPDATE CONFIG LINE 10 <--')
+                                        (oPartBase,_) = PartBase.objects.get_or_create(**{'product_number':oHeader.configuration_designation})
+                                        oPartBase.unit_of_measure = 'PC'
+                                        oPartBase.save()
+                                        (oPart,_) = Part.objects.get_or_create(**{'base': oPartBase,'product_description':oHeader.model_description})
+                                        oFirstLine = oHeader.configuration.get_first_line()
+                                        oFirstLine.part = oPart
+                                        oFirstLine.vendor_article_number = oHeader.configuration_designation
+                                        oFirstLine.save()
                                 # end if
 
                                 if not hasattr(oHeader, 'headerlock'):

@@ -1,8 +1,10 @@
 from django import forms
 from django.db import connections
 from django.utils.safestring import mark_safe
+from django.contrib.auth.models import User
+from django.contrib.admin.widgets import FilteredSelectMultiple
 
-from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject
+from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject, DistroList
 
 import datetime
 import os
@@ -281,3 +283,23 @@ class AutocompleteInput(forms.TextInput):
 
         return mark_safe(input_html + datatlist_html)
 # end class
+
+
+class DistroForm(forms.ModelForm):
+    # users_included = NamedUserChoiceField(queryset=User.objects.filter(groups__name__istartswith='BOM'))
+    class Meta:
+        model = DistroList
+        fields = '__all__'
+        widgets = {
+            'users_included': FilteredSelectMultiple('Users', False)
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.id:
+            self.fields['customer_unit'].widget.attrs['disabled'] = 'True'
+            self.fields['customer_unit'].widget.attrs['style'] = 'border:none;-webkit-appearance:none;'
+
+        self.fields['users_included'].queryset = User.objects.filter(groups__name__istartswith='BOM').distinct()
+        self.fields['users_included'].label_from_instance = lambda y:"%s" % (y.get_full_name())
+# end def

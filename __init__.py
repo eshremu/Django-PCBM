@@ -7,7 +7,7 @@ menulisting = [
     {'title':"Approvals","destination":"bomconfig:approval"},
     {'title':"Actions","destination":"bomconfig:action"},
     {'title':"Reporting","destination":"bomconfig:reporting"},
-    {'title':"Admin","destination":"/admin/"},
+    {'title':"Admin","destination":"bomconfig:mailadmin"},
     {'title':"Tools","children":[
         {'title':'REACT', 'destination':'http://eusaamw0065/REACT_test/default.asp?timesin=1'},
         ]

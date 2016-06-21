@@ -1,0 +1,185 @@
+{% extends 'BoMConfig/adminlanding.html' %}
+{% load staticfiles %}
+{% block subcontent %}
+    <script type="text/javascript" src="/admin/jsi18n/"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}admin/js/core.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}admin/js/jquery.min.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}admin/js/jquery.init.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}admin/js/SelectFilter2.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}admin/js/SelectBox.js"></script>
+
+    <form method="post" style="margin-top: 20px;">
+        {% csrf_token %}
+        <div id="formdiv">
+            <table>
+            {{ form.as_table }}
+            </table>
+        </div>
+        <div id="formbuttons" style="margin-top:10px;">
+            <button class="btn" value="save" type="submit" onclick="$('#id_customer_unit').removeAttr('disabled');">Save</button>
+        </div>
+    </form>
+    <script>
+        $('button[value="mailing"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        $(document).ready(function(){
+            $(window).on('load resize',function(){
+                form_resize();
+            });
+        });
+        function form_resize(){
+            var topbuttonheight = $('#action_buttons').height();
+            var bottombuttonheight = $('#formbuttons').outerHeight(true);
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + 6 + 20);
+
+            $('#formdiv').css("height", tableheight);
+            $('#formdiv').css("overflow", 'auto');
+        }
+    </script>
+    <style>
+        /* SELECTOR (FILTER INTERFACE) */
+
+        .helptext {
+            display: none;
+        }
+
+        .selector {
+            width: 840px;
+            float: left;
+        }
+
+        .selector select {
+            width: 400px;
+            height: 17.2em;
+        }
+
+        .selector-available, .selector-chosen {
+            float: left;
+            width: 400px;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        .selector-available h2, .selector-chosen h2 {
+            border: 1px solid #ccc;
+        }
+
+        .selector .selector-available h2, .selector .selector-chosen h2 {
+            background: white url({{ STATIC_URL }}admin/img/nav-bg.gif) bottom left repeat-x;
+            color: #666;
+            font-size: 150%;
+        }
+
+        .selector .selector-filter {
+            background: white;
+            border: 1px solid #ccc;
+            border-width: 1px 1px 0 1px;
+            padding: 3px;
+            color: #999;
+            font-size: 10px;
+            margin: 0;
+            text-align: left;
+        }
+
+        .selector .selector-filter label,
+        .inline-group .aligned .selector .selector-filter label {
+            width: 16px;
+            padding: 2px;
+        }
+
+        .selector .selector-available input {
+            width: 360px;
+        }
+
+        .selector ul.selector-chooser {
+            float: left;
+            width: 22px;
+            background-color: #eee;
+            border-radius: 10px;
+            margin: 10em 5px 0 5px;
+            padding: 0;
+        }
+
+        .selector-chooser li {
+            margin: 0;
+            padding: 3px;
+            list-style-type: none;
+        }
+
+        .selector select {
+            margin-bottom: 10px;
+            margin-top: 0;
+        }
+
+        .selector-add, .selector-remove {
+            width: 16px;
+            height: 16px;
+            display: block;
+            text-indent: -3000px;
+            overflow: hidden;
+        }
+
+        .selector-add {
+            background: url({{ STATIC_URL }}admin/img/selector-icons.gif) 0 -161px no-repeat;
+            cursor: default;
+            margin-bottom: 2px;
+        }
+
+        .active.selector-add {
+            background: url({{ STATIC_URL }}admin/img/selector-icons.gif) 0 -187px no-repeat;
+            cursor: pointer;
+        }
+
+        .selector-remove {
+            background: url({{ STATIC_URL }}admin/img/selector-icons.gif) 0 -109px no-repeat;
+            cursor: default;
+        }
+
+        .active.selector-remove {
+            background: url({{ STATIC_URL }}admin/img/selector-icons.gif) 0 -135px no-repeat;
+            cursor: pointer;
+        }
+
+        a.selector-chooseall, a.selector-clearall {
+            display: inline-block;
+            text-align: left;
+            margin-left: auto;
+            margin-right: auto;
+            font-weight: bold;
+            color: #666;
+        }
+
+        a.selector-chooseall {
+            padding: 3px 18px 3px 0;
+        }
+
+        a.selector-clearall {
+            padding: 3px 0 3px 18px;
+        }
+
+        a.active.selector-chooseall:hover, a.active.selector-clearall:hover {
+            color: #036;
+        }
+
+        a.selector-chooseall {
+            background: url({{ STATIC_URL }}admin/img/selector-icons.gif) right -263px no-repeat;
+            cursor: default;
+        }
+
+        a.active.selector-chooseall {
+            background: url({{ STATIC_URL }}admin/img/selector-icons.gif) right -289px no-repeat;
+            cursor: pointer;
+        }
+
+        a.selector-clearall {
+            background: url({{ STATIC_URL }}admin/img/selector-icons.gif) left -211px no-repeat;
+            cursor: default;
+        }
+
+        a.active.selector-clearall {
+            background: url({{ STATIC_URL }}admin/img/selector-icons.gif) left -237px no-repeat;
+            cursor: pointer;
+        }
+    </style>
+{% endblock %}

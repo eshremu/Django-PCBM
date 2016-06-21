@@ -40,5 +40,8 @@ urlpatterns = patterns(
     url(r'^list_react_fill/$', views.ListREACTFill, name='list_react_fill'),
     url(r'^approve/$', views.AjaxApprove, name='approve'),
     url(r'^approval_data/$', views.ApprovalData, name='approve_info'),
-    url(r'^password_change/$', auth_views.password_change, {'post_change_redirect': 'bomconfig:index'}, name='change_password')
+    url(r'^password_change/$', auth_views.password_change, {'post_change_redirect': 'bomconfig:index'}, name='change_password'),
+    url(r'^admin/mailing/$', views.MailingAdmin, name='mailadmin'),
+    url(r'^admin/mailing/change/(?P<id>\d+)/$', views.MailingChange, name='mailchange'),
+    url(r'^admin/mailing/add/$', views.MailingChange, name='mailadd')
 )

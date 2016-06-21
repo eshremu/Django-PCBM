@@ -572,27 +572,27 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
 
     for oHead in aAddedHeaders:
         if oHead.model_replaced:
-            sNewSummary += '\t{} replaces {}\n'.format(
+            sNewSummary += '    {} replaces {}\n'.format(
                 oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else ''),
                 oHead.model_replaced_link.configuration_designation +
                 (" ({})".format(oHead.model_replaced_link.program.name) if
                  oHead.model_replaced_link.program else '') if oHead.model_replaced_link else oHead.model_replaced
             )
-            sRemovedSummary += '\t{} is replaced by {}\n'.format(
+            sRemovedSummary += '    {} is replaced by {}\n'.format(
                 oHead.model_replaced_link.configuration_designation +
                 (" ({})".format(oHead.model_replaced_link.program.name) if
                  oHead.model_replaced_link.program else '') if oHead.model_replaced_link else oHead.model_replaced,
                 oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
             )
         else:
-            sNewSummary += '\t{} added\n'.format(
+            sNewSummary += '    {} added\n'.format(
                 oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
             )
         # end if
     # end for
 
     for oHead in aCurrButNotPrev:
-        sNewSummary += '\t{} added\n'.format(
+        sNewSummary += '    {} added\n'.format(
             oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
         )
     # end for
@@ -601,13 +601,13 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
         if any([obj in oHead.header_set.all() for obj in aAddedHeaders]):
             continue
 
-        sRemovedSummary += '\t{} discontinued\n'.format(
+        sRemovedSummary += '    {} discontinued\n'.format(
             oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
         )
     # end for
 
     for oHead in aPrevButNotCurrent:
-        sRemovedSummary += '\t{} removed\n'.format(
+        sRemovedSummary += '    {} removed\n'.format(
             oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
         )
     # end for
@@ -629,13 +629,10 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                 program=oHead.program,
                 baseline_version=sPrevious
             )
-        except Header.DoesNotExist:
-            oPrev = None
-        # end try
-
-        if oPrev:
             sTemp = HeaderComparison(oHead, oPrev)
-        # end if
+        except Header.DoesNotExist:
+            sTemp = ''
+        # end try
 
         if sTemp:
             oHead.change_notes = sTemp
@@ -651,7 +648,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
 
     if sNewSummary != 'Added:\n':
         sHistory += sNewSummary
-    if sRemovedSummary != 'Removed:\n':
+    if sRemovedSummary != 'Discontinued:\n':
         sHistory += sRemovedSummary
     if sUpdateSummary != "Updated:\n":
         sHistory += sUpdateSummary

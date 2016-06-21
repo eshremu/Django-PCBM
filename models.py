@@ -735,6 +735,17 @@ class HeaderTimeTracker(models.Model):
 # end class
 
 
+class DistroList(models.Model):
+    customer_unit = models.OneToOneField(REF_CUSTOMER)
+    # customer_name = models.ForeignKey(REF_CUSTOMER_NAME, null=True)
+    users_included = models.ManyToManyField(User)
+    additional_addresses = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return self.customer_unit.name
+#end def
+
+
 def sessionstr(self):
     if '_auth_user_id' in self.get_decoded():
         return User.objects.get(pk=self.get_decoded()['_auth_user_id']).username + '_' + str(self.session_key)

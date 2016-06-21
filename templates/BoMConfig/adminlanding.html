@@ -1,0 +1,35 @@
+{% extends "BoMConfig/template.html" %}
+{% load customtemplatetags %}
+		
+{% block content %}
+{% if user.is_authenticated %}
+<div id="main-body">
+    {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
+    <div id="action_buttons">
+		<button class="btn" type="button" name="action" value="user" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:mailadmin' %}'>User</button>
+		<button class="btn" type="button" name="action" value="mailing" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:mailadmin' %}'>Mailing</button>
+	</div>
+    {% block subcontent %}{% endblock %}
+    {% else %}
+    <h4>You do not have sufficient permissions to view this asset.</h4>
+    {% endif %}
+
+    <style>
+        #action_buttons button:hover {
+            background-color: #cccccc;
+        }
+    </style>
+</div>
+<script>
+    $('a.headtitle:contains("Admin")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc')
+
+    function cleanDataCheck(link){
+        window.location.href = link.dataset.href;
+    }
+</script>
+{% else %}
+<div>
+    <h4>You must log in to use this function</h4>
+</div>
+{% endif %}
+{% endblock %}
