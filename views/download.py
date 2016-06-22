@@ -405,36 +405,55 @@ def WriteBaselineToFile(oBaseline, sVersion):
         aHeaders = oBaseline.latest_revision \
             .header_set.exclude(configuration_status__name__in=('Discontinued', 'Inactive', 'On Hold')).exclude(
             program__name__in=('DTS',)) \
-            .order_by('configuration_status', 'pick_list', 'configuration_designation')
+            # .order_by('configuration_status', 'pick_list', 'configuration_designation')
+
         aHeaders = list(chain(Baseline_Revision.objects.get(
             baseline=oBaseline, version=oBaseline.current_inprocess_version
-        ).header_set.exclude(configuration_status__name__in=('On Hold',)).order_by('configuration_status', 'pick_list',
-                                                                                   'configuration_designation'),
-                              aHeaders))
+        ).header_set.exclude(configuration_status__name__in=('On Hold',))
+                              # .order_by('configuration_status', 'pick_list','configuration_designation')
+                              , aHeaders))
     else:
         aHeaders = oBaseline.baseline_revision_set.get(version=sVersion) \
             .header_set.exclude(configuration_status__name__in=('On Hold',)).exclude(  # 'Discontinued', 'Inactive',
             program__name__in=('DTS',)) \
-            .order_by('configuration_status', 'pick_list', 'configuration_designation')
+            # .order_by('configuration_status', 'pick_list', 'configuration_designation')
         aHeaders = list(aHeaders)
+
+    aHeaders.sort(key=lambda inst: inst.baseline_version, reverse=True)
+    aHeaders.sort(
+        key=lambda inst: (
+            str(inst.product_area2.name) if inst.product_area2 else 'ZZZZ',
+            int(inst.pick_list),
+            str(inst.configuration_designation)
+        )
+    )
 
     for oHeader in list(aHeaders):
         if str(oHeader.configuration_designation) in oFile.get_sheet_names():
             aHeaders.remove(oHeader)
             continue
 
-        if oHeader.configuration_status.name in (
-        'In Process', 'In Process/Pending') and 'In Process' not in oFile.get_sheet_names():
-            oSheet = oFile.create_sheet(title="In Process")
-            oSheet.sheet_properties.tabColor = '80FF00'
-        elif oHeader.configuration_status.name == 'Active' and 'Active' not in oFile.get_sheet_names():
-            oSheet = oFile.create_sheet(title="Active")
+        # if oHeader.configuration_status.name in (
+        # 'In Process', 'In Process/Pending') and 'In Process' not in oFile.get_sheet_names():
+        #     oSheet = oFile.create_sheet(title="In Process")
+        #     oSheet.sheet_properties.tabColor = '80FF00'
+        # elif oHeader.configuration_status.name == 'Active' and 'Active' not in oFile.get_sheet_names():
+        #     oSheet = oFile.create_sheet(title="Active")
+        #     oSheet.sheet_properties.tabColor = '0062FF'
+        # elif oHeader.configuration_status.name == 'Discontinued' and 'Discontinued' not in oFile.get_sheet_names():
+        #     oSheet = oFile.create_sheet(title="Discontinued")
+        #     oSheet.sheet_properties.tabColor = 'FF0000'
+        # elif oHeader.configuration_status.name == 'Inactive':
+        #     continue
+        if oHeader.product_area2 and oHeader.product_area2.name not in oFile.get_sheet_names():
+            oSheet = oFile.create_sheet(title=oHeader.product_area2.name)
             oSheet.sheet_properties.tabColor = '0062FF'
-        elif oHeader.configuration_status.name == 'Discontinued' and 'Discontinued' not in oFile.get_sheet_names():
-            oSheet = oFile.create_sheet(title="Discontinued")
-            oSheet.sheet_properties.tabColor = 'FF0000'
-        elif oHeader.configuration_status.name == 'Inactive':
-            continue
+        elif not oHeader.product_area2 and 'None' not in oFile.get_sheet_names():
+            oSheet = oFile.create_sheet(title="None")
+            oSheet.sheet_properties.tabColor = '0062FF'
+        elif oHeader.pick_list and 'Pick Lists' not in oFile.get_sheet_names():
+            oSheet = oFile.create_sheet(title="Pick Lists")
+            oSheet.sheet_properties.tabColor = '0062FF'
 
         iCurrentRow = 2
         aColumnWidths = [9, 23, 58, 12, 6, 15, 18, 18, 18, 13, 16, 22, 22, 23, 67, 83]
@@ -465,6 +484,8 @@ def WriteBaselineToFile(oBaseline, sVersion):
             dHistory[key].append(value)
 
         oSheet = oFile.create_sheet(title=sTitle)
+        if 'In Process' in oHeader.configuration_status.name:
+            oSheet.sheet_properties.tabColor = '80FF00'
         # Build Header row
         for iIndex in range(len(aColumnTitles)):
             oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'] = aColumnTitles[iIndex]
@@ -651,15 +672,15 @@ def WriteBaselineToFile(oBaseline, sVersion):
                         aChangeCols.append(7)
 
                     if 'added' in sChange:
-                        aChangeCols.extend(list(range(1, 17)))
+                        aChangeCols.extend(list(range(1, 16)))
 
                     if 'replaced' in sChange:
-                        aChangeCols.extend(list(range(2, 17)))
+                        aChangeCols.extend(list(range(2, 16)))
 
-                    if 'removed' in sChange and 'remained' not in sChange:
-                        aChangeCols.extend(list(range(1, 17)))
-                    elif 'removed' in sChange and 'remained' in sChange:
-                        aChangeCols.extend(list(range(2, 17)))
+                    # if 'removed' in sChange and 'remained' not in sChange:
+                    #     aChangeCols.extend(list(range(1, 16)))
+                    # elif 'removed' in sChange and 'remained' in sChange:
+                    #     aChangeCols.extend(list(range(2, 16)))
                 aChangeCols = list(set(aChangeCols))
 
             for iCol in aChangeCols:

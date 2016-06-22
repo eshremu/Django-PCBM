@@ -302,7 +302,7 @@ class Baseline_Revision(models.Model):
     # end def
 
     def __str__(self):
-        return self.title + "_Rev_" + self.version + '_' + (self.completed_date.strftime('%m/%d/%Y') + 'C' if self.completed_date else '')
+        return self.title + "_Rev_" + self.version + ('_' + self.completed_date.strftime('%m/%d/%Y') + 'C' if self.completed_date else '')
     # end def
 # end class
 

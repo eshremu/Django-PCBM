@@ -249,7 +249,7 @@ def Search(oRequest, advanced=False):
                         str(GrabValue(oResult,'config.header.configuration_designation' if isinstance(oResult, ConfigLine)
                             else 'header.configuration_designation')),
                         str(GrabValue(oResult,'config.header.baseline_version' if isinstance(oResult, ConfigLine) else 'header.baseline_version')),
-                        oResult.config.header.pk
+                        oResult.config.header.pk if isinstance(oResult, ConfigLine) else oResult.header.pk
                         )
                     )
 

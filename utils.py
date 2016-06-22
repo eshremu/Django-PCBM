@@ -568,32 +568,51 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
         # end try
 
     sNewSummary = 'Added:\n'
-    sRemovedSummary = 'Removed:\n'
+    sRemovedSummary = 'Discontinued:\n'
 
     for oHead in aAddedHeaders:
         if oHead.model_replaced:
             sNewSummary += '    {} replaces {}\n'.format(
-                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else ''),
+                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
+                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
+                 if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else ''),
+
                 oHead.model_replaced_link.configuration_designation +
                 (" ({})".format(oHead.model_replaced_link.program.name) if
-                 oHead.model_replaced_link.program else '') if oHead.model_replaced_link else oHead.model_replaced
+                 oHead.model_replaced_link.program else '') +
+                ('  {}'.format(oHead.model_replaced_link.configuration.get_first_line().customer_number)
+                 if not oHead.model_replaced_link.pick_list and
+                    oHead.model_replaced_link.configuration.get_first_line().customer_number else '')
+                if oHead.model_replaced_link else oHead.model_replaced
             )
+
             sRemovedSummary += '    {} is replaced by {}\n'.format(
                 oHead.model_replaced_link.configuration_designation +
                 (" ({})".format(oHead.model_replaced_link.program.name) if
-                 oHead.model_replaced_link.program else '') if oHead.model_replaced_link else oHead.model_replaced,
-                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
+                 oHead.model_replaced_link.program else '') +
+                ('  {}'.format(oHead.model_replaced_link.configuration.get_first_line().customer_number)
+                 if not oHead.model_replaced_link.pick_list and
+                    oHead.model_replaced_link.configuration.get_first_line().customer_number else '')
+                if oHead.model_replaced_link else oHead.model_replaced,
+
+                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
+                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
+                 if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
             )
         else:
             sNewSummary += '    {} added\n'.format(
-                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
+                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
+                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
+                 if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
             )
         # end if
     # end for
 
     for oHead in aCurrButNotPrev:
         sNewSummary += '    {} added\n'.format(
-            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
+            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
+            ('  {}'.format(oHead.configuration.get_first_line().customer_number)
+             if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
         )
     # end for
 
@@ -602,13 +621,17 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
             continue
 
         sRemovedSummary += '    {} discontinued\n'.format(
-            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
+            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
+                (' {}'.format(oHead.configuration.get_first_line().customer_number)
+                 if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
         )
     # end for
 
     for oHead in aPrevButNotCurrent:
         sRemovedSummary += '    {} removed\n'.format(
-            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '')
+            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
+                (' {}'.format(oHead.configuration.get_first_line().customer_number)
+                 if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
         )
     # end for
 
