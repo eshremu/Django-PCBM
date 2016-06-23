@@ -617,7 +617,8 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     # end for
 
     for oHead in aDiscontinuedHeaders:
-        if any([obj in oHead.header_set.all() for obj in aAddedHeaders]):
+        if (oHead.model_replaced_link and any([obj in oHead.model_replaced_link.header_set.all() for obj in aAddedHeaders])) or\
+                any([obj in oHead.header_set.all() for obj in aAddedHeaders]):
             continue
 
         sRemovedSummary += '    {} discontinued\n'.format(

@@ -6,7 +6,7 @@ from django.contrib.staticfiles.finders import find
 
 from BoMConfig.models import Header, ConfigLine, Baseline, Baseline_Revision, DistroList
 from BoMConfig.templatetags.customtemplatetags import searchscramble
-from BoMConfig.utils import GenerateRevisionSummary, GrabValue, HeaderComparison
+from BoMConfig.utils import GenerateRevisionSummary, GrabValue, HeaderComparison, RevisionCompare
 from BoMConfig.views.configuration import BuildDataArray
 
 import datetime
@@ -355,14 +355,14 @@ def WriteBaselineToFile(oBaseline, sVersion):
     GenerateRevisionSummary(oBaseline, oBaseline.current_active_version, oBaseline.current_inprocess_version)
     aRevisions = [oRev.revision for oRev in oBaseline.revisionhistory_set.all()]
     aRevisions = sorted(list(set(aRevisions)),
-                        key=cmp_to_key(lambda x, y: (-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
-                                                           or list(x.strip('1234567890')) < (
-                        [''] * (len(x.strip('1234567890')) - len(y.strip('1234567890'))) +
-                        list(y.strip('1234567890')))
-                                                           or (x.strip('1234567890') == y.strip('1234567890') and list(
-                            x) < list(y)) else 0 if x == y else 1)))
+                        key=RevisionCompare)
     aRevisions = aRevisions[:aRevisions.index(sVersion) + 1]
-    # GenerateRevisionSummary(oBaseline, aRevisions[-2], sVersion)
+
+    try:
+        GenerateRevisionSummary(oBaseline, aRevisions[-2], sVersion)
+    except:
+        pass
+
     iRow = 2
     iColorIndex = 0
     aColors = ['C0C0C0', '9999FF', 'FFFFCC', 'CCFFFF', 'FF8080', 'CCCCFF', '00CCFF', 'CCFFCC', 'FFFF99', '99CCFF',
@@ -463,16 +463,19 @@ def WriteBaselineToFile(oBaseline, sVersion):
             sTitle = sTitle.replace('Optional', 'Opt').replace('Hardware', 'HW').replace('Pick List', 'PL').replace(
                 ' - ', '-').replace('_______CLONE_________', ' CLONE ')
 
-        try:
-            oPrev = oHeader.model_replaced_link or Header.objects.get(
-                configuration_designation=oHeader.configuration_designation,
-                program=oHeader.program,
-                baseline_version=aRevisions[-2] if len(aRevisions) > 1 else None
-            )
-            aHistory = HeaderComparison(oHeader, oPrev).split('\n')
-        except (Header.DoesNotExist, ValueError):
+        if oHeader.bom_request_type.name == 'Update':
+            try:
+                oPrev = oHeader.model_replaced_link or Header.objects.get(
+                    configuration_designation=oHeader.configuration_designation,
+                    program=oHeader.program,
+                    baseline_version=aRevisions[-2] if len(aRevisions) > 1 else None
+                )
+                aHistory = HeaderComparison(oHeader, oPrev).split('\n')
+            except (Header.DoesNotExist, ValueError):
+                aHistory = []
+            # end try
+        else:
             aHistory = []
-        # end try
 
         dHistory = {}
         for sLine in aHistory:
@@ -484,8 +487,11 @@ def WriteBaselineToFile(oBaseline, sVersion):
             dHistory[key].append(value)
 
         oSheet = oFile.create_sheet(title=sTitle)
-        if 'In Process' in oHeader.configuration_status.name:
+        if 'In Process' in oHeader.configuration_status.name and oHeader.bom_request_type.name in ('New', 'Update'):
             oSheet.sheet_properties.tabColor = '80FF00'
+        elif oHeader.bom_request_type.name == "Discontinue" or oHeader.configuration_status.name == 'Discontinued' or oHeader.header_set.first() in aHeaders:
+            oSheet.sheet_properties.tabColor = 'FF0000'
+
         # Build Header row
         for iIndex in range(len(aColumnTitles)):
             oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'] = aColumnTitles[iIndex]

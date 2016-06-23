@@ -134,8 +134,27 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                             if bCanWriteHeader:
                                 oHeader = headerForm.save(commit=False)
                                 oHeader.shipping_condition = '71'
+
+                                if oHeader.bom_request_type.name in ('Update','Discontinue') and not oHeader.model_replaced_link:
+                                    aExistingRevs = sorted(
+                                        list(set([oBaseRev.version for oBaseRev in
+                                                  oHeader.baseline.baseline.baseline_revision_set.order_by(
+                                                      'version')])),
+                                        key=RevisionCompare)
+
+                                    iPrev = aExistingRevs.index(oHeader.baseline_version) - 1
+                                    if iPrev >= 0:
+                                        try:
+                                            oHeader.model_replaced_link = Header.objects.get(
+                                                configuration_designation=oHeader.configuration_designation,
+                                                program=oHeader.program,
+                                                baseline_version=aExistingRevs[iPrev]
+                                            )
+                                        except Header.DoesNotExist:
+                                            pass
+
                                 if not bDiscontinuationAlreadyCreated and \
-                                        oHeader.bom_request_type.name in ('New', 'Discontinue') and \
+                                        oHeader.bom_request_type.name in ('New',) and \
                                         oHeader.model_replaced_link:
 
                                     oDiscontinued = CloneHeader(oHeader.model_replaced_link)

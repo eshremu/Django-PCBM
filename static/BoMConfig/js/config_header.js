@@ -78,7 +78,8 @@ $(document).ready(function(){
                         }
                     );
                     return false;
-                } else if ($model_replaced.val() != $('#id_configuration_designation').val()){
+                } else
+                if ($model_replaced.val() != $('#id_configuration_designation').val()){
                     messageToModal('Replaced model mismatch',
                         'Record request type is "Update", "Discontinue", or "Replacement" ' +
                         'but "What Model is this replacing?" field does not match the "Configuration Designation" field.  Are you sure this is what you intended?',
