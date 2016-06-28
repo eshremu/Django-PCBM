@@ -131,10 +131,10 @@ def PartPricing(oRequest):
     })
 
     if not dContext['partlines']:
-        if oRequest.POST.get('initial') and not status_message:
-            dContext['partlines'] = [[oRequest.POST.get('initial', ''), '', '', '', '', '', '', '', '']]
-        elif oRequest.POST.get('part') and not status_message:
-            dContext['partlines'] = [[oRequest.POST.get('part', ''), '', '', '', '', '', '', '', '']]
+        if oRequest.POST.get('part') and not status_message:
+            dContext['partlines'] = [[oRequest.POST.get('part', ''), '', '', '', '', '', '', '', '', '']]
+        elif oRequest.POST.get('initial') and not status_message:
+            dContext['partlines'] = [[oRequest.POST.get('initial', ''), '', '', '', '', '', '', '', '', '']]
         else:
             dContext['partlines'] = [[]]
 
@@ -167,52 +167,75 @@ def ConfigPricing(oRequest):
     dContext = {'configlines':aConfigLines}
     if oRequest.method == 'POST' and oRequest.POST:
         sConfig = oRequest.POST['config'] if 'config' in oRequest.POST else None
-        if oRequest.POST['action'] == 'save':
-            if oRequest.POST['config'] == oRequest.POST['initial']:
-                for dLine in json.loads(oRequest.POST['data_form']):
-                    oLineToEdit = ConfigLine.objects.filter(config__header__configuration_status__name='Active')\
-                        .filter(config__header__configuration_designation__iexact=sConfig)\
-                        .filter(line_number=dLine['0'])[0]
-                    oLinePrice = LinePricing.objects.get(config_line=oLineToEdit)
-                    oLinePrice.override_price = dLine['7'] or None
-                    oLinePrice.save()
-                # end for
 
-                oConfig = Configuration.objects.get(header__configuration_designation__iexact=sConfig)
-                oConfig.override_net_value = float(oRequest.POST['net_value'])
-                oConfig.save()
+        iProgram = oRequest.POST.get('program', None)
+        if 'action' in oRequest.POST and oRequest.POST['action'] == 'search':
+            iProgram = None
 
-                status_message = 'Data saved.'
-            else:
-                status_message = 'Cannot change configuration during save.'
-                sConfig = oRequest.POST['initial']
+        aConfigMatches = Header.objects.filter(configuration_designation__iexact=sConfig, configuration_status__name='Active')
+        if iProgram:
+            aConfigMatches = aConfigMatches.filter(program__id=iProgram)
+
+        if len(aConfigMatches) == 0:
+            status_message = 'No matching configuration found'
+            dContext.update({'config': sConfig})
+        elif len(aConfigMatches) > 1:
+            aProgramList = list([oHead.program.id, oHead.program.name] for oHead in aConfigMatches)
+            dContext.update({'prog_list': aProgramList, 'config': sConfig})
+        else:
+            iProgValue = aConfigMatches[0].program.id
+            aProgramList = []
+            if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
+                if oRequest.POST['config'] == oRequest.POST['initial']:
+                    for dLine in json.loads(oRequest.POST['data_form']):
+                        oLineToEdit = ConfigLine.objects.filter(config__header__configuration_status__name='Active')\
+                            .filter(config__header__configuration_designation__iexact=sConfig)\
+                            .filter(config__header__program__id=iProgValue)\
+                            .filter(line_number=dLine['0'])[0]
+                        oLinePrice = LinePricing.objects.get(config_line=oLineToEdit)
+                        oLinePrice.override_price = dLine['7'] or None
+                        oLinePrice.save()
+                    # end for
+
+                    oConfig = Configuration.objects.get(header__configuration_designation__iexact=sConfig)
+                    oConfig.override_net_value = float(oRequest.POST['net_value'])
+                    oConfig.save()
+
+                    status_message = 'Data saved.'
+                else:
+                    status_message = 'Cannot change configuration during save.'
+                    sConfig = oRequest.POST['initial']
+                # end if
             # end if
+
+            aLine = ConfigLine.objects.filter(config__header__configuration_designation__iexact=sConfig)\
+                .filter(config__header__configuration_status__name='Active')\
+                .filter(config__header__program__id=iProgValue)
+            aLine = sorted(aLine, key=lambda x: ([int(y) for y in x.line_number.split('.')]))
+
+            aConfigLines = [{
+                '0': oLine.line_number,
+                '1': ('..' if oLine.is_grandchild else '.' if oLine.is_child else '') + oLine.part.base.product_number,
+                '2': str(oLine.part.base.product_number) + str('_'+ oLine.spud if oLine.spud else ''),
+                '3': oLine.part.product_description,
+                '4': float(oLine.order_qty if oLine.order_qty else 0),
+                '5': float(GrabValue(oLine.linepricing, 'pricing_object.unit_price') or 0),
+                '6': float(oLine.order_qty or 0) * float(GrabValue(oLine.linepricing, 'pricing_object.unit_price') or 0),
+                '7': oLine.linepricing.override_price or '',
+                '8': oLine.higher_level_item or '',
+                '9': oLine.material_group_5 or '',
+                '10': oLine.commodity_type or '',
+                '11': oLine.comments or '',
+                '12': oLine.additional_ref or ''
+                            } for oLine in aLine]
+
+            config_total = sum([float(line['6']) for line in aConfigLines])
+            aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
+
+            dContext['configlines'] = aConfigLines
+            dContext.update({'config': sConfig, 'is_not_pick_list': not aLine[0].config.header.pick_list if aLine else False, 'program': iProgValue, 'prog_list': aProgramList})
         # end if
-
-        aLine = ConfigLine.objects.filter(config__header__configuration_designation__iexact=sConfig)
-        aLine = sorted(aLine, key=lambda x: ([int(y) for y in x.line_number.split('.')]))
-
-        aConfigLines = [{
-            '0': oLine.line_number,
-            '1': ('..' if oLine.is_grandchild else '.' if oLine.is_child else '') + oLine.part.base.product_number,
-            '2': str(oLine.part.base.product_number) + str('_'+ oLine.spud if oLine.spud else ''),
-            '3': oLine.part.product_description,
-            '4': float(oLine.order_qty if oLine.order_qty else 0),
-            '5': float(GrabValue(oLine.linepricing, 'pricing_object.unit_price') or 0),
-            '6': float(oLine.order_qty or 0) * float(GrabValue(oLine.linepricing, 'pricing_object.unit_price') or 0),
-            '7': oLine.linepricing.override_price or '',
-            '8': oLine.higher_level_item or '',
-            '9': oLine.material_group_5 or '',
-            '10': oLine.commodity_type or '',
-            '11': oLine.comments or '',
-            '12': oLine.additional_ref or ''
-                        } for oLine in aLine]
-
-        config_total = sum([float(line['6']) for line in aConfigLines])
-        aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
-
-        dContext['configlines'] = aConfigLines
-        dContext.update({'config': sConfig, 'is_not_pick_list': not aLine[0].config.header.pick_list if aLine else False})
+    # end if
 
     dContext.update({
         'status_message': status_message,
@@ -293,40 +316,3 @@ def OverviewPricing(oRequest):
     return Default(oRequest, sTemplate, dContext)
 # end def
 
-
-def GetConfigLines(oRequest):
-    if oRequest.method == 'GET':
-        raise Http404('Access Denied')
-    else:
-        iMultiplier = int(oRequest.POST['multiplier'])
-
-        if iMultiplier < len(aHeaderList):
-            aLine = aHeaderList[iMultiplier].configuration.configline_set.all()
-        else:
-            aLine = []
-
-        aLine = sorted(aLine, key=lambda x: [int(y) for y in x.line_number.split('.')])
-        aLine = sorted(aLine, key=lambda x: (x.config.header.baseline.title if x.config.header.baseline else '',
-                                             x.config.header.configuration_designation))
-
-        aConfigLines = [{
-            '0': oLine.config.header.baseline.title if oLine.config.header.baseline else oLine.config.header.configuration_designation,
-            '1': oLine.line_number,
-            '2': oLine.config.header.configuration_designation,
-            '3': ('..' if oLine.is_grandchild else '.' if oLine.is_child else '') + oLine.part.base.product_number,
-            '4': oLine.part.base.product_number,
-            '5': oLine.order_qty if oLine.order_qty else 0,
-            '6': oLine.part.product_description,
-            '7': oLine.linepricing.pricing_object.unit_price if hasattr(oLine,'linepricing') and
-                                                                oLine.linepricing.pricing_object
-                                                                and (oLine.config.header.pick_list or
-                                                                     str(oLine.line_number) != '10') else '0',
-            '8': str(float(oLine.order_qty or 0) * float(oLine.linepricing.pricing_object.unit_price if
-                                                         hasattr(oLine,'linepricing') and
-                                                         oLine.linepricing.pricing_object else 0)),
-            '9': oLine.linepricing.override_price if hasattr(oLine,'linepricing') else ''
-                        } for oLine in aLine]
-
-        return JsonResponse(aConfigLines, safe=False)
-    # end if
-# end def

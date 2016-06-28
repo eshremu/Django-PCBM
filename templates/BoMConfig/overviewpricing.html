@@ -6,7 +6,7 @@
     <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
 
     <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
-</div>
+
     <script>
         var hot, clean_form;
         var iCount = 1;
@@ -24,29 +24,5 @@
                 data[i].push('');
             }
         }
-
-{#        function getTableRows(){#}
-{#            $.ajax({#}
-{#                type: "POST",#}
-{#                url: "{% url 'bomconfig:configretrieve' %}",#}
-{#                data: {#}
-{#                    multiplier: iCount#}
-{#                },#}
-{#                headers:{#}
-{#                    'X-CSRFToken': getcookie('csrftoken')#}
-{#                },#}
-{#                success: function (return_data) {#}
-{#                    if(return_data.length != 0) {#}
-{#                        var existing_data = hot.getSourceData();#}
-{#                        for(var i=0; i < return_data.length; i++) {#}
-{#                            existing_data.push(return_data[i]);#}
-{#                        }#}
-{#                        hot.loadData(existing_data);#}
-{#                        iCount++;#}
-{#                        timer = setTimeout(getTableRows, 500);#}
-{#                    }#}
-{#                }#}
-{#            });#}
-{#        }#}
     </script>
 {% endblock %}

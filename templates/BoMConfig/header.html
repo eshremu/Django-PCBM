@@ -25,7 +25,7 @@
 			<div class="nav-menu">
 				<ul class="nav nav-pills pull-right">
 					<li><a style="cursor: pointer;" onclick="cleanDataCheck(this);" data-href="{% url 'bomconfig:index' %}"> Home </a></li>
-					<li><a href="mailto:{{ supportcontact }}?subject={{ pagetitle|replace:'& and' }}%20support%20request">Support</a></li>
+					<li><a id="support_mail_to" href="mailto:{{ supportcontact }}?subject={{ pagetitle|replace:'& and' }}%20support%20request">Support</a></li>
 				</ul>
 			</div>
 		</div>

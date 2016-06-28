@@ -1311,7 +1311,7 @@ def Validator(oRequest):
                     oHead = Header.objects.get(pk=oRequest.session['existing'])
                     if index == 0 and not oHead.pick_list:
                         # base_total = oHead.configuration.override_net_value or oHead.configuration.net_value
-                        base_total = float(form_data[index]['17']) if form_data[index]['17'] not in (None, '', 'None') else 0
+                        base_total = float(form_data[index]['17'].replace('!','')) if form_data[index]['17'] not in (None, '', 'None') else 0
 
                         if '21' in form_data[index] and form_data[index]['21'] == 'ZUST' and  '22' in form_data[index] and form_data[index]['22']:
                             base_total += float(form_data[index]['22'].replace('$','').replace(',',''))
@@ -1328,6 +1328,7 @@ def Validator(oRequest):
                                                                             .replace(',','')) if not (index == 0 and not oHead.pick_list) else 0)) +\
                                      float(form_data[index]['22'].replace('$','').replace(',','') if '22' in form_data[index] and form_data[index]['22'] else 0)
                     # end if
+                    form_data[index]['17'] = form_data[index]['17'].replace('!','')
                 # end if
             # end if
 

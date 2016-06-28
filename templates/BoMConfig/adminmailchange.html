@@ -16,7 +16,8 @@
             </table>
         </div>
         <div id="formbuttons" style="margin-top:10px;">
-            <button class="btn" value="save" type="submit" onclick="$('#id_customer_unit').removeAttr('disabled');">Save</button>
+            <button class="btn btn-primary" value="save" type="submit" onclick="$('#id_customer_unit').removeAttr('disabled');">Save</button>
+            <button class="btn" value="cancel" type="button" onclick="location.href='{% url 'bomconfig:mailadmin' %}'">Cancel</button>
         </div>
     </form>
     <script>

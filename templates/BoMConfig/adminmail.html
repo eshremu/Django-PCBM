@@ -18,11 +18,7 @@
             </tbody>
         </table>
     </div>
-    <div id="formbuttons" style="margin-top:10px;">
-        <button class="btn" onclick="cleanDataCheck(this)" data-href="{% url 'bomconfig:mailadd' %}">Add New</button>
-    </div>
     <script>
-        $('button[value="mailing"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
         $(document).ready(function(){
 {#            $(window).on('load resize',function(){#}
 {#                form_resize();#}
@@ -48,4 +44,10 @@
     {% else %}
     <h4>No distribution lists found</h4>
     {% endif %}
+    <div id="formbuttons" style="margin-top:10px;">
+        <button class="btn" onclick="cleanDataCheck(this)" data-href="{% url 'bomconfig:mailadd' %}">Add New</button>
+    </div>
+    <script type="text/javascript">
+        $('button[value="mailing"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+    </script>
 {% endblock %}

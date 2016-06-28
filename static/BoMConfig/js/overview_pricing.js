@@ -7,7 +7,7 @@ $(document).ready(function(){
 });
 
 function form_resize(){
-    var topbuttonheight = $('#action_buttons').height();
+    var topbuttonheight = $('#action_buttons').outerHeight(true);
     var bottombuttonheight = $('#formbuttons').height();
     var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
     var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));

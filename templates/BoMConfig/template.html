@@ -83,8 +83,10 @@
                     closeButton = false;
                 });
 
-                $(window).on('beforeunload',(function(){
-                    $('#myModal').modal('show');
+                $(window).on('beforeunload',(function(event){
+                    if(event.srcElement.activeElement != document.getElementById("support_mail_to")) {
+                        $('#myModal').modal('show');
+                    }
                 }));
 
                 $(window).unload(function(){

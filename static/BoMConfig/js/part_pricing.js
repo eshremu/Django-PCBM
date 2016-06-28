@@ -143,7 +143,7 @@ $(document).ready(function(){
     });
 
     function form_resize() {
-        var topbuttonheight = $('#action_buttons').height();
+        var topbuttonheight = $('#action_buttons').outerHeight(true);
         var bottombuttonheight = $('#formbuttons').height();
         var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
         var crumbheight = 0;//$('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
@@ -169,6 +169,7 @@ $(document).ready(function(){
                 switch(col) {
                     case 0:
                         if (row > (orig_length - 1) || (orig_length == 1 && orig_data[0].join().replace(/,/g, '') == $('#initial').val())) {
+                            cellProperties.readOnly = true;
                             cellProperties.renderer = readonlyRenderer;
                         } else {
                             cellProperties.readOnly = true;
@@ -269,6 +270,9 @@ $(document).ready(function(){
                         cellProperties.uncheckedTemplate = 'False';
                         cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties){
                             td.style.textAlign = 'center';
+                            if(value==""){
+                                value = null;
+                            }
                             Handsontable.renderers.CheckboxRenderer.apply(this, [instance, td, row, col, prop, value, cellProperties]);
                         };
                         cellProperties.validator = function(value, callback){
@@ -296,6 +300,19 @@ $(document).ready(function(){
                 }
 
                 return cellProperties
+            },
+            beforeValidate: function(value, row, prop, source){
+                var load_data = this.getData();
+                if(load_data.length == 2 && load_data[0].join().replace(/,/g, '') == $('#initial').val() && load_data[1].join().replace(/,/g, '') == ""){
+                    if(prop == 4){
+                        value='0.00';
+                    }
+
+                    if(prop == 6){
+                        value="01/01/1900";
+                    }
+                }
+                return value;
             },
             afterChange: function(changes, source){
                 if(source == "loadData"){

@@ -9,6 +9,22 @@ $(document).ready(function(){
         if(table_data.length > 0) {
             clean_form = JSON.stringify(hot.getSourceData());
         }
+
+        if(program_list.length > 1){
+            var message = "Multiple matching configurations were found.<br/>Please select the program for the desired configuration.";
+            message += '<br/><label for="desiredprog" style="padding-right: 5px;">Program:</label><select name="desiredprog">';
+            for(var i=0; i<program_list.length; i++) {
+                message += '<option value="'+ program_list[i][0] +'">' + program_list[i][1] + '</option>';
+            }
+            message += '</select>';
+            messageToModal('Multiple configurations found',
+                message,
+                function(){
+                    $('input[name="program"]').val($('select[name="desiredprog"]').val());
+                    $('#headersubform').submit();
+                }
+            );
+        }
     });
 
     $(window).resize(function(){
@@ -17,7 +33,7 @@ $(document).ready(function(){
 });
 
 function form_resize(){
-    var topbuttonheight = $('#action_buttons').height();
+    var topbuttonheight = $('#action_buttons').outerHeight(true);
     var displayformheight = $('#display_form').height();
     var bottombuttonheight = $('#formbuttons').height();
     var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
@@ -45,7 +61,7 @@ function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
         td.style.background = '#DDDDDD';
     }
 
-    if (value != '' && value != undefined && value != null) {
+    if (String(value) != '' && value != undefined && value != null) {
         var result;
         var dummy = String(value).replace("$","").replace(',','').replace(' ','');
         var decimal = dummy.indexOf('.');
@@ -136,10 +152,10 @@ function build_table() {
                         }
                     };
                     cellProperties.allowInvalid = false;
-                    cellProperties.renderer = customRenderer;
+                    cellProperties.renderer = moneyRenderer;
                 } else {
                     cellProperties.readOnly = true;
-                    cellProperties.renderer = readonlyRenderer;
+                    cellProperties.renderer = moneyRenderer;
                 }
             }
 

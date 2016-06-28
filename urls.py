@@ -32,7 +32,6 @@ urlpatterns = patterns(
     url(r'^baseload/$', views.BaselineLoad, name='baseload'),
     url(r'^baselinedwnld/$', views.DownloadBaseline, name='baselinedownload'),
     url(r'^baselinerollback/$', views.BaselineRollback, name='baselinerollback'),
-    url(r'^configretrieve/$', views.GetConfigLines, name='configretrieve'),
     url(r'^unlock/$', views.FinalUnlock, name='finalunlock'),
     url(r'^lock/$', views.InitialLock, name='initlock'),
     url(r'^logout/$', views.Logout, name='logout'),
