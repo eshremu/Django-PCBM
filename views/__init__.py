@@ -9,4 +9,4 @@ from BoMConfig.views.reporting import Report
 from BoMConfig.views.upload import Upload
 from BoMConfig.views.download import Download, DownloadBaseline, DownloadMultiple
 from BoMConfig.views.approvals_actions import Approval, Action, AjaxApprove, ApprovalData
-from BoMConfig.views.admin import MailingAdmin, MailingChange
+from BoMConfig.views.admin import MailingAdmin, MailingChange, UserAdmin, AdminLanding, UserAdd, UserChange

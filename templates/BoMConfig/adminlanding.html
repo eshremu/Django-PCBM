@@ -6,7 +6,7 @@
 <div id="main-body">
     {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
     <div id="action_buttons">
-		<button class="btn" type="button" name="action" value="user" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:mailadmin' %}'>User</button>
+		<button class="btn" type="button" name="action" value="user" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:useradmin' %}'>User</button>
 		<button class="btn" type="button" name="action" value="mailing" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:mailadmin' %}'>Mailing</button>
 	</div>
     {% block subcontent %}{% endblock %}

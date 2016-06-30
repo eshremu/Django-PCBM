@@ -1,0 +1,84 @@
+{% extends "BoMConfig/adminlanding.html" %}
+{% load customtemplatetags %}
+{% load staticfiles %}
+
+{% block subcontent %}
+    <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.css' %}"/>
+    <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.js' %}"></script>
+    <h3 id="title"><u>Select a user to edit</u></h3>
+    {% if errors %}
+    <div class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">
+        {% for error in errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div id="table_wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>First Name</th>
+                    <th>Last name</th>
+                    <th>Email address</th>
+                    <th>Last Login</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td><a href="{% url 'bomconfig:userchange' user.id %}">{{ user.username }}</a></td>
+                    <td><a href="{% url 'bomconfig:userchange' user.id %}">{{ user.first_name }}</a></td>
+                    <td><a href="{% url 'bomconfig:userchange' user.id %}">{{ user.last_name }}</a></td>
+                    <td><a href="{% url 'bomconfig:userchange' user.id %}">{{ user.email }}</a></td>
+                    <td>{{ user.last_login|date:"N j Y,  H:i" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div>
+        {% if perms.auth.add_user %}<button class="btn btn-primary" type="button" name="add" value="add" onclick="window.document.location = '{% url 'bomconfig:useradd' %}'">New User</button>{% endif %}
+    </div>
+    <style type="text/css">
+        table.dataTable tr.odd {
+            background-color: #dffaff;
+        }
+    </style>
+    <script type="text/javascript">
+        var table;
+        $('button[value="user"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        function BuildTable(first_build) {
+            var bodyHeight = $('#main-body').height();
+            var header_height = $('#title').outerHeight(true);
+            var buttons = $('#action_buttons').outerHeight(true);
+            var breadcrumbs = $('#breadcrumbs').outerHeight(true);
+            var max_available = bodyHeight - (header_height + buttons + breadcrumbs + 43 + 35 + 26 + 10);
+
+            if(first_build) {
+                table = $('#table_wrapper table').DataTable({
+                    scrollY: max_available,
+                    scrollCollapse: true,
+                    pageLength: 50,
+                    lengthChange: false,
+                    columnDefs: [
+                        {searchable: false, targets: 4},
+                        {type:"date", targets: 4}
+                    ]
+                });
+            } else {
+                $('.dataTables_scrollBody').css('height',max_available + "px");
+            }
+        }
+
+        $(document).ready(function(){
+            $(window).load(function(){
+                BuildTable(true);
+            });
+            $(window).resize(function(){
+                BuildTable(false);
+            });
+        });
+    </script>
+{% endblock %}

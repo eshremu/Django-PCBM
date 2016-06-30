@@ -1,10 +1,10 @@
 from django import forms
 from django.db import connections
 from django.utils.safestring import mark_safe
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from django.contrib.admin.widgets import FilteredSelectMultiple
 
-from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject, DistroList
+from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject, DistroList, SecurityPermission
 
 import datetime
 import os
@@ -286,7 +286,6 @@ class AutocompleteInput(forms.TextInput):
 
 
 class DistroForm(forms.ModelForm):
-    # users_included = NamedUserChoiceField(queryset=User.objects.filter(groups__name__istartswith='BOM'))
     class Meta:
         model = DistroList
         fields = '__all__'
@@ -300,6 +299,58 @@ class DistroForm(forms.ModelForm):
             self.fields['customer_unit'].widget.attrs['disabled'] = 'True'
             self.fields['customer_unit'].widget.attrs['style'] = 'border:none;-webkit-appearance:none;'
 
-        self.fields['users_included'].queryset = User.objects.filter(groups__name__istartswith='BOM').distinct()
+        self.fields['users_included'].queryset = User.objects.filter(groups__name__istartswith='BOM')\
+            .exclude(groups__name__istartswith='BOM_BPMA').distinct()
         self.fields['users_included'].label_from_instance = lambda y:"%s" % (y.get_full_name())
-# end def
+# end class
+
+
+class SecurityForm(forms.ModelForm):
+    class Meta:
+        model=SecurityPermission
+        fields='__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['user'].label_from_instance = lambda inst: "%s" % (inst.name.replace('BOM_','').replace('_',' - ', 1).replace('_',' '))
+    # end def
+# end class
+
+
+class UserForm(forms.Form):
+    signum = forms.CharField(min_length=7, label='User SIGNUM')
+    first_name = forms.CharField(label='First Name')
+    last_name = forms.CharField(label='Last Name')
+    email = forms.EmailField(label='Ericsson Email')
+    assigned_group = forms.ModelChoiceField(Group.objects.filter(name__startswith='BOM_')
+                                            .exclude(name__contains='BPMA')
+                                            .exclude(name__contains='SuperApprover'), label='Assigned Group')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['signum'].widget.attrs['readonly'] = 'True'
+        self.fields['signum'].widget.attrs['style'] = 'border: none;'
+        self.fields['assigned_group'].label_from_instance = lambda inst: "%s" % (inst.name.replace('BOM_', '').replace('_', ' - ', 1).replace('_', ' '))
+
+    def clean_email(self):
+        if not self.cleaned_data['email'].lower().endswith('@ericsson.com'):
+            raise forms.ValidationError('Email address must be an Ericsson email address')
+
+        return self.cleaned_data['email']
+# end class
+
+
+class UserAddForm(forms.Form):
+    signum = forms.CharField(min_length=7, required=True, label='User SIGNUM')
+
+    def clean_signum(self):
+        submitted_signum = self.cleaned_data['signum']
+        try:
+            testUser = User.objects.get(username=submitted_signum)
+            if testUser.groups.filter(name__startswith='BOM'):
+                raise forms.ValidationError("User already exists in the tool")
+        except (User.DoesNotExist, User.MultipleObjectsReturned):
+            pass
+
+        return submitted_signum
+# end class

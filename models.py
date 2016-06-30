@@ -541,7 +541,8 @@ class ConfigLine(models.Model):
     REcode = models.CharField(max_length=50, blank=True, null=True)
     mu_flag = models.CharField(max_length=50, blank=True, null=True)
     x_plant = models.CharField(max_length=50, blank=True, null=True)
-    traceability_req = models.CharField(max_length=50, blank=True, null=True)  # TODO: Move to PartBase
+    traceability_req = models.CharField(max_length=50, blank=True, null=True)  # TODO: Move to CustomerPartInfo (when built)
+    last_updated = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return str(self.config) + "_" + self.line_number
@@ -614,7 +615,7 @@ class SecurityPermission(models.Model):
 
     read = models.BooleanField(default=False)
     write = models.BooleanField(default=False)
-    user = models.ManyToManyField(Group)
+    user = models.ManyToManyField(Group, limit_choices_to={'name__startswith': 'BOM_'})
     title = models.CharField(max_length=50)
 
     def __str__(self):

@@ -12,7 +12,14 @@
         {% csrf_token %}
         <div id="formdiv">
             <table>
-            {{ form.as_table }}
+                <tbody>
+                    {% for field in form %}
+                    <tr>
+                        <td>{{ field.label }}</td><td>{{ field }}</td>
+                        {% for error in field.errors %}<td class="errortext">{{ error }}</td>{% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
             </table>
         </div>
         <div id="formbuttons" style="margin-top:10px;">

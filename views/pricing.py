@@ -172,7 +172,7 @@ def ConfigPricing(oRequest):
         if 'action' in oRequest.POST and oRequest.POST['action'] == 'search':
             iProgram = None
 
-        aConfigMatches = Header.objects.filter(configuration_designation__iexact=sConfig, configuration_status__name='Active')
+        aConfigMatches = Header.objects.filter(configuration_designation__iexact=sConfig, configuration_status__name__startswith='In Process')
         if iProgram:
             aConfigMatches = aConfigMatches.filter(program__id=iProgram)
 
@@ -188,7 +188,7 @@ def ConfigPricing(oRequest):
             if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
                 if oRequest.POST['config'] == oRequest.POST['initial']:
                     for dLine in json.loads(oRequest.POST['data_form']):
-                        oLineToEdit = ConfigLine.objects.filter(config__header__configuration_status__name='Active')\
+                        oLineToEdit = ConfigLine.objects.filter(config__header__configuration_status__name__startswith='In Process')\
                             .filter(config__header__configuration_designation__iexact=sConfig)\
                             .filter(config__header__program__id=iProgValue)\
                             .filter(line_number=dLine['0'])[0]
@@ -197,7 +197,11 @@ def ConfigPricing(oRequest):
                         oLinePrice.save()
                     # end for
 
-                    oConfig = Configuration.objects.get(header__configuration_designation__iexact=sConfig)
+                    oConfig = Configuration.objects.get(
+                        header__configuration_designation__iexact=sConfig,
+                        header__configuration_status__name__startswith='In Process',
+                        header__program__id=iProgValue
+                    )
                     oConfig.override_net_value = float(oRequest.POST['net_value'])
                     oConfig.save()
 
@@ -209,7 +213,7 @@ def ConfigPricing(oRequest):
             # end if
 
             aLine = ConfigLine.objects.filter(config__header__configuration_designation__iexact=sConfig)\
-                .filter(config__header__configuration_status__name='Active')\
+                .filter(config__header__configuration_status__name__startswith='In Process')\
                 .filter(config__header__program__id=iProgValue)
             aLine = sorted(aLine, key=lambda x: ([int(y) for y in x.line_number.split('.')]))
 

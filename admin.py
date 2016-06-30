@@ -2,7 +2,7 @@ from django.contrib import admin
 from django import forms
 
 from BoMConfig.models import *
-from BoMConfig.forms import LinePricingForm, DistroForm
+from BoMConfig.forms import LinePricingForm, DistroForm, SecurityForm
 from django.contrib.sessions.models import Session
 
 # Register your models here.
@@ -71,6 +71,11 @@ class DistroAdmin(admin.ModelAdmin):
     form = DistroForm
     filter_horizontal = ('users_included',)
 
+
+class SecurityPermissionAdmin(admin.ModelAdmin):
+    form = SecurityForm
+
+
 admin.site.register(Alert)
 admin.site.register(NewsItem)
 admin.site.register(Header, HeaderAdmin)
@@ -86,7 +91,7 @@ admin.site.register(PricingObject, PriceObjAdmin)
 admin.site.register(REF_CUSTOMER)
 admin.site.register(REF_REQUEST)
 admin.site.register(Session, SessionAdmin)
-admin.site.register(SecurityPermission)
+admin.site.register(SecurityPermission, SecurityPermissionAdmin)
 admin.site.register(HeaderTimeTracker, TimeStampAdmin)
 admin.site.register(HeaderLock, HeaderLockAdmin)
 admin.site.register(REF_TECHNOLOGY)

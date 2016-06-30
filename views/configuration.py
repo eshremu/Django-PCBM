@@ -7,16 +7,19 @@ from django.db import connections, IntegrityError
 from django import forms
 from django.forms import fields
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
     PartBase, Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, SecurityPermission,\
-    REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_STATUS, REF_REQUEST
+    REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_STATUS,\
+    REF_REQUEST, PricingObject
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException
 from BoMConfig.views.approvals_actions import CloneHeader
 from BoMConfig.utils import GrabValue, HeaderComparison, RevisionCompare
 
 import copy
+# import datetime
 from itertools import chain
 import json
 import re
@@ -186,8 +189,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                     })
                                 else:
                                     if not oHeader.pick_list and oHeader.configuration.get_first_line().part.base.product_number != oHeader.configuration_designation:
-                                        # DONE: TODO: Update config line 10
-                                        # print('--> NEED TO UPDATE CONFIG LINE 10 <--')
+                                        # Update line 10 Product number to match configuration designation
                                         (oPartBase,_) = PartBase.objects.get_or_create(**{'product_number':oHeader.configuration_designation})
                                         oPartBase.unit_of_measure = 'PC'
                                         oPartBase.save()
@@ -390,7 +392,8 @@ def AddConfig(oRequest):
                         # end if
                     # end for
 
-                    ConfigLine.objects.filter(config=oConfig).delete()
+                    aExistingConfigLines = list(ConfigLine.objects.filter(config=oConfig))
+                    oUpdateDate = timezone.now()
 
                     for dConfigLine in oForm:
                         dBaseData = {'product_number': dConfigLine['2'].strip('. '), 'unit_of_measure': dConfigLine['5']}
@@ -423,7 +426,7 @@ def AddConfig(oRequest):
                                      'is_grandchild': bool(dConfigLine['2'].startswith('..')),
                                      'pcode': dConfigLine['9'], 'commodity_type': dConfigLine['10'], 'REcode': dConfigLine['13'],
                                      'package_type': dConfigLine['11'], 'mu_flag': dConfigLine['14'], 'x_plant': dConfigLine['15'],
-                                     'traceability_req': dConfigLine['23']}
+                                     'traceability_req': dConfigLine['23'], 'last_updated': oUpdateDate}
 
                         if ConfigLine.objects.filter(config=oConfig).filter(line_number=dConfigLine['1']):
                             oConfigLine = ConfigLine.objects.get(**{'config': oConfig, 'line_number': dConfigLine['1']})
@@ -435,10 +438,46 @@ def AddConfig(oRequest):
                             oConfigLine.save()
                         # end if
 
-                        dPriceData = {'unit_price': dConfigLine['17'] or None, 'config_line': oConfigLine}
+                        # dPriceData = {'unit_price': dConfigLine['17'] or None, 'config_line': oConfigLine}
+                        dPriceData = {'config_line': oConfigLine}
                         (oPrice, _) = LinePricing.objects.get_or_create(**dPriceData)
+                        oPriceObj = None
+                        try:
+                            if oConfigLine.spud:
+                                oPriceObj = PricingObject.objects.get(
+                                    part=oConfigLine.part.base,
+                                    customer=oConfigLine.config.header.customer_unit,
+                                    sold_to=oConfigLine.config.header.sold_to_party,
+                                    spud=REF_SPUD.objects.get(name=oConfigLine.spud),
+                                    is_current_active=True
+                                )
+                            else:
+                                oPriceObj = PricingObject.objects.get(
+                                    part=oConfigLine.part.base,
+                                    customer=oConfigLine.config.header.customer_unit,
+                                    sold_to=oConfigLine.config.header.sold_to_party,
+                                    spud=None,
+                                    is_current_active=True
+                                )
+                        except PricingObject.DoesNotExist:
+                            try:
+                                oPriceObj = PricingObject.objects.get(
+                                    part=oConfigLine.part.base,
+                                    customer=oConfigLine.config.header.customer_unit,
+                                    sold_to=None,
+                                    spud=None,
+                                    is_current_active=True
+                                )
+                            except PricingObject.DoesNotExist:
+                                pass
+                        oPrice.pricing_object = oPriceObj
+                        oPrice.save()
+
                     # end for
 
+                    for oOldLine in ConfigLine.objects.filter(config=oConfig):
+                        if oOldLine.last_updated != oUpdateDate:
+                            oOldLine.delete()
                     status_message = oRequest.session['status'] = 'Form data saved'
                 # end if
             #end if
@@ -890,9 +929,11 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                         '14': Line.mu_flag,
                         '15': ('0' * (2 - len(Line.x_plant))) + Line.x_plant if Line.x_plant else '',
                         '16': Line.internal_notes,
-                        '17': "!" + str(Line.linepricing.override_price) if str(Line.line_number) == '10' and
-                                hasattr(Line,'linepricing') and GrabValue(Line,'linepricing.override_price') else
-                                GrabValue(Line, 'linepricing.pricing_object.unit_price') if hasattr(Line,'linepricing.pricing_object') else '',
+                        '17': (
+                            "!" + str(Line.linepricing.override_price) if GrabValue(Line,'linepricing.override_price') else
+                            GrabValue(Line, 'linepricing.pricing_object.unit_price') if GrabValue(Line,'linepricing.pricing_object') else ''
+                        ) if (str(Line.line_number) == '10' and not Line.config.header.pick_list) or
+                             Line.config.header.pick_list else '',
                         '18': Line.higher_level_item, '19': Line.material_group_5,
                         '20': Line.purchase_order_item_num, '21': Line.condition_type, '22': Line.amount,
                         '23': Line.traceability_req, '24': Line.customer_asset, '25': Line.customer_asset_tagging,
@@ -1057,8 +1098,8 @@ def Validator(oRequest):
                 # end if
             # end if
 
-            if '28' not in form_data or form_data[index]['28'] == 'None':
-                form_data[index]['28'] = form_data[index]['2'].strip('.')
+            if '28' not in form_data[index] or form_data[index]['28'] == 'None':
+                form_data[index]['28'] = form_data[index]['2'].strip('./')
             if '1' in form_data[index] and form_data[index]['1'] not in ('None', ''):
                 # if form_data[index]['2'].startswith(('.', '..')):
                 #     pass # error_matrix[index][1] += 'X - Line number provided when product number indicates relationship.\n'
@@ -1346,6 +1387,7 @@ def Validator(oRequest):
             else:
                 form_data[index]['0'] = '<span class="glyphicon glyphicon-ok-sign" style="color:#00AA00;"></span>'
             # end if
+
         # end for
 
         # Check for duplicate line numbers
