@@ -406,7 +406,7 @@ class Header(models.Model):
             if self.bom_version in (None, ''):
                 self.bom_version = '1'
         else: # Update existing Header
-            if self.configuration_status == 'In Process':
+            if self.configuration_status.name == 'In Process':
                 if self.baseline:
                     self.baseline_version = self.baseline.version
                 # end if
