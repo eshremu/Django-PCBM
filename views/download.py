@@ -530,7 +530,7 @@ def WriteBaselineToFile(oBaseline, sVersion):
         # Add line items (ordered by line number)
         aLineItems = oHeader.configuration.configline_set.all().order_by('line_number')
         aLineItems = sorted(aLineItems, key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
-        oFirstItem = aLineItems[0]
+        oFirstItem = aLineItems[0] if len(aLineItems) > 0 else None
         for oLineItem in aLineItems:
             oSheet['A' + str(iCurrentRow)] = oLineItem.line_number
             oSheet['A' + str(iCurrentRow)].alignment = oCentered

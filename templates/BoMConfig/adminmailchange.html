@@ -8,6 +8,7 @@
     <script type="text/javascript" src="{{ STATIC_URL }}admin/js/SelectFilter2.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}admin/js/SelectBox.js"></script>
 
+    <h3><u>{% if form.instance.id %}Change{% else %}Add{% endif %} Baseline Distribution List</u></h3>
     <form method="post" style="margin-top: 20px;">
         {% csrf_token %}
         <div id="formdiv">

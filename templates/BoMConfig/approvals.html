@@ -20,12 +20,12 @@
         <h4>In Process/Pending</h4>
         {% if approval_wait %}
         <form id="pending_approval_action" onsubmit="return false;">
-            <button id="approve" class="action_button" value="approve">Approve</button>
-            <button id="disapprove" class="action_button" value="disapprove">Disapprove</button>
+            <button id="approve" class="action_button btn btn-success" value="approve">Approve</button>
+            <button id="disapprove" class="action_button btn btn-danger" value="disapprove">Disapprove</button>
             {% if skip_authorized %}
-            <button id="skip" class="action_button" value="skip">Skip</button>
+            <button id="skip" class="action_button btn btn-secondary" value="skip">Skip</button>
             {% endif %}
-            <button id="hold" class="action_button" value="hold">Place on Hold</button>
+            <button id="hold" class="action_button btn btn-warning" value="hold">Place on Hold</button>
             <table id="pending_approval_records">
                 <thead>
                     <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
@@ -87,9 +87,16 @@
                     <div class="modal-header"><h4 class="modal-title" id="approvalLabel">Approve</h4></div>
                     <div class="modal-body">
                         {% for record in approval_wait %}
-                        <div data-index="{{ record.pk }}" style="display:none;">
+                        <div data-index="{{ record.pk }}" style="display: none;">
                             <h5 style="font-weight: bold">{{ record.configuration_designation }}</h5>
                             <form class="approve-form">
+                                <h5>Notify:</h5>
+                                <select data-index="{{ record.pk }}">
+                                    <option value="">--------</option>
+                                {% for user in notify_users %}
+                                    <option value="{{ user.id }}">{{ user.get_full_name }}</option>
+                                {% endfor %}
+                                </select>
                                 <h5>Comments:</h5>
                                 <textarea rows="2" cols="77" style="resize:none;" data-index="{{ record.pk }}" placeholder="Optional"></textarea>
                             </form>
@@ -110,21 +117,23 @@
                     <div class="modal-header"><h4 class="modal-title" id="approvalLabel">Disapprove</h4></div>
                     <div class="modal-body">
                         {% for record in approval_wait %}
-                        <div data-index="{{ record.pk }}" style="display:none;">
+                        <div data-index="{{ record.pk }}" style="display: none;">
                             <h5 style="font-weight: bold">{{ record.configuration_designation }}</h5>
                             <form class="disapprove-form">
                                 <h5>Push back to:</h5>
                                 <select data-index="{{ record.pk }}">
                                 {% for level in approval_seq %}
                                     {% with level|add:"_approver" as approved_level%}
-                                    {% if record.latesttracker|getattr:approved_level %}
+                                    {% with level|add:"_approved_on" as approved_date%}
+                                    {% if record.latesttracker|getattr:approved_level and record.latesttracker|getattr:approved_level != 'system' %}{#  and record.latesttracker|getattr:approved_date|date:"Y-M-D" != deaddate|date:"Y-M-D" #}
                                     <option value="{{ level }}">{{ namelist|getindex:forloop.counter0 }}</option>
                                     {% endif %}
+                                    {% endwith %}
                                     {% endwith %}
                                 {% endfor %}
                                 </select>
                                 <h5>Comments:</h5>
-                                <textarea rows="2" cols="77" style="resize:none;" data-index="{{ record.pk }}" placeholder="Required"></textarea>
+                                <textarea class="required" rows="2" cols="77" style="resize:none;" data-index="{{ record.pk }}" placeholder="Required"></textarea>
                             </form>
                         </div>
                         {% endfor %}
@@ -164,6 +173,10 @@
                 border-bottom: 1px solid black;
                 padding: 5px 0px;
             }
+
+            .invalid_field {
+                border: 2px solid red;
+            }
         </style>
         {% else %}
         <h5>NO RECORDS PENDING APPROVAL</h5>
@@ -197,6 +210,22 @@
             }
         }
 
+        function form_check($form){
+            var valid = true;
+            var $required_fields = $form.find('.required');
+
+            $required_fields.each(function(idx, elem){
+                if($(elem).val() == undefined || $(elem).val() == null || $(elem).val() == ""){
+                    $(elem).toggleClass('invalid_field', true);
+                    valid = false;
+                } else {
+                    $(elem).toggleClass('invalid_field', false);
+                }
+            });
+
+            return valid;
+        }
+
         function process(action){
             var records = [];
             var comments = [];
@@ -213,6 +242,8 @@
 
                 if (action === 'disapprove') {
                     destination.push($('.disapprove-form select[data-index="' + dataindex + '"]').val());
+                } else if (action === 'approve') {
+                    destination.push($('.approve-form select[data-index="' + dataindex + '"]').val());
                 }
             });
 
@@ -233,7 +264,7 @@
                 },
                 error: function(){
                     $('#myModal').modal('hide');
-                    massageToModal('Approval Error','An error occurred during submission. Please try again or contact a tool admin.',function(){});
+                    messageToModal('Approval Error','An error occurred during submission. Please try again or contact a tool admin.',function(){});
                 }
             });
         }
@@ -242,22 +273,26 @@
             $('.action_button').click(function(){
                 if($('.pending:checked').length > 0) {
                     if($(this).attr('id')=='approve'){
+                        $('.required').toggleClass('invalid_field', false);
                         $('#approval').modal('show');
                     } else if ($(this).attr('id')=='disapprove'){
+                        $('.required').toggleClass('invalid_field', false);
                         $('#disapproval').modal('show');
                     } else {
                         $('#myModal').modal('show');
                         process($(this).val());
                     }
                 } else {
-                    alert('Please select at least 1 record for processing.')
+                    messageToModal('Error','Please select at least 1 record for processing.',function(){});
                 }
             });
 
-            $('.btn.btn-primary').click(function(){
-                $(this).closest('.modal').modal('hide');
-                $('#myModal').modal('show');
-                process($(this)[0].dataset.action);
+            $('#disapproval .btn.btn-primary, #approval .btn.btn-primary').click(function(){
+                if( form_check( $(this).parent().prev().children('div[style*="display: block"], div[style=""]').children('form') ) ) {
+                    $(this).closest('.modal').modal('hide');
+                    $('#myModal').modal('show');
+                    process($(this)[0].dataset.action);
+                }
             });
 
             $('input.pending').change(function(){
@@ -294,7 +329,13 @@
                             }
                             xhr = undefined;
                             $('#hintBox').html(hovertext).show();
-                            $('#hintBox').css('top', e.clientY+20).css('left', e.clientX-210);
+                            var y_location;
+                            if(e.clientY + 20 + $('#hintBox').outerHeight() > $(window).height()){
+                                y_location = e.pageY - 10 - $('#hintBox').outerHeight();
+                            } else {
+                                y_location = e.pageY + 20;
+                            }
+                            $('#hintBox').css('top', y_location).css('left', e.pageX-210);
                         },
                         error: function(){
                             hovertext = '<span>Could not find</span>';
@@ -303,12 +344,18 @@
                     });
                 }
 
-                if (hovertext != '') {
-                    $('#hintBox').html(hovertext).show();
-                    $('#hintBox').css('top', e.clientY+20).css('left', e.clientX-210);
-                }
+{#                if (hovertext != '') {#}
+{#                    $('#hintBox').html(hovertext).show();#}
+{#                    $('#hintBox').css('top', e.pageY+20).css('left', e.pageX-210);#}
+{#                }#}
             }).mousemove(function(e){
-                $('#hintBox').css('top', e.clientY+20).css('left', e.clientX-210);
+                var y_location;
+                if(e.clientY + 20 + $('#hintBox').outerHeight() > $(window).height()){
+                    y_location = e.pageY - 10 - $('#hintBox').outerHeight();
+                } else {
+                    y_location = e.pageY + 20;
+                }
+                $('#hintBox').css('top', y_location).css('left', e.pageX-210);
             }).mouseleave(function() {
                 $('#hintBox').hide();
                 if (xhr !== undefined){

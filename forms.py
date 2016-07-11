@@ -4,7 +4,8 @@ from django.utils.safestring import mark_safe
 from django.contrib.auth.models import User, Group
 from django.contrib.admin.widgets import FilteredSelectMultiple
 
-from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject, DistroList, SecurityPermission
+from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject,\
+    DistroList, SecurityPermission, HeaderTimeTracker, ApprovalList
 
 import datetime
 import os
@@ -353,4 +354,38 @@ class UserAddForm(forms.Form):
             pass
 
         return submitted_signum
+# end class
+
+
+class CustomerApprovalLevelForm(forms.Form):
+    customer = forms.ModelChoiceField(queryset=REF_CUSTOMER.objects.all())
+    required_choices = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple, required=False)
+    optional_choices = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple, required=False)
+    disallowed_choices = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple, required=False)
+
+    def __init__(self, *args, **kwargs):
+        self.readonly = kwargs.pop('readonly', False)
+        super().__init__(*args, **kwargs)
+
+        self.fields['customer'].widget.attrs['readonly'] = str(self.readonly)
+
+        if self.readonly:
+            self.fields['customer'].widget.attrs['disabled'] = 'disabled'
+            self.fields['customer'].widget.attrs['style'] = 'border:none;-webkit-appearance:none;'
+        self.fields['required_choices'].choices = enumerate(HeaderTimeTracker.approvals()[1:-1], 1)
+        self.fields['optional_choices'].choices = enumerate(HeaderTimeTracker.approvals()[1:-1], 1)
+        self.fields['disallowed_choices'].choices = enumerate(HeaderTimeTracker.approvals()[1:-1], 1)
+
+        if not self.readonly:
+            self.fields['customer'].queryset = REF_CUSTOMER.objects.exclude(id__in=[app.customer.id for app in ApprovalList.objects.all()])
+    # end def
+
+    def clean(self):
+        data = self.cleaned_data
+        included_values = set(data['required_choices']).union(set(data['optional_choices'])).union(set(data['disallowed_choices']))
+
+        for index in range(1, len(HeaderTimeTracker.approvals())-1):
+            if str(index) not in included_values:
+                self.add_error(None, index)
+    # end def
 # end class

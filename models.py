@@ -406,7 +406,7 @@ class Header(models.Model):
             if self.bom_version in (None, ''):
                 self.bom_version = '1'
         else: # Update existing Header
-            if self.configuration_status == 'In Process':
+            if self.configuration_status.name == 'In Process':
                 if self.baseline:
                     self.baseline_version = self.baseline.version
                 # end if
@@ -745,6 +745,17 @@ class DistroList(models.Model):
     def __str__(self):
         return self.customer_unit.name
 #end def
+
+
+class ApprovalList(models.Model):
+    customer = models.OneToOneField(REF_CUSTOMER)
+    required = models.CharField(max_length=25, null=True, blank=True)
+    optional = models.CharField(max_length=25, null=True, blank=True)
+    disallowed = models.CharField(max_length=25, null=True, blank=True)
+
+    def __str__(self):
+        return str(self.customer)
+# end class
 
 
 def sessionstr(self):

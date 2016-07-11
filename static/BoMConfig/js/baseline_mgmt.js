@@ -52,7 +52,7 @@ function BuildTable(){
 
 function downloadModal(){
     messageToModal('Download Baseline',
-            '<label>Revision</label><select>' + revision_list + '</select>',
+            '<label style="padding-right:5px;">Revision:</label><select>' + revision_list + '</select>',
             function(){
                 $("#downloadform input[name='version']").val($('#messageModal .modal-body select').val());
                 $('#downloadform').submit();

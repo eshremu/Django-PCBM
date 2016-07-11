@@ -137,7 +137,6 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                             if bCanWriteHeader:
                                 oHeader = headerForm.save(commit=False)
                                 oHeader.shipping_condition = '71'
-
                                 if oHeader.bom_request_type.name in ('Update','Discontinue') and not oHeader.model_replaced_link:
                                     aExistingRevs = sorted(
                                         list(set([oBaseRev.version for oBaseRev in

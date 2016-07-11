@@ -40,9 +40,6 @@ def PartPricing(oRequest):
                         if not any(aRowToSave):
                             continue
 
-                        print(aRowToSave)
-                        # continue
-
                         try:
                             oCurrentPriceObj = PricingObject.objects.get(
                                 part__product_number__iexact=aRowToSave[0] or oRequest.POST.get('initial', None),
@@ -83,7 +80,7 @@ def PartPricing(oRequest):
                             try:
                                 PricingObject.objects.create(part=PartBase.objects.get(product_number__iexact=aRowToSave[0] or oRequest.POST.get('initial', None)),
                                                              customer=REF_CUSTOMER.objects.get(name=aRowToSave[1]),
-                                                             sold_to=aRowToSave[2] if aRowToSave[2] != '(None)' else None,
+                                                             sold_to=aRowToSave[2] if aRowToSave[2] not in ('(None)', None, '', 'null') else None,
                                                              spud=REF_SPUD.objects.get(name=aRowToSave[3]) if aRowToSave[3] not in ('(None)', '', None, 'null') else None,
                                                              is_current_active=True,
                                                              unit_price=aRowToSave[4],
@@ -132,9 +129,9 @@ def PartPricing(oRequest):
 
     if not dContext['partlines']:
         if oRequest.POST.get('part') and not status_message:
-            dContext['partlines'] = [[oRequest.POST.get('part', ''), '', '', '', '', '', '', '', '', '']]
+            dContext['partlines'] = [[oRequest.POST.get('part', ''), '', '', '', '', '', '', '', '', '','']]
         elif oRequest.POST.get('initial') and not status_message:
-            dContext['partlines'] = [[oRequest.POST.get('initial', ''), '', '', '', '', '', '', '', '', '']]
+            dContext['partlines'] = [[oRequest.POST.get('initial', ''), '', '', '', '', '', '', '', '', '','']]
         else:
             dContext['partlines'] = [[]]
 

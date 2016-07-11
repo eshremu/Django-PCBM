@@ -10,6 +10,11 @@ a:hover {
 	color: #00285e;
 }
 
+select:disabled{
+	border: none;
+	-webkit-appearance: none;
+}
+
 .row {
 	margin-right: 0;
 }

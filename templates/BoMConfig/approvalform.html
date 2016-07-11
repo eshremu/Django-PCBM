@@ -1,0 +1,39 @@
+{% load customtemplatetags %}
+<table>
+    <thead>
+        <tr>
+            <th style="text-align: right;">Level</th>
+            <th style="text-align: center;">Include</th>
+            <th style="text-align: center;">POC</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for level in approval_levels %}
+        <tr>
+            <th style="text-align: right;">{{ level|replacewithspace:"_"|upper }}:</th>
+            <td style="text-align: center;">
+                <input title="Require {{ level|replacewithspace:"_"|upper }} approval"
+                       type="checkbox"
+                       value="{{ forloop.counter }}"
+                       onchange="if(this.checked){$(this).parent().next('td').find('select').removeAttr('disabled');}else{$(this).parent().next('td').find('select').attr('disabled','disabled').val('').change();}"
+                       {% if forloop.counter|slugify in required or forloop.counter|slugify in optional %}checked="checked"{% endif %}
+                       {% if forloop.counter|slugify in required or forloop.counter|slugify in disallowed %}disabled="disabled"{% endif %}
+                />
+            </td>
+            <td style="text-align: center;">
+                <select
+                        onchange="if(this.value==='0'){$(this).parent().next('td').find('input').css('visibility','visible');}else{$(this).parent().next('td').find('input').css('visibility','hidden');}"
+                        {% if forloop.counter|slugify in disallowed %}disabled="disabled"{% endif %}
+                >
+                    <option value="">--------</option>
+                    {% for user in email|getkeyvalue:level %}
+                    <option value="{{ user.id }}">{{ user.get_full_name }}</option>
+                    {% endfor %}
+                    <option value="0">Custom</option>
+                </select>
+            </td>
+            <td style="text-align: center; padding-left:5px;"><input type="email" style="visibility: hidden;"/></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

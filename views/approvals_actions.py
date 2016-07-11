@@ -3,9 +3,11 @@ __author__ = 'epastag'
 from django.utils import timezone
 from django.http import HttpResponse, Http404, JsonResponse
 from django.core.urlresolvers import reverse
+from django.template import Template, Context, loader
 
-from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission, HeaderTimeTracker, REF_STATUS
-from BoMConfig.utils import UpRev
+from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
+    HeaderTimeTracker, REF_STATUS, ApprovalList
+from BoMConfig.utils import UpRev, GrabValue
 from BoMConfig.views.landing import Unlock, Default
 from django.contrib.auth.models import User
 
@@ -28,11 +30,12 @@ def Approval(oRequest):
         'approval_wait': Header.objects.filter(configuration_status__name='In Process/Pending'),
         'customer_list': ['All'] + [obj.name for obj in REF_CUSTOMER.objects.all()],
         'approval_seq': HeaderTimeTracker.approvals(),
-        'deaddate': timezone.datetime(1900,1,1),
+        'deaddate': timezone.datetime(1900, 1, 1),
         'namelist':['PSM Configuration Mgr.', 'SCM #1', 'SCM #2', 'CSR','Comm. Price Mgmt.','ACR','PSM Baseline Mgmt.',
                     'Customer #1','Customer #2','Customer Warehouse','Ericsson VAR','Baseline Release & Dist.'],
         'viewauthorized': SecurityPermission.objects.filter(title__iregex='^.*Approval.*$').filter(user__in=oRequest.user.groups.all()),
-        'skip_authorized': SecurityPermission.objects.filter(title__iexact='BLM_Approval_Write').filter(user__in=oRequest.user.groups.all())
+        'skip_authorized': SecurityPermission.objects.filter(title__iexact='BLM_Approval_Write').filter(user__in=oRequest.user.groups.all()),
+        'notify_users': set(User.objects.filter(groups__name__startswith='BOM_'))
     }
     return Default(oRequest, sTemplate='BoMConfig/approvals.html', dContext=dContext)
 # end def
@@ -70,8 +73,14 @@ def ApprovalData(oRequest):
             'comments': ''
         }
 
-        oUser = User.objects.get(username=getattr(oHeadTracker, oRequest.POST['level']+"_approver"))
-        dResult['person'] = oUser.first_name + " " + oUser.last_name
+        if getattr(oHeadTracker, oRequest.POST['level']+"_approver") != 'system':
+            try:
+                oUser = User.objects.get(username=getattr(oHeadTracker, oRequest.POST['level']+"_approver"))
+                dResult['person'] = oUser.first_name + " " + oUser.last_name
+            except User.DoesNotExist:
+                dResult['person'] = '(User not found)'
+        else:
+            dResult['person'] = 'System'
 
         if oRequest.POST['level'] != 'psm_config':
             dResult['comments'] = getattr(oHeadTracker, oRequest.POST['level']+"_comments", 'N/A')
@@ -107,6 +116,7 @@ def AjaxApprove(oRequest):
             aDestinations = [record for record in json.loads(oRequest.POST.get('destinations', None))]
 
         if sAction == 'send_to_approve':
+            # TODO: Create data set from modal view to determine desired approvals, and notification list
             for iRecord in aRecords:
                 oHeader = Header.objects.get(pk=iRecord)
                 oCreated = oHeader.headertimetracker_set.first().created_on
@@ -117,12 +127,24 @@ def AjaxApprove(oRequest):
                     oLatestTracker.created_on = oCreated
                     oLatestTracker.save()
                 else:
-                    HeaderTimeTracker.objects.create(**{
+                    oLatestTracker = HeaderTimeTracker.objects.create(**{
                         'header': oHeader,
                         'submitted_for_approval': timezone.now(),
                         'psm_config_approver': oRequest.user.username,
                         'created_on': oCreated
                     })
+
+                # TODO: Using AJAX data and ApproveList data, mark disallowed approval levels as Skipped / N/A
+                try:
+                    oApprovalList = ApprovalList.objects.get(customer=oHeader.customer_unit)
+                    for index, level in enumerate(HeaderTimeTracker.approvals()):
+                        if str(index) in oApprovalList.disallowed.split(','):
+                            setattr(oLatestTracker, level + '_approver', 'system')
+                            setattr(oLatestTracker, level + '_approved_on', timezone.datetime(1900, 1, 1))
+                            setattr(oLatestTracker, level + '_comments', 'Not required for this customer')
+                    oLatestTracker.save()
+                except ApprovalList.DoesNotExist:
+                    pass
 
                 oHeader.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
                 oHeader.save()
@@ -157,6 +179,13 @@ def AjaxApprove(oRequest):
                         setattr(oLatestTracker, sNeededLevel+'_approver', oRequest.user.username)
                         setattr(oLatestTracker, sNeededLevel+'_approved_on', timezone.now())
                         setattr(oLatestTracker, sNeededLevel+'_comments', aComments[index])
+                        if aDestinations[index]:
+                            User.objects.get(id=aDestinations[index]).email_user(
+                                subject='A configuration requires you attention',
+                                message='The configuration has been sent to you by',
+                                from_email='rnamdb.admin@ericsson.com',
+                                html_message=None
+                            )
                     elif sAction == 'disapprove':
                         setattr(oLatestTracker, sNeededLevel+'_approver', oRequest.user.username)
                         setattr(oLatestTracker, sNeededLevel+'_denied_approval', timezone.now())
@@ -164,6 +193,7 @@ def AjaxApprove(oRequest):
                         oLatestTracker.disapproved_on = timezone.now()
 
                         # Create a new time tracker, if not disapproved back to PSM
+                        sReturnedLevel = 'psm_config'
                         if aDestinations[index] != 'psm_config':
                             oNewTracker = HeaderTimeTracker.objects.create(**{'header': oHeader,
                                                                               'created_on': oLatestTracker.created_on,
@@ -171,6 +201,7 @@ def AjaxApprove(oRequest):
                                                                               })
                             # Copy over approval data for each level before destination level
                             for level in aChain:
+                                sReturnedLevel = level
                                 if level == aDestinations[index]:
                                     break
                                 # end if
@@ -187,6 +218,16 @@ def AjaxApprove(oRequest):
                             # end for
 
                             oNewTracker.save()
+
+                            sLastApprover = getattr(oLatestTracker, sReturnedLevel + '_approver', None)
+                            if sLastApprover:
+                                User.objects.get(username=sLastApprover).email_user(
+                                    subject='A configuration has been returned to you',
+                                    message='A configuration you approved has been disapproved and returned for your attention',
+                                    from_email='rnamdb.admin@ericsson.com',
+                                    html_message=None
+                                )
+
                         # Else, send header back to 'In Process' status
                         else:
                             oHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
@@ -227,40 +268,6 @@ def AjaxApprove(oRequest):
         elif sAction == 'clone':
             oOldHeader = Header.objects.get(pk=aRecords[0])
             oNewHeader = CloneHeader(oOldHeader)
-            # oNewHeader = copy.deepcopy(oOldHeader)
-            # oNewHeader.pk = None
-            # oNewHeader.configuration_designation = oOldHeader.configuration_designation + '_______CLONE_______'
-            # oNewHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
-            # if oNewHeader.react_request is None:
-            #     oNewHeader.react_request = ''
-            # # end if
-            #
-            # if oNewHeader.baseline_impacted:
-            #     oNewHeader.baseline = Baseline_Revision.objects.get(baseline=Baseline.objects.get(title=oNewHeader.baseline_impacted),
-            #                                                         version=Baseline.objects.get(title=oNewHeader.baseline_impacted).current_inprocess_version)
-            #     oNewHeader.baseline_version = oNewHeader.baseline.version
-            # # end if
-            #
-            # oNewHeader.save()
-            #
-            # oNewConfig = copy.deepcopy(oOldHeader.configuration)
-            # oNewConfig.pk = None
-            # oNewConfig.header = oNewHeader
-            # oNewConfig.save()
-            #
-            # for oConfigLine in oOldHeader.configuration.configline_set.all():
-            #     oNewLine = copy.deepcopy(oConfigLine)
-            #     oNewLine.pk = None
-            #     oNewLine.config = oNewConfig
-            #     oNewLine.save()
-            #
-            #     if hasattr(oConfigLine,'linepricing'):
-            #         oNewPrice = copy.deepcopy(oConfigLine.linepricing)
-            #         oNewPrice.pk = None
-            #         oNewPrice.config_line = oNewLine
-            #         oNewPrice.save()
-            #     # end if
-            # # end for
 
             oRequest.session['existing'] = oNewHeader.pk
             return HttpResponse(reverse('bomconfig:configheader'))
@@ -320,4 +327,34 @@ def CloneHeader(oHeader):
         # end if
     # end for
     return oNewHeader
+# end def
+
+
+def AjaxApprovalForm(oRequest):
+    if oRequest.POST:
+        aRecords = json.loads(oRequest.POST['data'])
+
+        aApprovalLevels = HeaderTimeTracker.approvals()[1:-1]
+        dPermissionLevels = HeaderTimeTracker.permission_map()
+
+        dForm = {}
+
+        for record in aRecords:
+            oHeader = Header.objects.get(id=record)
+            dContext = {'approval_levels': aApprovalLevels,
+                        'required': (GrabValue(ApprovalList.objects.filter(customer=oHeader.customer_unit).first(), 'required') or '').split(','),
+                        'optional': (GrabValue(ApprovalList.objects.filter(customer=oHeader.customer_unit).first(), 'optional') or '').split(','),
+                        'disallowed': (GrabValue(ApprovalList.objects.filter(customer=oHeader.customer_unit).first(), 'disallowed') or '').split(','),
+                        'email': {}
+                        }
+
+            for key, value in dPermissionLevels.items():
+                if key in aApprovalLevels:
+                    dContext['email'].update({key: list(set(User.objects.filter(groups__securitypermission__in=SecurityPermission.objects.filter(title__in=value)).exclude(groups__name__contains='BPMA')))})
+
+            dForm[record] = [oHeader.configuration_designation + "  " + oHeader.baseline_version, loader.render_to_string('BoMConfig/approvalform.html', dContext)]
+
+        return JsonResponse(dForm)
+    else:
+        return Http404()
 # end def

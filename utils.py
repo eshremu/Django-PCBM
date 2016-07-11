@@ -438,6 +438,7 @@ def GenerateRevisionSummary_old(oBaseline, sPrevious, sCurrent):
 
 def GrabValue(oStartObj, sAttrChain):
     import functools
+    import traceback
     try:
         return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj) or None
     except AttributeError:
@@ -699,7 +700,7 @@ def HeaderComparison(oHead, oPrev):
     for oConfigLine in oHead.configuration.configline_set.all():
         dCurrent[(oConfigLine.part.base.product_number, oConfigLine.line_number)] = [
             oConfigLine.order_qty,
-            oConfigLine.linepricing.override_price or GrabValue(oConfigLine,
+            GrabValue(oConfigLine, 'linepricing.override_price') or GrabValue(oConfigLine,
                                                                 'linepricing.pricing_object.unit_price') or None,
             (
                 oHead.configuration.configline_set.get(line_number=oConfigLine.line_number[

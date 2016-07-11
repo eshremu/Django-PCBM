@@ -38,6 +38,7 @@ urlpatterns = patterns(
     url(r'^list_react_fill/$', views.ListREACTFill, name='list_react_fill'),
     url(r'^approve/$', views.AjaxApprove, name='approve'),
     url(r'^approval_data/$', views.ApprovalData, name='approve_info'),
+    url(r'^approval_list/$', views.AjaxApprovalForm, name='approve_list'),
     url(r'^password_change/$', auth_views.password_change, {'post_change_redirect': 'bomconfig:index'}, name='change_password'),
     url(r'^admin/mailing/$', views.MailingAdmin, name='mailadmin'),
     url(r'^admin/mailing/change/(?P<id>\d+)/$', views.MailingChange, name='mailchange'),
@@ -45,5 +46,8 @@ urlpatterns = patterns(
     url(r'^admin/user/$', views.UserAdmin, name='useradmin'),
     url(r'^admin/user/add/$', views.UserAdd, name='useradd'),
     url(r'^admin/user/changeuser/(?P<id>\d+)/$', views.UserChange, name='userchange'),
-    url(r'^admin/$', views.AdminLanding, name='adminlanding')
+    url(r'^admin/$', views.AdminLanding, name='adminlanding'),
+    url(r'^admin/approval/$', views.ApprovalAdmin, name='approvaladmin'),
+    url(r'^admin/approval/add/$', views.ApprovalChange, name='approvaladd'),
+    url(r'^admin/approval/change/(?P<id>\d+)/$', views.ApprovalChange, name='approvalchange'),
 )
