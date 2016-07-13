@@ -30,14 +30,17 @@ def UpdateConfigRevisionData(oHeader):
     try:
         if oHeader.model_replaced_link:
             oPrev = oHeader.model_replaced_link
-        elif oHeader.baseline.previous_revision:
+        elif oHeader.baseline and oHeader.baseline.previous_revision:
             oPrev = oHeader.baseline.previous_revision.header_set.get(configuration_designation=oHeader.model_replaced or oHeader.configuration_designation,
                                                                       program=oHeader.program)
         else:
-            aExistingRevs = sorted(
-                list(set([oBaseRev.version for oBaseRev in
-                          oHeader.baseline.baseline.baseline_revision_set.order_by('version')])),
-                key=RevisionCompare)
+            if oHeader.baseline:
+                aExistingRevs = sorted(
+                    list(set([oBaseRev.version for oBaseRev in
+                              oHeader.baseline.baseline.baseline_revision_set.order_by('version')])),
+                    key=RevisionCompare)
+            else:
+                aExistingRevs = [oHeader.baseline_version]
 
             iPrev = aExistingRevs.index(oHeader.baseline_version) - 1
 
@@ -1004,10 +1007,14 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                     '6': oHeader.change_comments or '',
                     '7': oHeader.person_responsible,
                 })
-                aExistingRevs = sorted(
-                    list(set([oBaseRev.version for oBaseRev in
-                              oHeader.baseline.baseline.baseline_revision_set.order_by('version')])),
-                    key=RevisionCompare)
+
+                if oHeader.baseline:
+                    aExistingRevs = sorted(
+                        list(set([oBaseRev.version for oBaseRev in
+                                  oHeader.baseline.baseline.baseline_revision_set.order_by('version')])),
+                        key=RevisionCompare)
+                else:
+                    aExistingRevs = [oHeader.baseline_version]
 
                 iPrev = aExistingRevs.index(oHeader.baseline_version) - 1
 
