@@ -8,6 +8,7 @@ new Event("pcbm.modal.formdisplay", {'cancelable': false, "bubbles": false});
 var iIndex = -1;
 var keys=[];
 var returnedFormData = null;
+var approvalFormData = {};
 
 function cleanDataCheck(link){
     window.location.href = link.dataset.href;
@@ -96,6 +97,9 @@ $(document).ready(function(){
     $('#approval_submit').click(function(){
         if($('.inprocess:checked').length > 0) {
             messageToModal('Confirm submission','Are you sure you wish to submit the selected records for approval?', function(source){
+                returnedFormData = null;
+                iIndex = -1;
+                approvalFormData = {};
                 $('#messageModal').one('hidden.bs.modal', function(){
                     process($(source).val());
                 });
@@ -160,21 +164,64 @@ $(document).ready(function(){
         }
     });
 
-    $(document).on("pcbm.modal.formdisplay", function(event){
+    $(document).on("pcbm.modal.formdisplay", processForms);
+
+    $('#messageModal').on('keyup afterShow', 'input[name$="-email"]', function(){
+        console.log('Do some validating');
+        // TODO: Check if any custom email addresses are invalid/blank and mark those as invalid (use class)
+        if(false){
+            $('.modal_submit.btn.btn-primary').attr('disabled','disabled');
+        } else {
+            $('.modal_submit.btn.btn-primary').removeAttr('disabled');
+        }
+    });
+
+    function processForms(){
         if (returnedFormData == null){
 
         } else if ((iIndex + 1) >= keys.length) {
-            // TODO: This is where the data should be sent back to the server for processing
-            returnedFormData = null;
-            iIndex = -1;
+            $('#myModal').modal('show');
+            $.ajax({
+                url: approve_url,
+                type: "POST",
+                data: {
+                    action: 'send_to_approve',
+                    data: JSON.stringify(keys),
+                    approval: JSON.stringify(approvalFormData)
+                },
+                headers:{
+                    'X-CSRFToken': getcookie('csrftoken')
+                },
+                success: function(data) {
+                    if(data){
+                        location.href = data;
+                    } else {
+                        location.reload(true);
+                    }
+                    // returnedFormData = null;
+                    // iIndex = -1;
+                    // approvalFormData = {};
+                    // $('#myModal').modal('hide');
+                },
+                error: function(){
+                    $('#myModal').modal('hide');
+                    messageToModal('Submission Error','An error occurred during record submission.  If the error continues, contact a tool admin.', function(){});
+                }
+            });
         } else {
             iIndex++;
             messageToModal('Select Approval levels and desired Points of Contact for ' + returnedFormData[keys[iIndex]][0], returnedFormData[keys[iIndex]][1], function () {
-                // TODO: This is where the data is collected from the form
+                approvalFormData[keys[iIndex]]={};
+                for (var i=0; i < approval_levels.length; i++){
+                    approvalFormData[keys[iIndex]][approval_levels[i]]=[];
+                    approvalFormData[keys[iIndex]][approval_levels[i]][0]= String($("input[name='" + approval_levels[i] + "']").prop('checked'));
+                    approvalFormData[keys[iIndex]][approval_levels[i]][1]= $("select[name='" + approval_levels[i] + "-notify" + "']").val();
+                    approvalFormData[keys[iIndex]][approval_levels[i]][2]= $("input[name='" + approval_levels[i] + "-email" + "']").val();
+                }
                 $('#messageModal').one('hidden.bs.modal', function () {
                     $(document).trigger('pcbm.modal.formdisplay');
                 });
             });
         }
-    });
+    }
 });

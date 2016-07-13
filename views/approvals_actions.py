@@ -11,6 +11,8 @@ from BoMConfig.utils import UpRev, GrabValue
 from BoMConfig.views.landing import Unlock, Default
 from django.contrib.auth.models import User
 
+from baseString import StrToBool
+
 import copy
 import json
 
@@ -57,7 +59,8 @@ def Action(oRequest):
         'active': Header.objects.filter(configuration_status__name='Active'),
         'on_hold': Header.objects.filter(configuration_status__name='On Hold'),
         'customer_list': ['All'] + [obj.name for obj in REF_CUSTOMER.objects.all()],
-        'viewauthorized': bool(oRequest.user.groups.filter(name__in=['BOM_BPMA_Architect','BOM_PSM_Product_Supply_Manager', 'BOM_PSM_Baseline_Manager']))
+        'viewauthorized': bool(oRequest.user.groups.filter(name__in=['BOM_BPMA_Architect','BOM_PSM_Product_Supply_Manager', 'BOM_PSM_Baseline_Manager'])),
+        'approval_seq': HeaderTimeTracker.approvals(),
     }
     return Default(oRequest, sTemplate='BoMConfig/actions.html', dContext=dContext)
 # end def
@@ -116,7 +119,8 @@ def AjaxApprove(oRequest):
             aDestinations = [record for record in json.loads(oRequest.POST.get('destinations', None))]
 
         if sAction == 'send_to_approve':
-            # TODO: Create data set from modal view to determine desired approvals, and notification list
+            dApprovalData = json.loads(oRequest.POST.get('approval'))
+
             for iRecord in aRecords:
                 oHeader = Header.objects.get(pk=iRecord)
                 oCreated = oHeader.headertimetracker_set.first().created_on
@@ -134,17 +138,27 @@ def AjaxApprove(oRequest):
                         'created_on': oCreated
                     })
 
-                # TODO: Using AJAX data and ApproveList data, mark disallowed approval levels as Skipped / N/A
+                dRecordApprovals = dApprovalData[str(iRecord)]
                 try:
                     oApprovalList = ApprovalList.objects.get(customer=oHeader.customer_unit)
-                    for index, level in enumerate(HeaderTimeTracker.approvals()):
-                        if str(index) in oApprovalList.disallowed.split(','):
-                            setattr(oLatestTracker, level + '_approver', 'system')
-                            setattr(oLatestTracker, level + '_approved_on', timezone.datetime(1900, 1, 1))
-                            setattr(oLatestTracker, level + '_comments', 'Not required for this customer')
-                    oLatestTracker.save()
                 except ApprovalList.DoesNotExist:
-                    pass
+                    oApprovalList = None
+
+                for index, level in enumerate(HeaderTimeTracker.approvals()):
+                    if (oApprovalList and str(index) in oApprovalList.disallowed.split(',')) or (not StrToBool(dRecordApprovals[level][0])):
+                        setattr(oLatestTracker, level + '_approver', 'system')
+                        setattr(oLatestTracker, level + '_approved_on', timezone.datetime(1900, 1, 1))
+                        setattr(oLatestTracker, level + '_comments', 'Not required for this customer')
+                    elif dRecordApprovals[level][1]:
+                        if int(dRecordApprovals[level][1]) != 0:
+                            oNotifyUser = User.objects.get(id=dRecordApprovals[level][1])
+                            print("Would have set '{}' notification to '{}'".format(level, oNotifyUser.email))
+                            pass  # TODO: Set notification to user email of user indicated
+                        else:
+                            print("Would have set '{}' notification to '{}'".format(level, dRecordApprovals[level][2]))
+                            pass  # TODO: Set notifaction to custom email specified
+
+                oLatestTracker.save()
 
                 oHeader.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
                 oHeader.save()

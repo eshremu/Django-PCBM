@@ -1,10 +1,10 @@
 {% load customtemplatetags %}
-<table>
+<table class="approval-form-data-modal">
     <thead>
         <tr>
-            <th style="text-align: right;">Level</th>
-            <th style="text-align: center;">Include</th>
-            <th style="text-align: center;">POC</th>
+            <th style="text-align: right; min-width: 45px;">Level</th>
+            <th style="text-align: center; min-width: 70px;">Include</th>
+            <th style="text-align: center; min-width: 200px;">POC</th>
         </tr>
     </thead>
     <tbody>
@@ -14,6 +14,7 @@
             <td style="text-align: center;">
                 <input title="Require {{ level|replacewithspace:"_"|upper }} approval"
                        type="checkbox"
+                       name="{{ level }}"
                        value="{{ forloop.counter }}"
                        onchange="if(this.checked){$(this).parent().next('td').find('select').removeAttr('disabled');}else{$(this).parent().next('td').find('select').attr('disabled','disabled').val('').change();}"
                        {% if forloop.counter|slugify in required or forloop.counter|slugify in optional %}checked="checked"{% endif %}
@@ -21,8 +22,9 @@
                 />
             </td>
             <td style="text-align: center;">
-                <select
-                        onchange="if(this.value==='0'){$(this).parent().next('td').find('input').css('visibility','visible');}else{$(this).parent().next('td').find('input').css('visibility','hidden');}"
+                {# onchange="if(this.value==='0'){$(this).parent().next('td').find('input').css('visibility','visible');}else{$(this).parent().next('td').find('input').css('visibility','hidden');}" #}
+                <select name="{{ level }}-notify"
+                        onchange="if(this.value==='0'){$(this).parent().next('td').find('input').show().trigger('afterShow');}else{$(this).parent().next('td').find('input').hide();}"
                         {% if forloop.counter|slugify in disallowed %}disabled="disabled"{% endif %}
                 >
                     <option value="">--------</option>
@@ -32,7 +34,8 @@
                     <option value="0">Custom</option>
                 </select>
             </td>
-            <td style="text-align: center; padding-left:5px;"><input type="email" style="visibility: hidden;"/></td>
+            {# style="visibility: hidden;" #}
+            <td style="text-align: center; padding-left:5px;"><input type="email" name="{{ level }}-email" style="display: none;"/></td>
         </tr>
         {% endfor %}
     </tbody>

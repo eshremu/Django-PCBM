@@ -2,11 +2,22 @@
 {% load staticfiles %}
 {% block subcontent %}
     <script type="text/javascript" src="/admin/jsi18n/"></script>
+    {% if grappelli_installed %}
+    <script type="text/javascript">var grappelli={};</script>
+    <script type="text/javascript" src="{% static 'grappelli/jquery/ui/jquery-ui.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'grappelli/jquery/jquery-2.1.4.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'grappelli/js/grappelli.js' %}"></script>
+    <script type="text/javascript" src="{% static 'admin/js/core.js' %}"></script>
+    <script type="text/javascript" src="{% static 'admin/js/actions.js' %}"></script>
+    <script type="text/javascript" src="{% static 'admin/js/SelectBox.js' %}"></script>
+    <script type="text/javascript" src="{% static 'admin/js/SelectFilter2.js' %}"></script>
+    {% else %}
     <script type="text/javascript" src="{{ STATIC_URL }}admin/js/core.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}admin/js/jquery.min.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}admin/js/jquery.init.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}admin/js/SelectFilter2.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}admin/js/SelectBox.js"></script>
+    {% endif %}
 
     <h3><u>{% if form.instance.id %}Change{% else %}Add{% endif %} Baseline Distribution List</u></h3>
     <form method="post" style="margin-top: 20px;">

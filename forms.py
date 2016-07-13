@@ -323,15 +323,17 @@ class UserForm(forms.Form):
     first_name = forms.CharField(label='First Name')
     last_name = forms.CharField(label='Last Name')
     email = forms.EmailField(label='Ericsson Email')
-    assigned_group = forms.ModelChoiceField(Group.objects.filter(name__startswith='BOM_')
-                                            .exclude(name__contains='BPMA')
-                                            .exclude(name__contains='SuperApprover'), label='Assigned Group')
+    assigned_group = forms.ModelMultipleChoiceField(Group.objects.filter(name__startswith='BOM_')
+                                                    .exclude(name__contains='BPMA')
+                                                    .exclude(name__contains='SuperApprover'), label='Assigned Group',)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['signum'].widget.attrs['readonly'] = 'True'
         self.fields['signum'].widget.attrs['style'] = 'border: none;'
-        self.fields['assigned_group'].label_from_instance = lambda inst: "%s" % (inst.name.replace('BOM_', '').replace('_', ' - ', 1).replace('_', ' '))
+        self.fields['assigned_group'].label_from_instance = lambda inst: "%s" % (inst.name.replace('BOM_', '')
+                                                                                 .replace('_', ' - ', 1)
+                                                                                 .replace('_', ' '))
 
     def clean_email(self):
         if not self.cleaned_data['email'].lower().endswith('@ericsson.com'):
