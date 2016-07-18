@@ -366,7 +366,7 @@ class Header(models.Model):
                                              db_constraint=False, unique=False)
     # old_configuration_status = models.CharField(max_length=50, blank=True, null=True)
     old_configuration_status = models.ForeignKey(REF_STATUS, default=None, related_name='old_status', db_index=False,
-                                                 db_constraint=False, unique=False, null=True)
+                                                 db_constraint=False, unique=False, null=True, blank=True)
     workgroup = models.CharField(max_length=50, verbose_name='Workgroup', blank=True, null=True)
     name = models.CharField(max_length=50, verbose_name='Name', blank=True, null=True)
     pick_list = models.BooleanField(default=False, blank=True)

@@ -6,7 +6,7 @@ from django.contrib.staticfiles.finders import find
 
 from BoMConfig.models import Header, ConfigLine, Baseline, Baseline_Revision, DistroList
 from BoMConfig.templatetags.customtemplatetags import searchscramble
-from BoMConfig.utils import GenerateRevisionSummary, GrabValue, HeaderComparison, RevisionCompare
+from BoMConfig.utils import GenerateRevisionSummary, GrabValue, HeaderComparison, RevisionCompare, TitleShorten
 from BoMConfig.views.configuration import BuildDataArray
 
 import datetime
@@ -460,8 +460,9 @@ def WriteBaselineToFile(oBaseline, sVersion):
         aDynamicWidths = [0]*16
         sTitle = str(oHeader.configuration_designation)
         if len(sTitle) > 31:
-            sTitle = sTitle.replace('Optional', 'Opt').replace('Hardware', 'HW').replace('Pick List', 'PL').replace(
-                ' - ', '-').replace('_______CLONE_________', ' CLONE ')
+            sTitle = TitleShorten(sTitle)
+            if len(sTitle) > 31:
+                sTitle = "(Record title too long)"
 
         if oHeader.bom_request_type.name == 'Update':
             try:
@@ -753,8 +754,9 @@ def WriteBaselineToFile(oBaseline, sVersion):
             elif not aTOCFields[iIndex - 1]:
                 oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = str(
                     oHeader.configuration_designation)
-                oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].hyperlink = "#'" + str(
-                    oHeader.configuration_designation) + "'!A1"
+                oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].hyperlink = "#'" + (
+                    TitleShorten(str(oHeader.configuration_designation)) if len(str(oHeader.configuration_designation)) > 31
+                    else str(oHeader.configuration_designation)) + "'!A1"
                 oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].font = Font(color=colors.BLUE,
                                                                                        underline='single')
         iCurrentRow += 1
@@ -785,7 +787,7 @@ def EmailDownload(oBaseline): #sBaselineTitle):
 
     oNewMessage = EmailMultiAlternatives(sSubject, sMessage, 'rnamdb.admin@ericsson.com',
                                          [obj.email for obj in oDistroList.users_included.all()],
-                                         cc=oDistroList.additional_address.split())
+                                         cc=oDistroList.additional_addresses.split())
     oNewMessage.attach_alternative(sMessageHtml, 'text/html')
 
     oStream = BytesIO()

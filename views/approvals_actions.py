@@ -194,7 +194,10 @@ def AjaxApprove(oRequest):
                 # end for
 
                 aNames = HeaderTimeTracker.permission_entry(sNeededLevel)
-                bCanApprove = bool(SecurityPermission.objects.filter(title__in=aNames).filter(user__in=oRequest.user.groups.all()))
+                try:
+                    bCanApprove = bool(SecurityPermission.objects.filter(title__in=aNames).filter(user__in=oRequest.user.groups.all()))
+                except ValueError:
+                    bCanApprove = False
                 # end if
 
                 # If so, approve, disapprove, or skip as requested

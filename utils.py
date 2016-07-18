@@ -1,10 +1,11 @@
 __author__ = 'epastag'
 from django.utils import timezone
 from django.db.models import Q
-from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS
+from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS, LinePricing
 from copy import deepcopy
 import datetime
 from functools import cmp_to_key
+import re
 
 
 RevisionCompare = cmp_to_key(lambda x, y: (-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
@@ -80,7 +81,7 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
                 oNewLine.config = oNewConfig
                 oNewLine.save()
 
-                oNewPrice = deepcopy(oConfigLine.linepricing)
+                oNewPrice = deepcopy(oConfigLine.linepricing) if hasattr(oConfigLine, 'linepricing') else LinePricing()
                 oNewPrice.pk = None
                 oNewPrice.config_line = oNewLine
                 oNewPrice.save()
@@ -438,7 +439,6 @@ def GenerateRevisionSummary_old(oBaseline, sPrevious, sCurrent):
 
 def GrabValue(oStartObj, sAttrChain, default=None):
     import functools
-    import traceback
     try:
         return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj) or default
     except AttributeError:
@@ -829,3 +829,12 @@ def HeaderComparison(oHead, oPrev):
     aLines = sTemp.split('\n')[:-1]
     aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])
     return '\n'.join(aLines)
+# end def
+
+
+def TitleShorten(sTitle):
+    sTitle = re.sub('Optional', 'Opt', sTitle, flags=re.IGNORECASE)
+    sTitle = re.sub('Hardware', 'HW', sTitle, flags=re.IGNORECASE)
+    sTitle = re.sub('Pick List', 'PL', sTitle, flags=re.IGNORECASE)
+    sTitle = re.sub('_+CLONE_+', '_CLONE_', sTitle, flags=re.IGNORECASE)
+    return sTitle
