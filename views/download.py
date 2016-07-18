@@ -285,7 +285,7 @@ def DownloadMultiple(oRequest):
     for headID in records:
         oHeader = Header.objects.get(id=headID)
         sHeaderName = oHeader.configuration_designation + ('_' + oHeader.program.name if oHeader.program else '') + '.xlsx'
-        oFile = WriteConfigToFile(oHeader)
+        oFile = WriteConfigToFile(oHeader, oRequest.build_absolute_uri(reverse('bomconfig:search')) + '?config=' + searchscramble(oHeader.pk))
         fileStream = BytesIO()
         oFile.save(fileStream)
         zf.writestr(sHeaderName, fileStream.getvalue())

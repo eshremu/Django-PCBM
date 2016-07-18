@@ -41,7 +41,10 @@
                                     {% endfor %}
                                 </ul>
                             </li>
-						{% elif menuitem.title == 'Admin' and not user.is_staff %}
+						{% elif menuitem.title == 'Admin' %}
+                            {% if user.is_staff or user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
+                            <li><a class="headtitle" style="cursor: pointer;" onclick="cleanDataCheck(this);" data-href="{% if menuitem.destination|slice:'-1:' == '/' %}{{ menuitem.destination }}{% else %}{% url menuitem.destination %}{% endif %}">{{menuitem.title}}</a></li>
+                            {% endif %}
 						{% else %}
 							<li><a class="headtitle" style="cursor: pointer;" onclick="cleanDataCheck(this);" data-href="{% if menuitem.destination|slice:'-1:' == '/' %}{{ menuitem.destination }}{% else %}{% url menuitem.destination %}{% endif %}">{{menuitem.title}}</a></li>
 						{% endif %}

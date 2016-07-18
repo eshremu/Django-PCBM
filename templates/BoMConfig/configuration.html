@@ -332,7 +332,8 @@
 
             if (value != '' && value != undefined && value != null) {
                 var result;
-                var dummy = String(value).replace("$","").replace(',','').replace(' ','');
+                var overridden = String(value).charAt(0) == "!";
+                var dummy = String(value).replace("$","").replace(',','').replace(' ','').replace("!","");
                 var decimal = dummy.indexOf('.');
                 var wholeDummy, fracDummy;
 
@@ -368,6 +369,10 @@
 
                 if (negative){
                     value = "(" + value + ")";
+                }
+
+                if (overridden){
+                    value = "!" + value;
                 }
             }
             customRenderer(instance, td, row, col, prop, value, cellProperties);
