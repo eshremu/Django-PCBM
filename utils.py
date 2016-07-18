@@ -5,6 +5,7 @@ from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revisio
 from copy import deepcopy
 import datetime
 from functools import cmp_to_key
+import re
 
 
 RevisionCompare = cmp_to_key(lambda x, y: (-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
@@ -828,3 +829,12 @@ def HeaderComparison(oHead, oPrev):
     aLines = sTemp.split('\n')[:-1]
     aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])
     return '\n'.join(aLines)
+# end def
+
+
+def TitleShorten(sTitle):
+    sTitle = re.sub('Optional', 'Opt', sTitle, flags=re.IGNORECASE)
+    sTitle = re.sub('Hardware', 'HW', sTitle, flags=re.IGNORECASE)
+    sTitle = re.sub('Pick List', 'PL', sTitle, flags=re.IGNORECASE)
+    sTitle = re.sub('_+CLONE_+', '_CLONE_', sTitle, flags=re.IGNORECASE)
+    return sTitle
