@@ -18,6 +18,12 @@ $(document).ready(function() {
                 });
                 next_sib = $(next_sib).next();
             }
+
+            var searchlist = search_string.split(/\s+/);
+            var searchset = new Set(searchlist);
+            searchlist = Array.from(searchset.values());
+            search_string = searchlist.join(' ');
+
             var width = $(el).find('>:nth-child(2)').css('width');
             $(el).find('>:nth-child(2)').css('display','none').css('max-width', width).text(search_string);
         });

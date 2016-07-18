@@ -166,10 +166,17 @@ $(document).ready(function(){
 
     $(document).on("pcbm.modal.formdisplay", processForms);
 
-    $('#messageModal').on('keyup afterShow', 'input[name$="-email"]', function(){
-        console.log('Do some validating');
-        // TODO: Check if any custom email addresses are invalid/blank and mark those as invalid (use class)
-        if(false){
+    $('#messageModal').on('keyup afterShow change', 'input[name$="-email"]', function(event){
+        var test = event.target.value;
+        var email_regex = /^[-a-z0-9~!$%^&*_=+}{\'?]+(\.[-a-z0-9~!$%^&*_=+}{\'?]+)*@([a-z0-9_][-a-z0-9_]*(\.[-a-z0-9_]+)*\.(aero|arpa|biz|com|coop|edu|gov|info|int|mil|museum|name|net|org|pro|travel|mobi|[a-z][a-z])|([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}))(:[0-9]{1,5})?$/i
+
+        if (!email_regex.test(test)){
+            $(event.target).addClass('input-invalid');
+        } else {
+            $(event.target).removeClass('input-invalid');
+        }
+
+        if($('#messageModal .input-invalid').length > 0){
             $('.modal_submit.btn.btn-primary').attr('disabled','disabled');
         } else {
             $('.modal_submit.btn.btn-primary').removeAttr('disabled');

@@ -436,13 +436,13 @@ def GenerateRevisionSummary_old(oBaseline, sPrevious, sCurrent):
 # end def
 
 
-def GrabValue(oStartObj, sAttrChain):
+def GrabValue(oStartObj, sAttrChain, default=None):
     import functools
     import traceback
     try:
-        return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj) or None
+        return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj) or default
     except AttributeError:
-        return None
+        return default
 # end def
 
 

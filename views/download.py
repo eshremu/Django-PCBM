@@ -709,13 +709,15 @@ def WriteBaselineToFile(oBaseline, sVersion):
     # end for
 
     oSheet = oFile.create_sheet(0, 'ToC')
-    aTOCTitles = ['Configuration', 'Customer Designation', 'Technology', 'Product Area 1', 'Product Area 2', 'Model',
-                  'Model Description', 'What Model is this replacing?', 'BoM & Inquiry Details', 'BoM Request Type',
-                  'Configuration / Ordering Status', 'Inquiry', 'Site Template', 'Ext Notes']
-    aTOCFields = ['configuration_designation', 'customer_designation', 'technology', 'product_area1', 'product_area2',
+    aTOCTitles = ['Customer Number', 'Second Customer Number', 'Configuration', 'Customer Designation', 'Technology',
+                  'Product Area 1', 'Product Area 2', 'Model', 'Model Description', 'What Model is this replacing?',
+                  'BoM & Inquiry Details', 'BoM Request Type', 'Configuration / Ordering Status', 'Inquiry',
+                  'Site Template', 'Ext Notes']
+    aTOCFields = ['configuration.first_line.customer_number', 'configuration.first_line.sec_customer_number',
+                  'configuration_designation', 'customer_designation', 'technology', 'product_area1', 'product_area2',
                   'model', 'model_description', 'model_replaced', None, 'bom_request_type', 'configuration_status',
                   'inquiry_site_template', 'inquiry_site_template', 'external_notes']
-    aTOCWidths = [25, 15, 15, 25, 10, 25, 50, 25, 25, 10, 15, 10, 10, 50]
+    aTOCWidths = [20, 20, 25, 15, 15, 25, 10, 25, 50, 25, 25, 10, 15, 10, 10, 50]
 
     for iIndex in range(1, len(aTOCTitles) + 1):
         oSheet[utils.get_column_letter(iIndex) + '1'].value = aTOCTitles[iIndex - 1]
@@ -736,16 +738,16 @@ def WriteBaselineToFile(oBaseline, sVersion):
         for iIndex in range(1, len(aTOCFields) + 1):
             if aTOCFields[iIndex - 1] and aTOCFields[iIndex - 1] != 'inquiry_site_template':
                 oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = str(
-                    getattr(oHeader, aTOCFields[iIndex - 1], '') or '').replace('/Pending', '')
+                    GrabValue(oHeader, aTOCFields[iIndex - 1], '')).replace('/Pending', '')
             elif aTOCFields[iIndex - 1] == 'inquiry_site_template':
                 if aTOCTitles[iIndex - 1] == 'Inquiry' and str(
-                        getattr(oHeader, aTOCFields[iIndex - 1], None)).startswith('1'):
-                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = getattr(oHeader,
-                                                                                               aTOCFields[iIndex - 1])
+                        GrabValue(oHeader, aTOCFields[iIndex - 1], None)).startswith('1'):
+                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                               aTOCFields[iIndex - 1], '')
                 elif aTOCTitles[iIndex - 1] == 'Site Template' and str(
-                        getattr(oHeader, aTOCFields[iIndex - 1], None)).startswith('4'):
-                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = getattr(oHeader,
-                                                                                               aTOCFields[iIndex - 1])
+                        GrabValue(oHeader, aTOCFields[iIndex - 1], None)).startswith('4'):
+                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                               aTOCFields[iIndex - 1], '')
                 else:
                     oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = None
             elif not aTOCFields[iIndex - 1]:

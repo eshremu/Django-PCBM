@@ -15,6 +15,10 @@ select:disabled{
 	-webkit-appearance: none;
 }
 
+input.input-invalid, select.input-invalid {
+	border: 2px solid red;
+}
+
 .row {
 	margin-right: 0;
 }

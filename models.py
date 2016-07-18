@@ -484,6 +484,10 @@ class Configuration(models.Model):
         # end try
         return oFirst
     # end def
+
+    @property
+    def first_line(self):
+        return self.get_first_line()
 # end class
 
 
@@ -645,51 +649,61 @@ class HeaderTimeTracker(models.Model):
     scm1_denied_approval = models.DateTimeField(blank=True, null=True)
     scm1_approved_on = models.DateTimeField(blank=True, null=True)
     scm1_comments = models.TextField(blank=True, null=True)
+    scm1_notify = models.TextField(blank=True, null=True)
 
     scm2_approver = models.CharField(max_length=50, blank=True, null=True)
     scm2_denied_approval = models.DateTimeField(blank=True, null=True)
     scm2_approved_on = models.DateTimeField(blank=True, null=True)
     scm2_comments = models.TextField(blank=True, null=True)
+    scm2_notify = models.TextField(blank=True, null=True)
 
     csr_approver = models.CharField(max_length=50, blank=True, null=True)
     csr_denied_approval = models.DateTimeField(blank=True, null=True)
     csr_approved_on = models.DateTimeField(blank=True, null=True)
     csr_comments = models.TextField(blank=True, null=True)
+    csr_notify = models.TextField(blank=True, null=True)
 
     cpm_approver = models.CharField(max_length=50, blank=True, null=True)
     cpm_denied_approval = models.DateTimeField(blank=True, null=True)
     cpm_approved_on = models.DateTimeField(blank=True, null=True)
     cpm_comments = models.TextField(blank=True, null=True)
+    cpm_notify = models.TextField(blank=True, null=True)
 
     acr_approver = models.CharField(max_length=50, blank=True, null=True)
     acr_denied_approval = models.DateTimeField(blank=True, null=True)
     acr_approved_on = models.DateTimeField(blank=True, null=True)
     acr_comments = models.TextField(blank=True, null=True)
+    acr_notify = models.TextField(blank=True, null=True)
 
     blm_approver = models.CharField(max_length=50, blank=True, null=True)
     blm_denied_approval = models.DateTimeField(blank=True, null=True)
     blm_approved_on = models.DateTimeField(blank=True, null=True)
     blm_comments = models.TextField(blank=True, null=True)
+    blm_notify = models.TextField(blank=True, null=True)
 
     cust1_approver = models.CharField(max_length=50, blank=True, null=True)
     cust1_denied_approval = models.DateTimeField(blank=True, null=True)
     cust1_approved_on = models.DateTimeField(blank=True, null=True)
     cust1_comments = models.TextField(blank=True, null=True)
+    cust1_notify = models.TextField(blank=True, null=True)
 
     cust2_approver = models.CharField(max_length=50, blank=True, null=True)
     cust2_denied_approval = models.DateTimeField(blank=True, null=True)
     cust2_approved_on = models.DateTimeField(blank=True, null=True)
     cust2_comments = models.TextField(blank=True, null=True)
+    cust2_notify = models.TextField(blank=True, null=True)
 
     cust_whse_approver = models.CharField(max_length=50, blank=True, null=True)
     cust_whse_denied_approval = models.DateTimeField(blank=True, null=True)
     cust_whse_approved_on = models.DateTimeField(blank=True, null=True)
     cust_whse_comments = models.TextField(blank=True, null=True)
+    cust_whse_notify = models.TextField(blank=True, null=True)
 
     evar_approver = models.CharField(max_length=50, blank=True, null=True)
     evar_denied_approval = models.DateTimeField(blank=True, null=True)
     evar_approved_on = models.DateTimeField(blank=True, null=True)
     evar_comments = models.TextField(blank=True, null=True)
+    evar_notify = models.TextField(blank=True, null=True)
 
     brd_approver = models.CharField(max_length=50, blank=True, null=True)
     brd_denied_approval = models.DateTimeField(blank=True, null=True)
