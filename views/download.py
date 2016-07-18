@@ -460,8 +460,12 @@ def WriteBaselineToFile(oBaseline, sVersion):
         aDynamicWidths = [0]*16
         sTitle = str(oHeader.configuration_designation)
         if len(sTitle) > 31:
-            sTitle = sTitle.replace('Optional', 'Opt').replace('Hardware', 'HW').replace('Pick List', 'PL').replace(
-                ' - ', '-').replace('_______CLONE_________', ' CLONE ')
+            sTitle = re.sub('Optional', 'Opt', sTitle, flags=re.IGNORECASE)
+            sTitle = re.sub('Hardware', 'HW', sTitle, flags=re.IGNORECASE)
+            sTitle = re.sub('Pick List', 'PL', sTitle, flags=re.IGNORECASE)
+            sTitle = re.sub('_+CLONE_+', '_CLONE_', sTitle, flags=re.IGNORECASE)
+            if len(sTitle) > 31:
+                sTitle = "(Record title too long)"
 
         if oHeader.bom_request_type.name == 'Update':
             try:

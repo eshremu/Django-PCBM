@@ -182,6 +182,7 @@ $(document).ready(function(){
                             cellProperties.type = "dropdown";
                             // cellProperties.source = [''].concat({{ customer_list|safe }});
                             cellProperties.source = cust_list;
+                            cellProperties.validator = /.+/;
                         } else {
                             cellProperties.readOnly = true;
                             cellProperties.renderer = customRenderer;
@@ -304,13 +305,21 @@ $(document).ready(function(){
             beforeValidate: function(value, row, prop, source){
                 var load_data = this.getData();
                 if(load_data.length == 2 && load_data[0].join().replace(/,/g, '') == $('#initial').val() && load_data[1].join().replace(/,/g, '') == ""){
-                    if(prop == 4){
+                    if(prop == 1 && value == ""){
+                        value=" ";
+                    }
+
+                    if(prop == 4 && value == ""){
                         value='0.00';
                     }
 
-                    if(prop == 6){
+                    if(prop == 6 && value == ""){
                         value="01/01/1900";
                     }
+                }
+
+                if (prop == 1 && value == null){
+                    value = "";
                 }
                 return value;
             },
