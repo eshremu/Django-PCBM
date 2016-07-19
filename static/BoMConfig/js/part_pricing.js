@@ -9,7 +9,7 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties){
     new_value = value;
     if (col < 4){
         td.style.background = '#DDDDDD';
-        if(col < 3 && instance.getDataAtCell(row - 1, col) == value && instance.getDataAtCell(row, col-1) == instance.getDataAtCell(row-1, col-1))
+        if(col < 3 && instance.getDataAtCell(row - 1, col) == value && instance.getDataAtCell(row, col - 1) == instance.getDataAtCell(row - 1, col - 1))
         {
             new_value = '';
         }
