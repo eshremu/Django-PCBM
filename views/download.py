@@ -785,7 +785,7 @@ def EmailDownload(oBaseline): #sBaselineTitle):
 
     oNewMessage = EmailMultiAlternatives(sSubject, sMessage, 'rnamdb.admin@ericsson.com',
                                          [obj.email for obj in oDistroList.users_included.all()],
-                                         cc=oDistroList.additional_address.split())
+                                         cc=oDistroList.additional_addresses.split())
     oNewMessage.attach_alternative(sMessageHtml, 'text/html')
 
     oStream = BytesIO()

@@ -1,7 +1,7 @@
 __author__ = 'epastag'
 from django.utils import timezone
 from django.db.models import Q
-from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS
+from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS, LinePricing
 from copy import deepcopy
 import datetime
 from functools import cmp_to_key
@@ -81,7 +81,7 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
                 oNewLine.config = oNewConfig
                 oNewLine.save()
 
-                oNewPrice = deepcopy(oConfigLine.linepricing)
+                oNewPrice = deepcopy(oConfigLine.linepricing) if hasattr(oConfigLine, 'linepricing') else LinePricing()
                 oNewPrice.pk = None
                 oNewPrice.config_line = oNewLine
                 oNewPrice.save()
