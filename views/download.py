@@ -402,10 +402,13 @@ def WriteBaselineToFile(oBaseline, sVersion):
     # end for
 
     if sVersion == oBaseline.current_inprocess_version:
-        aHeaders = oBaseline.latest_revision \
-            .header_set.exclude(configuration_status__name__in=('Discontinued', 'Inactive', 'On Hold')).exclude(
-            program__name__in=('DTS',)) \
-            # .order_by('configuration_status', 'pick_list', 'configuration_designation')
+        if oBaseline.latest_revision:
+            aHeaders = oBaseline.latest_revision \
+                .header_set.exclude(configuration_status__name__in=('Discontinued', 'Inactive', 'On Hold')).exclude(
+                program__name__in=('DTS',)) \
+                # .order_by('configuration_status', 'pick_list', 'configuration_designation')
+        else:
+            aHeaders = []
 
         aHeaders = list(chain(Baseline_Revision.objects.get(
             baseline=oBaseline, version=oBaseline.current_inprocess_version
@@ -422,7 +425,7 @@ def WriteBaselineToFile(oBaseline, sVersion):
     aHeaders.sort(key=lambda inst: inst.baseline_version, reverse=True)
     aHeaders.sort(
         key=lambda inst: (
-            str(inst.product_area2.name) if inst.product_area2 else 'ZZZZ',
+            str(inst.product_area2.name).upper() if inst.product_area2 else 'ZZZZ',
             int(inst.pick_list),
             str(inst.configuration_designation)
         )
@@ -710,16 +713,27 @@ def WriteBaselineToFile(oBaseline, sVersion):
     # end for
 
     oSheet = oFile.create_sheet(0, 'ToC')
-    aTOCTitles = ['Configuration', 'Customer Designation', 'Technology', 'Product Area 1', 'Product Area 2', 'Model',
-                  'Model Description', 'What Model is this replacing?', 'BoM & Inquiry Details', 'BoM Request Type',
-                  'Configuration / Ordering Status', 'Inquiry', 'Site Template', 'Ext Notes']
-    aTOCFields = ['configuration_designation', 'customer_designation', 'technology', 'product_area1', 'product_area2',
-                  'model', 'model_description', 'model_replaced', None, 'bom_request_type', 'configuration_status',
-                  'inquiry_site_template', 'inquiry_site_template', 'external_notes']
-    aTOCWidths = [25, 15, 15, 25, 10, 25, 50, 25, 25, 10, 15, 10, 10, 50]
+    dTOCData = {
+        5: ['Customer Number', 'configuration.first_line.customer_number', 20],
+        6: ['Second Customer Number', 'configuration.first_line.sec_customer_number', 20],
+        3: ['Configuration', 'configuration_designation', 25],
+        15: ['Customer Designation', 'customer_designation', 15],
+        10: ['Technology', 'technology', 15],
+        1: ['Product Area 1', 'product_area1', 25],
+        2: ['Product Area 2', 'product_area2', 10],
+        4: ['Model', 'model', 25],
+        7: ['Model Description', 'model_description', 50],
+        11: ['What Model is this replacing?', 'model_replaced', 25],
+        9: ['BoM & Inquiry Details', None, 25],
+        12: ['BoM Request Type', 'bom_request_type', 10],
+        8: ['Configuration / Ordering Status', 'configuration_status', 15],
+        13: ['Inquiry', 'inquiry_site_template', 10],
+        14: ['Site Template', 'inquiry_site_template', 10],
+        16: ['Ext Notes', 'external_notes', 50],
+    }
 
-    for iIndex in range(1, len(aTOCTitles) + 1):
-        oSheet[utils.get_column_letter(iIndex) + '1'].value = aTOCTitles[iIndex - 1]
+    for iIndex in sorted(dTOCData.keys()):
+        oSheet[utils.get_column_letter(iIndex) + '1'].value = dTOCData[iIndex][0]
         oSheet[utils.get_column_letter(iIndex) + '1'].alignment = Alignment(wrap_text=True)
         oSheet[utils.get_column_letter(iIndex) + '1'].font = Font(bold=True)
         oSheet[utils.get_column_letter(iIndex) + '1'].fill = GradientFill(type='linear',
@@ -730,26 +744,26 @@ def WriteBaselineToFile(oBaseline, sVersion):
             right=Side(color=colors.BLACK, border_style=borders.BORDER_THIN),
             top=Side(color=colors.BLACK, border_style=borders.BORDER_THIN),
             bottom=Side(color=colors.BLACK, border_style=borders.BORDER_THIN))
-        oSheet.column_dimensions[str(utils.get_column_letter(iIndex))].width = aTOCWidths[iIndex - 1]
+        oSheet.column_dimensions[str(utils.get_column_letter(iIndex))].width = dTOCData[iIndex][2]
 
     iCurrentRow = 2
     for oHeader in aHeaders:
-        for iIndex in range(1, len(aTOCFields) + 1):
-            if aTOCFields[iIndex - 1] and aTOCFields[iIndex - 1] != 'inquiry_site_template':
+        for iIndex in sorted(dTOCData.keys()):
+            if dTOCData[iIndex][1] and dTOCData[iIndex][1] != 'inquiry_site_template':
                 oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = str(
-                    getattr(oHeader, aTOCFields[iIndex - 1], '') or '').replace('/Pending', '')
-            elif aTOCFields[iIndex - 1] == 'inquiry_site_template':
-                if aTOCTitles[iIndex - 1] == 'Inquiry' and str(
-                        getattr(oHeader, aTOCFields[iIndex - 1], None)).startswith('1'):
-                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = getattr(oHeader,
-                                                                                               aTOCFields[iIndex - 1])
-                elif aTOCTitles[iIndex - 1] == 'Site Template' and str(
-                        getattr(oHeader, aTOCFields[iIndex - 1], None)).startswith('4'):
-                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = getattr(oHeader,
-                                                                                               aTOCFields[iIndex - 1])
+                    GrabValue(oHeader, dTOCData[iIndex][1]) or '').replace('/Pending', '')
+            elif dTOCData[iIndex][1] == 'inquiry_site_template':
+                if dTOCData[iIndex][0] == 'Inquiry' and str(
+                        GrabValue(oHeader, dTOCData[iIndex][1])).startswith('1'):
+                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                                 dTOCData[iIndex][1])
+                elif dTOCData[iIndex][0] == 'Site Template' and str(
+                        GrabValue(oHeader, dTOCData[iIndex][1])).startswith('4'):
+                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                                 dTOCData[iIndex][1])
                 else:
                     oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = None
-            elif not aTOCFields[iIndex - 1]:
+            elif not dTOCData[iIndex][1]:
                 oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = str(
                     oHeader.configuration_designation)
                 oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].hyperlink = "#'" + (

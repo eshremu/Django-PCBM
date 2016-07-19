@@ -276,7 +276,10 @@ class Baseline(models.Model):
 
     @property
     def latest_revision(self):
-        return Baseline_Revision.objects.get(baseline=self, version=self.current_active_version)
+        try:
+            return Baseline_Revision.objects.get(baseline=self, version=self.current_active_version)
+        except Baseline_Revision.DoesNotExist:
+            return None
     # end def
 # end class
 
