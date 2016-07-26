@@ -48,8 +48,8 @@
         <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden"><div id="datatable"></div></div>
         <div id="formbuttons">
             {% if can_previous %}<input id="prevForm" type="button" value="Prev">{% endif %}
-            <input id="cancelForm" type="button" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">
-            {% if header.configuration_status == 'In Process' and toc_write_authorized %}
+            <input id="cancelForm" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
+            {% if header.configuration_status.name == 'In Process' and toc_write_authorized and not frame_readonly %}
             <input id="saveexitForm" type="button" value="Save & Exit">
             <input id="saveForm" type="button" value="Save">
             {% endif %}
@@ -75,28 +75,47 @@
         var form_save = false;
         var valid = true;
 
+        function cleanDataCheck(link){
+            var dirty_form = hot.getSourceData();
+            $('[name="data_form"]').remove();
+            var dirty_sub = $('#tocform').serialize();
+            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#tocform');
+
+            if(JSON.stringify(dirty_form) !== JSON.stringify(clean_form)|| JSON.stringify(dirty_sub) !== JSON.stringify(clean_sub)) {
+                valid = false;
+            }
+
+            if (!valid && !form_save){
+                messageToModal('Unsaved changes detected',
+                        "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
+                        function(){window.location.href = link.dataset.href;}
+                );
+            } else {
+                window.location.href = link.dataset.href;
+            }
+        }
+
         $(document).ready(function(){
             $(window).load(function(){
                 form_resize();
             });
 
-            $(window).resize(function(){
-                form_resize();
-            });
-
-            $(window).bind('beforeunload', function(){
-                var dirty_form = JSON.parse(JSON.stringify(hot.getSourceData()));
+            $(window).on('beforeunload', function(){
+                var dirty_form = hot.getSourceData();
                 $('[name="data_form"]').remove();
                 var dirty_sub = $('#tocform').serialize();
-                $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#tocform');
 
                 if(JSON.stringify(dirty_form) !== JSON.stringify(clean_form)|| JSON.stringify(dirty_sub) !== JSON.stringify(clean_sub)) {
                     valid = false;
                 }
 
-                if (!valid && !form_save){
+                if (closeButton && !valid && !form_save){
                     return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";
                 }
+            });
+
+            $(window).resize(function(){
+                form_resize();
             });
 
             $('#saveForm').click(function(){
@@ -201,7 +220,7 @@
                 cells: function(row, col, prop){
                     var cellProperties = {};
 
-                    if({% if header.configuration_status != 'In Process' %}true || {% endif %}readonly_columns.indexOf(col) !== -1){
+                    if({% if header.configuration_status.name != 'In Process' %}true || {% endif %}readonly_columns.indexOf(col) !== -1){
                         cellProperties.readOnly = true;
                         cellProperties.renderer = readonlyRenderer;
                     }
@@ -218,7 +237,7 @@
                     return cellProperties;
                 }
             });
-            clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
+            clean_form = hot.getSourceData();
             $('[name="data_form"]').remove();
             clean_sub = $('#tocform').serialize();
         }

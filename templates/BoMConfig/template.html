@@ -83,12 +83,18 @@
                     closeButton = false;
                 });
 
+                $(window).on('beforeunload',(function(event){
+                    if(event.srcElement.activeElement != document.getElementById("support_mail_to")) {
+                        $('#myModal').modal('show');
+                    }
+                }));
+
                 $(window).unload(function(){
                     $.ajax({
                         type: "POST",
                         async: false,
                         data:{
-                            'close': closeButton,
+                            'close': closeButton
                         },
                         headers:{
                             'X-CSRFToken': getcookie('csrftoken')
@@ -153,8 +159,7 @@
 			<!-- div id="main-header" -->
 			{% endblock %}
 		{% endif %}
-				
-		
+
 		{% block content %}{% endblock %}
 
         {% if show_footer %}
@@ -205,6 +210,22 @@
                 </div>
             </div>
         </div>
+        <div class="modal fade" id="messageModal" role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+            <!-- Modal content-->
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4></h4>
+                    </div>
+                    <div class="modal-body">
+                    </div>
+                    <div class="modal_footer" style="text-align: right;padding: 10px;">
+                        <button class="modal_submit btn btn-primary">OK</button>
+                        <button class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 	</body>
     <script>
         $(function() {
@@ -221,5 +242,22 @@
                 $('.modal:visible').each(reposition);
             });
         });
+
+        function messageToModal(title, message, callback){
+            var params = [];
+            for(var i = 3; i < arguments.length; i++){
+                params.push(arguments[i]);
+            }
+            $('#messageModal .modal-header h4').text(title);
+            $('#messageModal .modal-body').html(message);
+            $('.modal_submit').off('click');
+            $('.modal_submit').click(function(){
+                $('#messageModal').modal('hide');
+                if(callback != undefined) {
+                    callback.apply(this, params);
+                }
+            });
+            $('#messageModal').modal('show');
+        }
     </script>
 </html>

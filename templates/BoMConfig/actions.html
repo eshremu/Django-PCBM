@@ -1,5 +1,5 @@
 {% extends "BoMConfig/template.html" %}
-{% load customtemplatetag %}
+{% load customtemplatetags %}
 {% block content %}
 <div id="main-body">
     {% if user.is_authenticated %}
@@ -112,6 +112,10 @@
     <script>
         $('a.headtitle:contains("Actions")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 
+        function cleanDataCheck(link){
+            window.location.href = link.dataset.href;
+        }
+
         function cust_filter(customer){
             if(customer !== 'All') {
                 $('tr').not('.' + customer).attr('style', 'display:none;');
@@ -179,7 +183,7 @@
 
             $('#cancel').click(function(){
                 if($('.inprocess:checked').length > 0) {
-                    if (confirm('Are you sure you wish to cacnel the selected records?')) {
+                    if (confirm('Are you sure you wish to cancel the selected records?')) {
                         $('#myModal').modal('show');
                         process($(this).val());
                     }

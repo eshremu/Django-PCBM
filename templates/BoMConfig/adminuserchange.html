@@ -1,0 +1,59 @@
+{% extends 'BoMConfig/adminlanding.html' %}
+{% load staticfiles %}
+{% block subcontent %}
+    <h3><u>Change User</u></h3>
+    {% if form.non_field_errors %}
+        <div class="messageblock errorblock">
+            {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% if errors %}
+    <div class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">
+        {% for error in errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <form method="post" style="margin-top: 20px;">
+        {% csrf_token %}
+        <div id="formdiv">
+            <table>
+                <tbody>
+                    {% for field in form %}
+                    <tr>
+                        <td style="padding-bottom: 3px;">{{ field.label_tag }}</td><td>{{ field }}</td>
+                        {% for error in field.errors %}
+                        <td class="errortext">{{ error }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div id="formbuttons" style="margin-top:10px;">
+            <button class="btn btn-primary" value="save" type="submit" name="action">Save</button>
+            <button class="btn btn-danger" value="delete" type="submit" name="action">Delete</button>
+            <button class="btn" value="cancel" type="button" onclick="location.href='{% url 'bomconfig:useradmin' %}'" name="action">Cancel</button>
+        </div>
+    </form>
+    <script>
+        $('button[value="user"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        $(document).ready(function(){
+            $(window).on('load resize',function(){
+                form_resize();
+            });
+        });
+        function form_resize(){
+            var topbuttonheight = $('#action_buttons').height();
+            var bottombuttonheight = $('#formbuttons').outerHeight(true);
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + 6 + 20);
+
+{#            $('#formdiv').css("height", tableheight);#}
+{#            $('#formdiv').css("overflow", 'auto');#}
+        }
+    </script>
+{% endblock %}

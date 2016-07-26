@@ -1,10 +1,13 @@
 {% extends "BoMConfig/template.html" %}
-{% load customtemplatetag %}
+{% load customtemplatetags %}
 		
 {% block content %}
 <div id="main-body">
 	{% if user.is_authenticated %}
 	{% load staticfiles %}
+    <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.css' %}"/>
+    <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.js' %}"></script>
+    <script type="text/javascript" src="{% static 'BoMConfig/js/baseline_mgmt.js' %}"></script>
     <div id="headersubform">
 		<form enctype="multipart/form-data" method="POST" onsubmit="$('#myModal').modal('show');" action="{% url 'bomconfig:baseline' %}">
 			{% csrf_token %}
@@ -17,20 +20,22 @@
 				<span style="color: #ff0000;">{{ error }}</span>
                 {% endfor %}
 			{% endfor %}
-{#            <br/>#}
 			<input type="submit" value="Search" />
 		</form>
 	</div>
-    <div id="table-wrapper" style="overflow-x: auto">
+{#         style="overflow-x: auto"#}
+    <div class="table-wrapper">
         {% if tables %}
-            <table>
+        <table id="data_table">
             <thead>
                 <tr>
                     <th>Baseline</th>
+                    <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
+                    <th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th>
                 </tr>
                 <tr>
                 {% for title in column_titles %}
-                    <th>{{ title }}</th>
+                    <th {% if forloop.first %}class="header_dummy1" {% elif title == '' %}class="header_dummy2"{% endif %}>{{ title }}</th>
                 {% endfor %}
                 </tr>
             </thead>
@@ -38,53 +43,73 @@
             {% for table in tables %}
                 {% if table.revisions %}
                 {% for revision in table.revisions %}
-                    <tr>
-                        <td colspan="3">{{ table.baseline }}{% if revision.revision %} REV {{ revision.revision }}{% endif %}</td>
+                    <tr class="first_row">
+                        <td class="baseline_name">
+                            {% if not downloadable and table.baseline != 'No Associated Baseline' %}
+                            <a onclick="$('#id_baseline_title').val('{{ table.baseline }}'); $('#headersubform form').submit();" style="cursor: pointer">
+                                {{ table.baseline }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}
+                            </a>
+                            {% else %}
+                            {{ table.baseline }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}
+                            {% endif %}
+                        </td>
+                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                     </tr>
                     {% for header in revision.configs %}
-                    <tr style="{% if header.configuration_status == 'In Process' %}color: #22BB33;{% elif header.configuration_status != 'Active' %}color: #999999;{% endif %}">
-                        <td></td>
-                        <td></td>
+                    <tr style="{% if header.configuration_status.name == 'In Process' or header.configuration_status.name == 'In Process/Pending' %}color: #22BB33;{% elif header.configuration_status.name == 'On Hold' %}color: #E82828;{% elif header.configuration_status.name != 'Active' %}color: #999999;{% endif %}">
+                        <td class="body_dummy1" style="visibility: hidden;">{{ table.baseline }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
+                        <td class="body_dummy2"></td>
                         {% with header.configuration.get_first_line as firstline %}
-                        <td><a href="../search?link={{ header.pk|searchscramble }}">{{ header.configuration_designation|default:'None' }}</a></td>
-                        <td>{{ header.configuration_status|default:'None' }}</td>
-                        <td>{{ header.program.name|default:'None' }}</td>
+                        <td><a onclick="window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes')" style="cursor: pointer">{{ header.configuration_designation|default:'None' }}</a></td>
+                        <td>{{ header.configuration_status|default:'' }}</td>
+                        <td>{{ header.bom_request_type }}</td>
+                        <td>{{ header.program.name|default:'' }}</td>
                         <td>{% if firstline and not header.pick_list %}{{ firstline.customer_number }}{% elif header.pick_list %}Multiple{% endif %}</td>
-                        <td>{{ header.model|default:'None' }}</td>
-                        <td>{{ header.model_description|default:'None' }}</td>
-{#                        <td>{% if header.configuration.net_value %}${% endif %}{{ header.configuration.net_value|iffloatformat:'2'|default:'None' }}</td>#}
+                        <td>{{ header.model|default:'' }}</td>
+                        <td>{{ header.model_description|default:'' }}</td>
                         <td style="text-align: right;">
                             {% if not header.pick_list and header.configuration.get_first_line %}
                                 {% if header.configuration.get_first_line.linepricing %}
                                     {% if header.configuration.get_first_line.linepricing.override_price %}
-                                    $&nbsp;{{ header.configuration.get_first_line.linepricing.override_price|iffloatformat:'2'|default:'None' }}
+                                    $&nbsp;{{ header.configuration.get_first_line.linepricing.override_price|iffloatformat:'2'|default:'' }}
                                     {% else %}
-                                    {% if header.configuration.get_first_line.linepricing.unit_price %}$&nbsp;{% endif %}{{ header.configuration.get_first_line.linepricing.unit_price|iffloatformat:'2'|default:'None' }}
+                                    {% if header.configuration.get_first_line.linepricing.unit_price %}$&nbsp;{% endif %}{{ header.configuration.get_first_line.linepricing.unit_price|iffloatformat:'2'|default:'' }}
                                     {% endif %}
                                 {% else %}
-                                {% if header.configuration.net_value %}$&nbsp;{% endif %}{{ header.configuration.net_value|iffloatformat:'2'|default:'None' }}
+                                {% if header.configuration.net_value %}$&nbsp;{% endif %}{{ header.configuration.net_value|iffloatformat:'2'|default:'' }}
                                 {% endif %}
                             {% else %}
-                                {% if header.configuration.net_value %}$&nbsp;{% endif %}{{ header.configuration.net_value|iffloatformat:'2'|default:'None' }}
+                                {% if header.configuration.net_value %}$&nbsp;{% endif %}{{ header.configuration.net_value|iffloatformat:'2'|default:'' }}
                             {% endif %}
                         </td>
-                        <td>{{ header.inquiry_site_template|default:'None' }}</td>
-                        <td>{{ header.model_replaced|default:'None' }}</td>
-                        <td>{{ header.change_comments|default:'None' }}</td>
+                        <td>{{ header.headertimetracker_set.first.created_on|date:"Y" }}</td>
+                        <td>{{ header.inquiry_site_template|default:'' }}</td>
+                        <td>{{ header.model_replaced|default:'' }}</td>
+                        <td>{{ header.change_comments|default:'' }}</td>
+                        <td>{{ header.release_date|date:"m/d/Y" }}</td>
                         {% if firstline and not header.pick_list %}
-                        <td>{% if firstline.condition_type == 'ZUST' %}${{ firstline.amount|floatformat:'2' }}{% endif %}</td>
+                        <td>{% if firstline.condition_type == 'ZUST' %}$&nbsp;{{ firstline.amount|floatformat:'2' }}{% endif %}</td>
                         <td>{% if firstline.pcode %}{{ firstline.pcode|make_list|slice:"1:4"|join:'' }}{% endif %}</td>
-                        <td>{{ firstline.plant }}</td>
+                        <td>{{ firstline.plant|default:'' }}</td>
+                        {% else %}
+                        <td></td>
+                        <td></td>
+                        <td></td>
                         {% endif %}
                         {% endwith %}
                     </tr>
                     {% endfor %}
                 {% endfor %}
-                <tr><td><div style="min-height: 18px;"></div></td></tr>
+                <tr>
+                    <td style="visibility: hidden; min-height: 18px;">{{ table.baseline }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                </tr>
                 {% endif %}
             {% endfor %}
             </tbody>
-            </table>
+        </table>
         {% else %}
             {% if downloadable %}
             <h5>No configurations found for baseline</h5>
@@ -92,82 +117,46 @@
         {% endif %}
     </div>
     {% if downloadable %}
-    <div id="action_buttons">
-        <form method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinedownload' %}">
+    <div id="action_buttons" style="margin-top: 1px;">
+        <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinedownload' %}">
             {% csrf_token %}
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
             <input name="baseline" type="hidden" value="{{ tables.0.baseline }}"/>
-            <button id="download" type="submit">Download</button>
+            <input name="version" type="hidden" value=""/>
+            <button style="display: inline" id="download" type="button" onclick="downloadModal()">Download</button>
         </form>
+
+        {% if user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_BPMA_Architect" %}
+        <form id="rollbackform" style="display: inline">
+            {% csrf_token %}
+            <input name="baseline" type="hidden" value="{{ tables.0.baseline }}"/>
+            <button style="display: inline" id="rollback" type="button" onclick="rollbackModal()">Rollback</button>
+        </form>
+        {% endif %}
     </div>
     {% endif %}
 	{% else %}
 	<h4>You must be logged in to access this feature</h4>
 	{% endif %}
 </div>
-{% if user.is_authenticated %}
-    <script>
-        $('a.headtitle:contains("Baseline")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+<script>
+    var revision_list = '{% for revision in tables.0.revisions %}<option value="{{ revision.revision.version }}">{{ revision.revision.version }}</option>{% endfor %}';
+    var rollback_url = "{% url 'bomconfig:baselinerollback' %}";
+</script>
 
-        var timer;
-        $(document).ready(function() {
-            $(window).load(function () {
-                form_resize();
-            });
-
-            $(window).resize(function () {
-                form_resize();
-            });
-
-{#            $('#download').click(function(){#}
-{#                $('#myModal').modal('show');#}
-{#                $.ajax({#}
-{#                    url: "{% url 'bomconfig:baselinedownload' %}",#}
-{#                    type: "POST",#}
-{#                    data: {#}
-{#                        baseline: '{{ tables.0.baseline }}'#}
-{#                    },#}
-{#                    headers:{#}
-{#                        'X-CSRFToken': getcookie('csrftoken')#}
-{#                    },#}
-{#                    success: function() {#}
-{#                        $('#myModal').modal('hide');#}
-{#                    }#}
-{#                });#}
-{#            });#}
-        });
-
-        function downloadtoken(){
-            $('#myModal').modal('show');
-            timer = setInterval(function(){
-                if(document.cookie.split('fileMark=').length == 2 && document.cookie.split('fileMark=')[1].split(';')[0] == $('#cookie').val()) {
-                    clearInterval(timer);
-                    $('#myModal').modal('hide');
-                }
-            },1000);
-        }
-
-        function form_resize(){
-            var $header = $('#headersubform');
-            var topbuttonheight = $('#action_buttons').height();
-{#            var bottombuttonheight = $('#formbuttons').height();#}
-            var subformheight = $header.height() + parseInt($header.css('margin-top')) + parseInt($header.css('margin-bottom'));
-{#            var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));#}
-            var bodyheight = $('#main-body').height();
-
-            var tableheight = bodyheight - (topbuttonheight + subformheight);
-
-            $('#table-wrapper').css("height", tableheight);
-        }
-    </script>
-    <style>
-        td, th {
-            min-width: 50px;
-            padding:0 10px;
-            white-space: nowrap;
-            font-size: 8pt;
-        }
-    </style>
-{% endif %}
+<style>
+    table {
+        background-color: white;
+    }
+    td, th {
+        min-width: 50px;
+        padding:0 10px;
+        white-space: nowrap;
+        font-size: 8pt;
+    }
+    #action_buttons form, #action_buttons form button {
+        display: inline;
+    }
+</style>
 <!-- end div #main-body -->
 {% endblock %}

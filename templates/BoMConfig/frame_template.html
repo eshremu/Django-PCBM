@@ -1,0 +1,142 @@
+<!DOCTYPE HTML>
+{% load staticfiles %}
+<html>
+	<head>
+		<title>{{ header.configuration_designation }} Revision {{ header.baseline_version }}</title>
+		
+		<!-- JQuery Javascript -->
+        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-2.1.4.js' %}"></script>
+        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-migrate-1.2.1.js' %}"></script>
+		<!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap.css' %}">
+		<!-- Bootstrap Optional theme -->
+        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap-theme.css' %}">
+		<!-- Bootstrap JavaScript -->
+        <script type="text/javascript" src="{% static 'BoMConfig/bootstrap-3.3.6-dist/js/bootstrap.js' %}"></script>
+		
+		<!-- App specific stylesheet-->
+		<link rel="stylesheet" type="text/css" href="{% static 'BoMConfig/style.css' %}"/>
+        <link rel="shortcut icon" type="image/png" href="{% static 'BoMConfig/favicon.ico' %}"/>
+        <script type="text/javascript">
+            var closeButton = false;
+			function getcookie(name){
+				var cookieValue = null;
+				if (document.cookie && document.cookie != '') {
+					var cookies = document.cookie.split(';');
+					for (var i = 0; i < cookies.length; i++) {
+						var cookie = jQuery.trim(cookies[i]);
+						// Does this cookie string begin with the name we want?
+						if (cookie.substring(0, name.length + 1) == (name + '=')) {
+							cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+							break;
+						}
+					}
+				}
+				return cookieValue;
+			}
+
+			function definebodysize(){
+                if($('#main-header').height() != null){
+                    var headerHeight = $("#main-header").height() + parseInt($("#main-header").css('margin-top')) +
+                                    parseInt($("#main-header").css('margin-bottom')) + parseInt($("#main-header").css('border-top-width')) +
+                                    parseInt($("#main-header").css('border-bottom-width')) + parseInt($("#main-header").css('padding-top')) +
+                                    parseInt($("#main-header").css('padding-bottom'));
+                } else {
+                    var headerHeight = 0;
+                }
+
+                if($('#main-footer').height() != null) {
+                    var footerHeight = $("#main-footer").height() + parseInt($("#main-footer").css('margin-top')) +
+                            parseInt($("#main-footer").css('margin-bottom')) + parseInt($("#main-footer").css('border-top-width')) +
+                            parseInt($("#main-footer").css('border-bottom-width')) + parseInt($("#main-footer").css('padding-top')) +
+                            parseInt($("#main-footer").css('padding-bottom'));
+                } else {
+                    var footerHeight = 0;
+                }
+
+				var availableHeight = $(window).height() - headerHeight - footerHeight;
+				var divMargin = $("#main-body").css("margin-top");
+				var divPad = $("#main-body").css("padding-top");
+				availableHeight -= parseInt(divMargin);
+				availableHeight -= parseInt(divPad);
+				divMargin = $("#main-body").css("margin-bottom");
+				divPad = $("#main-body").css("padding-bottom");
+				availableHeight -= parseInt(divMargin);
+				availableHeight -= parseInt(divPad);
+
+				$("#main-body").css("height", availableHeight);
+			}
+
+			$(document).ready(function(){
+				$(window).load(function(){
+					definebodysize()
+				});
+				$(window).resize(function(){
+					definebodysize()
+				});
+			});
+		</script>
+	</head>
+	
+	<body>
+		{% block content %}{% endblock %}
+
+		<div class="modal fade" id="myModal" role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+            <!-- Modal content-->
+                <div class="modal-content" style="background: none; box-shadow: none; border: none">
+                    <div class="modal-body">
+                        <p align="middle"><img src="{% static 'BoMConfig/ajax-loader.gif' %}" align="middle"/></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="messageModal" role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+            <!-- Modal content-->
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4></h4>
+                    </div>
+                    <div class="modal-body">
+                    </div>
+                    <div class="modal_footer" style="text-align: right;padding: 10px;">
+                        <button class="modal_submit btn btn-primary">OK</button>
+                        <button class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+	</body>
+    <script>
+        $(function() {
+            function reposition() {
+                var modal = $(this),
+                        dialog = modal.find('.modal-dialog');
+                modal.css('display', 'block');
+                dialog.css("margin-top", Math.max(0, ($(window).height() - dialog.height()) / 2));
+                dialog.css("margin-left", Math.max(0, ($(window).width() - dialog.width()) / 2));
+
+            }
+            $('.modal').on('show.bs.modal', reposition);
+            $(window).on('resize', function() {
+                $('.modal:visible').each(reposition);
+            });
+        });
+
+        function messageToModal(title, message, callback){
+            var params = [];
+            for(var i = 3; i < arguments.length; i++){
+                params.push(arguments[i]);
+            }
+            $('#messageModal .modal-header h4').text(title);
+            $('#messageModal .modal-body').html(message);
+            $('.modal_submit').off('click');
+            $('.modal_submit').click(function(){
+                $('#messageModal').modal('hide');
+                callback.apply(this, params);
+            });
+            $('#messageModal').modal('show');
+        }
+    </script>
+</html>

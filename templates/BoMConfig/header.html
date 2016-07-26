@@ -1,20 +1,20 @@
 {% load staticfiles %}
-{% load customtemplatetag %}
+{% load customtemplatetags %}
 {% block header %}
 <div id="main-header">
 
 	<div class="logo">
-		<a href="http://www.ericsson.com/"><img src="{% static 'BoMConfig/logo.png' %}"/></a>
+		<a style="cursor: pointer;" onclick="cleanDataCheck(this);" data-href="http://www.ericsson.com/"><img src="{% static 'BoMConfig/logo.png' %}"/></a>
 	</div>
 	<div class="title">
-		<a href="{% url 'bomconfig:index' %}"><img src="{% static 'BoMConfig/title.png' %}"/></a>
+		<a style="cursor: pointer;" onclick="cleanDataCheck(this);" data-href="{% url 'bomconfig:index' %}"><img src="{% static 'BoMConfig/title.png' %}"/></a>
 	</div>
 	<div class="row">
 		<div id="welcome" class="col-md-4 col-lg-4">
-			<p>{% if user.is_authenticated %}<div style="text-align: right;" class="dropdown">{% endif %}Welcome, {% if user.is_authenticated %}<a id="user-menu" class="dropdown-toggle" data-toggle="dropdown">{% endif %}{{ user.username|default:_('User')}}{% if user.is_authenticated %}</a>
+			<p>{% if user.is_authenticated %}<div style="text-align: right;" class="dropdown">{% endif %}Welcome, {% if user.is_authenticated %}<a style="cursor: pointer;" id="user-menu" class="dropdown-toggle" data-toggle="dropdown">{% endif %}{{ user.username|default:_('User')}}{% if user.is_authenticated %}</a>
             <ul class="dropdown-menu dropdown-menu-right">
-                <li><a href="{% url 'bomconfig:change_password' %}">Change Password</a></li>
-                <li><a href="{% url 'bomconfig:logout' %}">Logout</a></li>
+                <li><a style="cursor: pointer;" onclick="cleanDataCheck(this);" data-href="{% url 'bomconfig:change_password' %}">Change Password</a></li>
+                <li><a style="cursor: pointer;" onclick="cleanDataCheck(this);" data-href="{% url 'bomconfig:logout' %}">Logout</a></li>
             </ul></div>{% endif %}</p>
 			{% if not user.is_authenticated %}
 				<form action="{% url 'bomconfig:login' %}" method="post">
@@ -24,8 +24,8 @@
 			{% endif %}
 			<div class="nav-menu">
 				<ul class="nav nav-pills pull-right">
-					<li><a href="{% url 'bomconfig:index' %}"> Home </a></li>
-					<li><a href="mailto:{{ supportcontact }}?subject={{ pagetitle|replace:'& and' }}%20support%20request">Support</a></li>
+					<li><a style="cursor: pointer;" onclick="cleanDataCheck(this);" data-href="{% url 'bomconfig:index' %}"> Home </a></li>
+					<li><a id="support_mail_to" href="mailto:{{ supportcontact }}?subject={{ pagetitle|replace:'& and' }}%20support%20request">Support</a></li>
 				</ul>
 			</div>
 		</div>
@@ -35,15 +35,18 @@
 					{% for menuitem in menulisting %}
 						{% if 'children' in menuitem %}
 							<li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">{{menuitem.title}}<span class="caret"></span></a>
-							<ul class="dropdown-menu">
-								{% for submenuitem in menuitem.children %}
-									<li><a href="{{ submenuitem.destination }}" target="_blank">{{ submenuitem.title }}</a></li>
-								{% endfor %}
-							</ul>
-						</li>
-						{% elif menuitem.title == 'Admin' and not user.is_staff %}
+                                <ul class="dropdown-menu">
+                                    {% for submenuitem in menuitem.children %}
+                                        <li><a onclick="cleanDataCheck(this);" data-href="{{ submenuitem.destination }}" target="_blank">{{ submenuitem.title }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
+						{% elif menuitem.title == 'Admin' %}
+                            {% if user.is_staff or user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
+                            <li><a class="headtitle" style="cursor: pointer;" onclick="cleanDataCheck(this);" data-href="{% if menuitem.destination|slice:'-1:' == '/' %}{{ menuitem.destination }}{% else %}{% url menuitem.destination %}{% endif %}">{{menuitem.title}}</a></li>
+                            {% endif %}
 						{% else %}
-							<li><a class="headtitle" href="{% if menuitem.destination|slice:'-1:' == '/' %}{{ menuitem.destination }}{% else %}{% url menuitem.destination %}{% endif %}">{{menuitem.title}}</a></li>
+							<li><a class="headtitle" style="cursor: pointer;" onclick="cleanDataCheck(this);" data-href="{% if menuitem.destination|slice:'-1:' == '/' %}{{ menuitem.destination }}{% else %}{% url menuitem.destination %}{% endif %}">{{menuitem.title}}</a></li>
 						{% endif %}
 					{% endfor %}
 				</ul>

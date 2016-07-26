@@ -1,0 +1,28 @@
+{% extends "BoMConfig/pricelanding.html" %}
+{% load staticfiles %}
+{% block subcontent %}
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <script src="{% static 'BoMConfig/js/overview_pricing.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+
+    <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
+
+    <script>
+        var hot, clean_form;
+        var iCount = 1;
+        var data = {{ pricelines|safe }};
+        var comment_list = {{ comments|safe }};
+        var timer;
+        var max_length = 5;
+
+        for(var i = 0; i < data.length; i++){
+            max_length = max_length < data[i].length ? data[i].length : max_length;
+        }
+
+        for(i = 0; i < data.length; i++){
+            for(var j = data[i].length; j < max_length; j++){
+                data[i].push('');
+            }
+        }
+    </script>
+{% endblock %}

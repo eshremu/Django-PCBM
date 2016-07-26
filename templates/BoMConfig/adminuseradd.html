@@ -1,0 +1,38 @@
+{% extends "BoMConfig/adminlanding.html" %}
+{% load customtemplatetags %}
+{% load staticfiles %}
+
+{% block subcontent %}
+    <h3><u>Add User</u></h3>
+    {% if form.non_field_errors %}
+        <div class="messageblock errorblock">
+            {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% if errors %}
+    <div class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">
+        {% for error in errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+    <div id="addform">
+        <form method="POST">
+            {% csrf_token %}
+            <table style="margin-bottom: 5px;">
+                <tbody>
+                    <tr>
+                        <td>{{ form.signum.label_tag }}</td><td>{{ form.signum }}</td>
+                        {% for error in form.signum.errors %}
+                        <td class="errortext">{{ error }}</td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+            <input class="btn btn-primary" type="submit" name="action" value="Save" data-toggle="modal" data-target="#loadModal"/>
+            <input class="btn" type="button" name="action" value="Cancel" onclick="location.href='{% url 'bomconfig:useradmin' %}'"/>
+        </form>
+    </div>
+{% endblock %}

@@ -75,8 +75,8 @@
         <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden"><div id="datatable"></div></div>
         <div id="formbuttons">
             {% if can_previous %}<input id="prevForm" type="button" value="Prev">{% endif %}
-            <input id="cancelForm" type="button" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">
-            {% if header.configuration_status == 'In Process' and config_write_authorized %}
+            <input id="cancelForm" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
+            {% if header.configuration_status.name == 'In Process' and config_write_authorized and not frame_readonly %}
             <input id="saveexitForm" type="button" value="Save & Exit">
             <input id="saveForm" type="button" value="Save">
             {% endif %}
@@ -90,7 +90,7 @@
                 setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
             </script>
             {% endif %}
-            {% if header.configuration_status == 'In Process' %}
+            {% if header.configuration_status.name == 'In Process' and not frame_readonly %}
             <input id="validate" type="button" value="Validate" style="margin-left:500px;" title="Validate current input, prefill empty cells, and update totals."/>
             <span style="padding-left: 25px;">Status: </span>
             <span id="status" style="padding-left: 10px;"></span>
@@ -112,39 +112,74 @@
         var valid = true;
         var firstLoad = true;
 
+        function cleanDataCheck(link){
+            var dirty_form = hot.getData();
+            dirty_form = $.map(dirty_form, function(value, index){
+                var new_val = {};
+                for(var key in value){
+                    new_val[key]= value[key];
+                }
+                return new_val;
+            });
+            $('[name="data_form"]').remove();
+            var dirty_sub = $('#configform').serialize();
+            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(dirty_form)).appendTo('#configform');
+
+            if(JSON.stringify(dirty_form) !== JSON.stringify(clean_form)|| JSON.stringify(dirty_sub) !== JSON.stringify(clean_sub)) {
+                valid = false;
+            }
+
+            if (!valid && !form_save){
+                messageToModal('Unsaved changes detected',
+                        "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
+                        function(){window.location.href = link.dataset.href;}
+                );
+            } else {
+                window.location.href = link.dataset.href;
+            }
+        }
+
         $(document).ready(function(){
             $(window).load(function(){
                 form_resize();
 {#                {% if header.configuration_status == 'In Process' %}data_validate();{% endif %}#}
-                data_validate();
-                clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
+                {% if not frame_readonly %}data_validate();{% endif %}
+                clean_form = hot.getSourceData();
+                if (typeof clean_form[0] == 'object'){
+                    for(var j=0; j < clean_form.length; j++) {
+                        for (var i = 0; i < 31; i++) {
+                            if (!clean_form[j].hasOwnProperty(i)) {
+                                clean_form[j][i] = null;
+                            }
+                        }
+                    }
+                }
                 $('[name="data_form"]').remove();
                 clean_sub = $('#configform').serialize();
+            });
+
+            $(window).on('beforeunload',function(){
+                var dirty_form = hot.getData();
+                $('[name="data_form"]').remove();
+                var dirty_sub = $('#configform').serialize();
+
+                if(JSON.stringify(dirty_form) !== JSON.stringify(clean_form)|| JSON.stringify(dirty_sub) !== JSON.stringify(clean_sub)) {
+                    valid = false;
+                }
+
+                if (closeButton && !valid && !form_save){
+                    return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";
+                }
             });
 
             $(window).resize(function(){
                 form_resize();
             });
 
-            $(window).bind('beforeunload', function(){
-                var dirty_form = JSON.parse(JSON.stringify(hot.getSourceData()));
-                $('[name="data_form"]').remove();
-                var dirty_sub = $('#configform').serialize();
-                $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#configform');
-
-                if(JSON.stringify(dirty_form) !== JSON.stringify(clean_form)|| JSON.stringify(dirty_sub) !== JSON.stringify(clean_sub)) {
-                    valid = false;
-                }
-
-                if (!valid && !form_save){
-                    return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";
-                }
-            });
-
             $('#saveForm').click(function(){
                 if(!validating) {
                     $('#formaction').val('save');
-                    {% if header.configuration_status != 'In Process' %}
+                    {% if header.configuration_status.name != 'In Process' %}
                     $('#configform').submit();
                     {% else %}
                     data_validate(true);
@@ -155,7 +190,7 @@
             $('#saveexitForm').click(function(){
                 if(!validating) {
                     $('#formaction').val('saveexit');
-                    {% if header.configuration_status != 'In Process' %}
+                    {% if header.configuration_status.name != 'In Process' %}
                     $('#configform').submit();
                     {% else %}
                     data_validate(true);
@@ -166,7 +201,7 @@
             $('#nextForm').click(function(){
                 if(!validating) {
                     $('#formaction').val('next');
-                    {% if header.configuration_status != 'In Process' %}
+                    {% if header.configuration_status.name != 'In Process' %}
                     $('#configform').submit();
                     {% else %}
                     data_validate(true);
@@ -177,7 +212,7 @@
             $('#prevForm').click(function(){
                 if(!validating) {
                     $('#formaction').val('prev');
-                    {% if header.configuration_status != 'In Process' %}
+                    {% if header.configuration_status.name != 'In Process' %}
                     $('#configform').submit();
                     {% else %}
                     data_validate(true);
@@ -313,7 +348,8 @@
 
             if (value != '' && value != undefined && value != null) {
                 var result;
-                var dummy = String(value).replace("$","").replace(',','').replace(' ','');
+                var overridden = String(value).charAt(0) == "!";
+                var dummy = String(value).replace("$","").replace(',','').replace(' ','').replace('!','');
                 var decimal = dummy.indexOf('.');
                 var wholeDummy, fracDummy;
 
@@ -350,6 +386,10 @@
                 if (negative){
                     value = "(" + value + ")";
                 }
+
+                if (overridden){
+                    value = "!" + value;
+                }
             }
             customRenderer(instance, td, row, col, prop, value, cellProperties);
         }
@@ -381,14 +421,15 @@
                 minRows: 1,
                 minCols: 31,
                 maxCols: 31,
-                minSpareRows: 5,
+                minSpareRows: {% if config_write_authorized and not frame_readonly %}5{% else %}0{% endif %},
                 rowHeaders: false,
                 colHeaders: headers,
                 fixedColumnsLeft: 3,
+                manualColumnFreeze: true,
                 currentRowClassName: 'currentRow',
                 columns: determined_cols,
                 manualColumnResize: true,
-                {% if header.configuration_status == 'In Process' %}contextMenu: {
+                {% if header.configuration_status.name == 'In Process' %}contextMenu: {
                         items: {
                             'undo': {},
                             'redo': {},
@@ -410,7 +451,7 @@
                 cells: function(row, col, prop){
                     var cellProperties = {};
 
-                    if({% if header.configuration_status != 'In Process' %}true || {% endif %}{% if not header.pick_list %}(row === 0 && [1,2,4].indexOf(col)!== -1) || {% endif %}readonly_columns.indexOf(col) !== -1){
+                    if({% if header.configuration_status.name != 'In Process' %}true || {% endif %}{% if not header.pick_list %}(row === 0 && [1,2,4].indexOf(col)!== -1) || {% endif %}readonly_columns.indexOf(col) !== -1){
                         cellProperties.readOnly = true;
                         if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){//(col == 17 || col == 22) && PriceVis){
                             cellProperties.renderer = moneyRenderer;
@@ -525,8 +566,11 @@
 {#                    $("#nextForm").attr('disabled', 'disabled').css('color', 'gray');#}
 {#                }#}
 {#            });#}
+{#            hot.getPlugin('manualColumnFreeze').freezeColumn(0);#}
+{#            hot.getPlugin('manualColumnFreeze').freezeColumn(1);#}
+{#            hot.getPlugin('manualColumnFreeze').freezeColumn(2);#}
             if(firstLoad) {
-                clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
+                clean_form = hot.getSourceData();
                 $('[name="data_form"]').remove();
                 clean_sub = $('#configform').serialize();
             }
@@ -539,7 +583,7 @@
 
         function data_submit(eventObj) {
             $('[name="data_form"]').remove();
-            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#configform');
+            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getData())).appendTo('#configform');
             form_save = true;
         }
 
@@ -549,12 +593,13 @@
             validating = true;
             $('#validate').attr('disabled','disabled').attr('value','Validating...').css('color','gray');
             $('#myModal').modal('show');
+
             $.ajax({
                 type: "POST",
                 url: "{% url 'bomconfig:validator' %}",
 {#                async: false,#}
                 data: {
-                    entered_data: JSON.stringify(hot.getSourceData(), function(key, value){return value;})
+                    entered_data: JSON.stringify(hot.getData(), function(key, value){return value;})
                 },
                 headers:{
                     'X-CSRFToken': getcookie('csrftoken')
@@ -590,7 +635,7 @@
                     $('#validate').removeAttr('disabled').attr('value','Validate').css('color','');
                     $('#myModal').modal('hide');
                     if(firstLoad){
-                        clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
+                        clean_form = hot.getSourceData();
                         $('[name="data_form"]').remove();
                         clean_sub = $('#configform').serialize();
                         firstLoad = false;
