@@ -322,7 +322,7 @@ class UserForm(forms.Form):
     first_name = forms.CharField(label='First Name')
     last_name = forms.CharField(label='Last Name')
     email = forms.EmailField(label='Ericsson Email')
-    assigned_group = forms.ModelChoiceField(Group.objects.filter(name__startswith='BOM_')
+    assigned_group = forms.ModelMultipleChoiceField(Group.objects.filter(name__startswith='BOM_')
                                             .exclude(name__contains='BPMA')
                                             .exclude(name__contains='SuperApprover'), label='Assigned Group')
 

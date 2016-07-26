@@ -2,6 +2,7 @@ from django.shortcuts import redirect
 from django.core.urlresolvers import reverse
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.conf import settings
 
 from BoMConfig.models import DistroList
 from BoMConfig.forms import DistroForm, UserForm, UserAddForm
@@ -32,7 +33,8 @@ def MailingChange(oRequest, id=''):
         form = DistroForm(instance=DistroList.objects.get(id=id) if id else None)
 
     dContext = {
-        'form': form
+        'form': form,
+        'grappelli_installed': 'grappelli' in settings.INSTALLED_APPS
     }
     sTemplate = 'BoMConfig/adminmailchange.html'
     if not id and oNew:
@@ -87,7 +89,7 @@ def UserChange(oRequest, id=''):
             'first_name': oUser.first_name,
             'last_name': oUser.last_name,
             'email': oUser.email,
-            'assigned_group': oUser.groups.filter(name__startswith='BOM_')[0].id if oUser.groups.filter(name__startswith='BOM_') else None
+            'assigned_group': oUser.groups.filter(name__startswith='BOM_') if oUser.groups.filter(name__startswith='BOM_') else None
         }
 
         if oRequest.method == 'POST' and oRequest.POST:

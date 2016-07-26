@@ -40,9 +40,6 @@ def PartPricing(oRequest):
                         if not any(aRowToSave):
                             continue
 
-                        print(aRowToSave)
-                        # continue
-
                         try:
                             oCurrentPriceObj = PricingObject.objects.get(
                                 part__product_number__iexact=aRowToSave[0] or oRequest.POST.get('initial', None),

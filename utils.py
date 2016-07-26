@@ -22,7 +22,8 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
     if isinstance(oRecord,Header) and not sCopyToRevision:
         raise ValueError('Must provide sCopyToRevision when passing a Header to this function')
     # end if
-
+    oNewInprocRev = None
+    sNewInprocessRev = ''
     if isinstance(oRecord, Baseline):
         sCurrentActiveRev = oRecord.current_active_version
         try:
@@ -104,6 +105,10 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
         # Make current in-proc rev into curr active rev
         oCurrInprocRev.completed_date = timezone.now()
         oCurrInprocRev.save()
+
+        if (oNewInprocRev):
+            oNewInprocRev.previous_revision = oCurrInprocRev
+            oNewInprocRev.save()
 
         oRecord.current_active_version = sCurrentInProcRev
         oRecord.current_inprocess_version = sNewInprocessRev
