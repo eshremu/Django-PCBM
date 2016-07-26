@@ -1,6 +1,6 @@
 {% extends 'BoMConfig/adminlanding.html' %}
 {% load staticfiles %}
-{% load customtemplatetags %}
+{% load bomconfig_customtemplatetags %}
 {% block subcontent %}
     <h3><u>{% if form.readonly %}Change{% else %}Add{% endif %} Baseline Approval List</u></h3>
     {% if form.non_field_errors %}

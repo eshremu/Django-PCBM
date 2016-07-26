@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.core.urlresolvers import reverse
 
 from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, REF_STATUS
-from BoMConfig.templatetags.customtemplatetags import searchscramble
+from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue
 
