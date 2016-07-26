@@ -5,7 +5,7 @@ from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.contrib.staticfiles.finders import find
 
 from BoMConfig.models import Header, ConfigLine, Baseline, Baseline_Revision, DistroList
-from BoMConfig.templatetags.customtemplatetags import searchscramble
+from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
 from BoMConfig.utils import GenerateRevisionSummary, GrabValue, HeaderComparison, RevisionCompare, TitleShorten
 from BoMConfig.views.configuration import BuildDataArray
 
