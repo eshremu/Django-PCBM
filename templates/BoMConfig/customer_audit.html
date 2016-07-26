@@ -5,16 +5,30 @@
 <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
 <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
 <div id="main-body">
-    <h4>Page under construction</h4>
-    <div class="" style="display: inline-block">
+    <h4 id="title" style="margin-top:0;">Customer Part Number Audit / Search</h4>
+    <form id="select-form">
+        <select id="customer-select">
+        {% for customer in customer_list %}
+            <option value="{{ customer.name }}">{{ customer.name }}</option>
+        {% endfor %}
+        </select>
+    </form>
+    <div class="table-holder" style="display: inline-block">
         <h4>Input</h4>
-        <div id="input-table">
-        </div>
+
+            <div id="input-table">
+            </div>
+
     </div>
-    <div class="" style="display: inline-block">
+    <div class="table-holder" style="display: inline-block">
         <h4>Output</h4>
-        <div id="output-table">
-        </div>
+
+            <div id="output-table">
+            </div>
+
+    </div>
+    <div id="action_buttons" style="margin: 10px 0">
+        <button id="save-button" class="btn btn-primary" value="save" type="button">Save</button>
     </div>
 </div>
 <script>
@@ -36,12 +50,11 @@
             addOutputRow(index, amount, auto);
         },
         afterChange: function(changes, source){
-            if (['alter', 'edit', 'paste'].indexOf(source) != -1){
-                var altered_data = {};
-
+            var altered_data = {};
+            if (['alter', 'edit', 'paste'].indexOf(source) != -1) {
                 // Gather changed data
-                for(var idx in changes){
-                    if (altered_data.hasOwnProperty(changes[idx][0])){
+                for (var idx in changes) {
+                    if (altered_data.hasOwnProperty(changes[idx][0])) {
                         altered_data[changes[idx][0]][changes[idx][1]] = changes[idx][3];
                     } else {
                         altered_data[changes[idx][0]] = new Array(4).fill(null);
@@ -51,13 +64,20 @@
 
                 // Combine unchanged data (cell still containing null are assumed to have not been changed,
                 // but may still reflect null after this loop
-                for (var key in altered_data){
-                    for (var i=0; i < altered_data[key].length; i++){
-                        if (altered_data[key][i] == null){
+                for (var key in altered_data) {
+                    for (var i = 0; i < altered_data[key].length; i++) {
+                        if (altered_data[key][i] == null) {
                             altered_data[key][i] = this.getDataAtCell(key, i);
                         }
                     }
                 }
+            } else if (source == 'loadData'){
+                for (var i = 0; i < this.countRows(); i++){
+                    altered_data[i] = this.getDataAtRow(i);
+                }
+            }
+
+            if (altered_data != {}){
                 $.ajax({
                     url: "{% url 'bomconfig:audit_validate' %}",
                     type: 'POST',
@@ -65,6 +85,7 @@
                         'X-CSRFToken': getcookie('csrftoken')
                     },
                     data: {
+                        customer: $('#customer-select').val(),
                         changed_data: JSON.stringify(altered_data)
                     },
                     success: function(returned_data){
@@ -74,9 +95,8 @@
                         console.log(xhr, status, error);
                     }
                 });
-            } else if (source == 'empty'){
-                //
             }
+
 
         }
     });
@@ -92,6 +112,15 @@
             cellProperties.readOnly = true;
             cellProperties.renderer = customRenderer;
             return cellProperties;
+        },
+        afterRender: function(isForced){
+            if(isForced){
+                if($('.invalid-cell').length > 0){
+                    $('#save-button').attr('disabled', 'disabled');
+                } else {
+                    $('#save-button').removeAttr('disabled');
+                }
+            }
         }
     });
 
@@ -122,11 +151,13 @@
     }
 
     function customRenderer(instance, td, row, col, prop, value, cellProperties){
+        $(td).removeClass('invalid-cell');
         if(outputformat != undefined && outputformat.hasOwnProperty(row)){
             if(outputformat[row][col] == true){
                 td.style.background = '#90E990';
             } else if (outputformat[row][col] == false){
                 td.style.background = '#E99090';
+                $(td).addClass('invalid-cell');
             } else if (outputformat[row][col] == null){
                 if ([null, ''].indexOf(value) != -1){
                     td.style.background = '#DDDDDD';
@@ -135,10 +166,17 @@
                 }
             }
         } else {
-{#            td.style.background = '#DDDDDD';#}
+            td.style.background = '#DDDDDD';
         }
         td.style.color = '#000000';
         Handsontable.renderers.TextRenderer.apply(this, arguments);
     }
+
+    $(document).ready(function(){
+        $('#customer-select').change(function(){
+            inputTable.loadData(outputdata);
+{#            outputTable.render();#}
+        });
+    });
 </script>
 {% endblock %}

@@ -22,10 +22,9 @@
                         <li><label for="customer">Customer Unit</label>
                             <select id="customer" name="customer">
                                 <option value="">-------</option>
-                                <option value="AT&T">AT&T</option>
-                                <option value="Verizon">Verizon</option>
-                                <option value="Sprint">Sprint</option>
-                                <option value="T-Mobile">T-Mobile</option>
+                                {% for cust in cust_list %}
+                                <option value="{{ cust.name }}">{{ cust.name }}</option>
+                                {% endfor %}
                             </select></li>
                         <li><label for="person">Person Responsible</label>
                             <input id="person" type="text" name="person"/></li>
@@ -46,12 +45,9 @@
                         <li><label for="status">Configuration/Ordering Status</label>
                             <select id="status" name="status">
                                 <option value="">-------</option>
-                                <option value="in_process">In Process</option>
-                                <option value="active">Active</option>
-                                <option value="on_hold">On Hold</option>
-                                <option value="cancelled">Cancelled</option>
-                                <option value="discontinued">Discontinued</option>
-                                <option value="inactive">Inactive</option>
+                                {% for status in status_list %}
+                                <option value="{{ status.name|lower|replacewhitespace:"_" }}">{{ status.name }}</option>
+                                {% endfor %}
                             </select></li>
                         <li><label for="inquiry_site">Inquiry / Site Template Number</label>
                             <input id="inquiry_site" type="text" name="inquiry_site"/></li>

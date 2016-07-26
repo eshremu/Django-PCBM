@@ -323,6 +323,233 @@ def DownloadBaseline(oRequest):
 # end def
 
 
+def DownloadBaselineMaster(oRequest):
+    if oRequest.method != 'POST' or not oRequest.POST:
+        return Http404()
+    # end if
+
+    sCookie = oRequest.POST['file-cookie']
+    sFileName = "BOM Master File - {}.xlsx".format(str(datetime.datetime.now().strftime('%d%b%Y')))
+
+    aTable = []
+    aBaselines = Baseline.objects.all()
+    for oBaseline in aBaselines:
+        aRevisions = [oBaseline.current_inprocess_version or None, oBaseline.current_active_version or None]
+        dTableData = {'baseline': oBaseline, 'revisions': []}
+
+        for sRev in aRevisions:
+            if not sRev:
+                continue
+            aHeads = Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version=sRev).order_by(
+                'configuration_status', 'pick_list', 'configuration_designation')
+            if aHeads:
+                dTableData['revisions'].append(
+                    {'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev), 'configs': aHeads})
+                # end if
+        # end for
+
+        aTable.append(dTableData)
+    # end for
+
+    aTable.append(
+        {
+            'baseline': 'No Associated Baseline',
+            'revisions': [
+                {
+                    'revision': '',
+                    'configs': Header.objects.filter(baseline__isnull=True).order_by('configuration_status',
+                                                                                     'pick_list',
+                                                                                     'configuration_designation')
+                }
+            ]
+        }
+    )
+
+    headerFont = Font(name='Arial', size=10, bold=True)
+    ipFont = Font(name='Arial', size=10, color='009900')
+    activeTitleFont = Font(name='Arial', size=10, color='990000')
+    activeFont = Font(name='Arial', size=10)
+
+    centerAlign = Alignment(horizontal='center')
+    headerAlign = Alignment(horizontal='center', wrap_text=True)
+
+    oFile = openpyxl.Workbook()
+    oSheet = oFile.active
+    oSheet.title = "BOM Master File"
+
+    oSheet['A1'] = 'Network Info'
+    oSheet['A1'].font = headerFont
+    oSheet['A1'].alignment = headerAlign
+    oSheet.column_dimensions['A'].width = 10
+
+    oSheet['B1'] = 'Baseline'
+    oSheet['B1'].font = headerFont
+    oSheet.column_dimensions['B'].width = 10
+
+    oSheet['C1'] = 'Platform & HW Type'
+    oSheet['C1'].font = headerFont
+    oSheet['C1'].alignment = headerAlign
+    oSheet.column_dimensions['C'].width = 10
+
+    oSheet['D1'] = 'Status'
+    oSheet['D1'].font = headerFont
+    oSheet['D1'].alignment = headerAlign
+    oSheet.column_dimensions['D'].width = 10
+
+    oSheet['E1'] = 'Oracle Item No.'
+    oSheet['E1'].font = headerFont
+    oSheet['E1'].alignment = headerAlign
+    oSheet.column_dimensions['E'].width = 20
+
+    oSheet['F1'] = 'Model'
+    oSheet['F1'].font = headerFont
+    oSheet.column_dimensions['F'].width = 30
+
+    oSheet['G1'] = 'Description'
+    oSheet['G1'].font = headerFont
+    oSheet.column_dimensions['G'].width = 40
+
+    oSheet['H1'] = 'Current Customer Price'
+    oSheet['H1'].font = headerFont
+    oSheet['H1'].alignment = headerAlign
+    oSheet.column_dimensions['H'].width = 15
+
+    oSheet['I1'] = 'Price Year'
+    oSheet['I1'].font = headerFont
+    oSheet['I1'].alignment = headerAlign
+    oSheet.column_dimensions['I'].width = 10
+
+    oSheet['J1'] = 'AT&T (or Affiliate) Quotes'
+    oSheet['J1'].font = headerFont
+    oSheet['J1'].alignment = headerAlign
+    oSheet.column_dimensions['J'].width = 15
+
+    oSheet['K1'] = 'KGP Quotes'
+    oSheet['K1'].font = headerFont
+    oSheet['K1'].alignment = headerAlign
+    oSheet.column_dimensions['K'].width = 15
+
+    oSheet['L1'] = 'DTS STs'
+    oSheet['L1'].font = headerFont
+    oSheet['L1'].alignment = headerAlign
+    oSheet.column_dimensions['L'].width = 15
+
+    oSheet['M1'] = 'Model Replacing'
+    oSheet['M1'].font = headerFont
+    oSheet.column_dimensions['M'].width = 30
+
+    oSheet['N1'] = 'Replaced By Model'
+    oSheet['N1'].font = headerFont
+    oSheet.column_dimensions['N'].width = 30
+
+    oSheet['O1'] = 'Comments'
+    oSheet['O1'].font = headerFont
+    oSheet.column_dimensions['O'].width = 50
+
+    iRow = 2
+    for dBaseline in aTable:
+        if not dBaseline['revisions']:
+            continue
+
+        aConfigs = []
+        aTitles = []
+
+        for dRevision in dBaseline['revisions']:
+            aTitles.insert(0, str(dRevision['revision'] or dBaseline['baseline']).replace('Rev ', '').replace('_', ' '))
+            aConfigs.extend(dRevision['configs'])
+        # end for
+
+        for sName in aTitles:
+            oSheet['B' + str(iRow)] = sName
+            if not re.match('.+\d{6}C', sName) and sName != 'No Associated Baseline':
+                oSheet['B' + str(iRow)].font = ipFont
+            else:
+                oSheet['B' + str(iRow)].font = activeTitleFont
+            iRow += 1
+        # end for
+
+        for oHead in aConfigs:
+            oSheet['D' + str(iRow)] = oHead.configuration_status.name.replace('/Pending', '').replace('In Process', 'IP')
+            oSheet['D' + str(iRow)].alignment = centerAlign
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['D' + str(iRow)].font = ipFont
+            else:
+                oSheet['D' + str(iRow)].font = activeFont
+
+            oSheet['E' + str(iRow)] = getattr(oHead.configuration.first_line, 'customer_number', '')
+            oSheet['E' + str(iRow)].alignment = centerAlign
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['E' + str(iRow)].font = ipFont
+            else:
+                oSheet['E' + str(iRow)].font = activeFont
+
+            oSheet['F' + str(iRow)] = oHead.configuration_designation
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['F' + str(iRow)].font = ipFont
+            else:
+                oSheet['F' + str(iRow)].font = activeFont
+
+            oSheet['G' + str(iRow)] = oHead.model_description
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['G' + str(iRow)].font = ipFont
+            else:
+                oSheet['G' + str(iRow)].font = activeFont
+
+            oSheet['H' + str(iRow)] = oHead.configuration.override_net_value or oHead.configuration.net_value
+            oSheet['H' + str(iRow)].number_format = '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['H' + str(iRow)].font = ipFont
+            else:
+                oSheet['H' + str(iRow)].font = activeFont
+
+            oSheet['I' + str(iRow)] = oHead.headertimetracker_set.first().created_on.strftime('%Y')
+            oSheet['I' + str(iRow)].alignment = centerAlign
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['I' + str(iRow)].font = ipFont
+            else:
+                oSheet['I' + str(iRow)].font = activeFont
+
+            oSheet['L' + str(iRow)] = oHead.inquiry_site_template if str(oHead.inquiry_site_template).startswith('4') else ''
+            oSheet['L' + str(iRow)].alignment = centerAlign
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['L' + str(iRow)].font = ipFont
+            else:
+                oSheet['L' + str(iRow)].font = activeFont
+
+            oSheet['M' + str(iRow)] = getattr(oHead.model_replaced_link, 'configuration_designation', None) or oHead.model_replaced or 'N/A'
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['M' + str(iRow)].font = ipFont
+            else:
+                oSheet['M' + str(iRow)].font = activeFont
+
+            oSheet['N' + str(iRow)] = getattr(oHead.replaced_by_model.exclude(bom_request_type__name='Discontinue').first(), 'configuration_designation', 'N/A')
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['N' + str(iRow)].font = ipFont
+            else:
+                oSheet['N' + str(iRow)].font = activeFont
+
+            oSheet['O' + str(iRow)] = oHead.change_comments
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['O' + str(iRow)].font = ipFont
+            else:
+                oSheet['O' + str(iRow)].font = activeFont
+
+            iRow += 1
+        # end for
+
+        iRow += 1
+    # end for
+    oSheet.sheet_view.zoomScale = 80
+
+    response = HttpResponse(content_type='application/ms-excel')
+    response['Content-Disposition'] = 'attachment;filename="{0}"'.format(sFileName)
+    response.set_cookie('fileMark', sCookie, max_age=60)
+    oFile.save(response)
+
+    return response
+# end def
+
+
 def WriteBaselineToFile(oBaseline, sVersion):
     aColumnTitles = ['Line #', 'Product Number', 'Product Description', 'Order Qty', 'UoM', 'HW/SW Ind',
                      'Net Price 2015',
@@ -797,7 +1024,7 @@ def EmailDownload(oBaseline): #sBaselineTitle):
         .format(oBaseline.current_active_version, oBaseline.title,
                 oBaseline.latest_revision.completed_date.strftime('%m/%d/%Y'))
 
-    oNewMessage = EmailMultiAlternatives(sSubject, sMessage, 'rnamdb.admin@ericsson.com',
+    oNewMessage = EmailMultiAlternatives(sSubject, sMessage, 'pcbm.admin@ericsson.com',
                                          [obj.email for obj in oDistroList.users_included.all()],
                                          cc=oDistroList.additional_addresses.split())
     oNewMessage.attach_alternative(sMessageHtml, 'text/html')

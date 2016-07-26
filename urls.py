@@ -30,6 +30,7 @@ urlpatterns = patterns(
     url(r'^baseline/$', views.BaselineMgmt, name='baseline'),
     url(r'^baseload/$', views.BaselineLoad, name='baseload'),
     url(r'^baselinedwnld/$', views.DownloadBaseline, name='baselinedownload'),
+    url(r'^baselinemasterdwnld/$', views.DownloadBaselineMaster, name='baselinemasterdownload'),
     url(r'^baselinerollback/$', views.BaselineRollback, name='baselinerollback'),
     url(r'^unlock/$', views.FinalUnlock, name='finalunlock'),
     url(r'^lock/$', views.InitialLock, name='initlock'),
@@ -50,4 +51,6 @@ urlpatterns = patterns(
     url(r'^admin/approval/$', views.ApprovalAdmin, name='approvaladmin'),
     url(r'^admin/approval/add/$', views.ApprovalChange, name='approvaladd'),
     url(r'^admin/approval/change/(?P<id>\d+)/$', views.ApprovalChange, name='approvalchange'),
+    url(r'^customer_audit/$', views.CustomerAudit, name='customeraudit'),
+    url(r'^customer_audit/validate/$', views.TableValidate, name='audit_validate'),
 )

@@ -305,7 +305,7 @@ class Baseline_Revision(models.Model):
     # end def
 
     def __str__(self):
-        return self.title + "_Rev_" + self.version + ('_' + self.completed_date.strftime('%m/%d/%Y') + 'C' if self.completed_date else '')
+        return self.title + " Rev " + self.version + (' ' + self.completed_date.strftime('%m%d%y') + 'C' if self.completed_date else '')
     # end def
 # end class
 
@@ -361,7 +361,7 @@ class Header(models.Model):
     model = models.CharField(max_length=50, verbose_name='Model', blank=True, null=True)
     model_description = models.CharField(max_length=50, verbose_name='Model Description', blank=True, null=True)
     model_replaced = models.CharField(max_length=50, verbose_name='What Model is this replacing?', blank=True, null=True)
-    model_replaced_link = models.ForeignKey('Header', blank=True, null=True)
+    model_replaced_link = models.ForeignKey('Header', related_name='replaced_by_model', blank=True, null=True)
     initial_revision = models.CharField(max_length=50, verbose_name='Initial Revision', blank=True, null=True)  # This is the root model
     # configuration_status = models.CharField(max_length=50, default='In Process', verbose_name='Configuration/Ordering Status')
     configuration_status = models.ForeignKey(REF_STATUS, verbose_name='Configuration/Ordering Status',
@@ -772,6 +772,27 @@ class ApprovalList(models.Model):
 
     def __str__(self):
         return str(self.customer)
+# end class
+
+
+class CustomerPartInfo(models.Model):
+    class Meta:
+        unique_together = ('part', 'customer')
+
+    part = models.ForeignKey(PartBase)
+    customer = models.ForeignKey(REF_CUSTOMER)
+    customer_number = models.CharField(max_length=50)
+    second_customer_number = models.CharField(max_length=50, blank=True, null=True)
+    # customer_asset = models.CharField(max_length=50, blank=True, null=True)
+    customer_asset = models.NullBooleanField(blank=True)
+    # customer_asset_tagging = models.CharField(max_length=50, blank=True, null=True)
+    customer_asset_tagging = models.NullBooleanField(blank=True)
+    # traceability_req = models.CharField(max_length=50, blank=True, null=True)
+    traceability_req = models.NullBooleanField(blank=True)
+
+    def __str__(self):
+        return str(self.part) + " - " + self.customer_number + (
+            "/" + self.second_customer_number if self.second_customer_number else "") + " (" + self.customer.name + ")"
 # end class
 
 

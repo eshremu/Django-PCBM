@@ -4,7 +4,7 @@ from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.core.urlresolvers import reverse
 
-from BoMConfig.models import Header, ConfigLine
+from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, REF_STATUS
 from BoMConfig.templatetags.customtemplatetags import searchscramble
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue
@@ -81,7 +81,7 @@ def Search(oRequest, advanced=False):
             results = HttpResponse()
             if aHeaders:
                 results.write('<h5 style="color:red">Found ' + str(len(aHeaders)) + ' matching record(s)</h5>')
-                results.write('<table><thead><tr><th><input class="selectall" type="checkbox"/></th><th style="width:175px;">Configuration</th><th style="width:175px;">Program</th>' +
+                results.write('<table><thead><tr><th style="width: 20px;"><input class="selectall" type="checkbox"/></th><th style="width:175px;">Configuration</th><th style="width:175px;">Program</th>' +
                               '<th style="width:175px;">Version</th><th style="width:175px;">Person Responsible</th>' +
                               '<th style="width:175px;">BoM Request Type</th><th style="width:175px;">Customer Unit</th>' +
                               '<th style="width:175px;">Status</th></tr></thead><tbody>')
@@ -98,7 +98,7 @@ def Search(oRequest, advanced=False):
             return results
         else:
             bRemoveDuplicates = True
-            sTableHeader = '<table><thead><tr><th><input class="selectall" type="checkbox"></th><th style="width:175px;">Configuration</th><th style="width:175px;">Version</th>'
+            sTableHeader = '<table><thead><tr><th style="width: 20px;"><input class="selectall" type="checkbox"></th><th style="width:175px;">Configuration</th><th style="width:175px;">Version</th>'
             """ This will be a list of strings.  Each string will be the dot-operator-separated string of attributes
              that would retrieve the desired value (i.e.: 'config.configline.part.description')
              This will be so that the search results list can be easily repeated"""
@@ -272,6 +272,9 @@ def Search(oRequest, advanced=False):
 
     dContext = {
         'header_list': aHeaders,
+        'request_list': REF_REQUEST.objects.all(),
+        'cust_list': REF_CUSTOMER.objects.all(),
+        'status_list': REF_STATUS.objects.all()
     }
     return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def

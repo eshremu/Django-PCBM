@@ -18,29 +18,23 @@
             <label for="request">BoM Request Type</label>
             <select id="request" name="request">
                 <option value="">-------</option>
-                <option value="New">New</option>
-                <option value="Update">Update</option>
-                <option value="Replacement">Replacement</option>
-                <option value="Discontinued">Discontinued</option>
-                <option value="Legacy">Legacy</option>
+                {% for request in request_list %}
+                <option value="{{ request.name }}">{{ request.name }}</option>
+                {% endfor %}
             </select>
             <label for="customer">Customer Unit</label>
             <select id="customer" name="customer">
                 <option value="">-------</option>
-                <option value="AT&T">AT&T</option>
-                <option value="Verizon">Verizon</option>
-                <option value="Sprint">Sprint</option>
-                <option value="T-Mobile">T-Mobile</option>
+                {% for cust in cust_list %}
+                <option value="{{ cust.name }}">{{ cust.name }}</option>
+                {% endfor %}
             </select>
             <label for="status">Configuration/Ordering Status</label>
             <select id="status" name="status">
                 <option value="">-------</option>
-                <option value="in_process">In Process</option>
-                <option value="active">Active</option>
-                <option value="on_hold">On Hold</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="discontinued">Discontinued</option>
-                <option value="inactive">Inactive</option>
+                {% for status in status_list %}
+                <option value="{{ status.name|lower|replacewhitespace:"_" }}">{{ status.name }}</option>
+                {% endfor %}
             </select>
             <button id="search_button" class="submit" type="button" name="search_button" value="search">Search</button>
         </form>
@@ -51,7 +45,7 @@
         <table>
         <thead>
             <tr>
-                <th><input class="selectall" type="checkbox"></th>
+                <th style="width: 20px;"><input class="selectall" type="checkbox"></th>
                 <th style="width:175px;">Configuration</th>
                 <th style="width:175px;">Program</th>
                 <th style="width:175px;">Version</th>

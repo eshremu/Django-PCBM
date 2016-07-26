@@ -222,8 +222,8 @@
         function form_resize(){
             var topbuttonheight = $('#action_buttons').height();
             var bottombuttonheight = $('#formbuttons').height();
-            var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
-            var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
+            var subformheight = $("#headersubform").outerHeight(true);// + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
+            var crumbheight = $('#breadcrumbs').outerHeight(true);// + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
             var bodyheight = $('#main-body').height();
 
             var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + crumbheight + subformheight);
