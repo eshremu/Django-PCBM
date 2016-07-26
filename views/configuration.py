@@ -40,7 +40,7 @@ def UpdateConfigRevisionData(oHeader):
                               oHeader.baseline.baseline.baseline_revision_set.order_by('version')])),
                     key=RevisionCompare)
             else:
-                aExistingRevs = [oHeader.baseline_revision]
+                aExistingRevs = [oHeader.baseline_version]
 
             iPrev = aExistingRevs.index(oHeader.baseline_version) - 1
 
@@ -148,7 +148,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                                           'version')])),
                                             key=RevisionCompare)
                                     else:
-                                        aExistingRevs = [oHeader.baseline_revision]
+                                        aExistingRevs = [oHeader.baseline_version]
 
                                     iPrev = aExistingRevs.index(oHeader.baseline_version) - 1
                                     if iPrev >= 0:
