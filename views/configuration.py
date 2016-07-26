@@ -960,9 +960,9 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                              '6': Line.item_category}
                     if inquiry:
                         dLine.update({'7': Line.linepricing.override_price if
-                                        str(Line.line_number) == '10' and hasattr(Line,'linepricing') and
+                                        (str(Line.line_number) == '10' or oHeader.pick_list) and hasattr(Line,'linepricing') and
                                         GrabValue(Line,'linepricing.override_price') else GrabValue(Line,'linepricing.pricing_object.unit_price') if
-                                        hasattr(Line,'linepricing') else '',
+                                        hasattr(Line,'linepricing') and (str(Line.line_number) == '10' or oHeader.pick_list) else '',
                                       '9': Line.material_group_5, '10': Line.purchase_order_item_num,
                                       '11': Line.condition_type, '12': Line.amount})
                         if LineNumber == 10 and not oHeader.pick_list:
@@ -1422,7 +1422,7 @@ def Validator(oRequest):
             status = 'ERROR'
         # end for
 
-        if override_total and not base_total:
+        if not oHead.pick_list and override_total and not base_total:
             form_data[0]['17'] = '!' + str(override_total)
         # end if
 
