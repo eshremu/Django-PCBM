@@ -142,11 +142,14 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                 oHeader.shipping_condition = '71'
 
                                 if oHeader.bom_request_type.name in ('Update','Discontinue') and not oHeader.model_replaced_link:
-                                    aExistingRevs = sorted(
-                                        list(set([oBaseRev.version for oBaseRev in
-                                                  oHeader.baseline.baseline.baseline_revision_set.order_by(
-                                                      'version')])),
-                                        key=RevisionCompare)
+                                    if oHeader.baseline:
+                                        aExistingRevs = sorted(
+                                            list(set([oBaseRev.version for oBaseRev in
+                                                      oHeader.baseline.baseline.baseline_revision_set.order_by(
+                                                          'version')])),
+                                            key=RevisionCompare)
+                                    else:
+                                        aExistingRevs = [oHeader.baseline_version]
 
                                     iPrev = aExistingRevs.index(oHeader.baseline_version) - 1
                                     if iPrev >= 0:
