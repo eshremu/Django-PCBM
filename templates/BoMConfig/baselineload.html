@@ -1,0 +1,24 @@
+{% extends "BoMConfig/template.html" %}
+{% load customtemplatetags %}
+		
+{% block content %}
+<div id="main-body">
+	{% if user.is_authenticated %}
+    <script>
+        $(document).ready(function(){
+            $(window).load(function(){
+                $('#myModal').modal('show');
+                window.location.href = '{% url 'bomconfig:baseline'%}';
+            });
+        });
+    </script>
+	{% else %}
+	<h4>You must be logged in to access this feature</h4>
+	{% endif %}
+</div>
+<script>
+    $('a.headtitle:contains("Baseline")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+</script>
+
+<!-- end div #main-body -->
+{% endblock %}

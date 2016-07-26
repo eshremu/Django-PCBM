@@ -1,5 +1,5 @@
 {% extends "BoMConfig/template.html" %}
-{% load customtemplatetag %}
+{% load customtemplatetags %}
 {% block content %}
 <div id="main-body" xmlns="http://www.w3.org/1999/html">
     {% if user.is_authenticated %}
@@ -51,7 +51,7 @@
                                 <option value="on_hold">On Hold</option>
                                 <option value="cancelled">Cancelled</option>
                                 <option value="discontinued">Discontinued</option>
-                                <option value="obsolete">Obsolete</option>
+                                <option value="inactive">Inactive</option>
                             </select></li>
                         <li><label for="inquiry_site">Inquiry / Site Template Number</label>
                             <input id="inquiry_site" type="text" name="inquiry_site"/></li>
@@ -73,7 +73,6 @@
                                 <option value="Yes">Yes</option>
                                 <option value="No">No</option>
                             </select>
-{#                            <input id="mu_flag" type="text"/></li>#}
                         <li><label for="xplant">X-Plant Material Status</label>
                             <input id="xplant" type="text"/></li>
                     </ul>
@@ -103,33 +102,6 @@
         </form>
     </div>
     <div id="search_results">
-{#    <h3>Latest Configurations</h3>#}
-{#    {% if header_list %}#}
-{#        <table>#}
-{#        <thead>#}
-{#            <tr>#}
-{#                <th style="width:175px;">Configuration</th>#}
-{#                <th style="width:175px;">Version</th>#}
-{#                <th style="width:175px;">BoM Request Type</th>#}
-{#                <th style="width:175px;">Customer Unit</th>#}
-{#                <th style="width:175px;">Status</th>#}
-{#            </tr>#}
-{#        </thead>#}
-{#        <tbody>#}
-{#        {% for header in header_list %}#}
-{#        <tr>#}
-{#            <td><a href="?link={{ header.pk|searchscramble }}">{{ header.configuration_designation }}</a></td>#}
-{#            <td>{{ header.baseline_version }}</td>#}
-{#            <td>{{ header.bom_request_type }}</td>#}
-{#            <td>{{ header.customer_unit }}</td>#}
-{#            <td>{{ header.configuration_status }}</td>#}
-{#        </tr>#}
-{#        {% endfor %}#}
-{#        </tbody>#}
-{#        </table>#}
-{#    {% else %}#}
-{#        <p>NO CONFIGURATIONS DEFINED</p>#}
-{#    {% endif %}#}
     </div>
     {% else %}
     <h4>You must log in to use this function</h4>
@@ -138,52 +110,67 @@
 <script>
     $('a:contains("Search")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc')
     $('button[value="advanced"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+    var xhr;
     $(document).ready(function(){
         $('#search_button').click(function(){
-           $('#search_form').submit();
+            $('#search_form').submit();
         });
 
-        $('#header_search_title').click(function(){
-            var $header = $('#header_search');
-            $header.collapse('toggle');
-        });
-
-        $('#header_search').on('hide.bs.collapse show.bs.collapse',function(event){
-            if (event.type == 'hide'){
-                $('#header_search_title .caret').css({transform: 'rotate(-90deg)'});
-            } else {
-                $('#header_search_title .caret').css({transform: 'rotate(0deg)'});
+        $('input').keydown(function(e){
+            if(e.keyCode == 13) {
+                $('#search_form').submit();
             }
         });
 
-        $('#entry_search_title').click(function(){
-            $('#entry_search').collapse('toggle');
-        });
-
-        $('#entry_search').on('hide.bs.collapse show.bs.collapse',function(event){
-            if (event.type == 'hide'){
-                $('#entry_search_title .caret').css({transform: 'rotate(-90deg)'});
-            } else {
-                $('#entry_search_title .caret').css({transform: 'rotate(0deg)'});
+        $(document).keydown(function(e){
+            if(e.keyCode == 27 && xhr !== undefined && $('#myModal').hasClass('in')) {
+                xhr.abort();
             }
         });
 
-        $('#revision_search_title').click(function(){
-            $('#revision_search').collapse('toggle');
+        $('#header_search_title, #entry_search_title, #revision_search_title').click(function(){
+            $(this).next().collapse('toggle');
         });
 
-        $('#revision_search').on('hide.bs.collapse show.bs.collapse',function(event){
+        $('#header_search, #entry_search, #revision_search').on('hide.bs.collapse show.bs.collapse',function(event){
             if (event.type == 'hide'){
-                $('#revision_search_title .caret').css({transform: 'rotate(-90deg)'});
+                $(this).prev().find('.caret').css({transform: 'rotate(-90deg)'});
             } else {
-                $('#revision_search_title .caret').css({transform: 'rotate(0deg)'});
+                $(this).prev().find('.caret').css({transform: 'rotate(0deg)'});
             }
+        });
+
+        $(document).on('click', '.selectall', function(){
+            if($(this).prop('checked')){
+                $('.recordselect').attr('checked', 'checked');
+            } else {
+                $('.recordselect').removeAttr('checked');
+            }
+            $($('.recordselect')[0]).change();
+        });
+
+        $(document).on('click change', '.recordselect',function(){
+            if($('.recordselect:checked').length > 0) {
+                $('#download').removeAttr('disabled');
+            } else {
+                $('#download').attr('disabled', 'disabled');
+            }
+        });
+
+        $(document).on('click', '#download', function(){
+            var destination = "{% url 'bomconfig:downloadmulti' %}";
+            var list = '';
+            $('.recordselect:checked').each(function(i, elem){
+                list += $(elem).val() + ',';
+            });
+            destination += '?list=' + encodeURIComponent(list.slice(0, -1));
+            window.open(destination, '_blank','left=100,top=100,height=150,width=500,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no');
         });
     });
 
     function search(eventObj){
         $('#myModal').modal('show');
-        $.ajax({
+        xhr = $.ajax({
             url: "{% url 'bomconfig:searchadv' %}",
             dataType: "html",
             type: "POST",
@@ -216,6 +203,7 @@
                 'X-CSRFToken': getcookie('csrftoken'),
             },
             success: function(data) {
+                xhr = undefined;
                 $('#search_results').empty();
                 $('#search_results').append($('<h3>Search Results</h3>'));
                 $('#search_results').append(data);
@@ -230,10 +218,20 @@
                     $('#revision_search').collapse('toggle');
                 }
                 $('#myModal').modal('hide');
-                //bodyResize();
+            },
+            error: function() {
+                $('#myModal').modal('hide');
             }
         });
         return false;
     }
+    function cleanDataCheck(link){
+        window.location.href = link.dataset.href;
+    }
 </script>
+<style>
+    button:disabled {
+        color: #999999;
+    }
+</style>
 {% endblock %}

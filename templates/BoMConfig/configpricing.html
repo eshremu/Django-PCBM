@@ -1,0 +1,46 @@
+{% extends "BoMConfig/pricelanding.html" %}
+{% load staticfiles %}
+{% block subcontent %}
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <script src="{% static 'BoMConfig/js/config_pricing.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+
+    <form id="headersubform"
+          {% if configlines %}onsubmit="$('<input/>').attr('id','data_form').attr('type', 'hidden').attr('name','data_form')
+          .attr('value',JSON.stringify(hot.getSourceData())).appendTo('#headersubform');form_save=true;"{% endif %}
+          method="post">
+        {% csrf_token %}
+        <label for="config">Configuration</label>
+        <input id="config" name="config" type="text" value="{{ config }}"/>
+        <input id="initial" name="initial" type="hidden" value="{{ config }}"/>
+        <input id="program" name="program" type="hidden" value="{{ program }}"/>
+        <button type="submit" name="action" value="search">Search</button>
+        <br/>
+        <label for="net_value">Net Value ($):</label>
+        <input type="text" id="net_value" name="net_value" style="border:none;" readonly/>
+    </form>
+
+    <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
+
+    <div id="formbuttons">
+        {% if configlines %}
+        <button id="cancelForm" name="action" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>
+        <button id="saveForm" type="submit" name="action" form="headersubform" value="save">Save</button>
+        {% endif %}
+        {% if status_message %}
+        <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:50px;">
+            {{ status_message }}
+        </span>
+        <script>
+            setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
+        </script>
+        {% endif %}
+    </div>
+
+    <script>
+        var not_picklist;{% if is_not_pick_list %}not_picklist = {{ is_not_pick_list|lower }};{% endif %}
+        var can_write = {{ pricing_write_authorized|lower }};
+        var table_data = {{ configlines|safe }};
+        var program_list = {{ prog_list|safe }};
+    </script>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "BoMConfig/pricelanding.html" %}
+{% load staticfiles %}
+{% block subcontent %}
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <script src="{% static 'BoMConfig/js/part_pricing.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+
+    <form id="headersubform"
+          {% if partlines %}onsubmit="return formSubmit();"{% endif %}
+          method="post">
+        {% csrf_token %}
+        <label for="part">Part Number</label>
+        <input id="part" name="part" type="text" value="{{ part }}" required/>
+        <input id="initial" name="initial" type="hidden" value="{{ part }}"/>
+        <button type="submit" name="action" value="search">Search</button>
+    </form>
+
+    <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
+
+    <div id="formbuttons">
+        {% if partlines.0 %}
+        <button id="cancelForm" name="action" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>
+        <button id="saveForm" type="submit" name="action" form="headersubform" value="save">Save</button>
+        {% endif %}
+        {% if status_message %}
+        <span id="statuses" style="color:red; font-size:20px; font-weight: bold; padding-left:50px;">
+            {{ status_message }}
+        </span>
+        <script>
+            setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
+        </script>
+        {% endif %}
+    </div>
+
+    <script>
+        var spud_list, cust_list, orig_data;
+        orig_data = {{ partlines|safe }};
+        cust_list = [''].concat({{ customer_list|safe }});
+        spud_list = [''].concat({{ spud_list|safe }});
+    </script>
+{% endblock %}

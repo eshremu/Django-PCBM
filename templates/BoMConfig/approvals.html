@@ -1,11 +1,11 @@
 {% extends "BoMConfig/template.html" %}
-{% load customtemplatetag %}
+{% load customtemplatetags %}
 {% load staticfiles %}
 {% block content %}
 <div id="main-body">
     {% if user.is_authenticated %}
         {% if viewauthorized %}
-
+        <div id="hintBox"></div>
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
                 <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
@@ -22,7 +22,9 @@
         <form id="pending_approval_action" onsubmit="return false;">
             <button id="approve" class="action_button" value="approve">Approve</button>
             <button id="disapprove" class="action_button" value="disapprove">Disapprove</button>
+            {% if skip_authorized %}
             <button id="skip" class="action_button" value="skip">Skip</button>
+            {% endif %}
             <button id="hold" class="action_button" value="hold">Place on Hold</button>
             <table id="pending_approval_records">
                 <thead>
@@ -42,14 +44,14 @@
                     <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} config">
                         {% if tracker == record.get_all_trackers.first %}
                         <td><input class="pending" type="checkbox" data-index="{{ record.id }}"/><span>&nbsp;&nbsp;</span></td>
-                        <td><a href="../search?link={{ record.pk|searchscramble }}">{{ record.configuration_designation }}</a></td>
+                        <td><a onclick="window.open('../search?link={{ record.pk|searchscramble }}&readonly=1', '{{ record.configuration_designation }}', 'left=100,top=100,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no')">{{ record.configuration_designation }}</a></td>
                         <td></td>
                         <td>{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
                         {% else %}
                         <td></td><td></td><td></td><td></td>
                         {% endif %}
                         {% for level in approval_seq %}
-                        <td class="approval"><div>
+                        <td class="approval"><div data-id="{{ tracker.id }}" data-level="{{ level }}">
                             {% with level|add:'_approver' as approver%}
                             {% with level|add:'_approved_on' as approvedate%}
                             {% with level|add:'_denied_approval' as disapprovedate%}
@@ -73,7 +75,7 @@
                     </tr>
 
                     {% endfor %}
-                    <tr style="height:10px;"></tr>
+                    <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} config" style="height:10px;"></tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -114,7 +116,7 @@
                                 <h5>Push back to:</h5>
                                 <select data-index="{{ record.pk }}">
                                 {% for level in approval_seq %}
-                                    {% with level|add:"_approver"  as approved_level%}
+                                    {% with level|add:"_approver" as approved_level%}
                                     {% if record.latesttracker|getattr:approved_level %}
                                     <option value="{{ level }}">{{ namelist|getindex:forloop.counter0 }}</option>
                                     {% endif %}
@@ -177,15 +179,20 @@
 {% if user.is_authenticated %}
     <script>
         $('a.headtitle:contains("Approvals")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        var xhr;
+
+        function cleanDataCheck(link){
+            window.location.href = link.dataset.href;
+        }
 
         function cust_filter(customer){
             if(customer !== 'All') {
-                $('tr').not('.' + customer).attr('style', 'display:none;');
+                $('tr').css('display','');
+                $('tr').not('.' + customer).css('display','none');
                 $('tr:not(".' + customer + '") input').removeAttr('checked');
-                $('tr.' + customer).removeAttr('style');
                 $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
             } else {
-                $('tr').removeAttr('style');
+                $('tr').css('display','');
                 $('#cu_filter').html('Customer <span class="caret"></span>');
             }
         }
@@ -225,8 +232,8 @@
                     location.reload(true);
                 },
                 error: function(){
-                    alert('An error occured during submission.  Please try again or contact a tool admin.');
                     $('#myModal').modal('hide');
+                    messageToModal('Approval Error','An error occurred during submission. Please try again or contact a tool admin.',function(){});
                 }
             });
         }
@@ -258,15 +265,73 @@
                 $('div[data-index="' + index + '"]').toggle();
             });
 
+            $('.approval div').mouseenter(function(e) {
+                var hovertext ='';
+                if($(this).find('.glyphicon').length > 0){
+                    xhr = $.ajax({
+                        url: "{% url 'bomconfig:approve_info' %}",
+                        type: "POST",
+                        data: {
+                            id: this.dataset.id,
+                            level: this.dataset.level
+                        },
+                        headers:{
+                            'X-CSRFToken': getcookie('csrftoken')
+                        },
+                        success: function(data) {
+                            hovertext = 'By: ' + data.person + "<br/>";
 
-{#            $('#approve').click(function(){#}
-{#                process($(this).val())#}
-{#            });#}
-{##}
-{#            $('#skip').click(function(){#}
-{#                process($(this).val())#}
-{#            });#}
+                            if(data.type != 'S'){
+                                hovertext += "On: " + data.date + "<br/>";
+                                hovertext += 'Comments: ' + data.comments + "<br/>";
+                                if(data.type == 'A'){
+                                    $('#hintBox').css('background-color', 'rgba(0,150,0,0.9)');
+                                } else {
+                                    $('#hintBox').css('background-color', 'rgba(150,0,0,0.9)');
+                                }
+                            } else {
+                                $('#hintBox').css('background-color', 'rgba(0,0,0,0.9)');
+                            }
+                            xhr = undefined;
+                            $('#hintBox').html(hovertext).show();
+                            $('#hintBox').css('top', e.clientY+20).css('left', e.clientX-210);
+                        },
+                        error: function(){
+                            hovertext = '<span>Could not find</span>';
+                            $('#hintBox').css('background-color', 'rgba(0,0,0,0.9)');
+                        }
+                    });
+                }
+
+                if (hovertext != '') {
+                    $('#hintBox').html(hovertext).show();
+                    $('#hintBox').css('top', e.clientY+20).css('left', e.clientX-210);
+                }
+            }).mousemove(function(e){
+                $('#hintBox').css('top', e.clientY+20).css('left', e.clientX-210);
+            }).mouseleave(function() {
+                $('#hintBox').hide();
+                if (xhr !== undefined){
+                    xhr.abort();
+                    xhr = undefined;
+                }
+            });
+
         });
     </script>
+    <style>
+        #hintBox {
+            display: none;
+            position: absolute;
+            font-size: 10pt;
+            width: 200px;
+            background-color: rgba(0,0,0,0.9);
+            color: rgba(255,255,255,1);
+            border: 1px solid grey;
+            padding: 8px;
+            border-radius: 10px;
+            z-index: 999;
+        }
+    </style>
 {% endif %}
 {% endblock %}

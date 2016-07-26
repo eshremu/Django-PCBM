@@ -1,8 +1,10 @@
 {% extends "BoMConfig/entrylanding.html" %}
-{%  load staticfiles %}
+{% load staticfiles %}
+{% load customtemplatetags %}
 {% block subcontent %}
 {% if header_read_authorized %}
 <div id="header-form">
+    <script type="text/javascript" src="{% static 'BoMConfig/js/config_header.js' %}"></script>
     <form id="headerform" method="POST">
         {% csrf_token %}
         <input id="formaction" type="hidden" name="formaction" value=""/>
@@ -10,7 +12,10 @@
             <table>
                 <tbody>
                 {% for field in headerForm %}
-                <tr><td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</td>
+                <tr>
+                    {% if field.label != 'Model replaced link' %}
+                    <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</td>
+                    {% endif %}
                     {% if field.errors %}
                     <td class="errorbox">
                     {% else %}
@@ -18,11 +23,13 @@
                     {% endif %}
                     {{ field }}
                     </td>
-                    {% if field.label == 'REACT Request' and headerForm.configuration_status.value == 'In Process' and header_write_authorized %}
+                    {% if field.label == 'REACT Request' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
                         <td>
-                            &nbsp;&nbsp;<input id="searchSubmit" type="button" value="Search"/>&nbsp;&nbsp;&nbsp;&nbsp;
+                            &nbsp;&nbsp;
+                            <input id="searchSubmit" type="button" value="Search"/>
+                            &nbsp;&nbsp;&nbsp;&nbsp;
                         </td>
-                    {% elif field.label == 'Baseline Impacted' and headerForm.configuration_status.value == 'In Process' and header_write_authorized %}
+                    {% elif field.label == 'Baseline Impacted' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
                         <td>
                             &nbsp;&nbsp;
                             <input id="new_baseline" type="text" name="new_baseline" placeholder="Baseline Name" style="display:none;"/>
@@ -42,13 +49,23 @@
             </table>
         </div>
         <div id="formbuttons">
-            <input id="cancelForm" type="button" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'"/>
-            {% if headerForm.instance.configuration_status == 'In Process' and header_write_authorized %}
+            <input id="cancelForm" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close();{% else %}window.location.href='{% url 'bomconfig:index' %}';{% endif %}"/>
+            {% if headerForm.instance.configuration_status.name == 'In Process' and header_write_authorized and not frame_readonly %}
             <input id="saveexitForm" type="button" value="Save & Exit"/>
             <input id="saveForm" type="button" value="Save"/>
             {% endif %}
             {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
             <span><span style="color: red;font-size:14pt;">*</span> = Required</span>
+            {% if headerForm.instance.pk %}
+            {% if not frame_readonly or user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_BPMA_Architect" %}
+            <input id="download" type="button" value="Download"/>
+            {% endif %}
+            {% endif %}
+            {% if header.configuration_status.name not in non_clonable %}
+            {% if user|has_group:"BOM_PSM_" or user|has_group:"BOM_BPMA_Architect" %}
+            <input id="clone" type="button" value="Clone" onclick="cloneHeader({{ header.id }});"/>
+            {% endif %}
+            {% endif %}
             {% if status_message %}
             <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
                 {{ status_message }}
@@ -57,9 +74,6 @@
                 setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
             </script>
             {% endif %}
-            {% if headerForm.instance.pk %}
-            <input id="download" type="button" value="Download" onclick="window.location.href='{% url 'bomconfig:download' %}'"/>
-            {%  endif %}
         </div>
     </form>
 </div>
@@ -76,229 +90,25 @@
     }
 </style>
 
-<script type="text/javascript">
-    $('button[value="header"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
-    var clean_form = $('#headerform').serialize();
-    var form_save = false;
-    var attached = true;
-
-    $(document).ready(function(){
-        $('#searchSubmit').click(function(){
-            req_search();
-        });
-
-        $('#reactReq').keydown(function(event){
-            if(event.which == 13){
-                req_search();
-                event.stopPropagation();
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                return false;
-            }
-        });
-
-        $(window).load(function(){
-            form_resize();
-            attached = $('#id_configuration_designation').val() == $('#id_model').val();
-        });
-
-        $(window).resize(function(){
-            form_resize();
-        });
-
-        $('#saveForm').click(function(){
-            $('#formaction').val('save');
-            $('#headerform').submit();
-        });
-
-        $('#saveexitForm').click(function(){
-            $('#formaction').val('saveexit');
-            $('#headerform').submit();
-        });
-
-        $('#nextForm').click(function(){
-            $('#formaction').val('next');
-            $('#headerform').submit();
-        });
-
-        $('#headerform').submit(function(){
-            save_form();
-        });
-
-        $('#id_configuration_designation').keyup(function(){
-            if(attached) {
-                $('#id_model').val($(this).val());
-            }
-        });
-
-        $('#id_model').keyup(function(){
-            attached = false;
-        });
-
-        $('#id_product_area1').change(function(){
-            list_filler('product_area1', 'product_area2');
-        });
-
-        $('#id_customer_unit').change(function(){
-            list_react_filler('customer_unit', 'customer_name');
-            list_filler('customer_unit', 'program')
-            list_filler('customer_unit', 'baseline_impacted', 1);
-        });
-
-        $('#id_baseline_impacted').change(function(){
-            if ($(this).val() === 'New'){
-                $('#new_baseline').removeAttr('style');
-
-            } else {
-                $('#new_baseline').attr('style','display:none;');
-                $('#new_baseline').val('');
-            }
-        });
-
-        $('#id_radio_frequency').change(function(){
-            $('#id_radio_band').val($(this).val());
-        });
-
-        $('#id_radio_band').change(function(){
-            $('#id_radio_frequency').val($(this).val());
-        });
-
-        $(window).bind('beforeunload', function(){
-            var dirty_form = $('#headerform').serialize();
-            if(dirty_form != clean_form && !form_save){
-                return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";
-            }
-        });
-    });
-
-    function list_filler(parent, child, index){
-        index = typeof(index) !== 'undefined' ? index : 0;
-
-        if($('#id_' + parent).val() != ''){
-            $.ajax({
-                url: "{% url 'bomconfig:list_fill' %}",
-                dataType: "json",
-                type: "POST",
-                data: {
-                    parent: parent,
-                    id: $('#id_' + parent).val(),
-                    child: child,
-                },
-                headers:{
-                    'X-CSRFToken': getcookie('csrftoken'),
-                },
-                success: function(data) {
-                    var $child = $('#id_' + child);
-                    $child.find('option:gt(' + index + ')').remove();
-                    for (key in data){
-                        if(data.hasOwnProperty(key)){
-                            $child.append($('<option>',{value:key,text:data[key]}));
-                        }
-                    }
-                },
-                error: function(){
-                    var $child = $('#id_' + child);
-                    $child.find('option:gt(' + index + ')').remove();
-                }
-            });
-        } else {
-            var $child = $('#id_' + child);
-            $child.find('option:gt(' + index + ')').remove();
-        }
-    }
-
-    function list_react_filler(parent, child, index){
-        index = typeof(index) !== 'undefined' ? index : 0;
-
-        if($('#id_' + parent).val() != ''){
-            $.ajax({
-                url: "{% url 'bomconfig:list_react_fill' %}",
-                dataType: "json",
-                type: "POST",
-                data: {
-                    parent: parent,
-                    id: $('#id_' + parent).val(),
-                    child: child,
-                },
-                headers:{
-                    'X-CSRFToken': getcookie('csrftoken'),
-                },
-                success: function(data) {
-                    var $child = $('#id_' + child);
-                    $child.find('option:gt(' + index + ')').remove();
-                    for (key in data){
-                        if(data.hasOwnProperty(key)){
-                            $child.append($('<option>',{value:key,text:data[key]}));
-                        }
-                    }
-                },
-                error: function(){
-                    var $child = $('#id_' + child);
-                    $child.find('option:gt(' + index + ')').remove();
-                }
-            });
-        } else {
-            var $child = $('#id_' + child);
-            $child.find('option:gt(' + index + ')').remove();
-        }
-    }
-
-    function form_resize(){
-        var topbuttonheight = $('#action_buttons').height();
-        var bottombuttonheight = $('#formbuttons').height();
-        var bodyheight = $('#main-body').height();
-
-        var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + 6);
-
-        $('#headerformtable').css("height", tableheight);
-        $('#headerformtable').css("overflow", 'auto');
-    }
-
-    function save_form(){
-        form_save = true;
-        clean_form = $('#headerform').serialize();
-    }
-
-    function req_search(){
-        if($({{ headerForm.react_request.auto_id }}).val() == null || $({{ headerForm.react_request.auto_id }}).val() == ''){
-            alert('Please provide a request number');
-        } else {
-            $('#myModal').modal('show');
-            $.ajax({
-                url: "{% url 'bomconfig:reactsearch' %}",
-                dataType: "html",
-                type: "POST",
-                data: {
-                    psm_req: $({{ headerForm.react_request.auto_id }}).val()
-                },
-                headers:{
-                    'X-CSRFToken': getcookie('csrftoken'),
-                },
-                success: function(data) {
-                    var returned = JSON.parse(data);
-                    $('#myModal').modal('hide');
-                    if(typeof returned.req_id === "undefined"){
-                        setTimeout(function(){alert('No match found. Please note, you must use a complete REACT request number.');}, 300);
-                    } else {
-                        $({{ headerForm.person_responsible.auto_id }}).val(returned.person_resp);
-                        $({{ headerForm.customer_name.auto_id }}).val(returned.cust_name);
-                        $({{ headerForm.sales_office.auto_id }}).val(returned.sales_office.match(/^US../));
-                        $({{ headerForm.sales_group.auto_id }}).val(returned.sales_group.match(/^U../));
-                        $({{ headerForm.sold_to_party.auto_id }}).val(returned.sold_to);
-                        $({{ headerForm.ship_to_party.auto_id }}).val(returned.ship_to);
-                        $({{ headerForm.bill_to_party.auto_id }}).val(returned.bill_to);
-                        $({{ headerForm.payment_terms.auto_id }}).val(returned.terms);
-                        $({{ headerForm.workgroup.auto_id }}).val(returned.workgroup);
-{#                        $({{ headerForm.customer_unit.auto_id }}).val(returned.cust);#}
-                        $('#{{ headerForm.customer_unit.auto_id }} option').filter(function(){return $(this).text() === returned.cust}).prop('selected', true);
-                        $({{ headerForm.customer_unit.auto_id }}).change();
-                        $({{ headerForm.ericsson_contract.auto_id }}).val(returned.contract.match(/^\d+/));
-                    }
-                },
-            });
-
-        }
-    }
+<script>
+    var reactsearch_url = "{% url 'bomconfig:reactsearch' %}";
+    var listfill_url = "{% url 'bomconfig:list_fill' %}";
+    var listreactfill_url = "{% url 'bomconfig:list_react_fill' %}";
+    var clone_url = "{% url 'bomconfig:configclone' %}";
+    var download_url = '{% url 'bomconfig:download' %}';
+    var reactrequest_id = "#{{ headerForm.react_request.auto_id }}";
+    var personresponsible_id = "#{{ headerForm.person_responsible.auto_id }}";
+    var customername_id = "#{{ headerForm.customer_name.auto_id }}";
+    var salesoffice_id = "#{{ headerForm.sales_office.auto_id }}";
+    var salesgroup_id = "#{{ headerForm.sales_group.auto_id }}";
+    var soldto_id = "#{{ headerForm.sold_to_party.auto_id }}";
+    var shipto_id = "#{{ headerForm.ship_to_party.auto_id }}";
+    var billto_id = "#{{ headerForm.bill_to_party.auto_id }}";
+    var paymentterms_id = "#{{ headerForm.payment_terms.auto_id }}";
+    var workgroup_id = "#{{ headerForm.workgroup.auto_id }}";
+    var customerunit_id = "#{{ headerForm.customer_unit.auto_id }}";
+    var ericssoncontract_id = "#{{ headerForm.ericsson_contract.auto_id }}";
+    var alreadyDiscontinued = {{ discontinuation_done }};
 </script>
 {% else %}
 <div>

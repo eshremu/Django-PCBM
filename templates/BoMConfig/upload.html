@@ -1,5 +1,5 @@
 {% extends "BoMConfig/template.html" %}
-{% load customtemplatetag %}
+{% load customtemplatetags %}
 		
 {% block content %}
 <div id="main-body">
@@ -29,12 +29,17 @@
 			<input type="submit" value="Upload" />
 		</form>
 	</div>
-    <script>
-        $('a.headtitle:contains("Upload")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
-    </script>
 	{% else %}
 	<h4>You must be logged in to access this feature</h4>
 	{% endif %}
 </div>
+<script>
+    $('a.headtitle:contains("Upload")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+
+    function cleanDataCheck(link){
+        window.location.href = link.dataset.href;
+    }
+
+</script>
 <!-- end div #main-body -->
 {% endblock %}

@@ -1,7 +1,12 @@
 {% extends "BoMConfig/template.html" %}
-{% load customtemplatetag %}
+{% load customtemplatetags %}
 {% block content %}
 <div id="main-body">
     <h4>Page under construction</h4>
-    </div>
+</div>
+<script>
+    function cleanDataCheck(link){
+        window.location.href = link.dataset.href;
+    }
+</script>
 {% endblock %}

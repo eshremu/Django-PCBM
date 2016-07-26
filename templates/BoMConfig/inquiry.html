@@ -41,7 +41,7 @@
         <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden"><div id="datatable"></div></div>
         <div id="formbuttons">
             {% if can_previous %}<input id="prevForm" type="button" value="Prev">{% endif %}
-            <input id="cancelForm" type="button" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">
+            <input id="cancelForm" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
             {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
             {% if status_message %}
             <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
@@ -60,6 +60,11 @@
         {% else %}
         $('button[value="sitetemp"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
         {% endif %}
+
+        function cleanDataCheck(link){
+            window.location.href = link.dataset.href;
+        }
+
         var hot;
         var header_html;
         var data = {{ data_array|safe }};
