@@ -1059,6 +1059,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
 def Validator(oRequest):
     if oRequest.method == "POST" and oRequest.POST:
         form_data = json.loads(oRequest.POST['entered_data'])
+        oHead = Header.objects.get(pk=oRequest.session['existing'])
         net_total = 0
         override_total = 0
         base_total = None
@@ -1358,7 +1359,6 @@ def Validator(oRequest):
                 elif '21' in form_data[index] and form_data[index]['21'] == 'ZPRU':
                     needs_zpru = True
                 elif '17' in form_data[index] and form_data[index]['17'] not in ('None', None, ''):
-                    oHead = Header.objects.get(pk=oRequest.session['existing'])
                     if index == 0 and not oHead.pick_list:
                         # base_total = oHead.configuration.override_net_value or oHead.configuration.net_value
                         base_total = float(form_data[index]['17'].replace('!','')) if form_data[index]['17'] not in (None, '', 'None') else 0
