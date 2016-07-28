@@ -1075,7 +1075,7 @@ def Validator(oRequest):
         # Convert list of lists to list of dicts
         if type(form_data[1]) == list:
             for index in range(len(form_data)):
-                form_data[index] = {str(key): (value if value != '' else None) for key, value in zip(range(len(form_data[index])), form_data[index])}
+                form_data[index] = {str(key): (value if value != '' else None) for key, value in enumerate(form_data[index])}
             #end for)
 
         # Clean empty rows out and remove previous row statuses
@@ -1108,7 +1108,7 @@ def Validator(oRequest):
                 # end if
             # end if
 
-            if '28' not in form_data[index] or form_data[index]['28'] == 'None':
+            if '28' not in form_data[index] or form_data[index]['28'] in ('None', '', None, 'null'):
                 form_data[index]['28'] = form_data[index]['2'].strip('./')
             if '1' in form_data[index] and form_data[index]['1'] not in ('None', ''):
                 # if form_data[index]['2'].startswith(('.', '..')):

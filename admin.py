@@ -3,6 +3,7 @@ from django import forms
 
 from BoMConfig.models import *
 from BoMConfig.forms import LinePricingForm, DistroForm, SecurityForm
+from BoMConfig.utils import RevisionCompare
 from django.contrib.sessions.models import Session
 
 # Register your models here.
@@ -60,10 +61,15 @@ class LinePriceAdmin(admin.ModelAdmin):
 
 class RevisionAdmin(admin.ModelAdmin):
     def render_change_form(self, request, context, *args, **kwargs):
-        context['adminform'].form.fields['previous_revision'].queryset = Baseline_Revision.objects\
+        orderQuery = sorted(Baseline_Revision.objects\
             .filter(baseline__title=context['original'].baseline.title)\
-            .exclude(pk=context['original'].pk)\
-            .order_by('baseline__title', 'version')
+            .order_by('version'), key=lambda x: RevisionCompare(x.version))
+        orderQuery = orderQuery[:orderQuery.index(context['original'])]
+        choices = [(
+                       context['adminform'].form.fields['previous_revision'].prepare_value(obj),
+                       context['adminform'].form.fields['previous_revision'].label_from_instance(obj)
+                   ) for obj in orderQuery]
+        context['adminform'].form.fields['previous_revision'].choices = choices
         return super(RevisionAdmin, self).render_change_form(request, context, *args, **kwargs)
 
 
