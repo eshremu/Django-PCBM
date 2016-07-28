@@ -487,6 +487,10 @@ class Configuration(models.Model):
         # end try
         return oFirst
     # end def
+
+    @property
+    def first_line(self):
+        return self.get_first_line()
 # end class
 
 
