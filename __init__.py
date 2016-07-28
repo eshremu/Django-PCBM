@@ -16,7 +16,7 @@ menulisting = [
 
 pagetitle = "Configuration & Baseline Mgmt"
 
-supportcontact = "paul.staggs@ericsson.com"
+supportcontact = "sherri.xi.parolini@ericsson.com"
 
 headerFile = "BoMConfig/header.html"
 footerFile = "BoMConfig/footer.html"
