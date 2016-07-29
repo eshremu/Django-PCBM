@@ -69,7 +69,7 @@ class RevisionAdmin(admin.ModelAdmin):
                        context['adminform'].form.fields['previous_revision'].prepare_value(obj),
                        context['adminform'].form.fields['previous_revision'].label_from_instance(obj)
                    ) for obj in orderQuery]
-        context['adminform'].form.fields['previous_revision'].choices = choices
+        context['adminform'].form.fields['previous_revision'].choices = [('','----------')] + choices
         return super(RevisionAdmin, self).render_change_form(request, context, *args, **kwargs)
 
 
