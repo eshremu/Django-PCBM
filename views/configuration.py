@@ -755,8 +755,8 @@ def AddRevision(oRequest):
                 error_matrix.append([None, None, 'X - Not a valid date.'])
                 valid = False
             # end if
-        if '5' in oForm[0] and oForm[0]['5'] not in ('', None):
-            oHeader.change_comments = oForm[0]['5']
+        if '6' in oForm[0] and oForm[0]['6'] not in ('', None):
+            oHeader.change_comments = oForm[0]['6']
 
         if valid:
             try:
