@@ -36,7 +36,7 @@ def TableValidate(oRequest):
         except PartBase.DoesNotExist:
             if any(received_data[key]):
                 response_data['table_data'][key][0] = received_data[key][0]
-                response_data['table_info'][key][0] = False
+                response_data['table_info'][key][0] = None
             else:
                 response_data['table_data'][key][0] = None
                 response_data['table_info'][key][0] = None
@@ -84,6 +84,11 @@ def TableValidate(oRequest):
             response_data['table_data'][key][1] = received_data[key][1]
             response_data['table_data'][key][2] = received_data[key][2]
             response_data['table_data'][key][3] = received_data[key][3]
+            if response_data['table_data'][key][1] and response_data['table_info'][key][1] is None:
+                response_data['table_data'][key][2] = response_data['table_data'][key][2] or 'N'
+                response_data['table_info'][key][2] = None
+                response_data['table_data'][key][3] = response_data['table_data'][key][3] or 'N'
+                response_data['table_info'][key][3] = None
         # end if
 
     return JsonResponse(response_data)

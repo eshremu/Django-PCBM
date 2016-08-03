@@ -296,8 +296,9 @@
             if(PriceVis === true && {{ config_price_read_authorized|lower }}) {
                 cols.push({data: 17}, {data: 18}, {data: 19}, {data: 20}, {data: 21}, {data: 22});
                 headers.push('Unit Price', "Higher Level Item", 'Material Group 5', 'Purchase Order Item No', 'Condition Type', 'Amount');
+                readonly.push(5 + offset);
                 {% if not config_price_write_authorized %}
-                readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset, 10 + offset);
+                readonly.push(6 + offset, 7 + offset, 8 + offset, 9 + offset, 10 + offset);
                 {% endif %}
                 offset += 6;
 {#                header += "<th colspan='6'><div class='relative'><span>Price Links</span></div></th>";#}

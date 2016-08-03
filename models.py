@@ -789,10 +789,19 @@ class CustomerPartInfo(models.Model):
     customer_asset_tagging = models.NullBooleanField(blank=True)
     # traceability_req = models.CharField(max_length=50, blank=True, null=True)
     traceability_req = models.NullBooleanField(blank=True)
+    active = models.BooleanField(default=False)
 
     def __str__(self):
         return str(self.part) + " - " + self.customer_number + (
             "/" + self.second_customer_number if self.second_customer_number else "") + " (" + self.customer.name + ")"
+    # end def
+
+    def save(self, *args, **kwargs):
+        if self.active:
+            self.__class__.objects.filter(part=self.part, customer=self.customer).update(**{'active': False})
+        # end def
+        super().save(*args, **kwargs)
+    # end def
 # end class
 
 

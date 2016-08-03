@@ -49,6 +49,13 @@
         afterCreateRow: function(index, amount, auto){
             addOutputRow(index, amount, auto);
         },
+        beforeChange: function(changes, source){
+            for (var i=0; i < changes.length; i++){
+                if(typeof changes[i][3] === 'string') {
+                    changes[i][3] = changes[i][3].toUpperCase();
+                }
+            }
+        },
         afterChange: function(changes, source){
             var altered_data = {};
             if (['alter', 'edit', 'paste'].indexOf(source) != -1) {
@@ -156,8 +163,12 @@
             if(outputformat[row][col] == true){
                 td.style.background = '#90E990';
             } else if (outputformat[row][col] == false){
-                td.style.background = '#E99090';
-                $(td).addClass('invalid-cell');
+                if(inputTable.getDataAtCell(row,col) != '') {
+                    td.style.background = '#E99090';
+                    $(td).addClass('invalid-cell');
+                } else {
+                    td.style.background = '#DDDDDD';
+                }
             } else if (outputformat[row][col] == null){
                 if ([null, ''].indexOf(value) != -1){
                     td.style.background = '#DDDDDD';
