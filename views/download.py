@@ -397,7 +397,7 @@ def WriteBaselineToFile(oBaseline, sVersion):
 
         iRow += 2
         iColorIndex += 1
-        if iColorIndex > len(aColors):
+        if iColorIndex >= len(aColors):
             iColorIndex = 0
     # end for
 
