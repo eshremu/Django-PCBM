@@ -113,8 +113,8 @@ def UserChange(oRequest, id=''):
                                 if field == 'email':
                                     oUser.email = oForm.cleaned_data[field]
                             elif field == 'assigned_group':
-                                oUser.groups.add(oForm.cleaned_data[field])
-                                oUser.groups.remove(*tuple(Group.objects.filter(name__startswith='BOM_').exclude(id=oForm.cleaned_data[field].id)))
+                                oUser.groups.add(*tuple(oForm.cleaned_data[field]))
+                                oUser.groups.remove(*tuple(Group.objects.filter(name__startswith='BOM_').exclude(pk__in=oForm.cleaned_data[field])))
                             # end if
                         # end for
                         oUser.save()

@@ -180,25 +180,38 @@ def ConfigPricing(oRequest):
             aProgramList = list([oHead.program.id, oHead.program.name] for oHead in aConfigMatches)
             dContext.update({'prog_list': aProgramList, 'config': sConfig})
         else:
-            iProgValue = aConfigMatches[0].program.id
+            iProgValue = aConfigMatches[0].program.id if aConfigMatches[0].program else None
+
+            dLineFilters = {
+                'config__header__configuration_status__name__startswith': 'In Process',
+                'config__header__configuration_designation__iexact':sConfig,
+            }
+            dConfigFilters = {
+                'header__configuration_status__name__startswith': 'In Process',
+                'header__configuration_designation__iexact':sConfig,
+            }
+
+            if iProgValue is not None:
+                dLineFilters.update({'config__header__program__id': iProgValue})
+                dConfigFilters.update({'header__program__id': iProgValue})
+            else:
+                dLineFilters.pop('config__header__program__id', None)
+                dConfigFilters.pop('header__program__id', None)
+
             aProgramList = []
             if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
                 if oRequest.POST['config'] == oRequest.POST['initial']:
                     for dLine in json.loads(oRequest.POST['data_form']):
-                        oLineToEdit = ConfigLine.objects.filter(config__header__configuration_status__name__startswith='In Process')\
-                            .filter(config__header__configuration_designation__iexact=sConfig)\
-                            .filter(config__header__program__id=iProgValue)\
-                            .filter(line_number=dLine['0'])[0]
+                        dLineFilters.update({'line_number': dLine[0]})
+
+                        oLineToEdit = ConfigLine.objects.filter(**dLineFilters)[0]
                         oLinePrice = LinePricing.objects.get(config_line=oLineToEdit)
                         oLinePrice.override_price = dLine['7'] or None
                         oLinePrice.save()
                     # end for
+                    dLineFilters.pop('line_number', None)
 
-                    oConfig = Configuration.objects.get(
-                        header__configuration_designation__iexact=sConfig,
-                        header__configuration_status__name__startswith='In Process',
-                        header__program__id=iProgValue
-                    )
+                    oConfig = Configuration.objects.get(**dConfigFilters)
                     oConfig.override_net_value = float(oRequest.POST['net_value'])
                     oConfig.save()
 
@@ -209,9 +222,7 @@ def ConfigPricing(oRequest):
                 # end if
             # end if
 
-            aLine = ConfigLine.objects.filter(config__header__configuration_designation__iexact=sConfig)\
-                .filter(config__header__configuration_status__name__startswith='In Process')\
-                .filter(config__header__program__id=iProgValue)
+            aLine = ConfigLine.objects.filter(**dLineFilters)
             aLine = sorted(aLine, key=lambda x: ([int(y) for y in x.line_number.split('.')]))
 
             aConfigLines = [{
