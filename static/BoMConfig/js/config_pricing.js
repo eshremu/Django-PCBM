@@ -11,16 +11,18 @@ $(document).ready(function(){
         }
 
         if(program_list.length > 1){
-            var message = "Multiple matching configurations were found.<br/>Please select the program for the desired configuration.";
-            message += '<br/><label for="desiredprog" style="padding-right: 5px;">Program:</label><select name="desiredprog">';
+            var message = "Multiple matching configurations were found.<br/>Please select the program & baseline for the desired configuration.";
+            message += '<br/><label for="desiredprog" style="padding-right: 5px;">Program|Baseline:</label><select name="desiredprog">';
             for(var i=0; i<program_list.length; i++) {
-                message += '<option value="'+ program_list[i][0] +'">' + program_list[i][1] + '</option>';
+                message += '<option value="'+ program_list[i][0] + "_" + baseline_list[i][0] +'">' +
+                    program_list[i][1] + ' | ' + baseline_list[i][1] + '</option>';
             }
             message += '</select>';
             messageToModal('Multiple configurations found',
                 message,
                 function(){
-                    $('input[name="program"]').val($('select[name="desiredprog"]').val());
+                    $('input[name="program"]').val($('select[name="desiredprog"]').val().split("_")[0]);
+                    $('input[name="baseline"]').val($('select[name="desiredprog"]').val().split("_")[1]);
                     $('#headersubform').submit();
                 }
             );
