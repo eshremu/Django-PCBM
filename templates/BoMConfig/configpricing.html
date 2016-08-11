@@ -14,6 +14,7 @@
         <input id="config" name="config" type="text" value="{{ config }}"/>
         <input id="initial" name="initial" type="hidden" value="{{ config }}"/>
         <input id="program" name="program" type="hidden" value="{{ program }}"/>
+        <input id="baseline" name="baseline" type="hidden" value="{{ baseline }}"/>
         <button type="submit" name="action" value="search">Search</button>
         <br/>
         <label for="net_value">Net Value ($):</label>
@@ -42,5 +43,6 @@
         var can_write = {{ pricing_write_authorized|lower }};
         var table_data = {{ configlines|safe }};
         var program_list = {{ prog_list|safe }};
+        var baseline_list = {{ base_list|safe }};
     </script>
 {% endblock %}

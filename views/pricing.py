@@ -166,21 +166,27 @@ def ConfigPricing(oRequest):
         sConfig = oRequest.POST['config'] if 'config' in oRequest.POST else None
 
         iProgram = oRequest.POST.get('program', None)
+        iBaseline = oRequest.POST.get('baseline', None)
         if 'action' in oRequest.POST and oRequest.POST['action'] == 'search':
             iProgram = None
+            iBaseline = None
 
         aConfigMatches = Header.objects.filter(configuration_designation__iexact=sConfig, configuration_status__name__startswith='In Process')
         if iProgram:
             aConfigMatches = aConfigMatches.filter(program__id=iProgram)
+        if iBaseline:
+            aConfigMatches = aConfigMatches.filter(baseline__baseline__id=iBaseline)
 
         if len(aConfigMatches) == 0:
             status_message = 'No matching configuration found'
             dContext.update({'config': sConfig})
         elif len(aConfigMatches) > 1:
             aProgramList = list([oHead.program.id, oHead.program.name] for oHead in aConfigMatches)
-            dContext.update({'prog_list': aProgramList, 'config': sConfig})
+            aBaselineList = list([oHead.baseline.baseline.id, oHead.baseline.baseline.title] if oHead.baseline else [None, ''] for oHead in aConfigMatches)
+            dContext.update({'prog_list': aProgramList, 'config': sConfig, 'base_list': aBaselineList})
         else:
             iProgValue = aConfigMatches[0].program.id if aConfigMatches[0].program else None
+            iBaseValue = aConfigMatches[0].baseline.baseline.id if aConfigMatches[0].baseline else None
 
             dLineFilters = {
                 'config__header__configuration_status__name__startswith': 'In Process',
@@ -198,7 +204,13 @@ def ConfigPricing(oRequest):
                 dLineFilters.pop('config__header__program__id', None)
                 dConfigFilters.pop('header__program__id', None)
 
-            aProgramList = []
+            if iBaseValue is not None:
+                dLineFilters.update({'config__header__baseline__baseline__id': iBaseValue})
+                dConfigFilters.update({'header__baseline__baseline__id': iBaseValue})
+            else:
+                dLineFilters.pop('config__header__baseline__baseline__id', None)
+                dConfigFilters.pop('header__baseline__baseline__id', None)
+
             if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
                 if oRequest.POST['config'] == oRequest.POST['initial']:
                     for dLine in json.loads(oRequest.POST['data_form']):
@@ -245,7 +257,13 @@ def ConfigPricing(oRequest):
             aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
 
             dContext['configlines'] = aConfigLines
-            dContext.update({'config': sConfig, 'is_not_pick_list': not aLine[0].config.header.pick_list if aLine else False, 'program': iProgValue, 'prog_list': aProgramList})
+            dContext.update({'config': sConfig,
+                             'is_not_pick_list': not aLine[0].config.header.pick_list if aLine else False,
+                             'program': iProgValue,
+                             'baseline': iBaseValue,
+                             'prog_list': [],
+                             'base_list': []
+                             })
         # end if
     # end if
 
