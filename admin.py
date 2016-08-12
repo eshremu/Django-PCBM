@@ -11,6 +11,7 @@ from django.contrib.sessions.models import Session
 
 class PartBaseAdmin(admin.ModelAdmin):
     ordering = ('product_number',)
+    search_fields = ('product_number',)
 # end class
 
 
