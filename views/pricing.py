@@ -214,7 +214,13 @@ def ConfigPricing(oRequest):
             if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
                 if oRequest.POST['config'] == oRequest.POST['initial']:
                     for dLine in json.loads(oRequest.POST['data_form']):
-                        dLineFilters.update({'line_number': dLine[0]})
+                        # Change dLine to dict with str keys
+                        if isinstance(dLine, list):
+                            dLine = {str(key): val for (key, val) in enumerate(dLine)}
+                        elif isinstance(dLine, dict):
+                            dLine = {str(key): val for (key, val) in dLine.items()}
+
+                        dLineFilters.update({'line_number': dLine['0']})
 
                         oLineToEdit = ConfigLine.objects.filter(**dLineFilters)[0]
                         oLinePrice = LinePricing.objects.get(config_line=oLineToEdit)
