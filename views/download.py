@@ -377,16 +377,16 @@ def DownloadBaselineMaster(oRequest):
     oSheet = oFile.active
     oSheet.title = "BOM Master File"
 
-    oSheet['A1'] = 'Network Info'
-    oSheet['A1'].font = headerFont
-    oSheet['A1'].alignment = headerAlign
-    oSheet.column_dimensions['A'].width = 10
+    # oSheet['A1'] = 'Network Info'
+    # oSheet['A1'].font = headerFont
+    # oSheet['A1'].alignment = headerAlign
+    # oSheet.column_dimensions['A'].width = 10
 
     oSheet['B1'] = 'Baseline'
     oSheet['B1'].font = headerFont
     oSheet.column_dimensions['B'].width = 10
 
-    oSheet['C1'] = 'Platform & HW Type'
+    oSheet['C1'] = 'Product Area 2'
     oSheet['C1'].font = headerFont
     oSheet['C1'].alignment = headerAlign
     oSheet.column_dimensions['C'].width = 10
@@ -469,6 +469,13 @@ def DownloadBaselineMaster(oRequest):
         # end for
 
         for oHead in aConfigs:
+            oSheet['C' + str(iRow)] = oHead.product_area2.name if oHead.product_area2 else ''
+            oSheet['C' + str(iRow)].alignment = centerAlign
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['C' + str(iRow)].font = ipFont
+            else:
+                oSheet['C' + str(iRow)].font = activeFont
+
             oSheet['D' + str(iRow)] = oHead.configuration_status.name.replace('/Pending', '').replace('In Process', 'IP')
             oSheet['D' + str(iRow)].alignment = centerAlign
             if 'In Process' in oHead.configuration_status.name:

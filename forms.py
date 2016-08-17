@@ -169,7 +169,7 @@ class HeaderForm(forms.ModelForm):
                   " WHERE [Sales Office Description] = %s")
 
         if 'customer_unit' in data and data['customer_unit']:
-            oCursor.execute(sQuery, [REF_CUSTOMER.objects.get(name=data['customer_unit']).name])
+            oCursor.execute(sQuery, [bytes(REF_CUSTOMER.objects.get(name=data['customer_unit']).name, 'ascii')])
             oResults = oCursor.fetchall()
             if 'sales_office' in data and data['sales_office']:
                 if (REF_CUSTOMER.objects.get(name=data['customer_unit']).name, data['sales_office']) not in [(obj[0],obj[1]) for obj in oResults]:

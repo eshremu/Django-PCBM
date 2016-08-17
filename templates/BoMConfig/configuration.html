@@ -17,6 +17,8 @@
     <form id="configform" method="POST" onsubmit="data_submit();">
         {% csrf_token %}
         {{ form.needs_zpru.as_hidden }}
+        {{ form.net_value.as_hidden }}
+        {{ form.override_net_value.as_hidden }}
         <div id="headersubform">
             <table>
                 <tbody>
@@ -27,7 +29,7 @@
                         <td style="width:170px;"><b>Projected Cut-over Date:</b></td>
                             <td style="border: 1px inset grey; width:100px;">{% if header.projected_cutover %}{{ header.projected_cutover }}{% endif %}</td>
                         <td style="width:50px;"></td>
-                        <td>{{ form.net_value.label_tag }}{{ form.net_value }}</td>
+                        <td>{{ form.total_value.label_tag }}{{ form.total_value }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -113,7 +115,7 @@
         var firstLoad = true;
 
         function cleanDataCheck(link){
-            var dirty_form = hot.getData();
+            var dirty_form = hot.getSourceData();
             dirty_form = $.map(dirty_form, function(value, index){
                 var new_val = {};
                 for(var key in value){
@@ -159,7 +161,7 @@
             });
 
             $(window).on('beforeunload',function(){
-                var dirty_form = hot.getData();
+                var dirty_form = hot.getSourceData();
                 $('[name="data_form"]').remove();
                 var dirty_sub = $('#configform').serialize();
 
@@ -398,7 +400,7 @@
         function customRenderer(instance, td, row, col, prop, value, cellProperties) {
             if (row === 0 && col === 17 && typeof(value) == 'string' && value.charAt(0)==='!' && PriceVis){
                 value = value.slice(1);
-                cellProperties.comment = '! - CPM override in effect.\n';
+{#                cellProperties.comment = '! - CPM override in effect.\n';#}
             }
 
             if (/<[a-zA-Z][\s\S/]*>/.test(value) === false) {
@@ -467,7 +469,7 @@
                         }
                     }
 
-                    if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
+                    if (['Amount'].indexOf(this.instance.getColHeader(col)) != -1){
                         cellProperties.validator = function(value, callback){
                             if(/^(?:-)?(?:\$)?\d{1,3}(?:,\d{3})*(?:\.\d{2})?$|^(?:-)?\d+(?:\.\d{2})?$|^$|^null$|^undefined$/.test(value)){
                                 callback(true);
@@ -584,7 +586,7 @@
 
         function data_submit(eventObj) {
             $('[name="data_form"]').remove();
-            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getData())).appendTo('#configform');
+            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#configform');
             form_save = true;
         }
 
@@ -600,7 +602,7 @@
                 url: "{% url 'bomconfig:validator' %}",
 {#                async: false,#}
                 data: {
-                    entered_data: JSON.stringify(hot.getData(), function(key, value){return value;})
+                    entered_data: JSON.stringify(hot.getSourceData(), function(key, value){return value;})
                 },
                 headers:{
                     'X-CSRFToken': getcookie('csrftoken')
@@ -610,15 +612,15 @@
                     data = returndata.data;
                     error_matrix = returndata.errors;
                     load_table();
-                    $('#id_net_value').attr('value', floatFormat(returndata.nettotal));
+                    $('#id_total_value').attr('value', floatFormat(returndata.nettotal));
                     $('#id_zpru_total').attr('value', floatFormat(returndata.zprutotal));
                     $('#id_needs_zpru').attr('value', returndata.zpru);
 
                     if( returndata.zpru == true && returndata.nettotal != returndata.zprutotal){
-                        $('#id_net_value').css('border', '3px solid red');
+                        $('#id_total_value').css('border', '3px solid red');
                         $('#id_zpru_total').css('border', '3px solid red');
                     } else {
-                        $('#id_net_value').removeAttr('style');
+                        $('#id_total_value').removeAttr('style');
                         $('#id_zpru_total').removeAttr('style');
                     }
 

@@ -51,6 +51,8 @@ urlpatterns = patterns(
     url(r'^admin/approval/$', views.ApprovalAdmin, name='approvaladmin'),
     url(r'^admin/approval/add/$', views.ApprovalChange, name='approvaladd'),
     url(r'^admin/approval/change/(?P<id>\d+)/$', views.ApprovalChange, name='approvalchange'),
-    url(r'^customer_audit/$', views.CustomerAudit, name='customeraudit'),
-    url(r'^customer_audit/validate/$', views.TableValidate, name='audit_validate'),
+    url(r'^customer_audit/$', views.CustomerAuditLand, name='customerauditland'),
+    url(r'^customer_audit/audit/$', views.CustomerAudit, name='customeraudit'),
+    url(r'^customer_audit/validate/$', views.CustomerAuditTableValidate, name='audit_validate'),
+    url(r'^customer_audit/upload/$', views.CustomerAuditUpload, name='customerauditupload'),
 )

@@ -10,4 +10,4 @@ from BoMConfig.views.upload import Upload
 from BoMConfig.views.download import Download, DownloadBaseline, DownloadMultiple, DownloadBaselineMaster
 from BoMConfig.views.approvals_actions import Approval, Action, AjaxApprove, ApprovalData, AjaxApprovalForm
 from BoMConfig.views.admin import MailingAdmin, MailingChange, UserAdmin, AdminLanding, UserAdd, UserChange, ApprovalAdmin, ApprovalChange
-from BoMConfig.views.customer_audit import TableValidate, CustomerAudit
+from BoMConfig.views.customer_audit import CustomerAuditTableValidate, CustomerAudit, CustomerAuditLand, CustomerAuditUpload

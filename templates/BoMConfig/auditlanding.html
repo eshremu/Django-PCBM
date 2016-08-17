@@ -1,0 +1,22 @@
+{% extends "BoMConfig/template.html" %}
+		
+{% block content %}
+{% if user.is_authenticated %}
+<div id="main-body">
+    <div id="action_buttons" style="margin: 5px 0;">
+        <button class="btn" type="button" name="action" value="audit" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:customeraudit' %}'>Search/Audit</button>
+		<button class="btn" type="button" name="action" value="upload" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:customerauditupload' %}'>Upload</button>
+	</div>
+    {% block subcontent %}{% endblock %}
+    <style>
+        #action_buttons button:hover {
+            background-color: #cccccc;
+        }
+    </style>
+</div>
+{% else %}
+<div>
+    <h4>You must log in to use this function</h4>
+</div>
+{% endif %}
+{% endblock %}

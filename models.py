@@ -456,6 +456,7 @@ class Configuration(models.Model):
     internal_external_linkage = models.BooleanField(default=False, verbose_name="Internal/External Linkage")
     net_value = models.FloatField(blank=True, null=True, verbose_name="Net Value")
     override_net_value = models.FloatField(blank=True, null=True, verbose_name="Overriden Net Value")
+    total_value = models.FloatField(blank=True, null=True, verbose_name="Total Net Value")
     zpru_total = models.FloatField(blank=True, null=True, verbose_name="ZPRU Total")
     header = models.OneToOneField(Header)
     needs_zpru = models.BooleanField(default=False)
@@ -581,6 +582,21 @@ class LinePricing(models.Model):
     def __str__(self):
         return str(self.config_line) + ("_" + str(self.pricing_object.unit_price) if self.pricing_object else '')
     # end def
+
+    @property
+    def configuration_designation(self):
+        return self.config_line.config.header.configuration_designation
+
+    @property
+    def version(self):
+        try:
+            return self.config_line.config.header.baseline.version
+        except AttributeError:
+            return
+
+    @property
+    def line_number(self):
+        return self.config_line.line_number
 # end class
 
 
@@ -776,9 +792,6 @@ class ApprovalList(models.Model):
 
 
 class CustomerPartInfo(models.Model):
-    class Meta:
-        unique_together = ('part', 'customer')
-
     part = models.ForeignKey(PartBase)
     customer = models.ForeignKey(REF_CUSTOMER)
     customer_number = models.CharField(max_length=50)
@@ -796,9 +809,28 @@ class CustomerPartInfo(models.Model):
             "/" + self.second_customer_number if self.second_customer_number else "") + " (" + self.customer.name + ")"
     # end def
 
+    def __eq__(self, other):
+        if not isinstance(other, CustomerPartInfo):
+            return False
+
+        if self.part != other.part:
+            return False
+        if self.customer != other.customer:
+            return False
+        if self.customer_number != other.customer_number:
+            return False
+        if self.customer_asset_tagging != other.customer_asset_tagging:
+            return False
+        if self.customer_asset != other.customer_asset:
+            return False
+
+        return True
+    # end def
+
     def save(self, *args, **kwargs):
         if self.active:
-            self.__class__.objects.filter(part=self.part, customer=self.customer).update(**{'active': False})
+            self.__class__.objects.filter(part=self.part, customer=self.customer).exclude(pk=self.pk).update(**{'active': False})
+            self.__class__.objects.filter(customer_number=self.customer_number, customer=self.customer).exclude(pk=self.pk).update(**{'active': False})
         # end def
         super().save(*args, **kwargs)
     # end def

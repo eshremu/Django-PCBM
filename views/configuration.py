@@ -110,6 +110,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                     Lock(oRequest, oExisting)
                 oExisting = Header.objects.get(pk=oExisting)
                 bDiscontinuationAlreadyCreated = True if oExisting.model_replaced_link and \
+                                                         hasattr(oExisting.model_replaced_link,'header_set') and \
                                                          oExisting.model_replaced_link.header_set.filter(
                                                              bom_request_type__name='Discontinue',
                                                              configuration_designation=oExisting.model_replaced_link.configuration_designation
@@ -286,7 +287,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             headerForm.fields['baseline_impacted'].widget = forms.widgets.Select(choices=(('','---------'),('New','Create New baseline')) + tuple((obj.title,obj.title) for obj in Baseline_Revision.objects.filter(baseline__customer=oExisting.customer_unit if oExisting else None).filter(completed_date=None)))
 
             oCursor = connections['REACT'].cursor()
-            oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',[oExisting.customer_unit.name if oExisting else None])
+            oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',[bytes(oExisting.customer_unit.name, 'ascii') if oExisting else None])
             tResults = oCursor.fetchall()
             headerForm.fields['customer_name'].widget = forms.widgets.Select(choices=(('','---------'),) + tuple((obj,obj) for obj in chain.from_iterable(tResults)))
 
@@ -936,9 +937,10 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                         '16': Line.internal_notes,
                         '17': (
                             "!" + str(Line.linepricing.override_price) if GrabValue(Line,'linepricing.override_price') else
+                            oConfig.net_value if not oConfig.header.pick_list else
                             GrabValue(Line, 'linepricing.pricing_object.unit_price') if GrabValue(Line,'linepricing.pricing_object') else ''
-                        ) if (str(Line.line_number) == '10' and not Line.config.header.pick_list) or
-                             Line.config.header.pick_list else '',
+                        ) if (str(Line.line_number) == '10' and not oConfig.header.pick_list) or
+                             oConfig.header.pick_list else '',
                         '18': Line.higher_level_item, '19': Line.material_group_5,
                         '20': Line.purchase_order_item_num, '21': Line.condition_type, '22': Line.amount,
                         '23': Line.traceability_req, '24': Line.customer_asset, '25': Line.customer_asset_tagging,
@@ -1212,7 +1214,7 @@ def Validator(oRequest):
                 if form_data[index]['17'] != 'None':
                     form_data[index]['17'] = form_data[index]['17'].replace('$', '').replace(',','')
 
-                if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$", form_data[index]['17'] or ''):
+                if not re.match("^(?:!)?(?:-)?\d+(?:\.\d+)?$|^$", form_data[index]['17'] or ''):
                     error_matrix[index][17] += 'X - Invalid Unit Price provided.\n'
             # end if
 
@@ -1283,7 +1285,7 @@ def Validator(oRequest):
             P_Code = form_data[index]['9'] if '9' in form_data[index] and re.match("^\d{2,3}$", form_data[index]['9'], re.IGNORECASE) else None
             tPCode = None
             oCursor.execute('SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],[Base Unit of Measure],'+
-                            '[P Code] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s',[form_data[index]['2'].strip('.') if form_data[index]['2'] else None])
+                            '[P Code] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s', [bytes(form_data[index]['2'].strip('.'), 'ascii') if form_data[index]['2'] else None])
             tPartData = oCursor.fetchall()
             if tPartData:
                 if Header.objects.get(pk=oRequest.session['existing']).configuration_status.name == 'In Process':
@@ -1312,7 +1314,7 @@ def Validator(oRequest):
             # end def
 
             if P_Code:
-                oCursor.execute('SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM dbo.REF_PCODE_FCODE WHERE [PCODE]=%s', [P_Code])
+                oCursor.execute('SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM dbo.REF_PCODE_FCODE WHERE [PCODE]=%s', [bytes(P_Code, 'ascii')])
                 tPCode = oCursor.fetchall()
             # end if
 
@@ -1341,7 +1343,7 @@ def Validator(oRequest):
 
             if '6' in form_data[index] and form_data[index]['6'] not in ('None', '')\
                     and '7' in form_data[index] and form_data[index]['7'] not in ('None', ''):
-                oCursor.execute('SELECT [Plant],[SLOC] FROM dbo.REF_PLANT_SLOC WHERE [Plant]=%s AND [SLOC]=%s', [form_data[index]['6'], form_data[index]['7']])
+                oCursor.execute('SELECT [Plant],[SLOC] FROM dbo.REF_PLANT_SLOC WHERE [Plant]=%s AND [SLOC]=%s', [bytes(form_data[index]['6'], 'ascii'), bytes(form_data[index]['7'], 'ascii')])
                 tResults = oCursor.fetchall()
                 if (form_data[index]['6'], form_data[index]['7']) not in tResults:
                     error_matrix[index][6] += '! - Plant/SLOC combination not found.\n'
@@ -1359,26 +1361,29 @@ def Validator(oRequest):
                 elif '21' in form_data[index] and form_data[index]['21'] == 'ZPRU':
                     needs_zpru = True
                 elif '17' in form_data[index] and form_data[index]['17'] not in ('None', None, ''):
-                    if index == 0 and not oHead.pick_list:
-                        # base_total = oHead.configuration.override_net_value or oHead.configuration.net_value
-                        base_total = float(form_data[index]['17'].replace('!','')) if form_data[index]['17'] not in (None, '', 'None') else 0
-
-                        if '21' in form_data[index] and form_data[index]['21'] == 'ZUST' and  '22' in form_data[index] and form_data[index]['22']:
-                            base_total += float(form_data[index]['22'].replace('$','').replace(',',''))
-                        # end if
-                    # end if
-
                     if str(form_data[index]['17']).startswith('!'):
-                        override_total += float(form_data[index]['17'][1:].replace('$','').replace(',','')) +\
-                                          float(form_data[index]['22'].replace('$','').replace(',','')\
-                                                    if '22' in form_data[index] and form_data[index]['22'] else 0)
                         error_matrix[index][17] = '! - CPM override in effect.\n'
+                    if not oHead.pick_list:
+                        if index == 0:
+                            # base_total = oHead.configuration.override_net_value or oHead.configuration.net_value
+                            base_total = float(form_data[index]['17'].replace('!','')) if form_data[index]['17'] not in (None, '', 'None') else 0
+
+                            if '21' in form_data[index] and form_data[index]['21'] == 'ZUST' and  '22' in form_data[index] and form_data[index]['22']:
+                                base_total += float(form_data[index]['22'].replace('$','').replace(',',''))
+                            # end if
+                        # end if
                     else:
-                        net_total += (float(form_data[index]['4']) * (float(form_data[index]['17'].replace('$','')
-                                                                            .replace(',','')) if not (index == 0 and not oHead.pick_list) else 0)) +\
-                                     float(form_data[index]['22'].replace('$','').replace(',','') if '22' in form_data[index] and form_data[index]['22'] else 0)
-                    # end if
-                    form_data[index]['17'] = form_data[index]['17'].replace('!','')
+                        if str(form_data[index]['17']).startswith('!'):
+                            override_total += float(form_data[index]['17'][1:].replace('$','').replace(',','')) +\
+                                              float(form_data[index]['22'].replace('$','').replace(',','')\
+                                                        if '22' in form_data[index] and form_data[index]['22']=='ZUST' else 0)
+
+                        else:
+                            net_total += (float(form_data[index]['4']) * (float(form_data[index]['17'].replace('$','')
+                                                                                .replace(',','')))) +\
+                                         float(form_data[index]['22'].replace('$','').replace(',','') if '22' in form_data[index] and form_data[index]['22']=='ZUST' else 0)
+                        # end if
+                    # form_data[index]['17'] = form_data[index]['17'].replace('!','')
                 # end if
             # end if
 
@@ -1444,7 +1449,7 @@ def ReactSearch(oRequest):
     sQuery = "SELECT [req_id],[assigned_to],[customer_name],[sales_o],[sales_g],[sold_to_code],[ship_to_code],[bill_to_code],"+\
              "[pay_terms],[workgroup],[cu],[mus_cnt_num] FROM dbo.ps_requests WHERE [req_id] = %s AND [Modified_by] IS NULL"
     oCursor = connections['REACT'].cursor()
-    oCursor.execute(sQuery, [sPSMReq])
+    oCursor.execute(sQuery, [bytes(sPSMReq,'ascii')])
     oResults = oCursor.fetchall()
 
     if oResults:
@@ -1498,7 +1503,7 @@ def ListREACTFill(oRequest):
         oParent = cParentClass.objects.get(pk=iParentID)
 
         oCursor = connections['REACT'].cursor()
-        oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',[oParent.name])
+        oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',[bytes(oParent.name, 'ascii')])
         tResults = oCursor.fetchall()
         result = {obj: obj for obj in chain.from_iterable(tResults)}
         return JsonResponse(result)

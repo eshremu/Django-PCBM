@@ -58,6 +58,14 @@ class HeaderLockAdmin(admin.ModelAdmin):
 
 class LinePriceAdmin(admin.ModelAdmin):
     form = LinePricingForm
+    list_display = ('configuration_designation',
+                    'version',
+                    'line_number',)
+    search_fields = ('config_line__config__header__configuration_designation', 'config_line__config__header__baseline__version', 'config_line__line_number',)
+    # ordering = ('config_line__config__header__configuration_designation',
+    #             'config_line__config__header__baseline__version',
+    #             'config_line__line_number',
+    #             )
 
 
 class RevisionAdmin(admin.ModelAdmin):
@@ -81,6 +89,10 @@ class DistroAdmin(admin.ModelAdmin):
 
 class SecurityPermissionAdmin(admin.ModelAdmin):
     form = SecurityForm
+
+
+class CustomerInfoAdmin(admin.ModelAdmin):
+    list_display = ('part', 'customer_number', 'customer', 'customer_asset_tagging', 'customer_asset', 'active')
 
 
 admin.site.register(Alert)
@@ -115,4 +127,4 @@ admin.site.register(REF_RADIO_BAND)
 admin.site.register(REF_STATUS)
 admin.site.register(DistroList, DistroAdmin)
 admin.site.register(ApprovalList)
-admin.site.register(CustomerPartInfo)
+admin.site.register(CustomerPartInfo, CustomerInfoAdmin)
