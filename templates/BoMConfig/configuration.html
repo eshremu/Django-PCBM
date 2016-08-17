@@ -113,7 +113,7 @@
         var firstLoad = true;
 
         function cleanDataCheck(link){
-            var dirty_form = hot.getData();
+            var dirty_form = hot.getSourceData();
             dirty_form = $.map(dirty_form, function(value, index){
                 var new_val = {};
                 for(var key in value){
@@ -159,7 +159,7 @@
             });
 
             $(window).on('beforeunload',function(){
-                var dirty_form = hot.getData();
+                var dirty_form = hot.getSourceData();
                 $('[name="data_form"]').remove();
                 var dirty_sub = $('#configform').serialize();
 
@@ -583,7 +583,7 @@
 
         function data_submit(eventObj) {
             $('[name="data_form"]').remove();
-            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getData())).appendTo('#configform');
+            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#configform');
             form_save = true;
         }
 
@@ -599,7 +599,7 @@
                 url: "{% url 'bomconfig:validator' %}",
 {#                async: false,#}
                 data: {
-                    entered_data: JSON.stringify(hot.getData(), function(key, value){return value;})
+                    entered_data: JSON.stringify(hot.getSourceData(), function(key, value){return value;})
                 },
                 headers:{
                     'X-CSRFToken': getcookie('csrftoken')
