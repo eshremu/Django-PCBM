@@ -302,6 +302,11 @@ def CloneHeader(oHeader):
         oNewHeader.baseline_version = oNewHeader.baseline.version
     # end if
 
+    iTry = 1
+    while len(Header.objects.filter(configuration_designation=oNewHeader.configuration_designation, program=oNewHeader.program, baseline=oNewHeader.baseline, baseline_version=oNewHeader.baseline_version)) > 0:
+        oNewHeader.configuration_designation = oOldHeader.configuration_designation + '_______CLONE' + str(iTry) + '_______'
+        iTry += 1
+
     oNewHeader.save()
 
     oNewConfig = copy.deepcopy(oOldHeader.configuration)
