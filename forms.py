@@ -77,7 +77,7 @@ class HeaderForm(forms.ModelForm):
             return data
 
         if 'configuration_designation' in data:
-            if re.search(r"_+CLONE_*$", data['configuration_designation'].upper()):
+            if re.search(r"_+CLONE\d*_*$", data['configuration_designation'].upper()):
                 self.add_error('configuration_designation', forms.ValidationError('Cloned configurations require rename ("_CLONE" still in name)'))
             elif data['configuration_designation'].upper().endswith('_'):
                 self.add_error('configuration_designation', forms.ValidationError('Configuration designation cannot end with underscore ("_")'))

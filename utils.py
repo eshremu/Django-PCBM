@@ -841,5 +841,5 @@ def TitleShorten(sTitle):
     sTitle = re.sub('Optional', 'Opt', sTitle, flags=re.IGNORECASE)
     sTitle = re.sub('Hardware', 'HW', sTitle, flags=re.IGNORECASE)
     sTitle = re.sub('Pick List', 'PL', sTitle, flags=re.IGNORECASE)
-    sTitle = re.sub('_+CLONE_+', '_CLONE_', sTitle, flags=re.IGNORECASE)
+    sTitle = re.sub('_+CLONE(\d*)_+', '_CLONE\1_', sTitle, flags=re.IGNORECASE)
     return sTitle
