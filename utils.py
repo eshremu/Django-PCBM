@@ -1,7 +1,7 @@
 __author__ = 'epastag'
 from django.utils import timezone
 from django.db.models import Q
-from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS, LinePricing
+from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS, LinePricing, REF_CUSTOMER
 from copy import deepcopy
 import datetime
 from functools import cmp_to_key
@@ -451,6 +451,32 @@ def GrabValue(oStartObj, sAttrChain, default=None):
 # end def
 
 
+def TestRollbackBaseline(oBaseline):
+    try:
+        oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
+                            oHead.headertimetracker_set.all() if oTrack.completed_on])
+    except ValueError:
+        raise Exception('No release date could be determined')
+
+    oCurrentActive = oBaseline.latest_revision
+    oCurrentInprocess = Baseline_Revision.objects.get(baseline=oBaseline, version=oBaseline.current_inprocess_version)
+
+    aRemainingHeaders = []
+    aDuplicates = []
+
+    for oHead in oCurrentActive.header_set.all():
+        if any([oTrack for oTrack in oHead.headertimetracker_set.all() if
+                abs(oTrack.created_on - oReleaseDate) < datetime.timedelta(minutes=1)]):
+            aRemainingHeaders.append(oHead)
+
+    for oHead in aRemainingHeaders:
+        if oCurrentInprocess.header_set.filter(configuration_designation=oHead.configuration_designation, program=oHead.program):
+            aDuplicates.append(oHead)
+
+    return aDuplicates
+#end def
+
+
 def RollbackBaseline(oBaseline):
     """
     Function rolls back a baseline to the previous revision.
@@ -667,7 +693,10 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
         if sTemp:
             oHead.change_notes = sTemp
             oHead.save()
-            sUpdateSummary += '    {}:\n'.format(oHead.configuration_designation + (' ({})'.format(oHead.program) if oHead.program else ''))
+            sUpdateSummary += '    {}:\n'.format(oHead.configuration_designation + \
+                                                 (' ({})'.format(oHead.program) if oHead.program else '')) + \
+                              (' {}'.format(oHead.configuration.get_first_line().customer_number) if not oHead.pick_list
+                                                     and oHead.configuration.get_first_line().customer_number else '')
             for sLine in sTemp.split('\n'):
                 sUpdateSummary += (' ' * 8) + sLine + '\n'
         # end if
@@ -701,6 +730,7 @@ def HeaderComparison(oHead, oPrev):
         """
     dPrevious = {}
     dCurrent = {}
+    oATT = REF_CUSTOMER.objects.get(name='AT&T')
 
     for oConfigLine in oHead.configuration.configline_set.all():
         dCurrent[(oConfigLine.part.base.product_number, oConfigLine.line_number)] = [
@@ -757,7 +787,10 @@ def HeaderComparison(oHead, oPrev):
                                                                                        dPrevious[(sPart, sLine)][0],
                                                                                        dCurrent[(sPart, sLine)][0])
 
-                if dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
+                if dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1] and \
+                        ((oHead.customer_unit == oATT and not oHead.pick_list and sLine == '10') or
+                         (oHead.customer_unit == oATT and oHead.pick_list) or
+                         oHead.customer_unit != oATT):
                     sTemp += '{} - {} line price changed from {} to {}\n'.format(sLine, sPart,
                                                                                          dPrevious[(sPart, sLine)][1],
                                                                                          dCurrent[(sPart, sLine)][1])
@@ -782,7 +815,10 @@ def HeaderComparison(oHead, oPrev):
                                                                                            dCurrent[dPrevious[
                                                                                                (sPart, sLine)][3]][0])
 
-                    if dCurrent[dPrevious[(sPart, sLine)][3]][1] != dPrevious[(sPart, sLine)][1]:
+                    if dCurrent[dPrevious[(sPart, sLine)][3]][1] != dPrevious[(sPart, sLine)][1] and \
+                            ((oHead.customer_unit == oATT and not oHead.pick_list and sLine == '10') or
+                             (oHead.customer_unit == oATT and oHead.pick_list) or
+                             oHead.customer_unit != oATT):
                         sTemp += '{} - {} line price changed from {} to {}\n'.format(dPrevious[(sPart, sLine)][3][1], sPart,
                                                                                              dPrevious[(sPart, sLine)][
                                                                                                  1],
@@ -841,5 +877,52 @@ def TitleShorten(sTitle):
     sTitle = re.sub('Optional', 'Opt', sTitle, flags=re.IGNORECASE)
     sTitle = re.sub('Hardware', 'HW', sTitle, flags=re.IGNORECASE)
     sTitle = re.sub('Pick List', 'PL', sTitle, flags=re.IGNORECASE)
-    sTitle = re.sub('_+CLONE_+', '_CLONE_', sTitle, flags=re.IGNORECASE)
+    sTitle = re.sub('_+CLONE(\d*)_+', '_CLONE\1_', sTitle, flags=re.IGNORECASE)
     return sTitle
+
+
+def StrToBool(sValue, bDefault = None):
+    """Convert a string to a bool. If the string is empty and a default is
+    provided, it is returned; otherwise an exception is raised. If the string is
+    not one that can be clearly interpreted as a Boolean value, raises an
+    exception."""
+
+    sUpper = sValue.strip().upper()
+    if sUpper in ('Y', 'YES', 'T', 'TRUE', '1'):
+        return True
+    elif sUpper in ('N', 'NO', 'F', 'FALSE', '0'):
+        return False
+    elif not sUpper:
+        if bDefault is None:
+            ValueError("Empty string provided and no default to return.")
+        #end if
+        return bDefault
+    else:
+        TypeError("Unrecognized Boolean string: " + sValue)
+    #end if
+#end def
+
+
+def DetectBrowser(oRequest):
+    sUserAgent = oRequest.META['HTTP_USER_AGENT']
+    oRegex = re.compile(r'(?:[^ (]|\([^)]*\))+')
+    aTokens = oRegex.findall(sUserAgent)
+
+    if "Windows" in sUserAgent and 'Chrome' in sUserAgent:
+        return next(token for token in aTokens if 'Chrome' in token)
+    elif "Windows" in sUserAgent and 'Firefox' in sUserAgent:
+        return next(token for token in aTokens if 'Firefox' in token)
+    elif "Windows" in sUserAgent:
+        sTemp = 'Internet Explorer'
+        sRev = ''
+        if 'rv:' in sUserAgent:
+            iStart = sUserAgent.find('rv:')
+            iStop = sUserAgent.find(')', iStart)
+            sRev = sUserAgent[iStart + 3:iStop]
+
+        if sRev:
+            sTemp += '/' + sRev
+
+        return sTemp
+    # end if
+# end def

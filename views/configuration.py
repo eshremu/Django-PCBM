@@ -12,7 +12,7 @@ from django.utils import timezone
 from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
     PartBase, Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, SecurityPermission,\
     REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_STATUS,\
-    REF_REQUEST, PricingObject
+    REF_REQUEST, PricingObject, CustomerPartInfo
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException
 from BoMConfig.views.approvals_actions import CloneHeader
@@ -1248,34 +1248,91 @@ def Validator(oRequest):
                     form_data[index]['23'] = form_data[index]['23'].upper()
             # end if
 
-            # Customer Asset
-            if '24' in form_data[index]:
-                form_data[index]['24'] = form_data[index]['24'].strip() if form_data[index]['24'] else form_data[index]['24']
-                if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['24'] or '', re.I):
-                    error_matrix[index][24] += "X - Invalid Customer Asset.\n"
+            if oHead.configuration_status.name == 'In Process':
+                try:
+                    oMPNCustMap = CustomerPartInfo.objects.get(part__product_number=form_data[index]['2'].strip('. '),
+                                                               customer=oHead.customer_unit,
+                                                               active=True)
+                except (CustomerPartInfo.DoesNotExist):
+                    oMPNCustMap = None
+                # end try
 
-                if form_data[index]['24'] != 'None':
-                    form_data[index]['24'] = form_data[index]['24'].upper()
+                # Customer Asset
+                if '24' in form_data[index]:
+                    form_data[index]['24'] = form_data[index]['24'].strip() if form_data[index]['24'] else form_data[index]['24']
+                    if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['24'] or '', re.I):
+                        error_matrix[index][24] += "X - Invalid Customer Asset.\n"
 
-                if '23' not in form_data[index] or form_data[index]['23'] in ('None', ''):
-                    pass  # error_matrix[index][24] += "X - Customer assest set without Traceability Req.\n"
-                if '23' in form_data[index] and form_data[index]['23'] in ('N', 'NO') and form_data[index]['24'] in ('Y', 'YES'):
-                    pass  # error_matrix[index][24] += "X - Customer asset cannot be 'Y' when Traceability is 'N'.\n"
-            # end if
+                    if form_data[index]['24'] not in ('None', None, ''):
+                        form_data[index]['24'] = form_data[index]['24'].upper()
 
-            # Customer Asset tagging Req
-            if '25' in form_data[index]:
-                form_data[index]['25'] = form_data[index]['25'].strip() if form_data[index]['25'] else form_data[index]['25']
-                if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['25'] or '', re.I):
-                    error_matrix[index][25] += "X - Invalid Customer Asset tagging Req.\n"
+                    if oMPNCustMap:
+                        if (oMPNCustMap.customer_asset is True and form_data[index]['24'] not in ('Y', 'YES')) \
+                                or (oMPNCustMap.customer_asset is False and form_data[index]['24'] not in ('N', 'NO')) \
+                                or (oMPNCustMap.customer_asset is None and form_data[index]['24'] not in ('', 'NONE', None)):
+                            error_matrix[index][24] += "! - Customer Asset does not match stored data.\n"
 
-                if form_data[index]['25']:
-                    form_data[index]['25'] = form_data[index]['25'].upper()
+                    # if '23' not in form_data[index] or form_data[index]['23'] in ('None', ''):
+                    #     pass  # error_matrix[index][24] += "X - Customer assest set without Traceability Req.\n"
+                    # if '23' in form_data[index] and form_data[index]['23'] in ('N', 'NO') and form_data[index]['24'] in ('Y', 'YES'):
+                    #     pass  # error_matrix[index][24] += "X - Customer asset cannot be 'Y' when Traceability is 'N'.\n"
+                elif oMPNCustMap:
+                    form_data[index]['24'] = 'Y' if oMPNCustMap.customer_asset else 'N' if oMPNCustMap.customer_asset is False else ''
+                # end if
 
-                if '24' not in form_data[index] or form_data[index]['24'] in ('None', ''):
-                    pass  # error_matrix[index][25] += 'X - Cannot provide Customer Asset Tagging without Customer Asset.\n'
+                # Customer Asset tagging Req
+                if '25' in form_data[index]:
+                    form_data[index]['25'] = form_data[index]['25'].strip() if form_data[index]['25'] else form_data[index]['25']
+                    if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['25'] or '', re.I):
+                        error_matrix[index][25] += "X - Invalid Customer Asset tagging Req.\n"
+
+                    if form_data[index]['25'] not in ('None', None, ''):
+                        form_data[index]['25'] = form_data[index]['25'].upper()
+
+                    if oMPNCustMap:
+                        if (oMPNCustMap.customer_asset_tagging is True and form_data[index]['25'] not in ('Y', 'YES'))\
+                                or (oMPNCustMap.customer_asset_tagging is False and form_data[index]['25'] not in ('N', 'NO'))\
+                                or (oMPNCustMap.customer_asset_tagging is None and form_data[index]['25'] not in ('', 'NONE', None)):
+                            error_matrix[index][25] += "! - Customer Asset tagging Req. does not match stored data.\n"
+                    # end if
+
+                    # if '24' not in form_data[index] or form_data[index]['24'] in ('None', ''):
+                    #     pass  # error_matrix[index][25] += 'X - Cannot provide Customer Asset Tagging without Customer Asset.\n'
+                    # if '24' in form_data[index] and form_data[index]['24'] in ('N', 'NO') and form_data[index]['25'] in ('Y', 'YES'):
+                    #     error_matrix[index][25] += 'X - Cannot mark Customer Asset Tagging when part is not Customer Asset.\n'
+                elif oMPNCustMap:
+                    form_data[index]['25'] = 'Y' if oMPNCustMap.customer_asset_tagging else 'N' if oMPNCustMap.customer_asset_tagging is False else ''
+                # end if
                 if '24' in form_data[index] and form_data[index]['24'] in ('N', 'NO') and form_data[index]['25'] in ('Y', 'YES'):
                     error_matrix[index][25] += 'X - Cannot mark Customer Asset Tagging when part is not Customer Asset.\n'
+
+                # Customer Number
+                if '26' in form_data[index]:
+                    if form_data[index]['26'] not in ('None', None, ''):
+                        form_data[index]['26'] = form_data[index]['26'].upper()
+
+                    if oMPNCustMap:
+                        if oMPNCustMap.customer_number != form_data[index]['26']:
+                            error_matrix[index][26] += '! - Customer Number does not match stored data.\n'
+                    else:
+                        error_matrix[index][26] += '! - No Customer Number found for line item.\n'
+                elif oMPNCustMap:
+                    form_data[index]['26'] = oMPNCustMap.customer_number or ''
+                # end if
+
+                # Second Customer Number
+                if '27' in form_data[index]:
+                    if form_data[index]['27'] not in ('None', None, ''):
+                        form_data[index]['27'] = form_data[index]['27'].upper()
+
+                    if oMPNCustMap:
+                        if oMPNCustMap.second_customer_number and form_data[index]['27'] and oMPNCustMap.second_customer_number != form_data[index]['27']:
+                            error_matrix[index][27] += '! - Second Customer Number does not match stored data.\n'
+                    else:
+                        error_matrix[index][27] += '! - No Second Customer Number found for line item.\n'
+                elif oMPNCustMap:
+                    form_data[index]['27'] = oMPNCustMap.second_customer_number or ''
+                # end if
             # end if
 
             # Collect data from database(s)
@@ -1284,7 +1341,7 @@ def Validator(oRequest):
             # Populate Read-only fields
             P_Code = form_data[index]['9'] if '9' in form_data[index] and re.match("^\d{2,3}$", form_data[index]['9'], re.IGNORECASE) else None
             tPCode = None
-            oCursor.execute('SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],[Base Unit of Measure],'+
+            oCursor.execute('SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],[Base Unit of Measure],' +
                             '[P Code] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s', [bytes(form_data[index]['2'].strip('.'), 'ascii') if form_data[index]['2'] else None])
             tPartData = oCursor.fetchall()
             if tPartData:

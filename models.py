@@ -736,6 +736,23 @@ class HeaderTimeTracker(models.Model):
         return str(self.header)
     # end def
 
+    @property
+    def end_date(self):
+        return self.completed_on
+    # end def
+
+    @property
+    def header_name(self):
+        return self.header.configuration_designation
+
+    @property
+    def baseline(self):
+        return self.header.baseline.baseline.title if self.header.baseline else None
+
+    @property
+    def version(self):
+        return self.header.baseline_version
+
     @classmethod
     def approvals(cls):
         return ['psm_config', 'scm1', 'scm2', 'csr', 'cpm', 'acr', 'blm', 'cust1', 'cust2', 'cust_whse', 'evar', 'brd']

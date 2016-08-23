@@ -24,12 +24,7 @@ import re
 
 
 def WriteConfigToFile(oHeader, sHyperlinkURL=''):
-    # sCurrentDir = os.getenv('PYTHONPATH', os.getcwd()).split(';')[0]
-
     oFile = openpyxl.load_workbook(
-        # str(os.path.join(sCurrentDir,
-        #                  ('BoMConfig/' if not sCurrentDir.endswith('BoMConfig') else '')+
-        #                  'static/BoMConfig/PSM BoM Upload Template PA5 FORMULAS.xlsx'))
         find('BoMConfig/PSM BoM Upload Template PA5 FORMULAS.xlsx')
     )
 
@@ -559,7 +554,7 @@ def DownloadBaselineMaster(oRequest):
 
 def WriteBaselineToFile(oBaseline, sVersion):
     aColumnTitles = ['Line #', 'Product Number', 'Product Description', 'Order Qty', 'UoM', 'HW/SW Ind',
-                     'Net Price 2015',
+                     'Net Price',
                      'Traceability Req. (Serialization)', 'Customer Asset?', 'Customer Asset Tagging Requirement',
                      'Customer number', 'Second Customer Number', 'Vendor Article Number', 'Comments',
                      'Additional Reference\n(if required)']

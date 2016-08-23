@@ -61,7 +61,7 @@ var inputTable = new Handsontable(document.getElementById('input-table'),{
 
         if (altered_data != {}){
             $.ajax({
-                url: "{% url 'bomconfig:audit_validate' %}",
+                url: validate_url,
                 type: 'POST',
                 headers:{
                     'X-CSRFToken': getcookie('csrftoken')

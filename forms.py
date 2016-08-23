@@ -78,7 +78,7 @@ class HeaderForm(forms.ModelForm):
             return data
 
         if 'configuration_designation' in data:
-            if re.search(r"_+CLONE_*$", data['configuration_designation'].upper()):
+            if re.search(r"_+CLONE\d*_*$", data['configuration_designation'].upper()):
                 self.add_error('configuration_designation', forms.ValidationError('Cloned configurations require rename ("_CLONE" still in name)'))
             elif data['configuration_designation'].upper().endswith('_'):
                 self.add_error('configuration_designation', forms.ValidationError('Configuration designation cannot end with underscore ("_")'))
@@ -276,6 +276,7 @@ class AutocompleteInput(forms.TextInput):
         input_html = super(AutocompleteInput, self).render(name, value, attrs=attrs)
         datatlist_html = '<datalist id="list_{}">'.format(self._name)
         for item in self._choices:
+            # TODO: Determine if request is from Chrome browser, and alter render
             if isinstance(item, (list, tuple)):
                 datatlist_html += '<option data-value="{}" value="{}">{}</option>'.format(item[0], item[1], item[2])
             else:

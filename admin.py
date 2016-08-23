@@ -33,7 +33,8 @@ class SessionAdmin(admin.ModelAdmin):
 class TimeStampAdmin(admin.ModelAdmin):
     # fields = ('header','created_on' ,'submitted_for_approval','completed_on')
     # readonly_fields = ('header','created_on' ,'submitted_for_approval', 'completed_on')
-    list_display = ('header', 'created_on')
+    list_display = ('header_name', 'version', 'baseline', 'created_on', 'end_date')
+    search_fields = ('header__configuration_designation', 'header__baseline_version', 'header__baseline__baseline__title')
 # end class
 
 

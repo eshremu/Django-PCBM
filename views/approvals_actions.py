@@ -8,11 +8,9 @@ from django.core.mail import send_mail
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
     HeaderTimeTracker, REF_STATUS, ApprovalList
-from BoMConfig.utils import UpRev, GrabValue
+from BoMConfig.utils import UpRev, GrabValue, StrToBool
 from BoMConfig.views.landing import Unlock, Default
 from django.contrib.auth.models import User
-
-from baseString import StrToBool
 
 import copy
 import json
@@ -367,6 +365,11 @@ def CloneHeader(oHeader):
             version=Baseline.objects.get(title=oNewHeader.baseline_impacted).current_inprocess_version)
         oNewHeader.baseline_version = oNewHeader.baseline.version
     # end if
+
+    iTry = 1
+    while len(Header.objects.filter(configuration_designation=oNewHeader.configuration_designation, program=oNewHeader.program, baseline=oNewHeader.baseline, baseline_version=oNewHeader.baseline_version)) > 0:
+        oNewHeader.configuration_designation = oOldHeader.configuration_designation + '_______CLONE' + str(iTry) + '_______'
+        iTry += 1
 
     oNewHeader.save()
 
