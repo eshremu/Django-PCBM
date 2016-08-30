@@ -1,7 +1,8 @@
 __author__ = 'epastag'
 from django.utils import timezone
 from django.db.models import Q
-from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS, LinePricing, REF_CUSTOMER
+from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS, LinePricing, \
+    REF_CUSTOMER, REF_REQUEST
 from copy import deepcopy
 import datetime
 from functools import cmp_to_key
@@ -69,6 +70,10 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
                 oNewHeader.react_request = ''
             # end if
             oNewHeader.baseline = oCurrInprocRev
+            oNewHeader.model_replaced_link = oHeader
+            if oNewHeader.bom_request_type.name == 'New':
+                oNewHeader.bom_request_type = REF_REQUEST.objects.get(name='Update')
+                oNewHeader.model_replaced = ''
             oNewHeader.save()
 
             oNewConfig = deepcopy(oHeader.configuration)
@@ -451,12 +456,16 @@ def GrabValue(oStartObj, sAttrChain, default=None):
 # end def
 
 
+class RollbackError(Exception):
+    pass
+
+
 def TestRollbackBaseline(oBaseline):
     try:
         oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
                             oHead.headertimetracker_set.all() if oTrack.completed_on])
     except ValueError:
-        raise Exception('No release date could be determined')
+        raise RollbackError('No release date could be determined')
 
     oCurrentActive = oBaseline.latest_revision
     oCurrentInprocess = Baseline_Revision.objects.get(baseline=oBaseline, version=oBaseline.current_inprocess_version)
@@ -496,7 +505,7 @@ def RollbackBaseline(oBaseline):
         oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
                             oHead.headertimetracker_set.all() if oTrack.completed_on])
     except ValueError:
-        raise Exception('No release date could be determined')
+        raise RollbackError('No release date could be determined')
 
     oCurrentActive = oBaseline.latest_revision
     oCurrentInprocess = Baseline_Revision.objects.get(baseline=oBaseline, version=oBaseline.current_inprocess_version)
@@ -575,13 +584,13 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     oToDiscontinue = Q(bom_request_type__name='Discontinue')
     aDiscontinuedHeaders = [oHead for oHead in Baseline_Revision
         .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(oDiscontinued|oToDiscontinue)
-        .exclude(program__name__in=('DTS',))]
+        .exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
     aAddedHeaders = [oHead for oHead in Baseline_Revision
         .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='New')
-        .exclude(program__name__in=('DTS',))]
+        .exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
     aUpdatedHeaders = [oHead for oHead in Baseline_Revision
         .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='Update')
-        .exclude(oDiscontinued).exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold')]
+        .exclude(oDiscontinued).exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
 
     aPrevHeaders = []
     aPrevButNotCurrent = []
@@ -632,6 +641,15 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                  if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
             )
         else:
+            # If a matching header exists in previous revision and the Header has a time tracker without a completed
+            # date or disapproved date, but is not In-Process, then the Header must have been carried forward from a
+            # previous revision, and therefore is not ACTUALLY New / Added
+            if Baseline_Revision.objects.get(baseline=oBaseline, version=sPrevious).header_set \
+                    .filter(configuration_designation=oHead.configuration_designation, program=oHead.program) and \
+                    not oHead.configuration_status.name == 'In Process/Pending' and \
+                    oHead.headertimetracker_set.filter(completed_on=None, disapproved_on=None):
+                continue
+
             sNewSummary += '    {} added\n'.format(
                 oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
                 ('  {}'.format(oHead.configuration.get_first_line().customer_number)
@@ -649,13 +667,14 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     # end for
 
     for oHead in aDiscontinuedHeaders:
-        if (oHead.model_replaced_link and any([obj in oHead.model_replaced_link.header_set.all() for obj in aAddedHeaders])) or\
-                any([obj in oHead.header_set.all() for obj in aAddedHeaders]):
+        if (oHead.model_replaced_link and any([obj in oHead.model_replaced_link.header_set.all() for obj in aAddedHeaders
+                                               if hasattr(oHead.model_replaced_link, 'header_set')])) or\
+                any([obj in oHead.header_set.all() for obj in aAddedHeaders if hasattr(oHead, 'header_set')]):
             continue
 
         sRemovedSummary += '    {} discontinued\n'.format(
             oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
-                (' {}'.format(oHead.configuration.get_first_line().customer_number)
+                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
                  if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
         )
     # end for
@@ -663,7 +682,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     for oHead in aPrevButNotCurrent:
         sRemovedSummary += '    {} removed\n'.format(
             oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
-                (' {}'.format(oHead.configuration.get_first_line().customer_number)
+                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
                  if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
         )
     # end for
@@ -695,7 +714,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
             oHead.save()
             sUpdateSummary += '    {}:\n'.format(oHead.configuration_designation + \
                                                  (' ({})'.format(oHead.program) if oHead.program else '')) + \
-                              (' {}'.format(oHead.configuration.get_first_line().customer_number) if not oHead.pick_list
+                              ('  {}'.format(oHead.configuration.get_first_line().customer_number) if not oHead.pick_list
                                                      and oHead.configuration.get_first_line().customer_number else '')
             for sLine in sTemp.split('\n'):
                 sUpdateSummary += (' ' * 8) + sLine + '\n'

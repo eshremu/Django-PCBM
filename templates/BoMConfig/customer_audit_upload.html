@@ -3,6 +3,11 @@
 {% load staticfiles %}
 {% block subcontent %}
     <h4 style="margin-top:0;">Customer Part Number Upload</h4>
+    {% if status_message %}
+    <div class="messageblock {% if status_error %}errorblock{% else %}successblock{% endif %}">
+        <p>{{ status_message }}</p>
+    </div>
+    {% endif %}
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <label for="customer">Customer:</label>

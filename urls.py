@@ -32,6 +32,7 @@ urlpatterns = patterns(
     url(r'^baselinedwnld/$', views.DownloadBaseline, name='baselinedownload'),
     url(r'^baselinemasterdwnld/$', views.DownloadBaselineMaster, name='baselinemasterdownload'),
     url(r'^baselinerollback/$', views.BaselineRollback, name='baselinerollback'),
+    url(r'^baselinerollbackcheck/$', views.BaselineRollbackTest, name='baselinerollbacktest'),
     url(r'^unlock/$', views.FinalUnlock, name='finalunlock'),
     url(r'^lock/$', views.InitialLock, name='initlock'),
     url(r'^logout/$', views.Logout, name='logout'),

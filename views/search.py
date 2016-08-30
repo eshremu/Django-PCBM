@@ -98,17 +98,25 @@ def Search(oRequest, advanced=False):
             return results
         else:
             bRemoveDuplicates = True
-            sTableHeader = '<table><thead><tr><th style="width: 20px;"><input class="selectall" type="checkbox"></th><th style="width:175px;">Configuration</th><th style="width:175px;">Version</th>'
+            sTableHeader = '<table><thead><tr><th style="width: 20px;"><input class="selectall" type="checkbox"></th>'+\
+                           '<th style="width:175px;">Configuration</th><th style="width:175px;">Version</th>'+\
+                           '<th style="width:175px;">Inquiry / Site Template Number</th>'
             """ This will be a list of strings.  Each string will be the dot-operator-separated string of attributes
              that would retrieve the desired value (i.e.: 'config.configline.part.description')
              This will be so that the search results list can be easily repeated"""
-            aLineFilter = []
+            aLineFilter = ['config.header.inquiry_site_template']
 
             aConfigLines = ConfigLine.objects.all()
 
             if 'config_design' in oRequest.POST and oRequest.POST['config_design'] != '':
                 aConfigLines = aConfigLines.filter(config__header__configuration_designation__iregex="^" + oRequest.POST['config_design'].strip()
                                            .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+
+            if 'inquiry_site' in oRequest.POST and oRequest.POST['inquiry_site'] != '':
+                aConfigLines = aConfigLines.filter(config__header__inquiry_site_template__iregex="^" + oRequest.POST['inquiry_site'].strip()
+                    .replace(' ', '\W').replace('.', '\.').replace('?', '.').replace('*', '.*') + "$")
+                # sTableHeader += '<th style="width:175px;">Inquiry / Site Template Number</th>'
+                # aLineFilter.append('config.header.inquiry_site_number')
 
             if 'request' in oRequest.POST and oRequest.POST['request'] != '':
                 aConfigLines = aConfigLines.filter(config__header__react_request__iregex="^" + oRequest.POST['request'].strip()
@@ -173,12 +181,6 @@ def Search(oRequest, advanced=False):
                 aConfigLines = aConfigLines.filter(config__header__configuration_status__name__iexact=oRequest.POST['status'].replace('_', ' '))
                 sTableHeader += '<th style="width:175px;">Configuration Status</th>'
                 aLineFilter.append('config.header.configuration_status.name')
-
-            if 'inquiry_site' in oRequest.POST and oRequest.POST['inquiry_site'] != '':
-                aConfigLines = aConfigLines.filter(config__header__inquiry_site_template__iregex="^" + oRequest.POST['inquiry_site'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
-                sTableHeader += '<th style="width:175px;">Inquiry / Site Template Number</th>'
-                aLineFilter.append('config.header.inquiry_site_number')
 
             sTempHeaderLine = ''
             aTempFilters = ['line_number']
@@ -248,13 +250,13 @@ def Search(oRequest, advanced=False):
                         searchscramble(str(GrabValue(oResult,'config.header.pk' if isinstance(oResult, ConfigLine) else 'header.pk'))),
                         str(GrabValue(oResult,'config.header.configuration_designation' if isinstance(oResult, ConfigLine)
                             else 'header.configuration_designation')),
-                        str(GrabValue(oResult,'config.header.baseline_version' if isinstance(oResult, ConfigLine) else 'header.baseline_version')),
+                        str(GrabValue(oResult,'config.header.baseline_version' if isinstance(oResult, ConfigLine) else 'header.baseline_version', '-----')),
                         oResult.config.header.pk if isinstance(oResult, ConfigLine) else oResult.header.pk
                         )
                     )
 
                     for sFilter in aLineFilter:
-                        results.write('<td>' + str(GrabValue(oResult, sFilter)) + '</td>')
+                        results.write('<td>' + str(GrabValue(oResult, sFilter, '-----')) + '</td>')
                     # end for
 
                     results.write('</tr>')

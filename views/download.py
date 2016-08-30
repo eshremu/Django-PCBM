@@ -634,14 +634,14 @@ def WriteBaselineToFile(oBaseline, sVersion):
         if oBaseline.latest_revision:
             aHeaders = oBaseline.latest_revision \
                 .header_set.exclude(configuration_status__name__in=('Discontinued', 'Inactive', 'On Hold')).exclude(
-                program__name__in=('DTS',)) \
+                program__name__in=('DTS',))
                 # .order_by('configuration_status', 'pick_list', 'configuration_designation')
         else:
             aHeaders = []
 
         aHeaders = list(chain(Baseline_Revision.objects.get(
             baseline=oBaseline, version=oBaseline.current_inprocess_version
-        ).header_set.exclude(configuration_status__name__in=('On Hold',))
+        ).header_set.exclude(configuration_status__name__in=('On Hold', 'In Process'))
                               # .order_by('configuration_status', 'pick_list','configuration_designation')
                               , aHeaders))
     else:
@@ -722,7 +722,7 @@ def WriteBaselineToFile(oBaseline, sVersion):
         oSheet = oFile.create_sheet(title=sTitle)
         if 'In Process' in oHeader.configuration_status.name and oHeader.bom_request_type.name in ('New', 'Update'):
             oSheet.sheet_properties.tabColor = '80FF00'
-        elif oHeader.bom_request_type.name == "Discontinue" or oHeader.configuration_status.name == 'Discontinued' or oHeader.header_set.first() in aHeaders:
+        elif oHeader.bom_request_type.name == "Discontinue" or oHeader.configuration_status.name == 'Discontinued' or (hasattr(oHeader,'header_set') and oHeader.header_set.first() in aHeaders):
             oSheet.sheet_properties.tabColor = 'FF0000'
 
         # Build Header row
@@ -979,8 +979,11 @@ def WriteBaselineToFile(oBaseline, sVersion):
     for oHeader in aHeaders:
         for iIndex in sorted(dTOCData.keys()):
             if dTOCData[iIndex][1] and dTOCData[iIndex][1] != 'inquiry_site_template':
-                oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = str(
-                    GrabValue(oHeader, dTOCData[iIndex][1], '')).replace('/Pending', '')
+                if 'Customer Number' in dTOCData[iIndex][0] and oHeader.pick_list:
+                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = 'Multiple'
+                else:
+                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = str(
+                        GrabValue(oHeader, dTOCData[iIndex][1], '')).replace('/Pending', '')
             elif dTOCData[iIndex][1] == 'inquiry_site_template':
                 if dTOCData[iIndex][0] == 'Inquiry' and str(
                         GrabValue(oHeader, dTOCData[iIndex][1], None)).startswith('1'):

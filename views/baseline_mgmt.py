@@ -6,7 +6,7 @@ from django.db import IntegrityError
 from BoMConfig.models import Header, Baseline, SecurityPermission, Baseline_Revision
 from BoMConfig.forms import SubmitForm
 from BoMConfig.views.landing import Unlock, Default
-from BoMConfig.utils import GrabValue, RollbackBaseline
+from BoMConfig.utils import GrabValue, RollbackBaseline, TestRollbackBaseline, RollbackError
 
 from functools import cmp_to_key
 import json
@@ -109,6 +109,33 @@ def BaselineMgmt(oRequest):
                'Inquiry/Site Template Number','Model Replacing','Comments','Release Date','ZUST','P-Code','Plant']
 
     return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html', dContext={'form': form, 'tables': aTable, 'downloadable': bDownloadable, 'column_titles': aTitles})
+# end def
+
+
+def BaselineRollbackTest(oRequest):
+    data = QueryDict(oRequest.POST.get('form'))
+    oBaseline = Baseline.objects.get(title=data['baseline'])
+
+    dResult = {
+        'status': 0,
+        'errors': []
+    }
+
+    try:
+        aDuplicates = TestRollbackBaseline(oBaseline)
+        if not aDuplicates:
+            dResult['status'] = 1
+        else:
+            sTemp = '<p>The following configurations must be removed from the in-process revision</p>'
+            sTemp += '<ul>'
+            for oHead in aDuplicates:
+                sTemp += '<li>{}{}</li>'.format(oHead.configuration_designation, " (" + oHead.program.name + ")" if oHead.program else '')
+            sTemp += '</ul>'
+            dResult['errors'].append(sTemp)
+    except RollbackError:
+        dResult['errors'].append("<p>Active revision was not released via the PCBM tool.</p>")
+
+    return JsonResponse(dResult)
 # end def
 
 

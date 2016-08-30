@@ -20,13 +20,8 @@ class HeaderForm(forms.ModelForm):
         widgets = {'model_replaced_link': forms.HiddenInput()}
     # end class
 
-    def __init__(self, *args, **kwargs):
-        bReadOnly = False
-
-        if 'readonly' in kwargs:
-            bReadOnly = kwargs['readonly']
-            del kwargs['readonly']
-        # end if
+    def __init__(self, browser, *args, **kwargs):
+        bReadOnly = kwargs.pop('readonly', False)
 
         super().__init__(*args, **kwargs)
 
@@ -54,6 +49,7 @@ class HeaderForm(forms.ModelForm):
         else:
             self.fields['model_replaced'].widget = AutocompleteInput(
                 'header_list',
+                browser,
                 list([(head.id,
                        head.configuration_designation +
                        (" (" + str(head.program) + ")" if head.program else ''),
@@ -265,20 +261,36 @@ class LinePricingForm(forms.ModelForm):
 
 
 class AutocompleteInput(forms.TextInput):
-    def __init__(self, name, choices=(), *args, **kwargs):
+    def __init__(self, name, browser, choices=(), *args, **kwargs):
         super(AutocompleteInput, self).__init__(*args, **kwargs)
         self._name = name
         self._choices = choices
+        self._browser = browser
         self.attrs.update({'list': 'list_{}'.format(self._name)})
     # end def
 
     def render(self, name, value, attrs=None):
+        if 'Firefox' in self._browser:
+            iMinLength = 50
+            for item in self._choices:
+                if isinstance(item, (list, tuple)):
+                    iMinLength = max(iMinLength, len(item[1] + item[2])+2)
+                else:
+                    iMinLength = max(iMinLength, len(item))
+                # end if
+            # end for
+
+            attrs.update({'style': 'width: {}px'.format(iMinLength * 6 + 17)})
+        # end if
+
         input_html = super(AutocompleteInput, self).render(name, value, attrs=attrs)
         datatlist_html = '<datalist id="list_{}">'.format(self._name)
         for item in self._choices:
-            # TODO: Determine if request is from Chrome browser, and alter render
             if isinstance(item, (list, tuple)):
-                datatlist_html += '<option data-value="{}" value="{}">{}</option>'.format(item[0], item[1], item[2])
+                if 'Chrome' in self._browser:
+                    datatlist_html += '<option data-value="{0}" value="{1}">{2}</option>'.format(item[0], item[1], item[2])
+                else:
+                    datatlist_html += '<option data-value="{0}" value="{1}">{1} - {2}</option>'.format(item[0], item[1], item[2])
             else:
                 datatlist_html += '<option value="{}"/>'.format(item)
         # end for

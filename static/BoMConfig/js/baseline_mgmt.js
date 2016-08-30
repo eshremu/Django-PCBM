@@ -66,6 +66,38 @@ function downloadModal(){
     );
 }
 
+function rollbackTest(){
+    $('#myModal').modal('show');
+    $.ajax({
+        url: rollbacktest_url,
+        dataType: "json",
+        type: "POST",
+        data: {
+            form: $('#rollbackform').serialize()
+        },
+        headers:{
+            'X-CSRFToken': getcookie('csrftoken')
+        },
+        success: function(returned) {
+            // var returned = JSON.parse(data);
+            $('#myModal').modal('hide');
+            if(returned.status == 1) {
+                rollbackModal();
+            } else {
+                var errorMessage = 'The baseline cannot be rolled back due to the following error:';
+                for(var index in returned.errors){
+                    errorMessage += '<br/>' + returned.errors[index];
+                }
+                messageToModal('Unable to rollback baseline', errorMessage);
+            }
+        },
+        error: function(){
+            messageToModal('Unknown error', 'An error occurred while checking rollback.  If this issue persists, contact a tool admin.');
+            $('#myModal').modal('hide');
+        }
+    });
+}
+
 function rollbackModal(){
     messageToModal('Rollback Baseline',
             'You are about to rollback the latest revision of this baseline. This will return the latest "Active" revision to an "In-process" state.<br/><br/>'+

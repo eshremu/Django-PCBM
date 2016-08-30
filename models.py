@@ -476,7 +476,7 @@ class Configuration(models.Model):
     # end def
 
     def __str__(self):
-        return self.header.configuration_designation + ("__" + self.header.baseline_version if self.header.baseline_version else '')
+        return self.title + ("__" + self.header.baseline_version if self.header.baseline_version else '')
     # end def
 
     def get_first_line(self):
@@ -492,6 +492,14 @@ class Configuration(models.Model):
     @property
     def first_line(self):
         return self.get_first_line()
+
+    @property
+    def title(self):
+        return self.header.configuration_designation
+
+    @property
+    def version(self):
+        return self.header.baseline_version or '(Not baselined)'
 # end class
 
 
@@ -514,8 +522,16 @@ class Part(models.Model):
     # end class
 
     def __str__(self):
-        return str(self.pk) + " - " + self.base.product_number + " - " + (self.product_description if self.product_description else '(None)')
+        return str(self.pk) + " - " + self.product_number + " - " + (self.product_description if self.product_description else '(None)')
     # end def
+
+    @property
+    def product_number(self):
+        return self.base.product_number
+
+    @property
+    def description(self):
+        return self.product_description or '(None)'
 # end class
 
 
@@ -555,6 +571,14 @@ class ConfigLine(models.Model):
     def __str__(self):
         return str(self.config) + "_" + self.line_number
     # end def
+
+    @property
+    def title(self):
+        return self.config.title
+
+    @property
+    def version(self):
+        return self.config.version
 # end class
 
 
@@ -570,6 +594,10 @@ class RevisionHistory(models.Model):
     def __str__(self):
         return str(self.baseline) + "_" + self.revision
     # end def
+
+    @property
+    def title(self):
+        return self.baseline.title
 # end class
 
 
@@ -820,6 +848,7 @@ class CustomerPartInfo(models.Model):
     # traceability_req = models.CharField(max_length=50, blank=True, null=True)
     traceability_req = models.NullBooleanField(blank=True)
     active = models.BooleanField(default=False)
+    priority = models.BooleanField(default=False)
 
     def __str__(self):
         return str(self.part) + " - " + self.customer_number + (
@@ -845,9 +874,14 @@ class CustomerPartInfo(models.Model):
     # end def
 
     def save(self, *args, **kwargs):
+        dUpdate = {'active': False}
+
+        if self.priority:
+            dUpdate.update({'priority': False})
+
         if self.active:
-            self.__class__.objects.filter(part=self.part, customer=self.customer).exclude(pk=self.pk).update(**{'active': False})
-            self.__class__.objects.filter(customer_number=self.customer_number, customer=self.customer).exclude(pk=self.pk).update(**{'active': False})
+            self.__class__.objects.filter(part=self.part, customer=self.customer).exclude(pk=self.pk).update(**dUpdate)
+            self.__class__.objects.filter(customer_number=self.customer_number, customer=self.customer).exclude(pk=self.pk).update(**dUpdate)
         # end def
         super().save(*args, **kwargs)
     # end def

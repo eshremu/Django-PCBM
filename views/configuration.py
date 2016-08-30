@@ -16,7 +16,7 @@ from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException
 from BoMConfig.views.approvals_actions import CloneHeader
-from BoMConfig.utils import GrabValue, HeaderComparison, RevisionCompare
+from BoMConfig.utils import GrabValue, HeaderComparison, RevisionCompare, DetectBrowser
 
 import copy
 # import datetime
@@ -122,9 +122,9 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                     oModPost = QueryDict(None, mutable=True)
                     oModPost.update(oRequest.POST)
                     oModPost.update({'configuration_status': '1'})
-                    headerForm = HeaderForm(oModPost, instance=oExisting, readonly=not bCanWriteHeader)
+                    headerForm = HeaderForm(oModPost, instance=oExisting, readonly=not bCanWriteHeader, browser=DetectBrowser(oRequest))
                 else:
-                    headerForm = HeaderForm(oRequest.POST, instance=oExisting, readonly=not bCanWriteHeader)
+                    headerForm = HeaderForm(oRequest.POST, instance=oExisting, readonly=not bCanWriteHeader, browser=DetectBrowser(oRequest))
                 # end if
 
                 if oRequest.POST['baseline_impacted'] and oRequest.POST['baseline_impacted'] == 'New' and oRequest.POST.get('new_baseline', None):
@@ -264,12 +264,12 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 headerForm.fields['product_area2'].queryset = REF_PRODUCT_AREA_2.objects.filter(parent=(headerForm.cleaned_data['product_area1'] if headerForm.cleaned_data.get('product_area1', None) else None))
                 headerForm.fields['program'].queryset = REF_PROGRAM.objects.filter(parent=(headerForm.cleaned_data['customer_unit'] if headerForm.cleaned_data.get('customer_unit', None) else None))
             else:
-                headerForm = HeaderForm(instance=oExisting, readonly=not bCanWriteHeader)
+                headerForm = HeaderForm(instance=oExisting, readonly=not bCanWriteHeader, browser=DetectBrowser(oRequest))
                 headerForm.fields['product_area2'].queryset = REF_PRODUCT_AREA_2.objects.filter(parent=(oExisting.product_area1 if oExisting else None))
                 headerForm.fields['program'].queryset = REF_PROGRAM.objects.filter(parent=(oExisting.customer_unit if oExisting else None))
             # end if
         except LockException:
-            headerForm = HeaderForm(readonly=not bCanWriteHeader)
+            headerForm = HeaderForm(readonly=not bCanWriteHeader, browser=DetectBrowser(oRequest))
             status_message = 'File is locked for editing'
             if 'existing' in oRequest.session:
                 del oRequest.session['existing']

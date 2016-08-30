@@ -183,6 +183,16 @@ $(document).ready(function(){
         }
     });
 
+    $('#messageModal').on('afterHide', 'input[name$="-email"]', function(event){
+        $(event.target).removeClass('input-invalid');
+
+        if($('#messageModal .input-invalid').length > 0){
+            $('.modal_submit.btn.btn-primary').attr('disabled','disabled');
+        } else {
+            $('.modal_submit.btn.btn-primary').removeAttr('disabled');
+        }
+    });
+
     function processForms(){
         if (returnedFormData == null){
 
