@@ -5,7 +5,7 @@
 {% if header_read_authorized %}
 <div id="header-form">
     <script type="text/javascript" src="{% static 'BoMConfig/js/config_header.js' %}"></script>
-    <form id="headerform" method="POST">
+    <form id="headerform" method="POST" autocomplete="off">
         {% csrf_token %}
         <input id="formaction" type="hidden" name="formaction" value=""/>
         <div id="headerformtable">

@@ -118,8 +118,10 @@ def PartPricing(oRequest):
                     'customer_list': [oCust.name for oCust in aCustomers],
                     'spud_list': [oSpud.name for oSpud in aSPUDS],
                 })
-            except (PartBase.DoesNotExist, Header.DoesNotExist):
+            except (PartBase.DoesNotExist,):
                 status_message = 'ERROR: Part number not found'
+            except Header.DoesNotExist:
+                status_message = 'ERROR: Configuration Number provided'
 
     dContext.update({
         'status_message': status_message,
@@ -161,7 +163,7 @@ def ConfigPricing(oRequest):
 
     sTemplate = 'BoMConfig/configpricing.html'
     aConfigLines = []
-    dContext = {'configlines':aConfigLines}
+    dContext = {'configlines':aConfigLines, 'readonly': False}
     if oRequest.method == 'POST' and oRequest.POST:
         sConfig = oRequest.POST['config'] if 'config' in oRequest.POST else None
 
@@ -171,29 +173,29 @@ def ConfigPricing(oRequest):
             iProgram = None
             iBaseline = None
 
-        aConfigMatches = Header.objects.filter(configuration_designation__iexact=sConfig, configuration_status__name__startswith='In Process')
+        aConfigMatches = Header.objects.filter(configuration_designation__iexact=sConfig)#, configuration_status__name__startswith='In Process')
         if iProgram:
             aConfigMatches = aConfigMatches.filter(program__id=iProgram)
         if iBaseline:
-            aConfigMatches = aConfigMatches.filter(baseline__baseline__id=iBaseline)
+            aConfigMatches = aConfigMatches.filter(baseline__id=iBaseline)
 
         if len(aConfigMatches) == 0:
             status_message = 'No matching configuration found'
             dContext.update({'config': sConfig})
         elif len(aConfigMatches) > 1:
             aProgramList = list([oHead.program.id, oHead.program.name] for oHead in aConfigMatches)
-            aBaselineList = list([oHead.baseline.baseline.id, oHead.baseline.baseline.title] if oHead.baseline else [None, ''] for oHead in aConfigMatches)
+            aBaselineList = list([oHead.baseline.id, str(oHead.baseline)] if oHead.baseline else [None, ''] for oHead in aConfigMatches)
             dContext.update({'prog_list': aProgramList, 'config': sConfig, 'base_list': aBaselineList})
         else:
             iProgValue = aConfigMatches[0].program.id if aConfigMatches[0].program else None
-            iBaseValue = aConfigMatches[0].baseline.baseline.id if aConfigMatches[0].baseline else None
+            iBaseValue = aConfigMatches[0].baseline.id if aConfigMatches[0].baseline else None
 
             dLineFilters = {
-                'config__header__configuration_status__name__startswith': 'In Process',
+                # 'config__header__configuration_status__name__startswith': 'In Process',
                 'config__header__configuration_designation__iexact':sConfig,
             }
             dConfigFilters = {
-                'header__configuration_status__name__startswith': 'In Process',
+                # 'header__configuration_status__name__startswith': 'In Process',
                 'header__configuration_designation__iexact':sConfig,
             }
 
@@ -205,11 +207,11 @@ def ConfigPricing(oRequest):
                 dConfigFilters.pop('header__program__id', None)
 
             if iBaseValue is not None:
-                dLineFilters.update({'config__header__baseline__baseline__id': iBaseValue})
-                dConfigFilters.update({'header__baseline__baseline__id': iBaseValue})
+                dLineFilters.update({'config__header__baseline__id': iBaseValue})
+                dConfigFilters.update({'header__baseline__id': iBaseValue})
             else:
-                dLineFilters.pop('config__header__baseline__baseline__id', None)
-                dConfigFilters.pop('header__baseline__baseline__id', None)
+                dLineFilters.pop('config__header__baseline__id', None)
+                dConfigFilters.pop('header__baseline__id', None)
 
             if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
                 if oRequest.POST['config'] == oRequest.POST['initial']:
@@ -277,7 +279,8 @@ def ConfigPricing(oRequest):
                              'program': iProgValue,
                              'baseline': iBaseValue,
                              'prog_list': [],
-                             'base_list': []
+                             'base_list': [],
+                             'readonly': 'In Process' not in aLine[0].config.header.configuration_status.name
                              })
         # end if
     # end if

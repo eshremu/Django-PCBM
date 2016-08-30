@@ -9,6 +9,9 @@ from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue
 
+import re
+import functools
+
 
 def Search(oRequest, advanced=False):
     if 'existing' in oRequest.session:
@@ -53,17 +56,18 @@ def Search(oRequest, advanced=False):
     aHeaders = Header.objects.all()
 
     if oRequest.method == 'POST' and oRequest.POST:
-
+        oEscape = re.compile(r'([\^$+.\{\}\(\)\[\]\|\\])')
+        escape = functools.partial(oEscape.sub, r'\\\1')
         if not advanced:
 
             if 'config_design' in oRequest.POST and oRequest.POST['config_design'] != '':
-                aHeaders = aHeaders.filter(configuration_designation__iregex="^" + oRequest.POST['config_design'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aHeaders = aHeaders.filter(configuration_designation__iregex="^" + escape(oRequest.POST['config_design'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
             # end if
 
             if 'person' in oRequest.POST and oRequest.POST['person'] != '':
-                aHeaders = aHeaders.filter(person_responsible__iregex="^" + oRequest.POST['person'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aHeaders = aHeaders.filter(person_responsible__iregex="^" + escape(oRequest.POST['person'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
             # end if
 
             if 'request' in oRequest.POST and oRequest.POST['request'] != '':
@@ -109,18 +113,18 @@ def Search(oRequest, advanced=False):
             aConfigLines = ConfigLine.objects.all()
 
             if 'config_design' in oRequest.POST and oRequest.POST['config_design'] != '':
-                aConfigLines = aConfigLines.filter(config__header__configuration_designation__iregex="^" + oRequest.POST['config_design'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__configuration_designation__iregex="^" + escape(oRequest.POST['config_design'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
 
             if 'inquiry_site' in oRequest.POST and oRequest.POST['inquiry_site'] != '':
-                aConfigLines = aConfigLines.filter(config__header__inquiry_site_template__iregex="^" + oRequest.POST['inquiry_site'].strip()
-                    .replace(' ', '\W').replace('.', '\.').replace('?', '.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__inquiry_site_template__iregex="^" + escape(oRequest.POST['inquiry_site'].strip())
+                    .replace(' ', '\W').replace('?', '.').replace('*', '.*') + "$")
                 # sTableHeader += '<th style="width:175px;">Inquiry / Site Template Number</th>'
                 # aLineFilter.append('config.header.inquiry_site_number')
 
             if 'request' in oRequest.POST and oRequest.POST['request'] != '':
-                aConfigLines = aConfigLines.filter(config__header__react_request__iregex="^" + oRequest.POST['request'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__react_request__iregex="^" + escape(oRequest.POST['request'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTableHeader += '<th style="width:175px;">REACT Request</th>'
                 aLineFilter.append('config.header.react_request')
 
@@ -130,50 +134,50 @@ def Search(oRequest, advanced=False):
                 aLineFilter.append('config.header.customer_unit.name')
 
             if 'person' in oRequest.POST and oRequest.POST['person'] != '':
-                aConfigLines = aConfigLines.filter(config__header__person_responsible__iregex="^" + oRequest.POST['person'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__person_responsible__iregex="^" + escape(oRequest.POST['person'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTableHeader += '<th style="width:175px;">Person Responsible</th>'
                 aLineFilter.append('config.header.person_responsible')
 
             if 'sold_to' in oRequest.POST and oRequest.POST['sold_to'] != '':
-                aConfigLines = aConfigLines.filter(config__header__sold_to_party__iregex="^" + oRequest.POST['sold_to'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__sold_to_party__iregex="^" + escape(oRequest.POST['sold_to'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTableHeader += '<th style="width:175px;">Sold-to Party</th>'
                 aLineFilter.append('config.header.sold_to_party')
 
             if 'program' in oRequest.POST and oRequest.POST['program'] != '':
-                aConfigLines = aConfigLines.filter(config__header__program__iregex="^" + oRequest.POST['program'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__program__iregex="^" + escape(oRequest.POST['program'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTableHeader += '<th style="width:175px;">Program</th>'
                 aLineFilter.append('config.header.program')
 
             if 'technology' in oRequest.POST and oRequest.POST['technology'] != '':
-                aConfigLines = aConfigLines.filter(config__header__technology__name__iregex="^" + oRequest.POST['technology'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__technology__name__iregex="^" + escape(oRequest.POST['technology'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTableHeader += '<th style="width:175px;">Technology</th>'
                 aLineFilter.append('config.header.technology.name')
 
             if 'base_impact' in oRequest.POST and oRequest.POST['base_impact'] != '':
-                aConfigLines = aConfigLines.filter(config__header__baseline_impacted__iregex="^" + oRequest.POST['base_impact'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__baseline_impacted__iregex="^" + escape(oRequest.POST['base_impact'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTableHeader += '<th style="width:175px;">Baseline Impacted</th>'
                 aLineFilter.append('config.header.baseline_impacted')
 
             if 'model' in oRequest.POST and oRequest.POST['model'] != '':
-                aConfigLines = aConfigLines.filter(config__header__model__iregex="^" + oRequest.POST['model'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__model__iregex="^" + escape(oRequest.POST['model'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTableHeader += '<th style="width:175px;">Model</th>'
                 aLineFilter.append('config.header.model')
 
             if 'model_desc' in oRequest.POST and oRequest.POST['model_desc'] != '':
-                aConfigLines = aConfigLines.filter(config__header__model_description__iregex="^" + oRequest.POST['model_desc'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__model_description__iregex="^" + escape(oRequest.POST['model_desc'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTableHeader += '<th style="width:175px;">Model Description</th>'
                 aLineFilter.append('config.header.model_description')
 
             if 'init_rev' in oRequest.POST and oRequest.POST['init_rev'] != '':
-                aConfigLines = aConfigLines.filter(config__header__initial_revision__iregex="^" + oRequest.POST['init_rev'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__initial_revision__iregex="^" + escape(oRequest.POST['init_rev'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTableHeader += '<th style="width:175px;">Initial Revision</th>'
                 aLineFilter.append('config.header.initial_revision')
 
@@ -186,37 +190,37 @@ def Search(oRequest, advanced=False):
             aTempFilters = ['line_number']
 
             if 'product_num' in oRequest.POST and oRequest.POST['product_num'] != '':
-                aConfigLines = aConfigLines.filter(part__base__product_number__iregex="^" + oRequest.POST['product_num'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(part__base__product_number__iregex="^" + escape(oRequest.POST['product_num'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTempHeaderLine += '<th style="width:175px;">Product Number</th><th style="width:175px;">SPUD</th>'
                 aTempFilters.append('part.base.product_number')
                 aTempFilters.append('spud')
                 bRemoveDuplicates = False
 
             if 'description' in oRequest.POST and oRequest.POST['description'] != '':
-                aConfigLines = aConfigLines.filter(part__product_description__iregex="^" + oRequest.POST['description'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(part__product_description__iregex="^" + escape(oRequest.POST['description'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTempHeaderLine += '<th style="width:175px;">Product Description</th>'
                 aTempFilters.append('part.product_description')
                 bRemoveDuplicates = False
 
             if 'customer_num' in oRequest.POST and oRequest.POST['customer_num'] != '':
-                aConfigLines = aConfigLines.filter(customer_number__iregex="^" + oRequest.POST['customer_num'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(customer_number__iregex="^" + escape(oRequest.POST['customer_num'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTempHeaderLine += '<th style="width:175px;">Customer Number</th>'
                 aTempFilters.append('customer_number')
                 bRemoveDuplicates = False
 
             if 'mu_flag' in oRequest.POST and oRequest.POST['mu_flag'] != '':
-                aConfigLines = aConfigLines.filter(mu_flag__iregex="^" + oRequest.POST['mu_flag'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(mu_flag__iregex="^" + escape(oRequest.POST['mu_flag'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTempHeaderLine += '<th style="width:175px;">MU-Flag</th>'
                 aTempFilters.append('mu_flag')
                 bRemoveDuplicates = False
 
             if 'xplant' in oRequest.POST and oRequest.POST['xplant'] != '':
-                aConfigLines = aConfigLines.filter(x_plant__iregex="^" + oRequest.POST['xplant'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(x_plant__iregex="^" + escape(oRequest.POST['xplant'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTempHeaderLine += '<th style="width:175px;">X-Plant Material Status</th>'
                 aTempFilters.append('x_plant')
                 bRemoveDuplicates = False
@@ -226,8 +230,8 @@ def Search(oRequest, advanced=False):
                 aLineFilter.extend(aTempFilters)
 
             if 'base_rev' in oRequest.POST and oRequest.POST['base_rev'] != '':
-                aConfigLines = aConfigLines.filter(config__header__baseline_version__iregex="^" + oRequest.POST['base_rev'].strip()
-                                           .replace(' ','\W').replace('.', '\.').replace('?','.').replace('*', '.*') + "$")
+                aConfigLines = aConfigLines.filter(config__header__baseline_version__iregex="^" + escape(oRequest.POST['base_rev'].strip())
+                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
 
             if 'release' in oRequest.POST and oRequest.POST['release'] != '':
                 aConfigLines = aConfigLines.filter(**{'config__header__release_date__' + oRequest.POST['release_param']: oRequest.POST['release']})

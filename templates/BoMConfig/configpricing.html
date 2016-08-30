@@ -42,7 +42,8 @@
         var not_picklist;{% if is_not_pick_list %}not_picklist = {{ is_not_pick_list|lower }};{% endif %}
         var can_write = {{ pricing_write_authorized|lower }};
         var table_data = {{ configlines|safe }};
-        var program_list = {{ prog_list|safe }};
-        var baseline_list = {{ base_list|safe }};
+        var program_list;{% if prog_list %}program_list = {{ prog_list|safe }};{% endif %}
+        var baseline_list;{% if base_list %}baseline_list = {{ base_list|safe }};{% endif %}
+        var readonly = {{ readonly|lower }};
     </script>
 {% endblock %}

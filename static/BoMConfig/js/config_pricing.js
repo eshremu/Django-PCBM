@@ -10,7 +10,7 @@ $(document).ready(function(){
             clean_form = JSON.stringify(hot.getSourceData());
         }
 
-        if(program_list.length > 1){
+        if(program_list != undefined && program_list.length > 1){
             var message = "Multiple matching configurations were found.<br/>Please select the program & baseline for the desired configuration.";
             message += '<br/><label for="desiredprog" style="padding-right: 5px;">Program|Baseline:</label><select name="desiredprog">';
             for(var i=0; i<program_list.length; i++) {
@@ -145,7 +145,7 @@ function build_table() {
                 cellProperties.readOnly = true;
                 cellProperties.renderer = calcRenderer;
             } else {
-                if(can_write) {
+                if(can_write && !readonly) {
                     cellProperties.validator = function (value, callback) {
                         if (/^\d+(?:\.\d{2})?$|^$/.test(value)) {
                             callback(true);

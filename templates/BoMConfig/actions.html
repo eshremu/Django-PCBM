@@ -36,6 +36,8 @@
                             <td style="width:25px;"></td>
                             <td>{{ record.person_responsible }}</td>
                             <td style="width:25px;"></td>
+                            <td>{{ record.bom_request_type.name }}</td>
+                            <td style="width:25px;"></td>
                             <td>{{ record.customer_unit.name }}</td>
                             <td style="width:25px;"></td>
                             <td>{{ record.customer_name|default:"" }}</td>
@@ -59,6 +61,7 @@
                         <td><input class="active" type="checkbox" data-index="{{ record.id }}"/></td>
                         <td>{{ record.configuration_designation }}</td>
                         <td>{{ record.baseline }}</td>
+                        <td>{{ record.program }}</td>
                         <td>{% if not record.inquiry_site_template %}<button>Create Inquiry</button></td><td><button>Create ST</button>{% endif %}</td>
 
                     </tr>
