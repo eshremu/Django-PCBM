@@ -4,7 +4,7 @@ from django.utils import timezone
 from django.http import HttpResponse, Http404, JsonResponse
 from django.core.urlresolvers import reverse
 from django.template import Template, Context, loader
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
     HeaderTimeTracker, REF_STATUS, ApprovalList
@@ -160,13 +160,20 @@ def AjaxApprove(oRequest):
                 oLatestTracker.save()
 
                 if oLatestTracker.scm1_notify:
-                    send_mail(
-                        recipient_list=list(set(oLatestTracker.scm1_notify.split(';'))),
+                    # send_mail(
+                    #     recipient_list=list(set(oLatestTracker.scm1_notify.split(';'))),
+                    #     subject='A configuration requires your attention',
+                    #     message='The configuration has been submitted for approval by ' + oRequest.user.get_full_name() + " and requires your attention.",
+                    #     from_email='pcbm.admin@ericsson.com',
+                    #     html_message=None
+                    # )
+                    EmailMultiAlternatives(
                         subject='A configuration requires your attention',
-                        message='The configuration has been submitted for approval by ' + oRequest.user.get_full_name() + " and requires your attention.",
+                        body='The configuration has been submitted for approval by ' + oRequest.user.get_full_name() + " and requires your attention.",
                         from_email='pcbm.admin@ericsson.com',
-                        html_message=None
-                    )
+                        to=list(set(oLatestTracker.scm1_notify.split(';'))),
+                        cc=[oRequest.user.email]
+                    ).send()
 
                 oHeader.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
                 oHeader.save()
@@ -218,13 +225,20 @@ def AjaxApprove(oRequest):
                                 aRecipients.extend([user.email for user in User.objects.filter(groups__name="BOM_PSM_Baseline_Manager")])
 
                         if aRecipients:
-                            send_mail(
-                                recipient_list=list(set(aRecipients)),
+                            # send_mail(
+                            #     recipient_list=list(set(aRecipients)),
+                            #     subject='A configuration requires your attention',
+                            #     message='The configuration has been approved by '+oRequest.user.get_full_name()+' and forwarded for your review.',
+                            #     from_email='pcbm.admin@ericsson.com',
+                            #     html_message=None
+                            # )
+                            EmailMultiAlternatives(
                                 subject='A configuration requires your attention',
-                                message='The configuration has been approved by '+oRequest.user.get_full_name()+' and forwarded for your review.',
+                                body='The configuration has been approved by ' + oRequest.user.get_full_name() + ' and forwarded for your review.',
                                 from_email='pcbm.admin@ericsson.com',
-                                html_message=None
-                            )
+                                to=list(set(aRecipients)),
+                                cc=[oRequest.user.email]
+                            ).send()
                     elif sAction == 'disapprove':
                         setattr(oLatestTracker, sNeededLevel+'_approver', oRequest.user.username)
                         setattr(oLatestTracker, sNeededLevel+'_denied_approval', timezone.now())
@@ -274,24 +288,38 @@ def AjaxApprove(oRequest):
                                 if sLastNotify:
                                     aRecipients.extend(sLastNotify.split(";"))
 
-                                send_mail(
-                                    recipient_list=list(set(aRecipients)),
+                                # send_mail(
+                                #     recipient_list=list(set(aRecipients)),
+                                #     subject='A configuration has been returned to you',
+                                #     message='A configuration that you may have approved has been disapproved and returned for your attention',
+                                #     from_email='pcbm.admin@ericsson.com',
+                                #     html_message=None
+                                # )
+                                EmailMultiAlternatives(
                                     subject='A configuration has been returned to you',
-                                    message='A configuration that you may have approved has been disapproved and returned for your attention',
+                                    body='A configuration that you may have approved has been disapproved and returned for your attention',
                                     from_email='pcbm.admin@ericsson.com',
-                                    html_message=None
-                                )
+                                    to=list(set(aRecipients)),
+                                    cc=[oRequest.user.email]
+                                ).send()
 
                         # Else, send header back to 'In Process' status
                         else:
                             oHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
                             oHeader.save()
-                            User.objects.get(username=oLatestTracker.psm_config_approver).email_user(
+                            # User.objects.get(username=oLatestTracker.psm_config_approver).email_user(
+                            #     subject='A configuration has been returned to you',
+                            #     message='A configuration you submitted for approval has been disapproved and returned for your attention',
+                            #     from_email='pcbm.admin@ericsson.com',
+                            #     html_message=None
+                            # )
+                            EmailMultiAlternatives(
                                 subject='A configuration has been returned to you',
-                                message='A configuration you submitted for approval has been disapproved and returned for your attention',
+                                body='A configuration you submitted for approval has been disapproved and returned for your attention',
                                 from_email='pcbm.admin@ericsson.com',
-                                html_message=None
-                            )
+                                to=(User.objects.get(username=oLatestTracker.psm_config_approver).email,),
+                                cc=[oRequest.user.email]
+                            ).send()
                         # end if
                     elif sAction == 'skip' and sNeededLevel != 'brd':
                         setattr(oLatestTracker, sNeededLevel+'_approver', oRequest.user.username)
