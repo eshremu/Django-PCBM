@@ -15,7 +15,7 @@
         <input id="initial" name="initial" type="hidden" value="{{ config }}"/>
         <input id="program" name="program" type="hidden" value="{{ program }}"/>
         <input id="baseline" name="baseline" type="hidden" value="{{ baseline }}"/>
-        <button type="submit" name="action" value="search">Search</button>
+        <button class="btn" type="submit" name="action" value="search">Search</button>
         <br/>
         <label for="net_value">Net Value ($):</label>
         <input type="text" id="net_value" name="net_value" style="border:none;" readonly/>
@@ -25,8 +25,8 @@
 
     <div id="formbuttons">
         {% if configlines %}
-        <button id="cancelForm" name="action" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>
-        <button id="saveForm" type="submit" name="action" form="headersubform" value="save">Save</button>
+        <button id="cancelForm" class="btn" name="action" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>
+        <button id="saveForm" class="btn" type="submit" name="action" form="headersubform" value="save">Save</button>
         {% endif %}
         {% if status_message %}
         <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:50px;">

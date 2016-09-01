@@ -36,7 +36,7 @@
                 <option value="{{ status.name|lower|replacewhitespace:"_" }}">{{ status.name }}</option>
                 {% endfor %}
             </select>
-            <button id="search_button" class="submit" type="button" name="search_button" value="search">Search</button>
+            <button id="search_button" class="submit btn" type="button" name="search_button" value="search">Search</button>
         </form>
     </div>
     <div id="search_results">
@@ -70,7 +70,7 @@
         {% endfor %}
         </tbody>
         </table>
-        <button id="download" disabled>Download</button>
+        <button id="download" class="btn btn-primary" disabled>Download</button>
     {% else %}
         <p>NO CONFIGURATIONS DEFINED</p>
     {% endif %}

@@ -107,6 +107,10 @@ function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
 }
 
 function customRenderer(instance, td, row, col, prop, value, cellProperties) {
+    if(row == 0 && not_picklist){
+        td.style.fontWeight = 'bold';
+    }
+
     if (/<[a-zA-Z][\s\S/]*>/.test(value) === false) {
         Handsontable.renderers.TextRenderer.apply(this, arguments);
     } else {

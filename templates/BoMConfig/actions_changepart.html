@@ -1,0 +1,30 @@
+{% extends "BoMConfig/actions.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+        <script>$('button[value="changepart"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');</script>
+        <form id="headersubform" method="post">
+            {% csrf_token %}
+            <label for="part">Part Number to Replace</label>
+            <input id="part" name="part" type="text" value="{{ part }}" required/>
+            <input id="initial" name="initial" type="hidden" value="{{ part }}"/>
+            <button class="btn" type="submit" name="action" value="search">Search</button>
+        </form>
+
+        <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
+
+        <div id="formbuttons">
+            {% if partlines.0 %}
+            <button id="cancelForm" class="btn" name="action" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>
+            <button id="saveForm" class="btn" type="submit" name="action" form="headersubform" value="save">Save</button>
+            {% endif %}
+            {% if status_message %}
+            <span id="statuses" style="color:red; font-size:20px; font-weight: bold; padding-left:50px;">
+                {{ status_message }}
+            </span>
+            <script>
+                setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
+            </script>
+            {% endif %}
+        </div>
+{% endblock %}

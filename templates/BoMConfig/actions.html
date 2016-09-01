@@ -5,89 +5,13 @@
 <div id="main-body">
     {% if user.is_authenticated %}
         {% if viewauthorized %}
-
-        <ul class="btn" style="border: none; padding: 0;">
-            <li class="dropdown" style="list-style-type: none;">
-                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
-                <ul class="dropdown-menu">
-                    {% for customer in customer_list %}
-                    <li><a href="#" onclick="cust_filter('{{ customer|replace:"& _"|replacewhitespace:"-_" }}');">{{ customer }}</a></li>
-                    {% endfor %}
-                </ul>
-            </li>
-        </ul>
-
-        <h4>In Process</h4>
-            {% if in_process %}
-            <form id="in_process_action" onsubmit="return false;">
-                <button id="approval_submit" value="send_to_approve">Submit for Approval</button>
-                <button id="hold" value="hold">Place on Hold</button>
-                <button id="cancel" value="cancel">Cancel</button>
-                <button id="delete" value="delete">Delete</button>
-                <div><br/></div>
-                <table id="in_process_records">
-                    {% for record in in_process %}
-                        <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }}">
-                            <td><input class="inprocess" type="checkbox" data-index="{{ record.id }}"/></td>
-                            <td style="width:15px;"></td>
-                            <td><a href="../search?link={{ record.pk|searchscramble }}">{{ record.configuration_designation }}</a></td>
-                            <td style="width:25px;"></td>
-                            <td>{{ record.baseline|default:"(Not baselined)" }}</td>
-                            <td style="width:25px;"></td>
-                            <td>{{ record.person_responsible }}</td>
-                            <td style="width:25px;"></td>
-                            <td>{{ record.bom_request_type.name }}</td>
-                            <td style="width:25px;"></td>
-                            <td>{{ record.customer_unit.name }}</td>
-                            <td style="width:25px;"></td>
-                            <td>{{ record.customer_name|default:"" }}</td>
-                        </tr>
-                    {% endfor %}
-                </table>
-            </form>
-            {% else %}
-                <h5>NO IN-PROCESS RECORDS</h5>
-            {% endif %}
-
-        <h4>Active</h4>
-            {% if active %}
-            <form id="active_action" onsubmit="return false;">
-                <button id="clone" value="clone">Clone</button>
-                <div><br/></div>
-                <table>
-                    <tr><td style="width:25px"></td><td style="width:200px"></td><td style="width:500px"></td><td style="width:115px"></td><td style="width:115px"></td></tr>
-                {% for record in active %}
-                    <tr>
-                        <td><input class="active" type="checkbox" data-index="{{ record.id }}"/></td>
-                        <td>{{ record.configuration_designation }}</td>
-                        <td>{{ record.baseline }}</td>
-                        <td>{{ record.program }}</td>
-                        <td>{% if not record.inquiry_site_template %}<button>Create Inquiry</button></td><td><button>Create ST</button>{% endif %}</td>
-
-                    </tr>
-                {% endfor %}
-                </table>
-            </form>
-            {% else %}
-                <h5>NO ACTIVE RECORDS</h5>
-            {% endif %}
-
-        <h4>On Hold</h4>
-            {% if on_hold %}
-            <form id="hold_action" onsubmit="return false;">
-                <button id="unhold" value="unhold">Remove from Hold</button>
-                <table>
-                {% for record in on_hold %}
-                    <tr>
-                        <td><input class="hold" type="checkbox" data-index="{{ record.id }}"/></td>
-                        <td>{{ record.configuration_designation }} {{ record.baseline_version }}</td>
-                    </tr>
-                {% endfor %}
-                </table>
-            </form>
-            {% else %}
-                <h5>NO ON-HOLD RECORDS</h5>
-            {% endif %}
+        <div id="action_buttons" style="margin-bottom: 10px;">
+            <button class="btn" type="button" name="action" value="inprocess" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:action_inprocess' %}'>In Process</button>
+            <button class="btn" type="button" name="action" value="active" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:action_active' %}'>Active</button>
+            <button class="btn" type="button" name="action" value="hold" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:action_hold' %}'>On Hold</button>
+            <button class="btn" type="button" name="action" value="changepart" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:action_changepart' %}'>Change Part</button>
+        </div>
+        {% block subcontent %}{% endblock %}
         {% else %}
         <h4>You do not have sufficient permissions to view this asset.</h4>
         {% endif %}
@@ -96,23 +20,6 @@
     {% endif %}
 </div>
 {% if user.is_authenticated %}
-    <style>
-        th.rotate {
-            height:20px;
-            white-space: nowrap;
-            vertical-align: bottom;
-        }
-        th.rotate > div {
-            width:40px;
-            transform:
-                rotate(-45deg)
-                translate(45px, 25px)
-        }
-        th.rotate > div > span {
-            border-bottom: 1px solid black;
-            padding: 5px 0px;
-        }
-    </style>
     <script>
         var approve_list_url="{% url 'bomconfig:approve_list' %}";
         var approve_url="{% url 'bomconfig:approve' %}";

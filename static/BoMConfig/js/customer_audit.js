@@ -238,6 +238,8 @@ function duplicateCheck(list){
 }
 
 $(document).ready(function(){
+    $('a.headtitle:contains("Customer Audit")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+
     $(document).on('change','#customer-select,#override', function(){
         if($(this).is($('#customer-select'))){
             $('#override').removeAttr('checked');

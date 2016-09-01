@@ -5,6 +5,7 @@ from django.http import HttpResponse, Http404, JsonResponse
 from django.core.urlresolvers import reverse
 from django.template import Template, Context, loader
 from django.core.mail import send_mail, EmailMultiAlternatives
+from django.shortcuts import redirect
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
     HeaderTimeTracker, REF_STATUS, ApprovalList
@@ -42,7 +43,7 @@ def Approval(oRequest):
 # end def
 
 
-def Action(oRequest):
+def Action(oRequest, **kwargs):
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -53,15 +54,20 @@ def Action(oRequest):
         del oRequest.session['existing']
     # end if
 
+    if 'type' in kwargs:
+        sTemplate = 'BoMConfig/actions_{}.html'.format(kwargs['type'])
+    else:
+        return redirect('bomconfig:action_inprocess')
+
     dContext = {
         'in_process': Header.objects.filter(configuration_status__name='In Process'),
-        'active': Header.objects.filter(configuration_status__name='Active'),
+        'active': Header.objects.filter(configuration_status__name='Active', inquiry_site_template=None),
         'on_hold': Header.objects.filter(configuration_status__name='On Hold'),
         'customer_list': ['All'] + [obj.name for obj in REF_CUSTOMER.objects.all()],
         'viewauthorized': bool(oRequest.user.groups.filter(name__in=['BOM_BPMA_Architect','BOM_PSM_Product_Supply_Manager', 'BOM_PSM_Baseline_Manager'])),
         'approval_seq': HeaderTimeTracker.approvals(),
     }
-    return Default(oRequest, sTemplate='BoMConfig/actions.html', dContext=dContext)
+    return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def
 
 

@@ -4,7 +4,8 @@
 
 $('a.headtitle:contains("Actions")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 
-new Event("pcbm.modal.formdisplay", {'cancelable': false, "bubbles": false});
+document.createEvent("CustomEvent").initCustomEvent('pcbm.modal.formdisplay', false, false, {});
+
 var iIndex = -1;
 var keys=[];
 var returnedFormData = null;

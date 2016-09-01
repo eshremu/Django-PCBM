@@ -76,13 +76,13 @@
         </div>
         <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden"><div id="datatable"></div></div>
         <div id="formbuttons">
-            {% if can_previous %}<input id="prevForm" type="button" value="Prev">{% endif %}
-            <input id="cancelForm" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
+            {% if can_previous %}<input id="prevForm" class="btn" type="button" value="Prev">{% endif %}
+            <input id="cancelForm" class="btn" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
             {% if header.configuration_status.name == 'In Process' and config_write_authorized and not frame_readonly %}
-            <input id="saveexitForm" type="button" value="Save & Exit">
-            <input id="saveForm" type="button" value="Save">
+            <input id="saveexitForm" class="btn" type="button" value="Save & Exit">
+            <input id="saveForm" class="btn" type="button" value="Save">
             {% endif %}
-            {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
+            {% if can_continue %}<input id="nextForm" class="btn" type="button" value="Next"/>{% endif %}
 
             <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
                 {% if status_message %}{{ status_message }}{% endif %}
@@ -93,7 +93,7 @@
             </script>
             {% endif %}
             {% if header.configuration_status.name == 'In Process' and not frame_readonly %}
-            <input id="validate" type="button" value="Validate" style="margin-left:500px;" title="Validate current input, prefill empty cells, and update totals."/>
+            <input id="validate" class="btn" type="button" value="Validate" style="margin-left:500px;" title="Validate current input, prefill empty cells, and update totals."/>
             <span style="padding-left: 25px;">Status: </span>
             <span id="status" style="padding-left: 10px;"></span>
             {% endif %}

@@ -94,7 +94,7 @@ def Search(oRequest, advanced=False):
                         .format(searchscramble(header.pk), header.configuration_designation, GrabValue(header, 'program.name') or '', header.baseline_version,
                                 header.person_responsible, header.bom_request_type.name, header.customer_unit.name, header.configuration_status.name, header.pk))
                 # end for
-                results.write('</tbody></table><button id="download" disabled>Download</button>')
+                results.write('</tbody></table><button id="download" class="btn btn-primary" disabled>Download</button>')
             else:
                 results.write('NO CONFIGURATIONS MATCHING SEARCH')
             # end if
@@ -265,7 +265,7 @@ def Search(oRequest, advanced=False):
 
                     results.write('</tr>')
                 # end for
-                results.write('</tbody></table><button id="download" disabled>Download</button>')
+                results.write('</tbody></table><button id="download" class="btn btn-primary" disabled>Download</button>')
             else:
                 results.write('NO CONFIGURATIONS MATCHING SEARCH')
             # end if

@@ -22,10 +22,10 @@
         <form id="pending_approval_action" onsubmit="return false;">
             <button id="approve" class="action_button btn btn-success" value="approve">Approve</button>
             <button id="disapprove" class="action_button btn btn-danger" value="disapprove">Disapprove</button>
-            {% if skip_authorized %}
-            <button id="skip" class="action_button btn btn-secondary" value="skip">Skip</button>
-            {% endif %}
             <button id="hold" class="action_button btn btn-warning" value="hold">Place on Hold</button>
+            {% if skip_authorized %}
+            <button id="skip" class="action_button btn btn-secondary" value="skip" style="margin-left:20px;">Skip</button>
+            {% endif %}
             <table id="pending_approval_records">
                 <thead>
                     <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
