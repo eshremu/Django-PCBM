@@ -20,8 +20,9 @@ class HeaderForm(forms.ModelForm):
         widgets = {'model_replaced_link': forms.HiddenInput()}
     # end class
 
-    def __init__(self, browser, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         bReadOnly = kwargs.pop('readonly', False)
+        sBrowser = kwargs.pop('browser', None)
 
         super().__init__(*args, **kwargs)
 
@@ -49,7 +50,7 @@ class HeaderForm(forms.ModelForm):
         else:
             self.fields['model_replaced'].widget = AutocompleteInput(
                 'header_list',
-                browser,
+                sBrowser,
                 list([(head.id,
                        head.configuration_designation +
                        (" (" + str(head.program) + ")" if head.program else ''),
