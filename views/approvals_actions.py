@@ -36,7 +36,7 @@ def Approval(oRequest):
                     'Customer #1','Customer #2','Customer Warehouse','Ericsson VAR','Baseline Release & Dist.'],
         'viewauthorized': SecurityPermission.objects.filter(title__iregex='^.*Approval.*$').filter(user__in=oRequest.user.groups.all()),
         'skip_authorized': SecurityPermission.objects.filter(title__iexact='BLM_Approval_Write').filter(user__in=oRequest.user.groups.all()),
-        'notify_users': set(User.objects.filter(groups__name__startswith='BOM_'))
+        'notify_users': set(User.objects.filter(groups__name__startswith='BOM_').exclude(groups__name__startswith='BOM_BPMA'))
     }
     return Default(oRequest, sTemplate='BoMConfig/approvals.html', dContext=dContext)
 # end def
