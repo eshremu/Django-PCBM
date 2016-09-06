@@ -419,7 +419,8 @@ def AddConfig(oRequest):
                         else:
                             (oPart, _) = Part.objects.get_or_create(**dPartData)
 
-                        dLineData = {'line_number': dConfigLine['1'], 'order_qty': dConfigLine['4'] or None, 'spud': dConfigLine['12'],
+                        dLineData = {'line_number': dConfigLine['1'], 'order_qty': dConfigLine['4'] or None,
+                                     'spud': REF_SPUD.objects.get(name=dConfigLine['12']) if dConfigLine['12'] else None,
                                      'plant': dConfigLine['6'], 'sloc': dConfigLine['7'], 'item_category': dConfigLine['8'],
                                      'internal_notes': dConfigLine['16'],# 'unit_price': dConfigLine['17'],
                                      'higher_level_item': dConfigLine['18'], 'material_group_5': dConfigLine['19'],
@@ -449,33 +450,33 @@ def AddConfig(oRequest):
                         (oPrice, _) = LinePricing.objects.get_or_create(**dPriceData)
                         oPriceObj = None
                         try:
-                            if oConfigLine.spud:
-                                oPriceObj = PricingObject.objects.get(
-                                    part=oConfigLine.part.base,
-                                    customer=oConfigLine.config.header.customer_unit,
-                                    sold_to=oConfigLine.config.header.sold_to_party,
-                                    spud=REF_SPUD.objects.get(name=oConfigLine.spud),
-                                    is_current_active=True
-                                )
-                            else:
-                                oPriceObj = PricingObject.objects.get(
-                                    part=oConfigLine.part.base,
-                                    customer=oConfigLine.config.header.customer_unit,
-                                    sold_to=oConfigLine.config.header.sold_to_party,
-                                    spud=None,
-                                    is_current_active=True
-                                )
+                            oPriceObj = PricingObject.objects.get(
+                                part=oConfigLine.part.base,
+                                customer=oConfigLine.config.header.customer_unit,
+                                sold_to=oConfigLine.config.header.sold_to_party,
+                                spud=oConfigLine.spud,
+                                is_current_active=True
+                            )
                         except PricingObject.DoesNotExist:
                             try:
                                 oPriceObj = PricingObject.objects.get(
                                     part=oConfigLine.part.base,
                                     customer=oConfigLine.config.header.customer_unit,
-                                    sold_to=None,
+                                    sold_to=oConfigLine.config.header.sold_to_party,
                                     spud=None,
                                     is_current_active=True
                                 )
                             except PricingObject.DoesNotExist:
-                                pass
+                                try:
+                                    oPriceObj = PricingObject.objects.get(
+                                        part=oConfigLine.part.base,
+                                        customer=oConfigLine.config.header.customer_unit,
+                                        sold_to=None,
+                                        spud=None,
+                                        is_current_active=True
+                                    )
+                                except PricingObject.DoesNotExist:
+                                    pass
                         oPrice.pricing_object = oPriceObj
                         oPrice.save()
 
@@ -931,7 +932,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                         '3': Line.part.product_description, '4': Line.order_qty, '5': Line.part.base.unit_of_measure,
                         '6': Line.plant, '7': ('0' * (4 - len(str(Line.sloc)))) + Line.sloc if Line.sloc else Line.sloc,
                         '8': Line.item_category, '9': Line.pcode, '10': Line.commodity_type,
-                        '11': Line.package_type, '12': Line.spud, '13': Line.REcode,
+                        '11': Line.package_type, '12': str(Line.spud), '13': Line.REcode,
                         '14': Line.mu_flag,
                         '15': ('0' * (2 - len(Line.x_plant))) + Line.x_plant if Line.x_plant else '',
                         '16': Line.internal_notes,

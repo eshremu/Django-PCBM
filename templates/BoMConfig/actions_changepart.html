@@ -5,26 +5,27 @@
         <script>$('button[value="changepart"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');</script>
         <form id="headersubform" method="post">
             {% csrf_token %}
-            <label for="part">Part Number to Replace</label>
-            <input id="part" name="part" type="text" value="{{ part }}" required/>
-            <input id="initial" name="initial" type="hidden" value="{{ part }}"/>
-            <button class="btn" type="submit" name="action" value="search">Search</button>
+            <input id="initial" name="initial" type="hidden" value=""/>
+            <table>
+                <tr>
+                    <td><label for="part">Part Number to Replace</label></td>
+                    <td style="padding-left: 5px;"><input id="part" name="part" type="text" value="{{ part }}" required/></td>
+                    <td style="padding: 0 0 5px 5px;"><button class="btn" type="button" name="action" value="search" onclick="submitForm(this)">Search</button></td>
+                </tr>
+                <tr style="display: none;" class="replace_row">
+                    <td><label for="replace_part">Replacement Part Number</label></td>
+                    <td style="padding-left: 5px;"><input id="replace_part" name="replace_part" type="text" value="{{ part }}"/></td>
+                    <td style="padding-left: 5px;"><button class="btn" type="button" name="action" value="replace" onclick="submitForm(this)">Replace</button></td>
+                </tr>
+            </table>
         </form>
-
-        <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
-
-        <div id="formbuttons">
-            {% if partlines.0 %}
-            <button id="cancelForm" class="btn" name="action" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>
-            <button id="saveForm" class="btn" type="submit" name="action" form="headersubform" value="save">Save</button>
-            {% endif %}
-            {% if status_message %}
-            <span id="statuses" style="color:red; font-size:20px; font-weight: bold; padding-left:50px;">
-                {{ status_message }}
-            </span>
-            <script>
-                setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
-            </script>
-            {% endif %}
+        <div class="messageblock" style="display: none;">
         </div>
+
+        <div id="table-wrapper"></div>
+
+        <script type="text/javascript" src="{% static 'BoMConfig/js/actions_changepart.js' %}"></script>
+        <script>
+            var change_url = "{% url 'bomconfig:action_changepart_post' %}";
+        </script>
 {% endblock %}

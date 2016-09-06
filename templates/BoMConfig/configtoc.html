@@ -237,7 +237,7 @@
                     return cellProperties;
                 }
             });
-            clean_form = hot.getSourceData();
+            clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
             $('[name="data_form"]').remove();
             clean_sub = $('#tocform').serialize();
         }

@@ -178,7 +178,7 @@
                     return cellProperties;
                 }
             });
-            clean_form = hot.getSourceData();
+            clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
         }
 
         function load_table() {

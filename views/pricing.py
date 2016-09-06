@@ -256,7 +256,7 @@ def ConfigPricing(oRequest):
             aConfigLines = [{
                 '0': oLine.line_number,
                 '1': ('..' if oLine.is_grandchild else '.' if oLine.is_child else '') + oLine.part.base.product_number,
-                '2': str(oLine.part.base.product_number) + str('_'+ oLine.spud if oLine.spud else ''),
+                '2': str(oLine.part.base.product_number) + str('_'+ oLine.spud.name if oLine.spud else ''),
                 '3': oLine.part.product_description,
                 '4': float(oLine.order_qty if oLine.order_qty else 0),
                 '5': float(GrabValue(oLine,'linepricing.pricing_object.unit_price', 0)),

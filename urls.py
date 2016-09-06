@@ -25,6 +25,7 @@ urlpatterns = patterns(
     url(r'^actions/active/$', views.Action, {'type':'active'}, name='action_active'),
     url(r'^actions/hold/$', views.Action, {'type':'hold'}, name='action_hold'),
     url(r'^actions/changepart/$', views.Action, {'type': 'changepart'}, name='action_changepart'),
+    url(r'^actions/changepart/post/$', views.ChangePart, name='action_changepart_post'),
     url(r'^login/$', views.Login, name='login'),
     url(r'^validate/$', views.Validator, name='validator'),
     url(r'^download/$', views.Download, name='download'),
