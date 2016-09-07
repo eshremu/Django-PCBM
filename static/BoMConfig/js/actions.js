@@ -194,6 +194,10 @@ $(document).ready(function(){
         }
     });
 
+    $('#messageModal').on('hidden.bs.modal', function(){
+        $('.modal_submit.btn.btn-primary').removeAttr('disabled');
+    });
+
     function processForms(){
         if (returnedFormData == null){
 

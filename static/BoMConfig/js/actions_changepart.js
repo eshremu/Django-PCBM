@@ -31,6 +31,7 @@ function submitForm(submitter){
                 if(data['type']=='search') {
                     $('#initial').val(data['part']);
                     $('.replace_row').css('display', '');
+                    $('#info_div').css('display', '');
                     var table = $('<table>');
                     var row = $('<tr>');
                     $('<th>').appendTo(row);
@@ -40,17 +41,26 @@ function submitForm(submitter){
                     $('<th>').text('Program').appendTo(row);
                     $('<th>').css('width', '25px').appendTo(row);
                     $('<th>').text('Status').appendTo(row);
+                    $('<th>').css('width', '25px').appendTo(row);
+                    $('<th>').text('Status').appendTo(row);
                     table.append($('<thead>').append(row));
 
                     for (obj in data['records']) {
                         row = $('<tr>');
-                        $('<td>').append($('<input>').attr('type', 'checkbox').addClass('replacement').data('id', data['records'][obj]['id'])).appendTo(row);
+                        $('<td>').append($('<input>').attr('type', 'checkbox').addClass('replacement').data('id',
+                            data['records'][obj]['id']).attr('disabled', !data['records'][obj]['selectable'])).appendTo(row);
                         $('<td>').appendTo(row);
-                        $('<td>').text(data['records'][obj]['configuration_designation']).appendTo(row);
+                        if(data['records'][obj]['selectable']) {
+                            $('<td>').text(data['records'][obj]['configuration_designation']).appendTo(row);
+                        } else {
+                            $('<td>').html(data['records'][obj]['configuration_designation'] + '<span style="color:red;font-size:14pt;">*</span>').appendTo(row);
+                        }
                         $('<td>').appendTo(row);
                         $('<td>').text(data['records'][obj]['program']).appendTo(row);
                         $('<td>').appendTo(row);
                         $('<td>').text(data['records'][obj]['status']).appendTo(row);
+                        $('<td>').appendTo(row);
+                        $('<td>').text(data['records'][obj]['baseline']).appendTo(row);
 
                         table.append(row);
                     }
@@ -62,25 +72,27 @@ function submitForm(submitter){
                     $('#part').val('');
                     $('#initial').val('');
                     $('.replace_row').css('display', 'none').val('');
+                    $('#info_div').css('display', 'none');
 
                     $('.messageblock').empty();
-                    $('.messageblock').addClass('successblock').append($('<p>').text(data['status']));
+                    $('.messageblock').removeClass('successblock errorblock').addClass('successblock').append($('<p>').text(data['status']));
                     $('.messageblock').css('display','');
                 }
             } else {
                 if(data['type']=='search') {
                     $('#table-wrapper').empty();
+                    $('#info_div').css('display', 'none');
                 }
 
                 $('.messageblock').empty();
-                $('.messageblock').addClass('errorblock').append($('<p>').text(data['status']));
+                $('.messageblock').removeClass('successblock errorblock').addClass('errorblock').append($('<p>').text(data['status']));
                 $('.messageblock').css('display','');
             }
             $('#myModal').modal('hide');
         },
         error: function(){
             $('#myModal').modal('hide');
-            console.log('Error returned from change call');
+            messageToModal('Error Occurred','A network error occurred while processing your request.<br/>If this continues, contact a tool administrator for assistance.')
         }
     });
     return false;

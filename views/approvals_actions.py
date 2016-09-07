@@ -471,18 +471,59 @@ def ChangePart(oRequest):
                 try:
                     oPart = PartBase.objects.get(product_number=sPart)
                     aLines = ConfigLine.objects.filter(part__base=oPart,
-                                                       config__header__configuration_status__name__in=['Active', 'In Process', 'In Process/Pending'])
-                    aLines = [oLine.config.header for oLine in aLines]
+                                                       config__header__configuration_status__name='In Process')
 
-                    if not aLines:
+                    # Create list of tuple representing configuration name, program, baseline, object, is_changeable)
+                    aHeaders = [(oLine.config.header.configuration_designation, oLine.config.header.program,
+                                 oLine.config.header.baseline_impacted, oLine.config.header, True) for oLine in aLines]
+
+                    # In-Process/Pending records are not changeable, since they are pending approval
+                    aLines = ConfigLine.objects.filter(part__base=oPart,
+                                                       config__header__configuration_status__name='In Process/Pending')
+
+                    aHeaders.extend([(oLine.config.header.configuration_designation, oLine.config.header.program,
+                                 oLine.config.header.baseline_impacted, oLine.config.header, False) for oLine in aLines])
+
+                    # Active records are only changeable if no in-process copy exists (and therefore can be cloned)
+                    aLines = ConfigLine.objects.filter(part__base=oPart,
+                                                       config__header__configuration_status__name='Active')
+                    for oLine in aLines:
+                        # If in-process copy exists
+                        if Header.objects.filter(configuration_designation=oLine.config.header.configuration_designation,
+                                                 program=oLine.config.header.program,
+                                                 baseline_impacted=oLine.config.header.baseline_impacted,
+                                                 configuration_status__name__in=['In Process', 'In Process/Pending']):
+                            oObj = Header.objects.filter(
+                                configuration_designation=oLine.config.header.configuration_designation,
+                                program=oLine.config.header.program,
+                                baseline_impacted=oLine.config.header.baseline_impacted,
+                                configuration_status__name__in=['In Process', 'In Process/Pending']).first()
+
+                            # If in-process copy is already in list of records, skip the record
+                            if (oLine.config.header.configuration_designation, oLine.config.header.program, oLine.config.header.baseline_impacted, oObj, False) in aHeaders or\
+                                (oLine.config.header.configuration_designation, oLine.config.header.program,
+                                 oLine.config.header.baseline_impacted, oObj, True) in aHeaders:
+                                pass
+                            else:
+                                aHeaders.append((oLine.config.header.configuration_designation, oLine.config.header.program, oLine.config.header.baseline_impacted, oLine.config.header, False))
+                        else:
+                            aHeaders.append((oLine.config.header.configuration_designation,
+                                             oLine.config.header.program, oLine.config.header.baseline_impacted,
+                                             oLine.config.header, True))
+
+                    if not aHeaders:
                         dResponse['error'] = True
                         dResponse['status'] = 'No records containing part'
                     else:
+                        aHeaders = list(set(aHeaders))
+                        aHeaders.sort(key=lambda x:(x[0], x[1].name if x[1] else '', x[2]))
                         dResponse['error'] = False
-                        dResponse['records'] = [{'id': oLine.id,
-                                                 'configuration_designation': oLine.configuration_designation,
-                                                 'program': oLine.program.name,
-                                                 'status': oLine.configuration_status.name} for oLine in aLines]
+                        dResponse['records'] = [{'id': tHeader[3].id,
+                                                 'configuration_designation': tHeader[0],
+                                                 'program': tHeader[1].name if tHeader[1] else '(None)',
+                                                 'baseline': tHeader[2] or '(None)',
+                                                 'status': tHeader[3].configuration_status.name,
+                                                 'selectable': tHeader[4]} for tHeader in aHeaders]
                         dResponse['part'] = sPart
                 except PartBase.DoesNotExist:
                     dResponse['error'] = True
@@ -502,84 +543,91 @@ def ChangePart(oRequest):
             aRecords = json.loads(oRequest.POST.get('records'))
 
             if sReplacePart:
-                if aRecords:
-                    for id in aRecords:
-                        oHeader = Header.objects.get(id=id)
-                        print(oHeader)
-                        if oHeader.configuration_status.name != 'In Process':
-                            print('Clone header')
-                            # TODO: Determine if name should be changed
-                            # oNewHeader = CloneHeader(oHeader)
-                            # oNewHeader.bom_request_type = REF_REQUEST.objects.get(name='Update')
-                            # oNewHeader.model_replaced = ''
-                            # oNewHeader.model_replaced_link = oHeader
-                            # oNewHeader.save()
-                            # oHeader = oNewHeader
+                if sReplacePart != sPart:
+                    if aRecords:
+                        for id in aRecords:
+                            oHeader = Header.objects.get(id=id)
+                            # print(oHeader)
+                            if oHeader.configuration_status.name != 'In Process':
+                                # print('Clone header')
+                                oNewHeader = CloneHeader(oHeader)
+                                oNewHeader.configuration_designation = oHeader.configuration_designation
+                                oNewHeader.bom_request_type = REF_REQUEST.objects.get(name='Update')
+                                oNewHeader.model_replaced = ''
+                                oNewHeader.model_replaced_link = oHeader
+                                oNewHeader.save()
+                                oHeader = oNewHeader
 
-                        print('Get or create replacement part')
-                        # (oReplacementBase, _) = PartBase.objects.get_or_create(product_number=sReplacePart, defaults={'unit_of_measure':'PC'})
-                        # try:
-                        #     (oReplacement, _) = Part.objects.get_or_create(base=oReplacementBase)
-                        # except Part.MultipleObjectsReturned:
-                        #     oReplacement = Part.objects.filter(base=oReplacementBase).first()
+                            # print('Get or create replacement part')
+                            (oReplacementBase, _) = PartBase.objects.get_or_create(product_number=sReplacePart, defaults={'unit_of_measure':'PC'})
+                            try:
+                                (oReplacement, _) = Part.objects.get_or_create(base=oReplacementBase)
+                            except Part.MultipleObjectsReturned:
+                                oReplacement = Part.objects.filter(base=oReplacementBase).first()
 
-                        for oLine in oHeader.configuration.configline_set.filter(part__base__product_number=sPart):
-                            print(oLine)
-                            print('Change', sPart, 'to', sReplacePart)
-                            # oLine.part = oReplacement
-                            print('Update LinePricing object for new part')
-                            # oLinePrice = None
-                            # try:
-                            #     oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                            #                                            # part=oReplacementBase,
-                            #                                            is_current_active=True,
-                            #                                            sold_to=oHeader.sold_to_party,
-                            #                                            spud=oLine.spud)
-                            # except PricingObject.DoesNotExist:
-                            #     try:
-                            #         oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                            #                                                # part=oReplacementBase,
-                            #                                                is_current_active=True,
-                            #                                                sold_to=oHeader.sold_to_party,
-                            #                                                spud=None)
-                            #     except PricingObject.DoesNotExist:
-                            #         try:
-                            #             oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                            #                                                    # part=oReplacementBase,
-                            #                                                    is_current_active=True,
-                            #                                                    sold_to=None,
-                            #                                                    spud=None)
-                            #         except PricingObject.DoesNotExist:
-                            #             pass
-                            #
-                            # oLine.linepricing.pricing_object = oLinePrice
-                            print('Update customer part number for new part')
-                            # try:
-                            #     oCustInfo = CustomerPartInfo.objects.get(active=True, part=oReplacementBase, customer=oHeader.customer_unit)
-                            #     oLine.customer_number = oCustInfo.customer_number
-                            #     oLine.sec_customer_number = oCustInfo.second_customer_number
-                            #     oLine.customer_asset_tagging = 'Y' if oCustInfo.customer_asset_tagging else 'N' if oCustInfo.customer_asset_tagging is False else ''
-                            #     oLine.customer_asset = 'Y' if oCustInfo.customer_asset else 'N' if oCustInfo.customer_asset is False else ''
-                            # except CustomerPartInfo.DoesNotExist:
-                            #     oLine.customer_number = None
-                            #     oLine.sec_customer_number = None
-                            #     oLine.customer_asset_tagging = None
-                            #     oLine.customer_asset = None
+                            for oLine in oHeader.configuration.configline_set.filter(part__base__product_number=sPart):
+                                # print(oLine)
+                                # print('Change', sPart, 'to', sReplacePart)
+                                oLine.part = oReplacement
+                                # print('Update LinePricing object for new part')
+                                oLinePrice = None
+                                try:
+                                    oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
+                                                                           part=oReplacementBase,
+                                                                           is_current_active=True,
+                                                                           sold_to=oHeader.sold_to_party,
+                                                                           spud=oLine.spud)
+                                except PricingObject.DoesNotExist:
+                                    try:
+                                        oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
+                                                                               part=oReplacementBase,
+                                                                               is_current_active=True,
+                                                                               sold_to=oHeader.sold_to_party,
+                                                                               spud=None)
+                                    except PricingObject.DoesNotExist:
+                                        try:
+                                            oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
+                                                                                   part=oReplacementBase,
+                                                                                   is_current_active=True,
+                                                                                   sold_to=None,
+                                                                                   spud=None)
+                                        except PricingObject.DoesNotExist:
+                                            pass
 
-                            # oLine.save()
+                                oLine.linepricing.pricing_object = oLinePrice
+                                # print('Update customer part number for new part')
+                                try:
+                                    oCustInfo = CustomerPartInfo.objects.get(active=True, part=oReplacementBase, customer=oHeader.customer_unit)
+                                    oLine.customer_number = oCustInfo.customer_number
+                                    oLine.sec_customer_number = oCustInfo.second_customer_number
+                                    oLine.customer_asset_tagging = 'Y' if oCustInfo.customer_asset_tagging else 'N' if oCustInfo.customer_asset_tagging is False else ''
+                                    oLine.customer_asset = 'Y' if oCustInfo.customer_asset else 'N' if oCustInfo.customer_asset is False else ''
+                                except CustomerPartInfo.DoesNotExist:
+                                    oLine.customer_number = None
+                                    oLine.sec_customer_number = None
+                                    oLine.customer_asset_tagging = None
+                                    oLine.customer_asset = None
+
+                                oLine.save()
+                            # end for
                         # end for
-                    # end for
 
-                    dResponse['error'] = False
-                    dResponse['status'] = 'Part number successfully replaced'
+                        dResponse['error'] = False
+                        dResponse['status'] = 'Part number successfully replaced'
 
+                    else:
+                        dResponse['error'] = True
+                        dResponse['status'] = 'No records selected for replacement'
+                    # end if
                 else:
                     dResponse['error'] = True
-                    dResponse['status'] = 'No records selected for replacement'
+                    dResponse['status'] = 'Replacement part is the same as the searched part'
+                # end if
 
             else:
                 dResponse['error'] = True
                 dResponse['status'] = 'No replacement part'
+            # end if
 
         # end if
 
