@@ -775,7 +775,7 @@ def HeaderComparison(oHead, oPrev):
     for oConfigLine in oPrev.configuration.configline_set.all():
         dPrevious[(oConfigLine.part.base.product_number, oConfigLine.line_number)] = [
             oConfigLine.order_qty,
-            oConfigLine.linepricing.override_price or GrabValue(oConfigLine,
+            GrabValue(oConfigLine, 'linepricing.override_price') or GrabValue(oConfigLine,
                                                                 'linepricing.pricing_object.unit_price') or None,
             (
                 oHead.configuration.configline_set.get(
