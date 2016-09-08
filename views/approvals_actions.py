@@ -125,10 +125,9 @@ def AjaxApprove(oRequest):
         if 'destinations' in oRequest.POST:
             aDestinations = [record for record in json.loads(oRequest.POST.get('destinations', None))]
 
+        dEmailRecipients = {}
         if sAction == 'send_to_approve':
             dApprovalData = json.loads(oRequest.POST.get('approval'))
-
-            dEmailRecipients = {}
 
             for iRecord in aRecords:
                 oHeader = Header.objects.get(pk=iRecord)
@@ -173,33 +172,16 @@ def AjaxApprove(oRequest):
                     sNextLevel = oLatestTracker.next_approval
                     for sRecip in list(set(getattr(oLatestTracker, sNextLevel + '_notify').split(';'))):
                         if sRecip not in dEmailRecipients:
-                            dEmailRecipients[sRecip] = {}
+                            dEmailRecipients[sRecip] = {'submit': {}}
 
-                        if sNextLevel and sNextLevel not in dEmailRecipients[sRecip].keys():
-                            dEmailRecipients[sRecip][sNextLevel] = []
+                        if sNextLevel and sNextLevel not in dEmailRecipients[sRecip]['submit'].keys():
+                            dEmailRecipients[sRecip]['submit'][sNextLevel] = []
 
-                        dEmailRecipients[sRecip][sNextLevel].append(oLatestTracker)
+                        dEmailRecipients[sRecip]['submit'][sNextLevel].append(oLatestTracker)
 
                 oHeader.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
                 oHeader.save()
             # end for
-
-            for key in dEmailRecipients.keys():
-                for level in dEmailRecipients[key]:
-                    oMessage = EmailMultiAlternatives(subject=level.upper().replace('_',' ') + ' Review & Approval',
-                                                      body='',
-                                                      from_email='pcbm.admin@ericsson.com',
-                                                      to=[key],
-                                                      cc=[oRequest.user.email],
-                                                      headers={'Reply-To':oRequest.user.email}
-                                                      )
-                    oMessage.attach_alternative(loader.render_to_string(
-                        'BoMConfig/approval_submit_email.html',{'submitter': oRequest.user.get_full_name(),
-                                                                'records': dEmailRecipients[key][level],
-                                                                'recipient': User.objects.filter(email=key).first().first_name if User.objects.filter(email=key) else key
-                                                                }
-                    ),'text/html')
-                    oMessage.send()
 
         elif sAction in ('approve', 'disapprove', 'skip'):
             from BoMConfig.views.download import EmailDownload
@@ -220,7 +202,6 @@ def AjaxApprove(oRequest):
 
                 # If so, approve, disapprove, or skip as requested
                 if bCanApprove:
-                    dEmailRecipients = {}
                     if sAction == 'approve':
                         setattr(oLatestTracker, sNeededLevel+'_approver', oRequest.user.username)
                         setattr(oLatestTracker, sNeededLevel+'_approved_on', timezone.now())
@@ -325,32 +306,6 @@ def AjaxApprove(oRequest):
                         setattr(oLatestTracker, sNeededLevel+'_approved_on', timezone.datetime(1900,1,1))
                     oLatestTracker.save()
 
-                    for key in dEmailRecipients.keys():
-                        for approval in dEmailRecipients[key]:
-                            for level in dEmailRecipients[key][approval]:
-                                oMessage = EmailMultiAlternatives(
-                                    subject=level.upper().replace('_', ' ') + ' Review & Approval',
-                                    body='',
-                                    from_email='pcbm.admin@ericsson.com',
-                                    to=[key],
-                                    cc=[oRequest.user.email],
-                                    headers={'Reply-To': oRequest.user.email}
-                                    )
-                                oMessage.attach_alternative(loader.render_to_string(
-                                    'BoMConfig/approval_approve_email.html' if approval == 'approve' else
-                                        'BoMConfig/approval_disapprove_email.html' if level != 'psm_config' else
-                                        'BoMConfig/approval_resubmit_email.html',
-                                    {'submitter': oRequest.user.get_full_name(),
-                                     'records': dEmailRecipients[key][approval][level],
-                                     'recipient': User.objects.filter(email=key).first().first_name if User.objects.filter(email=key) else key,
-                                     'level': level,
-                                     }
-                                ), 'text/html')
-                                oMessage.send()
-                            # end for
-                        # end for
-                    # end for
-
                     if sNeededLevel == 'brd' and sAction == 'approve':
                         oLatestTracker.completed_on = timezone.now()
                         oLatestTracker.save()
@@ -395,6 +350,32 @@ def AjaxApprove(oRequest):
                 oHeader.configuration.save()
             #end for
         # end if
+
+        for key in dEmailRecipients.keys():
+            for approval in dEmailRecipients[key]:
+                for level in dEmailRecipients[key][approval]:
+                    oMessage = EmailMultiAlternatives(
+                        subject=level.upper().replace('_', ' ') + ' Review & Approval',
+                        body='',
+                        from_email='pcbm.admin@ericsson.com',
+                        to=[key],
+                        cc=[oRequest.user.email],
+                        headers={'Reply-To': oRequest.user.email}
+                    )
+                    oMessage.attach_alternative(loader.render_to_string(
+                        'BoMConfig/approval_approve_email.html',
+                        {'submitter': oRequest.user.get_full_name(),
+                         'records': dEmailRecipients[key][approval][level],
+                         'recipient': User.objects.filter(email=key).first().first_name if User.objects.filter(
+                             email=key) else key,
+                         'level': level,
+                         'action': approval
+                         }
+                    ), 'text/html')
+                    oMessage.send()
+                # end for
+            # end for
+        # end for
 
         return HttpResponse()
     else:
