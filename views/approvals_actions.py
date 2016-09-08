@@ -5,6 +5,7 @@ from django.http import HttpResponse, Http404, JsonResponse
 from django.core.urlresolvers import reverse
 from django.template import Template, Context, loader
 from django.core.mail import send_mail, EmailMultiAlternatives
+from django.db import transaction
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
     HeaderTimeTracker, REF_STATUS, ApprovalList
@@ -106,6 +107,7 @@ def ApprovalData(oRequest):
         raise Http404()
 
 
+@transaction.atomic
 def AjaxApprove(oRequest):
     if oRequest.method == 'POST' and oRequest.POST:
         if oRequest.POST.get('action', None) not in ('approve', 'disapprove', 'skip', 'clone', 'delete', 'send_to_approve', 'hold', 'unhold', 'cancel'):
@@ -119,6 +121,8 @@ def AjaxApprove(oRequest):
 
         if sAction == 'send_to_approve':
             dApprovalData = json.loads(oRequest.POST.get('approval'))
+
+            dEmailRecipients = {}
 
             for iRecord in aRecords:
                 oHeader = Header.objects.get(pk=iRecord)
@@ -159,24 +163,38 @@ def AjaxApprove(oRequest):
 
                 oLatestTracker.save()
 
-                if oLatestTracker.scm1_notify:
-                    # send_mail(
-                    #     recipient_list=list(set(oLatestTracker.scm1_notify.split(';'))),
-                    #     subject='A configuration requires your attention',
-                    #     message='The configuration has been submitted for approval by ' + oRequest.user.get_full_name() + " and requires your attention.",
-                    #     from_email='pcbm.admin@ericsson.com',
-                    #     html_message=None
-                    # )
-                    EmailMultiAlternatives(
-                        subject='A configuration requires your attention',
-                        body='The configuration has been submitted for approval by ' + oRequest.user.get_full_name() + " and requires your attention.",
-                        from_email='pcbm.admin@ericsson.com',
-                        to=list(set(oLatestTracker.scm1_notify.split(';'))),
-                        cc=[oRequest.user.email]
-                    ).send()
+                if hasattr(oLatestTracker, oLatestTracker.next_approval + '_notify'):
+                    sNextLevel = oLatestTracker.next_approval
+                    for sRecip in list(set(getattr(oLatestTracker, sNextLevel + '_notify').split(';'))):
+                        if sRecip not in dEmailRecipients:
+                            dEmailRecipients[sRecip] = {}
+
+                        if sNextLevel and sNextLevel not in dEmailRecipients[sRecip].keys():
+                            dEmailRecipients[sRecip][sNextLevel] = []
+
+                        dEmailRecipients[sRecip][sNextLevel].append(oLatestTracker)
 
                 oHeader.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
                 oHeader.save()
+            # end for
+
+            for key in dEmailRecipients.keys():
+                for level in dEmailRecipients[key]:
+                    oMessage = EmailMultiAlternatives(subject=level.upper().replace('_',' ') + ' Review & Approval',
+                                                      body='',
+                                                      from_email='pcbm.admin@ericsson.com',
+                                                      to=[key],
+                                                      cc=[oRequest.user.email],
+                                                      headers={'Reply-To':oRequest.user.email}
+                                                      )
+                    oMessage.attach_alternative(loader.render_to_string(
+                        'BoMConfig/approval_submit_email.html',{'submitter': oRequest.user.get_full_name(),
+                                                                'records': dEmailRecipients[key][level],
+                                                                'recipient': User.objects.filter(email=key).first().first_name if User.objects.filter(email=key) else key
+                                                                }
+                    ),'text/html')
+                    oMessage.send()
+
         elif sAction in ('approve', 'disapprove', 'skip'):
             from BoMConfig.views.download import EmailDownload
             aChain = HeaderTimeTracker.approvals()
@@ -185,18 +203,7 @@ def AjaxApprove(oRequest):
                 oHeader = Header.objects.get(pk=aRecords[index])
                 oLatestTracker = oHeader.headertimetracker_set.order_by('-submitted_for_approval')[0]
 
-                sNeededLevel = None
-                # Find earliest empty approval slot, and see if user has approval permission for that slot
-                for level in aChain:
-                    if getattr(oLatestTracker, level+'_denied_approval', None) is not None:
-                        break
-                    # end if
-
-                    if getattr(oLatestTracker, level+'_approver','no attr') in (None, ''):
-                        sNeededLevel = level
-                        break
-                    # end if
-                # end for
+                sNeededLevel = oLatestTracker.next_approval
 
                 aNames = HeaderTimeTracker.permission_entry(sNeededLevel)
                 try:
@@ -207,6 +214,7 @@ def AjaxApprove(oRequest):
 
                 # If so, approve, disapprove, or skip as requested
                 if bCanApprove:
+                    dEmailRecipients = {}
                     if sAction == 'approve':
                         setattr(oLatestTracker, sNeededLevel+'_approver', oRequest.user.username)
                         setattr(oLatestTracker, sNeededLevel+'_approved_on', timezone.now())
@@ -216,29 +224,24 @@ def AjaxApprove(oRequest):
                         if aDestinations[index]:
                             aRecipients.append(User.objects.get(id=aDestinations[index]).email)
 
-                        if aChain.index(sNeededLevel) < len(aChain)-1:
-                            sNotifyLevel = aChain[aChain.index(sNeededLevel)+1]
-                            if sNotifyLevel != 'brd':
-                                if hasattr(oLatestTracker, sNotifyLevel + '_notify') and getattr(oLatestTracker, sNotifyLevel + '_notify', None):
-                                    aRecipients.extend(getattr(oLatestTracker, sNotifyLevel + '_notify').split(";"))
-                            else:
-                                aRecipients.extend([user.email for user in User.objects.filter(groups__name="BOM_PSM_Baseline_Manager")])
+                        sNotifyLevel = oLatestTracker.next_approval
+                        if sNotifyLevel != 'brd':
+                            if hasattr(oLatestTracker, sNotifyLevel + '_notify') and getattr(oLatestTracker, sNotifyLevel + '_notify', None):
+                                aRecipients.extend(getattr(oLatestTracker, sNotifyLevel + '_notify').split(";"))
+                        else:
+                            aRecipients.extend([user.email for user in User.objects.filter(groups__name="BOM_PSM_Baseline_Manager")])
 
                         if aRecipients:
-                            # send_mail(
-                            #     recipient_list=list(set(aRecipients)),
-                            #     subject='A configuration requires your attention',
-                            #     message='The configuration has been approved by '+oRequest.user.get_full_name()+' and forwarded for your review.',
-                            #     from_email='pcbm.admin@ericsson.com',
-                            #     html_message=None
-                            # )
-                            EmailMultiAlternatives(
-                                subject='A configuration requires your attention',
-                                body='The configuration has been approved by ' + oRequest.user.get_full_name() + ' and forwarded for your review.',
-                                from_email='pcbm.admin@ericsson.com',
-                                to=list(set(aRecipients)),
-                                cc=[oRequest.user.email]
-                            ).send()
+                            for sRecip in list(set(aRecipients)):
+                                if sRecip not in dEmailRecipients:
+                                    dEmailRecipients[sRecip] = {'approve':{}}
+
+                                if sNotifyLevel and sNotifyLevel not in dEmailRecipients[sRecip]['approve'].keys():
+                                    dEmailRecipients[sRecip]['approve'][sNotifyLevel] = []
+
+                                dEmailRecipients[sRecip]['approve'][sNotifyLevel].append(oLatestTracker)
+
+
                     elif sAction == 'disapprove':
                         setattr(oLatestTracker, sNeededLevel+'_approver', oRequest.user.username)
                         setattr(oLatestTracker, sNeededLevel+'_denied_approval', timezone.now())
@@ -254,20 +257,21 @@ def AjaxApprove(oRequest):
                                                                               })
                             # Copy over approval data for each level before destination level
                             for level in aChain:
-                                sReturnedLevel = level
                                 if level == aDestinations[index]:
-                                    break
+                                    sReturnedLevel = level
                                 # end if
 
-                                setattr(oNewTracker, level+'_approver', getattr(oLatestTracker, level + '_approver', None))
+                                if (aChain.index(level) < aChain.index(aDestinations[index])) or (getattr(oLatestTracker, level + '_approver')=='system'):
+                                    setattr(oNewTracker, level+'_approver', getattr(oLatestTracker, level + '_approver', None))
 
                                 if level == 'psm_config':
                                     continue
                                 # end if
 
-                                setattr(oNewTracker, level+'_denied_approval', getattr(oLatestTracker, level + '_denied_approval', None))
-                                setattr(oNewTracker, level+'_approved_on', getattr(oLatestTracker, level + '_approved_on', None))
-                                setattr(oNewTracker, level+'_comments', getattr(oLatestTracker, level + '_comments', None))
+                                if (aChain.index(level) < aChain.index(aDestinations[index])) or (getattr(oLatestTracker, level + '_approver')=='system'):
+                                    setattr(oNewTracker, level+'_denied_approval', getattr(oLatestTracker, level + '_denied_approval', None))
+                                    setattr(oNewTracker, level+'_approved_on', getattr(oLatestTracker, level + '_approved_on', None))
+                                    setattr(oNewTracker, level+'_comments', getattr(oLatestTracker, level + '_comments', None))
 
                                 if hasattr(oNewTracker, level + "_notify"):
                                     setattr(oNewTracker, level + '_notify', getattr(oLatestTracker, level + '_notify', None))
@@ -288,43 +292,58 @@ def AjaxApprove(oRequest):
                                 if sLastNotify:
                                     aRecipients.extend(sLastNotify.split(";"))
 
-                                # send_mail(
-                                #     recipient_list=list(set(aRecipients)),
-                                #     subject='A configuration has been returned to you',
-                                #     message='A configuration that you may have approved has been disapproved and returned for your attention',
-                                #     from_email='pcbm.admin@ericsson.com',
-                                #     html_message=None
-                                # )
-                                EmailMultiAlternatives(
-                                    subject='A configuration has been returned to you',
-                                    body='A configuration that you may have approved has been disapproved and returned for your attention',
-                                    from_email='pcbm.admin@ericsson.com',
-                                    to=list(set(aRecipients)),
-                                    cc=[oRequest.user.email]
-                                ).send()
+                                for sRecip in list(set(aRecipients)):
+                                    if sRecip not in dEmailRecipients:
+                                        dEmailRecipients[sRecip] = {'disapprove': {}}
+
+                                    if sReturnedLevel and sReturnedLevel not in dEmailRecipients[sRecip]['disapprove'].keys():
+                                        dEmailRecipients[sRecip]['disapprove'][sReturnedLevel] = []
+
+                                    dEmailRecipients[sRecip]['disapprove'][sReturnedLevel].append(oLatestTracker)
 
                         # Else, send header back to 'In Process' status
                         else:
                             oHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
                             oHeader.save()
-                            # User.objects.get(username=oLatestTracker.psm_config_approver).email_user(
-                            #     subject='A configuration has been returned to you',
-                            #     message='A configuration you submitted for approval has been disapproved and returned for your attention',
-                            #     from_email='pcbm.admin@ericsson.com',
-                            #     html_message=None
-                            # )
-                            EmailMultiAlternatives(
-                                subject='A configuration has been returned to you',
-                                body='A configuration you submitted for approval has been disapproved and returned for your attention',
-                                from_email='pcbm.admin@ericsson.com',
-                                to=(User.objects.get(username=oLatestTracker.psm_config_approver).email,),
-                                cc=[oRequest.user.email]
-                            ).send()
+
+                            if User.objects.get(username=oLatestTracker.psm_config_approver).email not in dEmailRecipients:
+                                dEmailRecipients[User.objects.get(username=oLatestTracker.psm_config_approver).email]={'disapprove':{}}
+
+                            if 'psm_config' not in dEmailRecipients[User.objects.get(username=oLatestTracker.psm_config_approver).email]['disapprove'].keys():
+                                dEmailRecipients[User.objects.get(username=oLatestTracker.psm_config_approver).email]['disapprove']['psm_config'] = []
+
+                            dEmailRecipients[User.objects.get(username=oLatestTracker.psm_config_approver).email]['disapprove']['psm_config'].append(oLatestTracker)
                         # end if
                     elif sAction == 'skip' and sNeededLevel != 'brd':
                         setattr(oLatestTracker, sNeededLevel+'_approver', oRequest.user.username)
                         setattr(oLatestTracker, sNeededLevel+'_approved_on', timezone.datetime(1900,1,1))
                     oLatestTracker.save()
+
+                    for key in dEmailRecipients.keys():
+                        for approval in dEmailRecipients[key]:
+                            for level in dEmailRecipients[key][approval]:
+                                oMessage = EmailMultiAlternatives(
+                                    subject=level.upper().replace('_', ' ') + ' Review & Approval',
+                                    body='',
+                                    from_email='pcbm.admin@ericsson.com',
+                                    to=[key],
+                                    cc=[oRequest.user.email],
+                                    headers={'Reply-To': oRequest.user.email}
+                                    )
+                                oMessage.attach_alternative(loader.render_to_string(
+                                    'BoMConfig/approval_approve_email.html' if approval == 'approve' else
+                                        'BoMConfig/approval_disapprove_email.html' if level != 'psm_config' else
+                                        'BoMConfig/approval_resubmit_email.html',
+                                    {'submitter': oRequest.user.get_full_name(),
+                                     'records': dEmailRecipients[key][approval][level],
+                                     'recipient': User.objects.filter(email=key).first().first_name if User.objects.filter(email=key) else key,
+                                     'level': level,
+                                     }
+                                ), 'text/html')
+                                oMessage.send()
+                            # end for
+                        # end for
+                    # end for
 
                     if sNeededLevel == 'brd' and sAction == 'approve':
                         oLatestTracker.completed_on = timezone.now()

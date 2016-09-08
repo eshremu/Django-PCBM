@@ -781,6 +781,38 @@ class HeaderTimeTracker(models.Model):
     def version(self):
         return self.header.baseline_version
 
+    @property
+    def next_approval(self):
+        if not self.completed_on and not self.disapproved_on:
+            for level in self.__class__.approvals():
+                if not getattr(self, level + '_approver'):
+                    return level
+        else:
+            return None
+
+    @property
+    def last_approval_comment(self):
+        if not self.disapproved_on:
+            levels = self.__class__.approvals()
+            levels.reverse()
+            for level in levels:
+                if getattr(self, level + '_approved_on') and getattr(self, level + '_approved_on').strftime(
+                        '%Y-%m-%d') != timezone.datetime(1900, 1, 1).strftime('%Y-%m-%d'):
+                    return getattr(self, level + '_comments')
+        else:
+            return None
+
+    @property
+    def last_disapproval_comment(self):
+        if self.disapproved_on:
+            levels = self.__class__.approvals()
+            levels.reverse()
+            for level in levels:
+                if getattr(self, level + '_denied_approval'):
+                    return getattr(self, level + '_comments')
+        else:
+            return None
+
     @classmethod
     def approvals(cls):
         return ['psm_config', 'scm1', 'scm2', 'csr', 'cpm', 'acr', 'blm', 'cust1', 'cust2', 'cust_whse', 'evar', 'brd']
