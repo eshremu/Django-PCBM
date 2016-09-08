@@ -461,13 +461,17 @@ class RollbackError(Exception):
 
 
 def TestRollbackBaseline(oBaseline):
+    oCurrentActive = oBaseline.latest_revision
+
+    if oCurrentActive is None:
+        raise RollbackError('No previous revision exists')
+
     try:
         oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
                             oHead.headertimetracker_set.all() if oTrack.completed_on])
     except ValueError:
         raise RollbackError('No release date could be determined')
 
-    oCurrentActive = oBaseline.latest_revision
     oCurrentInprocess = Baseline_Revision.objects.get(baseline=oBaseline, version=oBaseline.current_inprocess_version)
 
     aRemainingHeaders = []
