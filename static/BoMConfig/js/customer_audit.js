@@ -75,7 +75,7 @@ var inputTable = new Handsontable(document.getElementById('input-table'),{
                     resultsDisplay(returned_data);
                 },
                 error: function(xhr, status, error){
-                    console.log(xhr, status, error);
+                    console.log("ERROR: ", status, error);
                 }
             });
         }

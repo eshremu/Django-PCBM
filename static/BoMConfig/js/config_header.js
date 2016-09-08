@@ -306,7 +306,7 @@ function req_search(){
                         }, 1000);
                 }
             },
-            error: function(){
+            error: function(xhr, status, error){
                 $('#myModal').modal('hide');
             }
         });
@@ -338,8 +338,9 @@ function cloneHeader(headerId){
             }
             $('#myModal').modal('hide');
         },
-        error: function(){
-            messageToModal('Unknown error', 'An error occurred during cloning.  If this issue persists, contact a tool admin.');
+        error: function(xhr, status, error){
+            messageToModal('Unknown error', 'The following error occurred during cloning.<br/>' +
+                status + ": " + error + '<br/>If this issue persists, contact a tool admin.');
             $('#myModal').modal('hide');
         }
     });
