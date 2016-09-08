@@ -97,3 +97,17 @@ function submitForm(submitter){
     });
     return false;
 }
+
+$(document).ready(function(){
+    $('#part').keydown(function(e){
+       if (e.keyCode == 13){
+           $('button[value="search"]').click();
+       }
+    });
+
+    $('#replace_part').keydown(function(e){
+       if (e.keyCode == 13){
+           $('button[value="replace"]').click();
+       }
+    });
+});

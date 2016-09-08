@@ -7,6 +7,7 @@ from django.template import Template, Context, loader
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.shortcuts import redirect
 from django.db import transaction
+from django.db.models import Q
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
     HeaderTimeTracker, REF_STATUS, ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject
@@ -487,17 +488,20 @@ def ChangePart(oRequest):
                     # Active records are only changeable if no in-process copy exists (and therefore can be cloned)
                     aLines = ConfigLine.objects.filter(part__base=oPart,
                                                        config__header__configuration_status__name='Active')
+
+                    oInProc = Q(configuration_status__name__in=['In Process', 'In Process/Pending'])
+                    oHoldInProc = Q(old_configuration_status__name__in=['In Process', 'In Process/Pending'])
                     for oLine in aLines:
                         # If in-process copy exists
-                        if Header.objects.filter(configuration_designation=oLine.config.header.configuration_designation,
+                        if Header.objects.filter(oInProc|oHoldInProc,
+                                                 configuration_designation=oLine.config.header.configuration_designation,
                                                  program=oLine.config.header.program,
-                                                 baseline_impacted=oLine.config.header.baseline_impacted,
-                                                 configuration_status__name__in=['In Process', 'In Process/Pending']):
+                                                 baseline_impacted=oLine.config.header.baseline_impacted):
                             oObj = Header.objects.filter(
+                                oInProc | oHoldInProc,
                                 configuration_designation=oLine.config.header.configuration_designation,
                                 program=oLine.config.header.program,
-                                baseline_impacted=oLine.config.header.baseline_impacted,
-                                configuration_status__name__in=['In Process', 'In Process/Pending']).first()
+                                baseline_impacted=oLine.config.header.baseline_impacted).first()
 
                             # If in-process copy is already in list of records, skip the record
                             if (oLine.config.header.configuration_designation, oLine.config.header.program, oLine.config.header.baseline_impacted, oObj, False) in aHeaders or\
@@ -540,6 +544,12 @@ def ChangePart(oRequest):
             sReplacePart = oRequest.POST.get('replacement')
             sReplacePart = sReplacePart.upper().strip()
 
+            try:
+                int(sReplacePart)
+                sReplacePart += '/'
+            except ValueError:
+                pass
+
             aRecords = json.loads(oRequest.POST.get('records'))
 
             if sReplacePart:
@@ -569,6 +579,7 @@ def ChangePart(oRequest):
                                 # print(oLine)
                                 # print('Change', sPart, 'to', sReplacePart)
                                 oLine.part = oReplacement
+                                oLine.vendor_article_number = sReplacePart.strip('./')
                                 # print('Update LinePricing object for new part')
                                 oLinePrice = None
                                 try:

@@ -1304,7 +1304,7 @@ def Validator(oRequest):
                 elif oMPNCustMap:
                     form_data[index]['25'] = 'Y' if oMPNCustMap.customer_asset_tagging else 'N' if oMPNCustMap.customer_asset_tagging is False else ''
                 # end if
-                if '24' in form_data[index] and form_data[index]['24'] in ('N', 'NO') and form_data[index]['25'] in ('Y', 'YES'):
+                if '24' in form_data[index] and form_data[index]['24'] in ('N', 'NO') and '25' in form_data[index] and form_data[index]['25'] in ('Y', 'YES'):
                     error_matrix[index][25] += 'X - Cannot mark Customer Asset Tagging when part is not Customer Asset.\n'
 
                 # Customer Number
