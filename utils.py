@@ -604,7 +604,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
             else:
                 aPrevButNotCurrent.append(obj)
             # end if
-        except Header.DoesNotExist:
+        except (Header.DoesNotExist, Baseline_Revision.DoesNotExist):
             aCurrButNotPrev.append(oHead)
         # end try
 
@@ -641,10 +641,11 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                  if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
             )
         else:
-            # If a matching header exists in previous revision and the Header has a time tracker without a completed
-            # date or disapproved date, but is not In-Process, then the Header must have been carried forward from a
-            # previous revision, and therefore is not ACTUALLY New / Added
-            if Baseline_Revision.objects.get(baseline=oBaseline, version=sPrevious).header_set \
+            # If a previous revision exists and a matching header exists in previous revision and the Header has a
+            # time tracker without a completed date or disapproved date, but is not In-Process, then the Header must
+            # have been carried forward from a previous revision, and therefore is not ACTUALLY New / Added
+            if Baseline_Revision.objects.filter(baseline=oBaseline, version=sPrevious) and \
+                    Baseline_Revision.objects.get(baseline=oBaseline, version=sPrevious).header_set \
                     .filter(configuration_designation=oHead.configuration_designation, program=oHead.program) and \
                     not oHead.configuration_status.name == 'In Process/Pending' and \
                     oHead.headertimetracker_set.filter(completed_on=None, disapproved_on=None):
