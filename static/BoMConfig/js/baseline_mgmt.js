@@ -91,8 +91,9 @@ function rollbackTest(){
                 messageToModal('Unable to rollback baseline', errorMessage);
             }
         },
-        error: function(){
-            messageToModal('Unknown error', 'An error occurred while checking rollback.  If this issue persists, contact a tool admin.');
+        error: function(xhr, status, error){
+            messageToModal('Unknown error', 'The following error occurred while checking rollback.<br/>' + 
+                status + ": " + error + '<br/>If this issue persists, contact a tool admin.');
             $('#myModal').modal('hide');
         }
     });
@@ -130,8 +131,9 @@ function rollbackModal(){
                         }
                         $('#myModal').modal('hide');
                     },
-                    error: function(){
-                        messageToModal('Unknown error', 'An error occurred during rollback.  If this issue persists, contact a tool admin.');
+                    error: function(xhr, status, error){
+                        messageToModal('Unknown error', 'The following error occurred during rollback.<br/>' +
+                            status + ": " + error + '<br/>If this issue persists, contact a tool admin.');
                         $('#myModal').modal('hide');
                     }
                 });

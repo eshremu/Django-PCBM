@@ -62,9 +62,9 @@ function process(action){
                 });
                 $('#myModal').modal('hide');
             },
-            error: function(){
+            error: function(xhr, status, error){
                 $('#myModal').modal('hide');
-                console.log('Error returned from list call');
+                console.log('Error returned from list call', status, error);
             }
         });
     } else {
@@ -85,9 +85,10 @@ function process(action){
                     location.reload(true);
                 }
             },
-            error: function(){
+            error: function(xhr, status, error){
                 $('#myModal').modal('hide');
-                messageToModal('Submission Error','An error occurred during submission.  Please try again or contact a tool admin.', function(){});
+                messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                    status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
             }
         });
     }
@@ -224,9 +225,10 @@ $(document).ready(function(){
                     // approvalFormData = {};
                     // $('#myModal').modal('hide');
                 },
-                error: function(){
+                error: function(xhr, status, error){
                     $('#myModal').modal('hide');
-                    messageToModal('Submission Error','An error occurred during record submission.  If the error continues, contact a tool admin.', function(){});
+                    messageToModal('Submission Error','The following error occurred during record submission.<br/>' +
+                        status + ": " + error + '<br/>If the error continues, contact a tool admin.', function(){});
                 }
             });
         } else {
