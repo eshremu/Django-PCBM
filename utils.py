@@ -475,7 +475,7 @@ def TestRollbackBaseline(oBaseline):
 
     for oHead in oCurrentActive.header_set.all():
         if any([oTrack for oTrack in oHead.headertimetracker_set.all() if
-                abs(oTrack.created_on - oReleaseDate) < datetime.timedelta(minutes=1)]):
+                abs(oTrack.created_on - oReleaseDate) > datetime.timedelta(minutes=1)]):
             aRemainingHeaders.append(oHead)
 
     for oHead in aRemainingHeaders:
