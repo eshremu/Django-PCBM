@@ -232,7 +232,7 @@ def AjaxApprove(oRequest):
 
                         sNotifyLevel = oLatestTracker.next_approval
                         if sNotifyLevel != 'brd':
-                            if hasattr(oLatestTracker, sNotifyLevel + '_notify') and getattr(oLatestTracker, sNotifyLevel + '_notify', None):
+                            if hasattr(oLatestTracker, str(sNotifyLevel) + '_notify') and getattr(oLatestTracker, str(sNotifyLevel) + '_notify', None):
                                 aRecipients.extend(getattr(oLatestTracker, sNotifyLevel + '_notify').split(";"))
                         else:
                             aRecipients.extend([user.email for user in User.objects.filter(groups__name="BOM_PSM_Baseline_Manager")])

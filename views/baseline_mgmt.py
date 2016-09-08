@@ -132,8 +132,11 @@ def BaselineRollbackTest(oRequest):
                 sTemp += '<li>{}{}</li>'.format(oHead.configuration_designation, " (" + oHead.program.name + ")" if oHead.program else '')
             sTemp += '</ul>'
             dResult['errors'].append(sTemp)
-    except RollbackError:
-        dResult['errors'].append("<p>Active revision was not released via the PCBM tool.</p>")
+    except RollbackError as ex:
+        if 'release date' in str(ex):
+            dResult['errors'].append("<p>Active revision was not released via the PCBM tool.</p>")
+        elif 'previous revision' in str(ex):
+            dResult['errors'].append("<p>No previous revision exists in the PCBM tool.</p>")
 
     return JsonResponse(dResult)
 # end def
