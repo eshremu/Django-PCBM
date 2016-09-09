@@ -121,7 +121,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 if not oExisting or 'configuration_status' not in oRequest.POST:
                     oModPost = QueryDict(None, mutable=True)
                     oModPost.update(oRequest.POST)
-                    oModPost.update({'configuration_status': '1'})
+                    oModPost.update({'configuration_status': 1})
                     headerForm = HeaderForm(oModPost, instance=oExisting, readonly=not bCanWriteHeader, browser=DetectBrowser(oRequest))
                 else:
                     headerForm = HeaderForm(oRequest.POST, instance=oExisting, readonly=not bCanWriteHeader, browser=DetectBrowser(oRequest))
