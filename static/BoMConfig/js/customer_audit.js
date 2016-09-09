@@ -18,7 +18,7 @@ var inputTable = new Handsontable(document.getElementById('input-table'),{
     beforeChange: function(changes, source){
         for (var i=0; i < changes.length; i++){
             if(typeof changes[i][3] === 'string') {
-                changes[i][3] = changes[i][3].toUpperCase();
+                changes[i][3] = $.trim(changes[i][3].toUpperCase());
             }
             if(changes[i][1] == 2 || changes[i][1] == 3){
                 if([null, ''].indexOf(changes[i][3]) == -1){
