@@ -37,7 +37,7 @@ def Approval(oRequest):
                     'Customer #1','Customer #2','Customer Warehouse','Ericsson VAR','Baseline Release & Dist.'],
         'viewauthorized': SecurityPermission.objects.filter(title__iregex='^.*Approval.*$').filter(user__in=oRequest.user.groups.all()),
         'skip_authorized': SecurityPermission.objects.filter(title__iexact='BLM_Approval_Write').filter(user__in=oRequest.user.groups.all()),
-        'notify_users': set(User.objects.filter(groups__name__startswith='BOM_').exclude(groups__name__startswith='BOM_BPMA'))
+        'notify_users': {key: set(User.objects.filter(groups__securitypermission__title__in=value).exclude(groups__name__startswith='BOM_BPMA')) for key,value in HeaderTimeTracker.permission_map().items()}
     }
     return Default(oRequest, sTemplate='BoMConfig/approvals.html', dContext=dContext)
 # end def
@@ -217,10 +217,11 @@ def AjaxApprove(oRequest):
                                 if sRecip not in dEmailRecipients:
                                     dEmailRecipients[sRecip] = {'approve':{}}
 
-                                if sNotifyLevel and sNotifyLevel not in dEmailRecipients[sRecip]['approve'].keys():
-                                    dEmailRecipients[sRecip]['approve'][sNotifyLevel] = []
+                                if sNotifyLevel:
+                                    if sNotifyLevel not in dEmailRecipients[sRecip]['approve'].keys():
+                                        dEmailRecipients[sRecip]['approve'][sNotifyLevel] = []
 
-                                dEmailRecipients[sRecip]['approve'][sNotifyLevel].append(oLatestTracker)
+                                    dEmailRecipients[sRecip]['approve'][sNotifyLevel].append(oLatestTracker)
 
 
                     elif sAction == 'disapprove':

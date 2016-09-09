@@ -90,13 +90,17 @@
                         <div data-index="{{ record.pk }}" style="display: none;">
                             <h5 style="font-weight: bold">{{ record.configuration_designation }}</h5>
                             <form class="approve-form">
+                                {% with record.latesttracker.next_approval as next_level %}
+                                {% if next_level != 'brd' %}
                                 <h5>Notify:</h5>
                                 <select data-index="{{ record.pk }}">
                                     <option value="">--------</option>
-                                {% for user in notify_users %}
+                                {% for user in notify_users|getkeyvalue:next_level %}
                                     <option value="{{ user.id }}">{{ user.get_full_name }}</option>
                                 {% endfor %}
                                 </select>
+                                {% endif %}
+                                {% endwith %}
                                 <h5>Comments:</h5>
                                 <textarea rows="2" cols="77" style="resize:none;" data-index="{{ record.pk }}" placeholder="Optional"></textarea>
                             </form>
