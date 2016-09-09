@@ -13,6 +13,7 @@ from openpyxl import utils
 
 import json
 import itertools
+import zipfile
 
 
 def CustomerAuditLand(oRequest):
@@ -218,7 +219,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
 
     try:
         oFile = openpyxl.load_workbook(oStream, read_only=True)
-    except (IOError, utils.exceptions.InvalidFileException):
+    except (IOError, utils.exceptions.InvalidFileException, zipfile.BadZipFile):
         raise TypeError('Invalid file')
 
     for sName in oFile.get_sheet_names():
