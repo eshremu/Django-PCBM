@@ -365,7 +365,6 @@ def AjaxApprove(oRequest):
                 for level in dEmailRecipients[key][approval]:
                     for baseline in dEmailRecipients[key][approval][level]:
                         oMessage = EmailMultiAlternatives(
-                            # subject=level.upper().replace('_', ' ') + ' Review & Approval',
                             subject=(baseline or '(No baseline)') + ' Review & Approval',
                             body=loader.render_to_string(
                                 'BoMConfig/approval_approve_email_plain.txt',
@@ -379,8 +378,11 @@ def AjaxApprove(oRequest):
                             ),
                             from_email='pcbm.admin@ericsson.com',
                             to=[key],
-                            # TODO: make this BCC again
-                            cc=[oRequest.user.email] + [User.objects.get(username=getattr(oRecord, sublevel + '_approver')).email for oRecord in dEmailRecipients[key][approval][level][baseline] for sublevel in aChain[aChain.index(level):aChain.index(oRecord.disapproved_level)]] if approval == 'disapprove' else [],
+                            cc=[oRequest.user.email],
+                            bcc=list(set([User.objects.get(username=getattr(oRecord, sublevel + '_approver')).email
+                                 for oRecord in dEmailRecipients[key][approval][level][baseline]
+                                 for sublevel in aChain[aChain.index(level):aChain.index(oRecord.disapproved_level)]
+                                 ])) if approval == 'disapprove' else [],
                             headers={'Reply-To': oRequest.user.email}
                         )
                         oMessage.attach_alternative(loader.render_to_string(
