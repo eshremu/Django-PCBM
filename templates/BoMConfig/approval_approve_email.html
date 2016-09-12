@@ -25,16 +25,17 @@
     {% if action == 'disapprove' %}<p>NOTE: These configurations were disapproved and have been returned to you for further review.</p>{% endif %}
     <ol>
         {% for record in records %}
-        <li>{{ record.header.configuration_designation }}{% if action == 'approve' %} - {{ record.last_approval_comment }}{% elif action == 'disapprove' %} - {{ record.last_disapproval_comment }}{% endif %} - {{ record.header.react_request }}</li>
+        <li>{{ record.header.configuration_designation }} - {{ record.header.baseline_impacted|default:"<em>(No baseline)</em>" }}{% if action == 'approve' %} - <em>{{ record.last_approval_comment|default:"(No comments)" }}</em>{% elif action == 'disapprove' %} - <em>{{ record.last_disapproval_comment }}</em>{% endif %} - {{ record.header.react_request|default:"<em>(No REACT request)</em>" }}</li>
         {% endfor %}
     </ol>
-    {% if level == 'psm_config' %}
-    <p>To resubmit, check the <em>Configuration(s)</em> box and select "Submit for approval".  The <em>Configuration(s)</em> will be submitted to the respective customer for setup and sign-off.</p>
+
+    <p>To approve, check the <em>Configuration(s)</em> box{% if level == 'psm_config' %} under Actions{% endif %} and select {% if level == 'psm_config' %}"Submit for Approval"{% else %}"Approve"{% endif %}{% if level != 'blm' %}.  The <em>Configuration(s)</em> will be submitted to the next required approver{% else %} if submitting to the customer{% endif %}.{% if level != 'psm_config' %}  If the <em>Configuration(s)</em> requires any changes or updates, "Disapprove" and select the appropriate approval team and include detailed <em>Comments</em>.{% endif %}</p>
+    {% if level == 'scm1' or level == 'scm2' %}
     <p>If the <em>Projected Cut-over Date</em> requires a change, discuss with the PSM CM for change within the tool and document reason and requested date change at time of "Disapprove".</p>
     {% else %}
-    <p>To approve, check the <em>Configuration(s)</em> box and select "Approve".  The <em>Configuration(s)</em> will be submitted to the respective customer for setup and sign-off.  If the <em>Configuration(s)</em> requires any changes or updates, "Disapprove" and select the appropriate approval team and include detailed <em>Comments</em>.</p>
-    <p>If the <em>Projected Cut-over Date</em> requires a change, discuss with the PSM CM for change within the tool and document reason and requested date change at time of "Disapprove".</p>
+    <p>If there are questions, contact the appropriate owner and document {% if level == 'psm_config' %}in the <em>Comments</em> box in the REACT Request{% else %}under issues/concerns in the <em>Comments</em> box at time of "Disapprove"{% endif %}.</p>
     {% endif %}
+
     <ul>
         <li>Contact PSM RBS for BoM and SAP setup questions and requirements @ <a href="mailto:CM RBS %26 M-LINK (EUS)">CM RBS & M-LINK (EUS)</a>.</li>
         <li>Contact CSR for BoM related questions where customer impacts and changes are required.</li>
