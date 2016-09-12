@@ -791,6 +791,15 @@ class HeaderTimeTracker(models.Model):
             return None
 
     @property
+    def disapproved_level(self):
+        if self.disapproved_on:
+            for level in self.__class__.approvals():
+                if hasattr(self, level + '_denied_approval') and getattr(self, level + '_denied_approval'):
+                    return level
+        else:
+            return None
+
+    @property
     def last_approval_comment(self):
         if not self.disapproved_on:
             levels = self.__class__.approvals()
