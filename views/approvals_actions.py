@@ -389,7 +389,7 @@ def AjaxApprove(oRequest):
                             bcc=list(set([User.objects.get(username=getattr(oRecord, sublevel + '_approver')).email
                                  for oRecord in dEmailRecipients[key][approval][level][baseline]
                                  for sublevel in aChain[aChain.index(level):aChain.index(oRecord.disapproved_level)]
-                                 ])) if approval == 'disapprove' else [],
+                                 if getattr(oRecord, sublevel + '_approver') != 'system'])) if approval == 'disapprove' else [],
                             headers={'Reply-To': oRequest.user.email}
                         )
                         oMessage.attach_alternative(loader.render_to_string(
