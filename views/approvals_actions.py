@@ -631,9 +631,16 @@ def ChangePart(oRequest):
                                                                                    part=oReplacementBase,
                                                                                    is_current_active=True,
                                                                                    sold_to=None,
-                                                                                   spud=None)
+                                                                                   spud=oLine.spud)
                                         except PricingObject.DoesNotExist:
-                                            pass
+                                            try:
+                                                oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
+                                                                                       part=oReplacementBase,
+                                                                                       is_current_active=True,
+                                                                                       sold_to=None,
+                                                                                       spud=None)
+                                            except PricingObject.DoesNotExist:
+                                                pass
 
                                 oLine.linepricing.pricing_object = oLinePrice
                                 # print('Update customer part number for new part')

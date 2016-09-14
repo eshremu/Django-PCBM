@@ -78,7 +78,7 @@
         <div id="formbuttons">
             {% if can_previous %}<input id="prevForm" class="btn" type="button" value="Prev">{% endif %}
             <input id="cancelForm" class="btn" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
-            {% if header.configuration_status.name == 'In Process' and config_write_authorized and not frame_readonly %}
+            {% if not active_lock and config_write_authorized and not frame_readonly %}
             <input id="saveexitForm" class="btn" type="button" value="Save & Exit">
             <input id="saveForm" class="btn" type="button" value="Save">
             {% endif %}
@@ -92,7 +92,7 @@
                 setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
             </script>
             {% endif %}
-            {% if header.configuration_status.name == 'In Process' and not frame_readonly %}
+            {% if not active_lock and config_write_authorized and not frame_readonly %}
             <input id="validate" class="btn" type="button" value="Validate" style="margin-left:500px;" title="Validate current input, prefill empty cells, and update totals."/>
             <span style="padding-left: 25px;">Status: </span>
             <span id="status" style="padding-left: 10px;"></span>
@@ -181,33 +181,21 @@
             $('#saveForm').click(function(){
                 if(!validating) {
                     $('#formaction').val('save');
-                    {% if header.configuration_status.name != 'In Process' %}
-                    $('#configform').submit();
-                    {% else %}
-                    data_validate(true);
-                    {% endif %}
+                    submit();
                 }
             });
 
             $('#saveexitForm').click(function(){
                 if(!validating) {
                     $('#formaction').val('saveexit');
-                    {% if header.configuration_status.name != 'In Process' %}
-                    $('#configform').submit();
-                    {% else %}
-                    data_validate(true);
-                    {% endif %}
+                    submit();
                 }
             });
 
             $('#nextForm').click(function(){
                 if(!validating) {
                     $('#formaction').val('next');
-                    {% if header.configuration_status.name != 'In Process' %}
-                    $('#configform').submit();
-                    {% else %}
-                    data_validate(true);
-                    {% endif %}
+                    submit();
                 }
             });
 
@@ -226,6 +214,14 @@
                 data_validate();
             });
         });
+
+        function submit(){
+            {% if header.configuration_status.name != 'In Process' %}
+            $('#configform').submit();
+            {% else %}
+            data_validate(true);
+            {% endif %}
+        }
 
         function floatFormat(number){
             var array = String(number).split('.');
@@ -281,8 +277,10 @@
             if(AttrVis === true && {{ config_attr_read_authorized|lower }}){
                 cols.push({data: 10}, {data: 11}, {data: 12}, {data: 13}, {data: 14}, {data: 15}, {data: 16});
                 headers.push('HW/SW Ind', 'Prod Pkg Type', 'SPUD', 'RE-Code', 'MU-Flag', "X-Plant Mat'l Stat", 'Int Notes');
-                {% if config_attr_write_authorized %}
+                {% if config_attr_write_authorized and header.configuration_status.name == 'In Process' %}
                 readonly.push(9 + offset, 10 + offset);
+                {% elif config_attr_write_authorized %}
+                readonly.push(5 + offset, 6 + offset, 8 + offset, 9 + offset, 10 + offset, 11 + offset);
                 {% else %}
                 readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset, 10 + offset, 11 + offset);
                 {% endif %}
@@ -315,6 +313,8 @@
                 //readonly.push(5 + offset); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
                 {% if not config_cust_write_authorized %}
                 readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset);
+                {% elif config_cust_write_authorized and header.configuration_status != 'In Process' %}
+                readonly.push(5 + offset);
                 {% endif %}
                 offset += 5;
 {#                header += "<th colspan='5'><div class='relative'><span>Customer Data</span></div></th>";#}
@@ -328,6 +328,10 @@
                 headers.push('Vendor Article Number', 'Comments', 'Additional Reference (if required)');
                 {% if not config_baseline_write_authorized %}
                 readonly.push(5 + offset, 6 + offset, 7 + offset);
+                {% elif config_baseline_write_authorized and header.configuration_status != 'In Process' and header.latesttracker.next_approval == 'csr' %}
+                readonly.push(5 + offset, 6 + offset);
+                {% elif config_baseline_write_authorized and header.configuration_status != 'In Process' and header.latesttracker.next_approval == 'blm' %}
+                readonly.push(5 + offset, 7 + offset);
                 {% endif %}
 {#                header += "<th colspan='3'><div class='relative'><span>Baseline</span></div></th>";#}
                 $('#viewbase').css('background-color', '#FFFF4D');
@@ -414,11 +418,8 @@
             var determined_cols = [];
             var headers = [];
             var readonly_columns = [];
-{#            header_html = determineColumns(determined_cols, headers);#}
             determineColumns(determined_cols, headers, readonly_columns);
             var container = document.getElementById('datatable');
-{#            var $container = $('#datatable');#}
-{#            determined_cols.push({renderer: firstRowRenderer})#}
             hot = new Handsontable(container, {
                 data: data,
                 minRows: 1,
@@ -454,7 +455,7 @@
                 cells: function(row, col, prop){
                     var cellProperties = {};
 
-                    if({% if header.configuration_status.name != 'In Process' %}true || {% endif %}{% if not header.pick_list %}(row === 0 && [1,2,4].indexOf(col)!== -1) || {% endif %}readonly_columns.indexOf(col) !== -1){
+                    if('{{ active_lock|lower }}'==='true' || {% if not header.pick_list %}(row === 0 && [1,2,4].indexOf(col)!== -1) || {% endif %}readonly_columns.indexOf(col) !== -1){
                         cellProperties.readOnly = true;
                         if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){//(col == 17 || col == 22) && PriceVis){
                             cellProperties.renderer = moneyRenderer;
@@ -561,17 +562,6 @@
 
             });
             hot.getPlugin('comments').editor.editorStyle.zIndex = "10000";
-{#            hot.validateCells(function(isValid, value, row, prop, source) {#}
-{#                if (!isValid) {#}
-{#                    $('#prevForm').attr('disabled', 'disabled').css('color', 'gray');#}
-{#                    $("#saveexitForm").attr('disabled', 'disabled').css('color', 'gray');#}
-{#                    $("#saveForm").attr('disabled', 'disabled').css('color', 'gray');#}
-{#                    $("#nextForm").attr('disabled', 'disabled').css('color', 'gray');#}
-{#                }#}
-{#            });#}
-{#            hot.getPlugin('manualColumnFreeze').freezeColumn(0);#}
-{#            hot.getPlugin('manualColumnFreeze').freezeColumn(1);#}
-{#            hot.getPlugin('manualColumnFreeze').freezeColumn(2);#}
             if(firstLoad) {
                 clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
                 $('[name="data_form"]').remove();
@@ -602,7 +592,8 @@
                 url: "{% url 'bomconfig:validator' %}",
 {#                async: false,#}
                 data: {
-                    entered_data: JSON.stringify(hot.getSourceData(), function(key, value){return value;})
+                    entered_data: JSON.stringify(hot.getSourceData(), function(key, value){return value;}),
+                    writeable: {{ config_write_authorized|lower }}
                 },
                 headers:{
                     'X-CSRFToken': getcookie('csrftoken')

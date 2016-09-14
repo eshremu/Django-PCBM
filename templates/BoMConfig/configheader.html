@@ -50,7 +50,7 @@
         </div>
         <div id="formbuttons">
             <input id="cancelForm" class="btn" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close();{% else %}window.location.href='{% url 'bomconfig:index' %}';{% endif %}"/>
-            {% if headerForm.instance.configuration_status.name == 'In Process' and header_write_authorized and not frame_readonly %}
+            {% if header_write_authorized and not frame_readonly %}
             <input id="saveexitForm" class="btn" type="button" value="Save & Exit"/>
             <input id="saveForm" class="btn" type="button" value="Save"/>
             {% endif %}
@@ -82,7 +82,6 @@
     input[type="number"]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{
         -webkit-appearance: none;
         -moz-appearance: none;
-        appearance: none;
         margin:0;
     }
     input[type="number"] {

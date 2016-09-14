@@ -4,7 +4,7 @@ from django.utils.safestring import mark_safe
 from django.contrib.auth.models import User, Group
 from django.contrib.admin.widgets import FilteredSelectMultiple
 
-from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject,\
+from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, PricingObject,\
     DistroList, SecurityPermission, HeaderTimeTracker, ApprovalList
 
 import datetime
@@ -34,8 +34,10 @@ class HeaderForm(forms.ModelForm):
         self.fields['react_request'].widget.attrs['size'] = 25
         self.fields['model_description'].widget.attrs['size'] = 45
 
-        if (hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name != 'In Process') or bReadOnly:
+        if bReadOnly or (hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name != 'In Process'):
             for field in self.fields.keys():
+                if not bReadOnly and hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name == 'In Process/Pending' and field == 'projected_cutover':
+                    continue
                 self.fields[field].widget.attrs['readonly'] = 'True'
                 self.fields[field].widget.attrs['style'] = 'border:none;'
                 if self.initial:
@@ -44,7 +46,7 @@ class HeaderForm(forms.ModelForm):
 
                 if isinstance(self.fields[field].widget, (forms.widgets.Select, forms.widgets.CheckboxInput)):
                     self.fields[field].widget.attrs['disabled'] = 'True'
-                    if isinstance(self.fields[field].widget, (forms.widgets.Select)):
+                    if isinstance(self.fields[field].widget, forms.widgets.Select):
                         self.fields[field].widget.attrs['style'] += '-webkit-appearance:none;'
             # end for
         else:

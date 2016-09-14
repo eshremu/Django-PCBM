@@ -11,8 +11,8 @@ from django.utils import timezone
 
 from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
     PartBase, Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, SecurityPermission,\
-    REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_STATUS,\
-    REF_REQUEST, PricingObject, CustomerPartInfo
+    REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD,\
+    REF_REQUEST, PricingObject, CustomerPartInfo, HeaderTimeTracker
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException
 from BoMConfig.views.approvals_actions import CloneHeader
@@ -70,30 +70,28 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
     # existing_instance is the existing header. Store the pk in the form to return for saving
     # Status message allows another view to redirect to here with an error message explaining the redirect
 
-    bFrameReadOnly = oRequest.GET.get('readonly', None) == '1'
-    iFrameID = oRequest.GET.get('id', None)
-
-    bCanReadHeader = bool(SecurityPermission.objects.filter(title='Config_Header_Read').filter(user__in=oRequest.user.groups.all()))
-    if bFrameReadOnly:
-        bCanWriteHeader = False
-    else:
-        bCanWriteHeader = bool(SecurityPermission.objects.filter(title='Config_Header_Write').filter(user__in=oRequest.user.groups.all()))
-    bSuccess = False
-
-    # Determine which pages to which the user is able to move forward
-    bCanReadConfig = bool(SecurityPermission.objects.filter(title='Config_Entry_BOM_Read').filter(user__in=oRequest.user.groups.all()))
-    bCanReadTOC = bool(SecurityPermission.objects.filter(title='Config_ToC_Read').filter(user__in=oRequest.user.groups.all()))
-    bCanReadRevision = bool(SecurityPermission.objects.filter(title='Config_Revision_Read').filter(user__in=oRequest.user.groups.all()))
-    bCanReadInquiry = bool(SecurityPermission.objects.filter(title='SAP_Inquiry_Creation_Read').filter(user__in=oRequest.user.groups.all()))
-    bCanReadSiteTemplate = bool(SecurityPermission.objects.filter(title='SAP_ST_Creation_Read').filter(user__in=oRequest.user.groups.all()))
-
-    bCanMoveForward = bCanReadConfig or bCanReadTOC or bCanReadRevision or bCanReadInquiry or bCanReadSiteTemplate
-
-    bDiscontinuationAlreadyCreated = False
-
     if sTemplate == 'BoMConfig/entrylanding.html':
         return redirect(reverse('bomconfig:configheader'))
     else:
+        bFrameReadOnly = oRequest.GET.get('readonly', None) == '1'
+        iFrameID = oRequest.GET.get('id', None)
+
+        bCanReadHeader = bool(SecurityPermission.objects.filter(title='Config_Header_Read').filter(user__in=oRequest.user.groups.all()))
+        bCanWriteHeader = False
+
+        bSuccess = False
+
+        # Determine which pages to which the user is able to move forward
+        bCanReadConfig = bool(SecurityPermission.objects.filter(title='Config_Entry_BOM_Read').filter(user__in=oRequest.user.groups.all()))
+        bCanReadTOC = bool(SecurityPermission.objects.filter(title='Config_ToC_Read').filter(user__in=oRequest.user.groups.all()))
+        bCanReadRevision = bool(SecurityPermission.objects.filter(title='Config_Revision_Read').filter(user__in=oRequest.user.groups.all()))
+        bCanReadInquiry = bool(SecurityPermission.objects.filter(title='SAP_Inquiry_Creation_Read').filter(user__in=oRequest.user.groups.all()))
+        bCanReadSiteTemplate = bool(SecurityPermission.objects.filter(title='SAP_ST_Creation_Read').filter(user__in=oRequest.user.groups.all()))
+
+        bCanMoveForward = bCanReadConfig or bCanReadTOC or bCanReadRevision or bCanReadInquiry or bCanReadSiteTemplate
+
+        bDiscontinuationAlreadyCreated = False
+
         if bFrameReadOnly:
             oExisting = iFrameID
         else:
@@ -117,6 +115,18 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                                          ) else False
             # end if
 
+            if bFrameReadOnly:
+                bCanWriteHeader = False
+            else:
+                bCanWriteHeader = bool(SecurityPermission.objects.filter(title='Config_Header_Write').filter(user__in=oRequest.user.groups.all())) \
+                                  and (not oExisting or
+                                       (oExisting and
+                                        (oExisting.configuration_status.name == 'In Process' or
+                                         (oExisting.configuration_status.name == 'In Process/Pending' and
+                                          bool(oRequest.user.groups.filter(securitypermission__title__in=HeaderTimeTracker.permission_entry(oExisting.latesttracker.next_approval))) and
+                                          oExisting.latesttracker.next_approval in ['scm1', 'scm2']
+                                          ))))
+
             if oRequest.method == 'POST' and oRequest.POST:
                 if not oExisting or 'configuration_status' not in oRequest.POST:
                     oModPost = QueryDict(None, mutable=True)
@@ -136,7 +146,8 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 # end if
 
                 if headerForm.is_valid():
-                    if headerForm.cleaned_data['configuration_status'] == REF_STATUS.objects.get(name='In Process'):
+                    # if headerForm.cleaned_data['configuration_status'] == REF_STATUS.objects.get(name='In Process'):
+                    if headerForm.cleaned_data['configuration_status'].name in ('In Process','In Process/Pending'):
                         try:
                             if bCanWriteHeader:
                                 oHeader = headerForm.save(commit=False)
@@ -221,7 +232,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 
 
                             bSuccess = True
-                        except IntegrityError as ex:
+                        except IntegrityError:
                             status_message = 'Configuration already exists in Baseline'
                         # end try
                     else:
@@ -290,7 +301,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',[bytes(oExisting.customer_unit.name, 'ascii') if oExisting else None])
             tResults = oCursor.fetchall()
             headerForm.fields['customer_name'].widget = forms.widgets.Select(choices=(('','---------'),) + tuple((obj,obj) for obj in chain.from_iterable(tResults)))
-
+        print(bCanWriteHeader)
         dContext={
             'header': oExisting,
             'headerForm': headerForm,
@@ -304,7 +315,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             'non_clonable': ['In Process', 'In Process/Pending'],
             'discontinuation_done': int(bDiscontinuationAlreadyCreated)
         }
-
+        print(bCanWriteHeader, dContext['header_write_authorized'], sTemplate)
         return Default(oRequest, sTemplate, dContext)
 # end def
 
@@ -318,6 +329,27 @@ def AddConfig(oRequest):
     else:
         oHeader = oRequest.session.get('existing', None)
 
+    try:
+        if oHeader:
+            if not bFrameReadOnly:
+                Lock(oRequest, oHeader)
+            oHeader = Header.objects.get(pk=oHeader)
+        else:
+            oRequest.session['status'] = 'Define header first'
+            return redirect(reverse('bomconfig:configheader'))
+            # end if
+    except LockException:
+        oRequest.session['status'] = 'File locked for editing'
+        return redirect(reverse('bomconfig:configheader'))
+    # end try
+
+    if status_message:
+        del oRequest.session['status']
+    # end if
+
+    bActive = oHeader.configuration_status.name not in ('In Process','In Process/Pending')
+    bPending = oHeader.configuration_status.name in ('In Process/Pending',)
+
     bCanReadConfigBOM = bool(SecurityPermission.objects.filter(title='Config_Entry_BOM_Read').filter(user__in=oRequest.user.groups.all()))
     bCanReadConfigSAP = bool(SecurityPermission.objects.filter(title='Config_Entry_SAPDoc_Read').filter(user__in=oRequest.user.groups.all()))
     bCanReadConfigAttr = bool(SecurityPermission.objects.filter(title='Config_Entry_Attributes_Read').filter(user__in=oRequest.user.groups.all()))
@@ -325,15 +357,24 @@ def AddConfig(oRequest):
     bCanReadConfigCust = bool(SecurityPermission.objects.filter(title='Config_Entry_CustomerData_Read').filter(user__in=oRequest.user.groups.all()))
     bCanReadConfigBaseline = bool(SecurityPermission.objects.filter(title='Config_Entry_Baseline_Read').filter(user__in=oRequest.user.groups.all()))
 
+    sNeededLevel = oHeader.latesttracker.next_approval
+    bApprovalPermission = bool(oRequest.user.groups.filter(securitypermission__title__in=HeaderTimeTracker.permission_entry(sNeededLevel)))
+
     if bFrameReadOnly:
         bCanWriteConfigBOM = bCanWriteConfigSAP = bCanWriteConfigAttr = bCanWriteConfigPrice = bCanWriteConfigCust = bCanWriteConfigBaseline = False
     else:
-        bCanWriteConfigBOM = bool(SecurityPermission.objects.filter(title='Config_Entry_BOM_Write').filter(user__in=oRequest.user.groups.all()))
-        bCanWriteConfigSAP = bool(SecurityPermission.objects.filter(title='Config_Entry_SAPDoc_Write').filter(user__in=oRequest.user.groups.all()))
-        bCanWriteConfigAttr = bool(SecurityPermission.objects.filter(title='Config_Entry_Attributes_Write').filter(user__in=oRequest.user.groups.all()))
-        bCanWriteConfigPrice = bool(SecurityPermission.objects.filter(title='Config_Entry_PriceLinks_Write').filter(user__in=oRequest.user.groups.all()))
-        bCanWriteConfigCust = bool(SecurityPermission.objects.filter(title='Config_Entry_CustomerData_Write').filter(user__in=oRequest.user.groups.all()))
-        bCanWriteConfigBaseline = bool(SecurityPermission.objects.filter(title='Config_Entry_Baseline_Write').filter(user__in=oRequest.user.groups.all()))
+        bCanWriteConfigBOM = bool(SecurityPermission.objects.filter(title='Config_Entry_BOM_Write').filter(user__in=oRequest.user.groups.all())) \
+            and (not bPending or (bApprovalPermission and sNeededLevel is None))
+        bCanWriteConfigSAP = bool(SecurityPermission.objects.filter(title='Config_Entry_SAPDoc_Write').filter(user__in=oRequest.user.groups.all())) \
+            and (not bPending or (bApprovalPermission and sNeededLevel is None))
+        bCanWriteConfigAttr = bool(SecurityPermission.objects.filter(title='Config_Entry_Attributes_Write').filter(user__in=oRequest.user.groups.all())) \
+            and (not bPending or (bApprovalPermission and sNeededLevel == 'cpm'))
+        bCanWriteConfigPrice = bool(SecurityPermission.objects.filter(title='Config_Entry_PriceLinks_Write').filter(user__in=oRequest.user.groups.all())) \
+            and (not bPending or (bApprovalPermission and sNeededLevel is None))
+        bCanWriteConfigCust = bool(SecurityPermission.objects.filter(title='Config_Entry_CustomerData_Write').filter(user__in=oRequest.user.groups.all())) \
+            and (not bPending or (bApprovalPermission and sNeededLevel == 'cust1'))
+        bCanWriteConfigBaseline = bool(SecurityPermission.objects.filter(title='Config_Entry_Baseline_Write').filter(user__in=oRequest.user.groups.all())) \
+            and (not bPending or (bApprovalPermission and sNeededLevel in ('blm', 'csr')))
 
     # Determine which pages to which the user is able to move forward
     bCanReadHeader = bool(SecurityPermission.objects.filter(title='Config_Header_Read').filter(user__in=oRequest.user.groups.all()))
@@ -348,24 +389,6 @@ def AddConfig(oRequest):
     bCanReadConfig = bCanReadConfigBOM or bCanReadConfigSAP or bCanReadConfigAttr or bCanReadConfigPrice or bCanReadConfigCust or bCanReadConfigBaseline
     bCanWriteConfig = bCanWriteConfigBOM or bCanWriteConfigSAP or bCanWriteConfigAttr or bCanWriteConfigPrice or bCanWriteConfigCust or bCanWriteConfigBaseline
 
-    try:
-        if oHeader:
-            if not bFrameReadOnly:
-                Lock(oRequest, oHeader)
-            oHeader = Header.objects.get(pk=oHeader)
-        else:
-            oRequest.session['status'] = 'Define header first'
-            return redirect(reverse('bomconfig:configheader'))
-        # end if
-    except LockException:
-        oRequest.session['status'] = 'File locked for editing'
-        return redirect(reverse('bomconfig:configheader'))
-    # end try
-
-    if status_message:
-        del oRequest.session['status']
-    # end if
-
     if oRequest.method == 'POST' and oRequest.POST:
         configForm = ConfigForm(oRequest.POST, instance=oHeader.configuration if oHeader and hasattr(oHeader, 'configuration') else None)
         if configForm.is_valid():
@@ -376,7 +399,7 @@ def AddConfig(oRequest):
                 # end if
                 oConfig.save()
 
-                if oHeader.configuration_status.name == 'In Process':
+                if oHeader.configuration_status.name in ('In Process', 'In Process/Pending'):
                     oForm = json.loads(oRequest.POST['data_form'])
                     # Clean empty rows out and remove previous row statuses
                     for index in range(len(oForm) - 1, -1, -1):
@@ -398,7 +421,7 @@ def AddConfig(oRequest):
                         # end if
                     # end for
 
-                    aExistingConfigLines = list(ConfigLine.objects.filter(config=oConfig))
+                    # aExistingConfigLines = list(ConfigLine.objects.filter(config=oConfig))
                     oUpdateDate = timezone.now()
 
                     for dConfigLine in oForm:
@@ -472,11 +495,20 @@ def AddConfig(oRequest):
                                         part=oConfigLine.part.base,
                                         customer=oConfigLine.config.header.customer_unit,
                                         sold_to=None,
-                                        spud=None,
+                                        spud=oConfigLine.spud,
                                         is_current_active=True
                                     )
                                 except PricingObject.DoesNotExist:
-                                    pass
+                                    try:
+                                        oPriceObj = PricingObject.objects.get(
+                                            part=oConfigLine.part.base,
+                                            customer=oConfigLine.config.header.customer_unit,
+                                            sold_to=None,
+                                            spud=None,
+                                            is_current_active=True
+                                        )
+                                    except PricingObject.DoesNotExist:
+                                        pass
                         oPrice.pricing_object = oPriceObj
                         oPrice.save()
 
@@ -562,7 +594,8 @@ def AddConfig(oRequest):
         'product_pkg_list': [obj.name for obj in REF_PRODUCT_PKG.objects.all()],
         'spud_list': [obj.name for obj in REF_SPUD.objects.all()],
         'base_template': 'BoMConfig/frame_template.html' if bFrameReadOnly else 'BoMConfig/template.html',
-        'frame_readonly': bFrameReadOnly
+        'frame_readonly': bFrameReadOnly,
+        'active_lock': bActive
     }
     return Default(oRequest, sTemplate='BoMConfig/configuration.html', dContext=dContext)
 # end def
@@ -1063,10 +1096,11 @@ def Validator(oRequest):
     if oRequest.method == "POST" and oRequest.POST:
         form_data = json.loads(oRequest.POST['entered_data'])
         oHead = Header.objects.get(pk=oRequest.session['existing'])
+        bCanWriteConfig = oRequest.POST['writeable']
         net_total = 0
         override_total = 0
         base_total = None
-        first_line = None
+        # first_line = None
         zpru_total = 0
         needs_zpru = False
         status = 'GOOD'
@@ -1249,12 +1283,12 @@ def Validator(oRequest):
                     form_data[index]['23'] = form_data[index]['23'].upper()
             # end if
 
-            if oHead.configuration_status.name == 'In Process':
+            if oHead.configuration_status.name == 'In Process' or (bCanWriteConfig and oHead.configuration_status.name == 'In Process/Pending'):
                 try:
                     oMPNCustMap = CustomerPartInfo.objects.get(part__product_number=form_data[index]['2'].strip('. '),
                                                                customer=oHead.customer_unit,
                                                                active=True)
-                except (CustomerPartInfo.DoesNotExist):
+                except CustomerPartInfo.DoesNotExist:
                     oMPNCustMap = None
                 # end try
 
@@ -1346,7 +1380,7 @@ def Validator(oRequest):
                             '[P Code] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s', [bytes(form_data[index]['2'].strip('.'), 'ascii') if form_data[index]['2'] else None])
             tPartData = oCursor.fetchall()
             if tPartData:
-                if Header.objects.get(pk=oRequest.session['existing']).configuration_status.name == 'In Process':
+                if oHead.configuration_status.name == 'In Process':
                     if '3' not in form_data[index] or form_data[index]['3'] in ('None', None, ''):
                         form_data[index]['3'] = tPartData[0][0] if tPartData[0][0] not in (None, 'NONE', 'None') else ''
                     if '14' not in form_data[index] or form_data[index]['14'] in ('None', None, ''):
@@ -1549,7 +1583,7 @@ def ListFill(oRequest):
     else:
         raise Http404
     # end if
-#end def
+# end def
 
 
 def ListREACTFill(oRequest):
@@ -1561,14 +1595,15 @@ def ListREACTFill(oRequest):
         oParent = cParentClass.objects.get(pk=iParentID)
 
         oCursor = connections['REACT'].cursor()
-        oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',[bytes(oParent.name, 'ascii')])
+        oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',
+                        [bytes(oParent.name, 'ascii')])
         tResults = oCursor.fetchall()
         result = {obj: obj for obj in chain.from_iterable(tResults)}
         return JsonResponse(result)
     else:
         raise Http404
     # end if
-#end def
+# end def
 
 
 def Clone(oRequest):
@@ -1587,7 +1622,8 @@ def Clone(oRequest):
         match = re.search(r"'dbo\.BoMConfig_(.+?)'", str(ex))
         if match:
             if match.group(1).lower() == 'header':
-                dResult['errors'].append('Duplicate Configuration already exists. (Ensure that previous clones have been renamed)')
+                dResult['errors'].append('Duplicate Configuration already exists. '
+                                         '(Ensure that previous clones have been renamed)')
         else:
             dResult['errors'].append('Undetermined database error')
     except Exception as ex:

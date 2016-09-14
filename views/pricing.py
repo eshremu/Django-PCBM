@@ -1,5 +1,3 @@
-from django.http import JsonResponse, Http404
-from django.shortcuts import redirect
 from BoMConfig.models import Header, Configuration, ConfigLine, PartBase, LinePricing, REF_CUSTOMER,\
     SecurityPermission, REF_SPUD, PricingObject
 from BoMConfig.views.landing import Unlock, Default
@@ -78,19 +76,38 @@ def PartPricing(oRequest):
                                 oCurrentPriceObj.save()
 
                             try:
-                                PricingObject.objects.create(part=PartBase.objects.get(product_number__iexact=aRowToSave[0] or oRequest.POST.get('initial', None)),
-                                                             customer=REF_CUSTOMER.objects.get(name=aRowToSave[1]),
-                                                             sold_to=aRowToSave[2] if aRowToSave[2] not in ('(None)', None, '', 'null') else None,
-                                                             spud=REF_SPUD.objects.get(name=aRowToSave[3]) if aRowToSave[3] not in ('(None)', '', None, 'null') else None,
-                                                             is_current_active=True,
-                                                             unit_price=aRowToSave[4],
-                                                             valid_to_date=datetime.datetime.strptime(aRowToSave[5], '%m/%d/%Y').date() if aRowToSave[5] else None,
-                                                             valid_from_date=datetime.datetime.strptime(aRowToSave[6], '%m/%d/%Y').date() if aRowToSave[6] else None,
-                                                             cutover_date=datetime.datetime.strptime(aRowToSave[7], '%m/%d/%Y').date() if aRowToSave[7] else None,
-                                                             price_erosion=eval(aRowToSave[8]) if aRowToSave[8] else False,
-                                                             erosion_rate=float(aRowToSave[9]) if aRowToSave[9] else None,
-                                                             comments=aRowToSave[10],
-                                                             previous_pricing_object=oCurrentPriceObj)
+                                oNewPriceObj = PricingObject.objects.create(part=PartBase.objects.get(product_number__iexact=aRowToSave[0] or oRequest.POST.get('initial', None)),
+                                                                            customer=REF_CUSTOMER.objects.get(name=aRowToSave[1]),
+                                                                            sold_to=aRowToSave[2] if aRowToSave[2] not in ('(None)', None, '', 'null') else None,
+                                                                            spud=REF_SPUD.objects.get(name=aRowToSave[3]) if aRowToSave[3] not in ('(None)', '', None, 'null') else None,
+                                                                            is_current_active=True,
+                                                                            unit_price=aRowToSave[4],
+                                                                            valid_to_date=datetime.datetime.strptime(aRowToSave[5], '%m/%d/%Y').date() if aRowToSave[5] else None,
+                                                                            valid_from_date=datetime.datetime.strptime(aRowToSave[6], '%m/%d/%Y').date() if aRowToSave[6] else None,
+                                                                            cutover_date=datetime.datetime.strptime(aRowToSave[7], '%m/%d/%Y').date() if aRowToSave[7] else None,
+                                                                            price_erosion=eval(aRowToSave[8]) if aRowToSave[8] else False,
+                                                                            erosion_rate=float(aRowToSave[9]) if aRowToSave[9] else None,
+                                                                            comments=aRowToSave[10],
+                                                                            previous_pricing_object=oCurrentPriceObj)
+
+                                # TODO: Update in-process records or in-process/pending records that are at cpm level(?)
+                                for oConfigLine in ConfigLine.objects.filter(
+                                        config__header__configuration_status__name__in=('In Process','In Process/Pending'),
+                                        part__base=PartBase.objects.get(product_number__iexact=aRowToSave[0] or oRequest.POST.get('initial', None)),
+                                        config__header__customer_unit=REF_CUSTOMER.objects.get(name=aRowToSave[1]),
+                                        config__header__sold_to_party=aRowToSave[2] if aRowToSave[2] not in ('(None)', None, '', 'null') else None,
+                                        spud=REF_SPUD.objects.get(name=aRowToSave[3]) if aRowToSave[3] not in ('(None)', '', None, 'null') else None):
+
+                                    if oConfigLine.config.header.configuration_status.name != 'In Process' and\
+                                                    oConfigLine.config.header.latesttracker.next_approval != 'cpm':
+                                        continue
+
+                                    if not hasattr(oConfigLine, 'linepricing'):
+                                        LinePricing.objects.create({'config_line': oConfigLine})
+
+                                    oLinePrice = oConfigLine.linepricing
+                                    oLinePrice.pricing_object = oNewPriceObj
+                                    oLinePrice.save()
                             except Exception as ex:
                                 status_message = "ERROR: " + str(ex)
 
@@ -148,7 +165,7 @@ def ConfigPricing(oRequest):
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
-        except:
+        except Header.DoesNotExist:
             pass
         # end try
 
@@ -174,9 +191,9 @@ def ConfigPricing(oRequest):
             iBaseline = None
 
         aConfigMatches = Header.objects.filter(configuration_designation__iexact=sConfig)#, configuration_status__name__startswith='In Process')
-        if iProgram:
+        if iProgram and iProgram not in ('None', 'NONE'):
             aConfigMatches = aConfigMatches.filter(program__id=iProgram)
-        if iBaseline:
+        if iBaseline and iBaseline not in ('None', 'NONE'):
             aConfigMatches = aConfigMatches.filter(baseline__id=iBaseline)
 
         if len(aConfigMatches) == 0:
@@ -301,7 +318,7 @@ def OverviewPricing(oRequest):
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
-        except:
+        except Header.DoesNotExist:
             pass
         # end try
 

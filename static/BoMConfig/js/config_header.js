@@ -262,6 +262,8 @@ function form_resize(){
 
 function save_form(){
     form_save = true;
+    $('[readonly=true]').removeAttr('readonly');
+    $('[disabled=true]').removeAttr('disabled');
     clean_form = $('#headerform').serialize();
 }
 
