@@ -2,7 +2,6 @@ $('button[value="price_report"]').css('outline','5px auto -webkit-focus-ring-col
 $(document).ready(function(){
     $(window).load(function(){
         form_resize();
-        // timer = setTimeout(getTableRows, 500);
     });
 });
 
@@ -81,15 +80,17 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties) {
 }
 
 function build_table() {
-    var headers = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Latest Unit Price ($)'];
-    for (var i = headers.length; i < max_length; i++){
-        headers.push('Previous Price ($)');
+    var headers = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)'];
+    for (var i = headers.length, j=1; i < max_length; i++, j++){
+        var temp = new Date();
+
+        headers.push(String(temp.getFullYear()-j) + ' Price ($)');
     }
     var container = document.getElementById('datatable');
     hot = new Handsontable(container, {
         data: data,
         minRows: 1,
-        minCols: 5,
+        minCols: 6,
         maxCols: max_length,
         rowHeaders: false,
         colHeaders: headers,
@@ -99,13 +100,11 @@ function build_table() {
 
             cellProperties.readOnly = true;
             cellProperties.className = 'htCenter';
-            if(col > 3){
+            if(col > 4){
+                cellProperties.comment = comment_list[row][col - 5];
                 cellProperties.renderer = moneyRenderer;
             } else {
                 cellProperties.renderer = readonlyRenderer;
-            }
-            if(col >= 4) {
-                cellProperties.comment = comment_list[row][col - 4];
             }
 
             return cellProperties;

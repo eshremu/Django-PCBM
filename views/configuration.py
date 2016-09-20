@@ -121,11 +121,12 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 bCanWriteHeader = bool(SecurityPermission.objects.filter(title='Config_Header_Write').filter(user__in=oRequest.user.groups.all())) \
                                   and (not oExisting or
                                        (oExisting and
-                                        (oExisting.configuration_status.name == 'In Process' or
-                                         (oExisting.configuration_status.name == 'In Process/Pending' and
-                                          bool(oRequest.user.groups.filter(securitypermission__title__in=HeaderTimeTracker.permission_entry(oExisting.latesttracker.next_approval))) and
-                                          oExisting.latesttracker.next_approval in ['scm1', 'scm2']
-                                          ))))
+                                        (oExisting.configuration_status.name == 'In Process' # or
+                                         # (oExisting.configuration_status.name == 'In Process/Pending' and
+                                         #  bool(oRequest.user.groups.filter(securitypermission__title__in=HeaderTimeTracker.permission_entry(oExisting.latesttracker.next_approval))) and
+                                         #  oExisting.latesttracker.next_approval in ['scm1', 'scm2']
+                                         #  )
+                                         )))
 
             if oRequest.method == 'POST' and oRequest.POST:
                 if not oExisting or 'configuration_status' not in oRequest.POST:
@@ -301,7 +302,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',[bytes(oExisting.customer_unit.name, 'ascii') if oExisting else None])
             tResults = oCursor.fetchall()
             headerForm.fields['customer_name'].widget = forms.widgets.Select(choices=(('','---------'),) + tuple((obj,obj) for obj in chain.from_iterable(tResults)))
-        print(bCanWriteHeader)
+
         dContext={
             'header': oExisting,
             'headerForm': headerForm,
@@ -315,7 +316,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             'non_clonable': ['In Process', 'In Process/Pending'],
             'discontinuation_done': int(bDiscontinuationAlreadyCreated)
         }
-        print(bCanWriteHeader, dContext['header_write_authorized'], sTemplate)
+
         return Default(oRequest, sTemplate, dContext)
 # end def
 
@@ -471,44 +472,44 @@ def AddConfig(oRequest):
                         # dPriceData = {'unit_price': dConfigLine['17'] or None, 'config_line': oConfigLine}
                         dPriceData = {'config_line': oConfigLine}
                         (oPrice, _) = LinePricing.objects.get_or_create(**dPriceData)
-                        oPriceObj = None
-                        try:
-                            oPriceObj = PricingObject.objects.get(
-                                part=oConfigLine.part.base,
-                                customer=oConfigLine.config.header.customer_unit,
-                                sold_to=oConfigLine.config.header.sold_to_party,
-                                spud=oConfigLine.spud,
-                                is_current_active=True
-                            )
-                        except PricingObject.DoesNotExist:
-                            try:
-                                oPriceObj = PricingObject.objects.get(
-                                    part=oConfigLine.part.base,
-                                    customer=oConfigLine.config.header.customer_unit,
-                                    sold_to=oConfigLine.config.header.sold_to_party,
-                                    spud=None,
-                                    is_current_active=True
-                                )
-                            except PricingObject.DoesNotExist:
-                                try:
-                                    oPriceObj = PricingObject.objects.get(
-                                        part=oConfigLine.part.base,
-                                        customer=oConfigLine.config.header.customer_unit,
-                                        sold_to=None,
-                                        spud=oConfigLine.spud,
-                                        is_current_active=True
-                                    )
-                                except PricingObject.DoesNotExist:
-                                    try:
-                                        oPriceObj = PricingObject.objects.get(
-                                            part=oConfigLine.part.base,
-                                            customer=oConfigLine.config.header.customer_unit,
-                                            sold_to=None,
-                                            spud=None,
-                                            is_current_active=True
-                                        )
-                                    except PricingObject.DoesNotExist:
-                                        pass
+                        oPriceObj = PricingObject.getClosestMatch(oConfigLine)
+                        # try:
+                        #     oPriceObj = PricingObject.objects.get(
+                        #         part=oConfigLine.part.base,
+                        #         customer=oConfigLine.config.header.customer_unit,
+                        #         sold_to=oConfigLine.config.header.sold_to_party,
+                        #         spud=oConfigLine.spud,
+                        #         is_current_active=True
+                        #     )
+                        # except PricingObject.DoesNotExist:
+                        #     try:
+                        #         oPriceObj = PricingObject.objects.get(
+                        #             part=oConfigLine.part.base,
+                        #             customer=oConfigLine.config.header.customer_unit,
+                        #             sold_to=oConfigLine.config.header.sold_to_party,
+                        #             spud=None,
+                        #             is_current_active=True
+                        #         )
+                        #     except PricingObject.DoesNotExist:
+                        #         try:
+                        #             oPriceObj = PricingObject.objects.get(
+                        #                 part=oConfigLine.part.base,
+                        #                 customer=oConfigLine.config.header.customer_unit,
+                        #                 sold_to=None,
+                        #                 spud=oConfigLine.spud,
+                        #                 is_current_active=True
+                        #             )
+                        #         except PricingObject.DoesNotExist:
+                        #             try:
+                        #                 oPriceObj = PricingObject.objects.get(
+                        #                     part=oConfigLine.part.base,
+                        #                     customer=oConfigLine.config.header.customer_unit,
+                        #                     sold_to=None,
+                        #                     spud=None,
+                        #                     is_current_active=True
+                        #                 )
+                        #             except PricingObject.DoesNotExist:
+                        #                 pass
                         oPrice.pricing_object = oPriceObj
                         oPrice.save()
 

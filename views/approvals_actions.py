@@ -10,7 +10,7 @@ from django.db import transaction
 from django.db.models import Q
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
-    HeaderTimeTracker, REF_STATUS, ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject
+    HeaderTimeTracker, REF_STATUS, ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, LinePricing
 from BoMConfig.utils import UpRev, GrabValue, StrToBool
 from BoMConfig.views.landing import Unlock, Default
 from django.contrib.auth.models import User
@@ -611,38 +611,54 @@ def ChangePart(oRequest):
                                 oLine.part = oReplacement
                                 oLine.vendor_article_number = sReplacePart.strip('./')
                                 # print('Update LinePricing object for new part')
-                                oLinePrice = None
-                                try:
-                                    oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                                                                           part=oReplacementBase,
-                                                                           is_current_active=True,
-                                                                           sold_to=oHeader.sold_to_party,
-                                                                           spud=oLine.spud)
-                                except PricingObject.DoesNotExist:
-                                    try:
-                                        oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                                                                               part=oReplacementBase,
-                                                                               is_current_active=True,
-                                                                               sold_to=oHeader.sold_to_party,
-                                                                               spud=None)
-                                    except PricingObject.DoesNotExist:
-                                        try:
-                                            oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                                                                                   part=oReplacementBase,
-                                                                                   is_current_active=True,
-                                                                                   sold_to=None,
-                                                                                   spud=oLine.spud)
-                                        except PricingObject.DoesNotExist:
-                                            try:
-                                                oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                                                                                       part=oReplacementBase,
-                                                                                       is_current_active=True,
-                                                                                       sold_to=None,
-                                                                                       spud=None)
-                                            except PricingObject.DoesNotExist:
-                                                pass
+                                oLinePrice = PricingObject.getClosestMatch(oLine)
+                                # try:
+                                #     oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
+                                #                                            part=oReplacementBase,
+                                #                                            is_current_active=True,
+                                #                                            sold_to=oHeader.sold_to_party,
+                                #                                            spud=oLine.spud,
+                                #                                            technology=oHeader.technology)
+                                # except PricingObject.DoesNotExist:
+                                #     try:
+                                #         oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
+                                #                                                part=oReplacementBase,
+                                #                                                is_current_active=True,
+                                #                                                sold_to=oHeader.sold_to_party,
+                                #                                                spud=oLine.spud,
+                                #                                                technology=None)
+                                #     except PricingObject.DoesNotExist:
+                                #         try:
+                                #             oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
+                                #                                                    part=oReplacementBase,
+                                #                                                    is_current_active=True,
+                                #                                                    sold_to=oHeader.sold_to_party,
+                                #                                                    spud=None,
+                                #                                                    technology=None)
+                                #         except PricingObject.DoesNotExist:
+                                #             try:
+                                #                 oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
+                                #                                                        part=oReplacementBase,
+                                #                                                        is_current_active=True,
+                                #                                                        sold_to=None,
+                                #                                                        spud=oLine.spud,
+                                #                                                        technology=None)
+                                #             except PricingObject.DoesNotExist:
+                                #                 try:
+                                #                     oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
+                                #                                                            part=oReplacementBase,
+                                #                                                            is_current_active=True,
+                                #                                                            sold_to=None,
+                                #                                                            spud=None,
+                                #                                                            technology=None)
+                                #                 except PricingObject.DoesNotExist:
+                                #                     pass
+
+                                if not hasattr(oLine, 'linepricing'):
+                                    LinePricing.objects.create(**{'config_line': oLine})
 
                                 oLine.linepricing.pricing_object = oLinePrice
+                                oLine.linepricing.save()
                                 # print('Update customer part number for new part')
                                 try:
                                     oCustInfo = CustomerPartInfo.objects.get(active=True, part=oReplacementBase, customer=oHeader.customer_unit)

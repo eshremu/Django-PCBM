@@ -36,8 +36,8 @@ class HeaderForm(forms.ModelForm):
 
         if bReadOnly or (hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name != 'In Process'):
             for field in self.fields.keys():
-                if not bReadOnly and hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name == 'In Process/Pending' and field == 'projected_cutover':
-                    continue
+                # if not bReadOnly and hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name == 'In Process/Pending' and field == 'projected_cutover':
+                #     continue
                 self.fields[field].widget.attrs['readonly'] = 'True'
                 self.fields[field].widget.attrs['style'] = 'border:none;'
                 if self.initial:

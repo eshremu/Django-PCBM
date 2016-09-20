@@ -447,6 +447,17 @@ class Header(models.Model):
 
         return None
     # end def
+
+    @property
+    def check_date(self):
+        if self.valid_from_date and self.valid_to_date:
+            return self.valid_from_date + timezone.timedelta(seconds=(self.valid_to_date - self.valid_from_date).total_seconds()/2)
+        elif not self.valid_from_date and self.valid_to_date:
+            return self.valid_to_date - timezone.timedelta(days=1)
+        elif self.valid_from_date and not self.valid_to_date:
+            return self.valid_from_date + timezone.timedelta(days=1)
+        elif not self.valid_from_date and not self.valid_to_date:
+            return timezone.now().date()
 # end class
 
 
@@ -645,9 +656,49 @@ class PricingObject(models.Model):
     price_erosion = models.BooleanField(default=False)
     erosion_rate = models.FloatField(null=True, blank=True)
     comments = models.TextField(null=True, blank=True)
+    technology = models.ForeignKey(REF_TECHNOLOGY, to_field='id', null=True, blank=True)
 
     def __str__(self):
         return str(self.part) + "_" + str(self.customer) + "_" + str(self.sold_to) + "_" + str(self.spud) + "_" + self.date_entered.strftime('%m/%d/%Y')
+
+    @classmethod
+    def getClosestMatch(cls, oConfigLine):
+        if not isinstance(oConfigLine, ConfigLine):
+            raise TypeError('getClosestMatch takes ConfigLine argument. Unrecognized type %s' % str(type(oConfigLine)))
+
+        aPricingList = cls.objects.filter(customer=oConfigLine.config.header.customer_unit, part=oConfigLine.part.base,
+                                          is_current_active=True)
+        oPriceObj = aPricingList.filter(sold_to=oConfigLine.config.header.sold_to_party, spud=oConfigLine.spud,
+                                        technology=oConfigLine.config.header.technology).first()
+
+        if not oPriceObj:
+            oPriceObj = aPricingList.filter(sold_to=oConfigLine.config.header.sold_to_party, spud=oConfigLine.spud,
+                                            technology=None).first()
+
+        if not oPriceObj:
+            oPriceObj = aPricingList.filter(sold_to=oConfigLine.config.header.sold_to_party, spud=None,
+                                            technology=oConfigLine.config.header.technology).first()
+
+        if not oPriceObj:
+            oPriceObj = aPricingList.filter(sold_to=None, spud=oConfigLine.spud,
+                                            technology=oConfigLine.config.header.technology).first()
+
+        if not oPriceObj:
+            oPriceObj = aPricingList.filter(sold_to=oConfigLine.config.header.sold_to_party, spud=None,
+                                            technology=None).first()
+
+        if not oPriceObj:
+            oPriceObj = aPricingList.filter(sold_to=None, spud=oConfigLine.spud, technology=None).first()
+
+        if not oPriceObj:
+            oPriceObj = aPricingList.filter(sold_to=None, spud=None,
+                                            technology=oConfigLine.config.header.technology).first()
+
+        if not oPriceObj:
+            oPriceObj = aPricingList.filter(sold_to=None, spud=None, technology=None).first()
+
+        return oPriceObj
+    # end def
 
 
 class HeaderLock(models.Model):

@@ -33,9 +33,10 @@
     </div>
 
     <script>
-        var spud_list, cust_list, orig_data;
+        var spud_list, cust_list, tech_list, orig_data;
         orig_data = {{ partlines|safe }};
         cust_list = [''].concat({{ customer_list|safe }});
         spud_list = [''].concat({{ spud_list|safe }});
+        tech_list = [''].concat({{ tech_list|safe }});
     </script>
 {% endblock %}

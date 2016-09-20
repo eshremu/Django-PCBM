@@ -1,0 +1,21 @@
+{% extends "BoMConfig/pricelanding.html" %}
+{% load staticfiles %}
+{% block subcontent %}
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <script src="{% static 'BoMConfig/js/erosion_pricing.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+
+    <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
+    <div id="formbuttons" style="margin: 5px 0;">
+        <form method="post" id="data_form">
+            {% csrf_token %}
+            <input id="formData" type="hidden" name="formData"/>
+            <button id="submit" type="submit" class="btn btn-primary">Erode Price</button>
+        </form>
+    </div>
+
+    <script>
+        var hot, clean_form;
+        var data = {{ data|safe }};
+    </script>
+{% endblock %}

@@ -18,6 +18,7 @@ urlpatterns = patterns(
     url(r'^pricing/$', views.PartPricing, name='pricing'),
     url(r'^pricing_config/$', views.ConfigPricing, name='configpricing'),
     url(r'^pricing_report/$', views.OverviewPricing, name='basepricing'),
+    url(r'^pricing_erosion/$', views.PriceErosion, name='erosionpricing'),
     url(r'^reporting/$', views.Report, name='reporting'),
     url(r'^approvals/$', views.Approval, name='approval'),
     url(r'^actions/$', views.Action, name='action'),
