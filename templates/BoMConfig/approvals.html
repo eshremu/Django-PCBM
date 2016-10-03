@@ -283,8 +283,10 @@
                         $('.required').toggleClass('invalid_field', false);
                         $('#disapproval').modal('show');
                     } else {
-                        $('#myModal').modal('show');
-                        process($(this).val());
+                        messageToModal('Confirm hold','Are you sure you wish to place the selected records on hold?', function(source){
+                            $('#myModal').modal('show');
+                            process($(source).val());
+                        }, this);
                     }
                 } else {
                     messageToModal('Error','Please select at least 1 record for processing.',function(){});
