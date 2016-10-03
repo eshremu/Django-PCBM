@@ -1,3 +1,5 @@
+from django.http import JsonResponse
+
 from BoMConfig.models import Header, Configuration, ConfigLine, PartBase, LinePricing, REF_CUSTOMER,\
     SecurityPermission, REF_SPUD, PricingObject, REF_TECHNOLOGY
 from BoMConfig.views.landing import Unlock, Default
@@ -5,6 +7,7 @@ from BoMConfig.utils import GrabValue, StrToBool
 
 import json
 import datetime
+import itertools
 
 
 def PartPricing(oRequest):
@@ -92,7 +95,6 @@ def PartPricing(oRequest):
                                                                             comments=aRowToSave[11],
                                                                             previous_pricing_object=oCurrentPriceObj)
 
-                                # TODO: Update in-process records or in-process/pending records that are at cpm level
                                 dFilterArgs = {
                                     'config__header__configuration_status__name__in':('In Process','In Process/Pending'),
                                     'part__base':PartBase.objects.get(product_number__iexact=aRowToSave[0] or oRequest.POST.get('initial', None)),
@@ -334,54 +336,55 @@ def OverviewPricing(oRequest):
 
     sTemplate='BoMConfig/overviewpricing.html'
 
-    aPricingObjectList = PricingObject.objects.filter(is_current_active=True).order_by('part__product_number', 'customer', 'sold_to', 'spud')
-
-    aPricingLines = []
-    aComments = []
-
-    if aPricingObjectList:
-        for oPriceObj in aPricingObjectList:
-            aCommentRow = []
-            aObj = [
-                oPriceObj.part.product_number,
-                oPriceObj.customer.name,
-                oPriceObj.sold_to or '(None)',
-                oPriceObj.spud.name if oPriceObj.spud else '(None)',
-                oPriceObj.technology.name if oPriceObj.technology else '(None)',
-                oPriceObj.unit_price,
-            ]
-
-            aCommentRow.append("Valid: {}\nCut-over: {}".format((oPriceObj.valid_from_date.strftime('%m/%d/%Y') if oPriceObj.valid_from_date else "N/A") +
-                                                                " - " + (oPriceObj.valid_to_date.strftime('%m/%d/%Y') if oPriceObj.valid_to_date else "Present"),
-                                                                (oPriceObj.cutover_date.strftime('%m/%d/%Y') if oPriceObj.cutover_date else "N/A")) +
-                               ("\nPrice Erosion (%): {}".format(oPriceObj.erosion_rate) if oPriceObj.price_erosion else ""))
-
-            # oChainPriceObj = oPriceObj
-            # while oChainPriceObj.previous_pricing_object:
-            #     oChainPriceObj = oChainPriceObj.previous_pricing_object
-
-            for i in range(1,5):
-
-                oChainPriceObj = PricingObject.objects.filter(part__product_number=oPriceObj.part.product_number,
-                                                              customer__name=oPriceObj.customer.name,
-                                                              sold_to=oPriceObj.sold_to,
-                                                              spud=oPriceObj.spud,
-                                                              technology=oPriceObj.technology,
-                                                              valid_to_date__year=datetime.datetime.now().year - i
-                                                              ).order_by('valid_to_date', 'valid_from_date').first()
-                if oChainPriceObj:
-                    aObj.append(oChainPriceObj.unit_price)
-                    aCommentRow.append("Valid: {}\nCut-over: {}".format((oChainPriceObj.valid_from_date.strftime('%m/%d/%Y') if oChainPriceObj.valid_from_date else "N/A") +
-                                                                        " - " + (oChainPriceObj.valid_to_date.strftime('%m/%d/%Y') if oChainPriceObj.valid_to_date else "Present"),
-                                                                        (oChainPriceObj.cutover_date.strftime('%m/%d/%Y') if oChainPriceObj.cutover_date else "N/A")) +
-                                       ("\nPrice Erosion (%): {}".format(oChainPriceObj.erosion_rate) if oChainPriceObj.price_erosion else ""))
-                else:
-                    aObj.append('')
-                    aCommentRow.append('')
-
-            aPricingLines.append(aObj)
-            aComments.append(aCommentRow)
-    # end if
+    # aPricingObjectList = PricingObject.objects.filter(is_current_active=True).order_by('part__product_number', 'customer', 'sold_to', 'spud')
+    #
+    # aPricingLines = []
+    # aComments = []
+    #
+    # if aPricingObjectList:
+    #     for oPriceObj in aPricingObjectList:
+    #         aCommentRow = []
+    #         aObj = [
+    #             oPriceObj.part.product_number,
+    #             oPriceObj.customer.name,
+    #             oPriceObj.sold_to or '(None)',
+    #             oPriceObj.spud.name if oPriceObj.spud else '(None)',
+    #             oPriceObj.technology.name if oPriceObj.technology else '(None)',
+    #             oPriceObj.unit_price,
+    #         ]
+    #
+    #         aCommentRow.append("Valid: {}\nCut-over: {}".format((oPriceObj.valid_from_date.strftime('%m/%d/%Y') if oPriceObj.valid_from_date else "N/A") +
+    #                                                             " - " + (oPriceObj.valid_to_date.strftime('%m/%d/%Y') if oPriceObj.valid_to_date else "Present"),
+    #                                                             (oPriceObj.cutover_date.strftime('%m/%d/%Y') if oPriceObj.cutover_date else "N/A")) +
+    #                            ("\nPrice Erosion (%): {}".format(oPriceObj.erosion_rate) if oPriceObj.price_erosion else ""))
+    #
+    #         # oChainPriceObj = oPriceObj
+    #         # while oChainPriceObj.previous_pricing_object:
+    #         #     oChainPriceObj = oChainPriceObj.previous_pricing_object
+    #
+    #         for i in range(1,5):
+    #
+    #             oChainPriceObj = PricingObject.objects.filter(part__product_number=oPriceObj.part.product_number,
+    #                                                           customer__name=oPriceObj.customer.name,
+    #                                                           sold_to=oPriceObj.sold_to,
+    #                                                           spud=oPriceObj.spud,
+    #                                                           technology=oPriceObj.technology,
+    #                                                           valid_to_date__year=datetime.datetime.now().year - i
+    #                                                           ).order_by('valid_to_date', 'valid_from_date').first()
+    #             if oChainPriceObj:
+    #                 aObj.append(oChainPriceObj.unit_price)
+    #                 aCommentRow.append("Valid: {}\nCut-over: {}".format((oChainPriceObj.valid_from_date.strftime('%m/%d/%Y') if oChainPriceObj.valid_from_date else "N/A") +
+    #                                                                     " - " + (oChainPriceObj.valid_to_date.strftime('%m/%d/%Y') if oChainPriceObj.valid_to_date else "Present"),
+    #                                                                     (oChainPriceObj.cutover_date.strftime('%m/%d/%Y') if oChainPriceObj.cutover_date else "N/A")) +
+    #                                    ("\nPrice Erosion (%): {}".format(oChainPriceObj.erosion_rate) if oChainPriceObj.price_erosion else ""))
+    #             else:
+    #                 aObj.append('')
+    #                 aCommentRow.append('')
+    #
+    #         aPricingLines.append(aObj)
+    #         aComments.append(aCommentRow)
+    # # end if
+    aPricingLines, aComments = PricingOverviewLists()
 
     dContext = {
         'pricelines': aPricingLines,
@@ -398,38 +401,137 @@ def OverviewPricing(oRequest):
 # end def
 
 
+def PricingOverviewLists():
+    aPricingObjectList = PricingObject.objects.filter(is_current_active=True).order_by('part__product_number',
+                                                                                       'customer', 'sold_to', 'spud')
+
+    aPricingLines = []
+    aComments = []
+
+    if aPricingObjectList:
+        for oPriceObj in aPricingObjectList:
+            aCommentRow = []
+            aObj = [
+                oPriceObj.part.product_number,
+                oPriceObj.customer.name,
+                oPriceObj.sold_to or '(None)',
+                oPriceObj.spud.name if oPriceObj.spud else '(None)',
+                oPriceObj.technology.name if oPriceObj.technology else '(None)',
+                oPriceObj.unit_price,
+            ]
+
+            aCommentRow.append("Valid: {}\nCut-over: {}".format(
+                (oPriceObj.valid_from_date.strftime('%m/%d/%Y') if oPriceObj.valid_from_date else "N/A") +
+                " - " + (oPriceObj.valid_to_date.strftime('%m/%d/%Y') if oPriceObj.valid_to_date else "Present"),
+                (oPriceObj.cutover_date.strftime('%m/%d/%Y') if oPriceObj.cutover_date else "N/A")) +
+                               ("\nPrice Erosion (%): {}".format(
+                                   oPriceObj.erosion_rate) if oPriceObj.price_erosion else ""))
+
+            # oChainPriceObj = oPriceObj
+            # while oChainPriceObj.previous_pricing_object:
+            #     oChainPriceObj = oChainPriceObj.previous_pricing_object
+
+            for i in range(1, 5):
+
+                oChainPriceObj = PricingObject.objects.filter(part__product_number=oPriceObj.part.product_number,
+                                                              customer__name=oPriceObj.customer.name,
+                                                              sold_to=oPriceObj.sold_to,
+                                                              spud=oPriceObj.spud,
+                                                              technology=oPriceObj.technology,
+                                                              valid_to_date__year=datetime.datetime.now().year - i
+                                                              ).order_by('valid_to_date', 'valid_from_date').first()
+                if oChainPriceObj:
+                    aObj.append(oChainPriceObj.unit_price)
+                    aCommentRow.append("Valid: {}\nCut-over: {}".format((oChainPriceObj.valid_from_date.strftime(
+                        '%m/%d/%Y') if oChainPriceObj.valid_from_date else "N/A") +
+                                                                        " - " + (oChainPriceObj.valid_to_date.strftime(
+                        '%m/%d/%Y') if oChainPriceObj.valid_to_date else "Present"),
+                                                                        (oChainPriceObj.cutover_date.strftime(
+                                                                            '%m/%d/%Y') if oChainPriceObj.cutover_date else "N/A")) +
+                                       ("\nPrice Erosion (%): {}".format(
+                                           oChainPriceObj.erosion_rate) if oChainPriceObj.price_erosion else ""))
+                else:
+                    aObj.append('')
+                    aCommentRow.append('')
+                # end if
+            # end for
+
+            aPricingLines.append(aObj)
+            aComments.append(aCommentRow)
+        # end for
+    # end if
+
+    return aPricingLines, aComments
+
+
 def PriceErosion(oRequest):
     sTemplate = 'BoMConfig/erosionpricing.html'
+    sStatusMessage = None
 
     bCanReadPricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Read').filter(user__in=oRequest.user.groups.all()))
     bCanWritePricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Write').filter(user__in=oRequest.user.groups.all()))
 
     if oRequest.POST:
         aRecords = json.loads(oRequest.POST['formData'])
-        for aRecord in aRecords:
-            if StrToBool(aRecord[0]):
-                print('Eroding:', aRecord)
-                oCurrentPriceObj = PricingObject.objects.get(price_erosion=True, is_current_active=True, part__product_number=aRecord[1],
-                                                             customer__name=aRecord[2],
-                                                             sold_to=aRecord[3] if aRecord[3] not in ('','(None)', None) else None,
-                                                             spud__name=aRecord[4] if aRecord[4] not in ('','(None)', None) else None,
-                                                             technology__name=aRecord[5] if aRecord[5] not in ('','(None)', None) else None)
+        if any(itertools.chain.from_iterable(aRecords)):
+            try:
+                for aRecord in aRecords:
+                    if StrToBool(aRecord[0]):
+                        print('Eroding:', aRecord)
+                        oCurrentPriceObj = PricingObject.objects.get(price_erosion=True, is_current_active=True, part__product_number=aRecord[1],
+                                                                     customer__name=aRecord[2],
+                                                                     sold_to=aRecord[3] if aRecord[3] not in ('','(None)', None) else None,
+                                                                     spud__name=aRecord[4] if aRecord[4] not in ('','(None)', None) else None,
+                                                                     technology__name=aRecord[5] if aRecord[5] not in ('','(None)', None) else None)
 
-                # oNewPriceObj = PricingObject.objects.create(
-                #     part=PartBase.objects.get(product_number__iexact=aRecord[1]),
-                #     customer=REF_CUSTOMER.objects.get(name=aRecord[2]),
-                #     sold_to=aRecord[3] if aRecord[3] not in ('(None)', None, '', 'null') else None,
-                #     spud=REF_SPUD.objects.get(name=aRecord[4]) if aRecord[4] not in ('(None)', '', None, 'null') else None,
-                #     technology=REF_TECHNOLOGY.objects.get(name=aRecord[5]) if aRecord[5] not in (
-                #     '(None)', '', None, 'null') else None,
-                #     is_current_active=True,
-                #     unit_price=aRecord[8],
-                #     valid_to_date=datetime.datetime.strptime(aRecord[10], '%m/%d/%Y').date() if aRecord[10] else None,
-                #     valid_from_date=datetime.datetime.strptime(aRecord[9], '%m/%d/%Y').date() if aRecord[9] else datetime.datetime.now().date(),
-                #     cutover_date=datetime.datetime.strptime(aRecord[8], '%m/%d/%Y').date() if aRecord[8] else None,
-                #     price_erosion=True,
-                #     erosion_rate=aRecord[7],
-                #     previous_pricing_object=oCurrentPriceObj)
+                        oNewPriceObj = PricingObject.objects.create(
+                            part=PartBase.objects.get(product_number__iexact=aRecord[1]),
+                            customer=REF_CUSTOMER.objects.get(name=aRecord[2]),
+                            sold_to=aRecord[3] if aRecord[3] not in ('(None)', None, '', 'null') else None,
+                            spud=REF_SPUD.objects.get(name=aRecord[4]) if aRecord[4] not in ('(None)', '', None, 'null') else None,
+                            technology=REF_TECHNOLOGY.objects.get(name=aRecord[5]) if aRecord[5] not in (
+                            '(None)', '', None, 'null') else None,
+                            is_current_active=True,
+                            unit_price=aRecord[8],
+                            valid_to_date=datetime.datetime.strptime(aRecord[10], '%m/%d/%Y').date() if aRecord[10] else None,
+                            valid_from_date=datetime.datetime.strptime(aRecord[9], '%m/%d/%Y').date() if aRecord[9] else datetime.datetime.now().date(),
+                            cutover_date=datetime.datetime.strptime(aRecord[9], '%m/%d/%Y').date() if aRecord[9] else datetime.datetime.now().date(),
+                            price_erosion=True,
+                            erosion_rate=aRecord[7],
+                            previous_pricing_object=oCurrentPriceObj)
+
+                        oCurrentPriceObj.is_current_active = False
+                        oCurrentPriceObj.save()
+
+                        dFilterArgs = {
+                            'config__header__configuration_status__name__in': ('In Process', 'In Process/Pending'),
+                            'part__base': PartBase.objects.get(product_number__iexact=aRecord[1]),
+                            'config__header__customer_unit': REF_CUSTOMER.objects.get(name=aRecord[2]),}
+
+                        for oConfigLine in ConfigLine.objects.filter(**dFilterArgs):
+                            if oConfigLine.config.header.configuration_status.name != 'In Process' and \
+                                            oConfigLine.config.header.latesttracker.next_approval != 'cpm':
+                                continue
+
+                            if not hasattr(oConfigLine, 'linepricing'):
+                                LinePricing.objects.create({'config_line': oConfigLine})
+
+                            oLinePrice = oConfigLine.linepricing
+                            if PricingObject.getClosestMatch(oConfigLine) == oNewPriceObj:
+                                oLinePrice.pricing_object = oNewPriceObj
+                                oLinePrice.save()
+                            # end if
+                        # end for
+                    # end if
+                # end for
+                sStatusMessage = 'Saved successfully'
+            except PricingObject.DoesNotExist:
+                sStatusMessage = 'Invalid selection'
+            # end try
+        else:
+            sStatusMessage = 'No record(s) selected'
+        # end if
+    # end if
 
     aRecords = PricingObject.objects.filter(price_erosion=True, is_current_active=True).order_by('part__product_number', 'customer', 'sold_to', 'spud')
 
@@ -443,7 +545,50 @@ def PriceErosion(oRequest):
                   oPO.unit_price,
                   oPO.erosion_rate,
                   '', '', '',] for oPO in aRecords],
+        'cu_list': list(set(str(val) for val in aRecords.values_list('customer__name',flat=True))),
+        'soldto_list': list(set(str(val) for val in aRecords.values_list('sold_to',flat=True))),
+        'spud_list': list(set(str(val) for val in aRecords.values_list('spud__name',flat=True))),
+        'tech_list': list(set(str(val) for val in aRecords.values_list('technology__name',flat=True))),
         'pricing_read_authorized': bCanReadPricing,
         'pricing_write_authorized': bCanWritePricing,
+        'status_message': sStatusMessage
     }
     return Default(oRequest, sTemplate, dContext)
+
+
+def ErosionAjax(oRequest):
+    dArgs = {'price_erosion':True,
+             'is_current_active':True}
+
+    if oRequest.POST['customer'] != 'all':
+        dArgs['customer__name'] = oRequest.POST['customer']
+
+    if oRequest.POST['sold_to'] != 'all':
+        if oRequest.POST['sold_to'] != 'None':
+            dArgs['sold_to'] = oRequest.POST['sold_to']
+        else:
+            dArgs['sold_to'] = None
+
+    if oRequest.POST['spud'] != 'all':
+        if oRequest.POST['spud'] != 'None':
+            dArgs['spud__name'] = oRequest.POST['spud']
+        else:
+            dArgs['spud'] = None
+
+    if oRequest.POST['technology'] != 'all':
+        if oRequest.POST['technology'] != 'None':
+            dArgs['technology__name'] = oRequest.POST['technology']
+        else:
+            dArgs['technology'] = None
+
+    aRecords = PricingObject.objects.filter(**dArgs).order_by('part__product_number','customer', 'sold_to', 'spud')
+    return JsonResponse([['False',
+                  oPO.part.product_number,
+                  oPO.customer.name,
+                  oPO.sold_to or "(None)",
+                  oPO.spud.name if oPO.spud else '(None)',
+                  oPO.technology.name if oPO.technology else "(None)",
+                  oPO.unit_price,
+                  oPO.erosion_rate,
+                  '', '', '',] for oPO in aRecords] if aRecords else [[]], safe=False)
+# end def

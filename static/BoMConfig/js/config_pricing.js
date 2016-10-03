@@ -32,6 +32,26 @@ $(document).ready(function(){
     $(window).resize(function(){
         form_resize();
     });
+    
+    $('#saveForm').click(function(event){
+        $('#headersubform').removeAttr('action');
+        $('<input/>').attr('id','data_form').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#headersubform');form_save=true;
+    });
+
+    $('#search').click(function(event) {
+        $('#headersubform').removeAttr('action');
+    });
+
+    $('#download').click(function(event){
+        $('<input/>').attr('id','cookie').attr('type', 'hidden').attr('name','file_cookie').attr('value', file_cookie).appendTo('#headersubform');
+        $('#headersubform').attr('action', download_url);
+        timer = setInterval(function(){
+            if(document.cookie.split('fileMark=').length == 2 && document.cookie.split('fileMark=')[1].split(';')[0] == $('#cookie').val()) {
+                clearInterval(timer);
+                $('#myModal').modal('hide');
+            }
+        },1000);
+    });
 });
 
 function form_resize(){
@@ -42,7 +62,7 @@ function form_resize(){
     var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
     var bodyheight = $('#main-body').height();
 
-    var tableheight = bodyheight - (subformheight + bottombuttonheight + topbuttonheight + displayformheight); //+ crumbheight);
+    var tableheight = bodyheight - (subformheight + bottombuttonheight + topbuttonheight + displayformheight + 5); //+ crumbheight);
 
     $('#table-wrapper').css("max-height", tableheight);
     $('#table-wrapper').css("height", tableheight);

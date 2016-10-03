@@ -2,8 +2,8 @@
 {% load staticfiles %}
 {% block subcontent %}
 {% if config_read_authorized %}
-    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
-    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.css' %}"/>
     <style>
         .handsontable .currentRow {
             background: #fff4d8;
@@ -36,7 +36,7 @@
             <table>
                 <tbody>
                     <tr>
-                        <td style="width:125px;">{{ form.reassign.label_tag }}{{ form.reassign }}</td>
+                        <td style="width:125px;">{{ form.ready_for_forecast.label_tag }}{{ form.ready_for_forecast }}</td>
                         <td style="width:150px;">{{ form.PSM_on_hold.label_tag }}{{ form.PSM_on_hold }}</td>
                         <td style="width:225px;">{{ form.internal_external_linkage.label_tag }}{{ form.internal_external_linkage }}</td>
                         <td style="width:170px;"></td>

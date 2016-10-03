@@ -16,9 +16,21 @@ def getattribute(obj, attr):
 
 @register.filter(name='getindex')
 def getindex(obj, attr):
-    """ Returns the attribute specified by 'attr' from the object specified by 'obj'. """
+    """ Returns the value at index specified by 'attr' from the list specified by 'obj'. """
     if attr < len(obj):
         return obj[attr]
+    return None
+# end def
+
+
+@register.filter(name='getindexof')
+def getindexof(obj, attr):
+    """ Returns the index of value specified by 'attr' from the list specified by 'obj'. """
+    if isinstance(obj, (list, tuple)):
+        try:
+            return obj.index(attr)
+        except ValueError:
+            return None
     return None
 # end def
 

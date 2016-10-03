@@ -171,7 +171,7 @@ def AjaxApprove(oRequest):
 
                 if hasattr(oLatestTracker, oLatestTracker.next_approval + '_notify'):
                     sNextLevel = oLatestTracker.next_approval
-                    for sRecip in list(set(getattr(oLatestTracker, sNextLevel + '_notify').split(';'))):
+                    for sRecip in list(set((getattr(oLatestTracker, sNextLevel + '_notify', '') or '').split(';'))):
                         if sRecip not in dEmailRecipients:
                             dEmailRecipients[sRecip] = {'submit': {}}
 
@@ -219,7 +219,7 @@ def AjaxApprove(oRequest):
                         sNotifyLevel = oLatestTracker.next_approval
                         if sNotifyLevel != 'brd':
                             if hasattr(oLatestTracker, str(sNotifyLevel) + '_notify') and getattr(oLatestTracker, str(sNotifyLevel) + '_notify', None):
-                                aRecipients.extend(getattr(oLatestTracker, sNotifyLevel + '_notify').split(";"))
+                                aRecipients.extend(getattr(oLatestTracker, sNotifyLevel + '_notify', '').split(";"))
                         else:
                             aRecipients.extend([user.email for user in User.objects.filter(groups__name="BOM_PSM_Baseline_Manager")])
 

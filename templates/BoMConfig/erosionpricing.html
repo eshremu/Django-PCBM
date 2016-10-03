@@ -1,21 +1,82 @@
 {% extends "BoMConfig/pricelanding.html" %}
 {% load staticfiles %}
+{% load bomconfig_customtemplatetags %}
 {% block subcontent %}
-    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.js' %}"></script>
     <script src="{% static 'BoMConfig/js/erosion_pricing.js' %}"></script>
-    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
-
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.css' %}"/>
+    <div id="headersubform" style="padding-bottom: 5px;">
+        <div class="dropdown" style="display:inline-block;">
+            <button id="cu_filter" class="btn dropdown-toggle filter" type="button" data-toggle="dropdown" value="all">Customer
+            <span class="caret"></span></button>
+            <ul class="dropdown-menu">
+                <li><a onclick="$('#cu_filter').val('all').html('Customer <span class=\'caret\'></span>').change();">ALL</a></li>
+                {% for cu in cu_list %}
+                <li><a onclick="$('#cu_filter').val('{{ cu }}').html('{{ cu }} <span class=\'caret\'></span>').change();">{{ cu }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="dropdown" style="display:inline-block;">
+            <button id="soldto_filter" class="btn dropdown-toggle filter" type="button" data-toggle="dropdown" value="all">Sold-To
+            <span class="caret"></span></button>
+            <ul class="dropdown-menu">
+                <li><a onclick="$('#soldto_filter').val('all').html('Sold-To <span class=\'caret\'></span>').change();">ALL</a></li>
+                {% for st in soldto_list %}
+                <li><a onclick="$('#soldto_filter').val('{{ st }}').html('{{ st }} <span class=\'caret\'></span>').change();">{{ st }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="dropdown" style="display:inline-block;">
+            <button id="spud_filter" class="btn dropdown-toggle filter" type="button" data-toggle="dropdown" value="all">SPUD
+            <span class="caret"></span></button>
+            <ul class="dropdown-menu">
+                <li><a onclick="$('#spud_filter').val('all').html('SPUD <span class=\'caret\'></span>').change();">ALL</a></li>
+                {% for spud in spud_list %}
+                <li><a onclick="$('#spud_filter').val('{{ spud }}').html('{{ spud }} <span class=\'caret\'></span>').change();">{{ spud }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="dropdown" style="display:inline-block;">
+            <button id="tech_filter" class="btn dropdown-toggle filter" type="button" data-toggle="dropdown" value="all">Technology <span class="caret"></span></button>
+            <ul class="dropdown-menu">
+                <li><a onclick="$('#tech_filter').val('all').html('Technology <span class=\'caret\'></span>').change();">ALL</a></li>
+                {% for tech in tech_list %}
+                <li><a onclick="$('#tech_filter').val('{{ tech }}').html('{{ tech }} <span class=\'caret\'></span>').change();">{{ tech }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
     <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
     <div id="formbuttons" style="margin: 5px 0;">
-        <form method="post" id="data_form">
+        <form method="post" id="data_form" style="display:inline;">
             {% csrf_token %}
             <input id="formData" type="hidden" name="formData"/>
             <button id="submit" type="submit" class="btn btn-primary">Erode Price</button>
+        </form>
+        <form method="post" id="download_form" style="display:inline;" action="{% url 'bomconfig:erosiondownload' %}">
+            {% csrf_token %}
+            <input id="cu" name="cu" type="hidden"/>
+            <input id="soldto" name="soldto" type="hidden"/>
+            <input id="spud" name="spud" type="hidden"/>
+            <input id="technology" name="technology" type="hidden"/>
+            <input id="cookie" name="file_cookie" type="hidden" value="{% random_string 10 %}"/>
+            <button id="download" type="submit" class="btn" style="margin-left: 50px;">Download</button>
+            <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
+                {% if status_message %}{{ status_message }}{% endif %}
+            </span>
+            {% if status_message %}
+            <script>
+                setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
+            </script>
+            {% endif %}
         </form>
     </div>
 
     <script>
         var hot, clean_form;
         var data = {{ data|safe }};
+        var container = document.getElementById('datatable');
+        var isChecked = false;
+        var ajax_url = '{% url 'bomconfig:erosionajax' %}';
     </script>
 {% endblock %}

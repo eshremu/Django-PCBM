@@ -4,7 +4,9 @@ from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.core.urlresolvers import reverse
 
-from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, REF_STATUS
+from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, REF_STATUS, REF_PROGRAM, REF_PRODUCT_AREA_1,\
+    REF_PRODUCT_AREA_2, REF_TECHNOLOGY, REF_RADIO_BAND, REF_RADIO_FREQUENCY, Baseline
+
 from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue
@@ -80,19 +82,21 @@ def Search(oRequest, advanced=False):
 
             if 'status' in oRequest.POST and oRequest.POST['status'] != '':
                 aHeaders = aHeaders.filter(configuration_status__name=oRequest.POST['status'].replace('_', ' ').title())
+            else:
+                aHeaders = aHeaders.filter(configuration_status__name='Active')
             # end if
 
             results = HttpResponse()
             if aHeaders:
                 results.write('<h5 style="color:red">Found ' + str(len(aHeaders)) + ' matching record(s)</h5>')
-                results.write('<table><thead><tr><th style="width: 20px;"><input class="selectall" type="checkbox"/></th><th style="width:175px;">Configuration</th><th style="width:175px;">Program</th>' +
+                results.write('<table id="result_table"><thead><tr><th style="width: 20px;"><input class="selectall" type="checkbox"/></th><th style="width:175px;">Configuration</th><th style="width:175px;">Program</th>' +
                               '<th style="width:175px;">Version</th><th style="width:175px;">Person Responsible</th>' +
                               '<th style="width:175px;">BoM Request Type</th><th style="width:175px;">Customer Unit</th>' +
-                              '<th style="width:175px;">Status</th></tr></thead><tbody>')
+                              '<th style="width:175px;">Status</th><th>Readiness Complete</th></tr></thead><tbody>')
                 for header in aHeaders:
-                    results.write('<tr><td><input class="recordselect" type="checkbox" value="{8}"/></td><td><a href="?link={0}">{1}</a></td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td><td>{7}</td></tr>'\
+                    results.write('<tr><td><input class="recordselect" type="checkbox" value="{8}"/></td><td><a href="?link={0}">{1}</a></td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td><td>{7}</td><td>{9}</td></tr>'\
                         .format(searchscramble(header.pk), header.configuration_designation, GrabValue(header, 'program.name') or '', header.baseline_version,
-                                header.person_responsible, header.bom_request_type.name, header.customer_unit.name, header.configuration_status.name, header.pk))
+                                header.person_responsible, header.bom_request_type.name, header.customer_unit.name, header.configuration_status.name, header.pk, header.readiness_complete or 0))
                 # end for
                 results.write('</tbody></table><button id="download" class="btn btn-primary" disabled>Download</button>')
             else:
@@ -102,9 +106,10 @@ def Search(oRequest, advanced=False):
             return results
         else:
             bRemoveDuplicates = True
-            sTableHeader = '<table><thead><tr><th style="width: 20px;"><input class="selectall" type="checkbox"></th>'+\
+            sTableHeader = '<table id="result_table"><thead><tr><th style="width: 20px;"><input class="selectall" type="checkbox"></th>'+\
                            '<th style="width:175px;">Configuration</th><th style="width:175px;">Version</th>'+\
                            '<th style="width:175px;">Inquiry / Site Template Number</th>'
+
             """ This will be a list of strings.  Each string will be the dot-operator-separated string of attributes
              that would retrieve the desired value (i.e.: 'config.configline.part.description')
              This will be so that the search results list can be easily repeated"""
@@ -129,7 +134,8 @@ def Search(oRequest, advanced=False):
                 aLineFilter.append('config.header.react_request')
 
             if 'customer' in oRequest.POST and oRequest.POST['customer'] != '':
-                aConfigLines = aConfigLines.filter(config__header__customer_unit__name=oRequest.POST['customer'])
+                if oRequest.POST['customer'] != 'n/a':
+                    aConfigLines = aConfigLines.filter(config__header__customer_unit__name=oRequest.POST['customer'])
                 sTableHeader += '<th style="width:175px;">Customer</th>'
                 aLineFilter.append('config.header.customer_unit.name')
 
@@ -146,19 +152,53 @@ def Search(oRequest, advanced=False):
                 aLineFilter.append('config.header.sold_to_party')
 
             if 'program' in oRequest.POST and oRequest.POST['program'] != '':
-                aConfigLines = aConfigLines.filter(config__header__program__iregex="^" + escape(oRequest.POST['program'].strip())
-                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
+                if oRequest.POST['program'] != 'n/a':
+                    aConfigLines = aConfigLines.filter(config__header__program__name__iexact=oRequest.POST['program'])
                 sTableHeader += '<th style="width:175px;">Program</th>'
                 aLineFilter.append('config.header.program')
 
             if 'technology' in oRequest.POST and oRequest.POST['technology'] != '':
-                aConfigLines = aConfigLines.filter(config__header__technology__name__iregex="^" + escape(oRequest.POST['technology'].strip())
-                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
+                if oRequest.POST['technology'] != 'n/a':
+                    aConfigLines = aConfigLines.filter(config__header__technology__name__iexact=oRequest.POST['technology'])
                 sTableHeader += '<th style="width:175px;">Technology</th>'
                 aLineFilter.append('config.header.technology.name')
 
+            if 'product1' in oRequest.POST and oRequest.POST['product1'] != '':
+                if oRequest.POST['product1'] != 'n/a':
+                    aConfigLines = aConfigLines.filter(config__header__product_area1__name__iexact=oRequest.POST['product1'])
+                sTableHeader += '<th style="width:175px;">Product Area 1</th>'
+                aLineFilter.append('config.header.product_area1.name')
+
+            if 'product2' in oRequest.POST and oRequest.POST['product2'] != '':
+                if oRequest.POST['product2'] != 'n/a':
+                    aConfigLines = aConfigLines.filter(config__header__procuct_area2__name__iexact=oRequest.POST['product2'])
+                sTableHeader += '<th style="width:175px;">Product Area 2</th>'
+                aLineFilter.append('config.header.product_area2.name')
+
+            if 'frequency' in oRequest.POST and oRequest.POST['frequency'] != '':
+                if oRequest.POST['frequency'] != 'n/a':
+                    aConfigLines = aConfigLines.filter(config__header__radio_frequency__name__iexact=oRequest.POST['frequency'])
+                sTableHeader += '<th style="width:175px;">Radio Frequency</th>'
+                aLineFilter.append('config.header.radio_frequency.name')
+
+            if 'band' in oRequest.POST and oRequest.POST['band'] != '':
+                if oRequest.POST['band'] != 'n/a':
+                    aConfigLines = aConfigLines.filter(config__header__radio_band__name__iexact=oRequest.POST['band'])
+                sTableHeader += '<th style="width:175px;">Radio Band</th>'
+                aLineFilter.append('config.header.radio_band.name')
+
+            if 'readiness' in oRequest.POST and oRequest.POST['readiness'] != '':
+                if oRequest.POST['readiness_param'] != 'ne':
+                    aConfigLines = aConfigLines.filter(**{'config__header__readiness_complete__' + oRequest.POST['readiness_param']: oRequest.POST['readiness']})
+                else:
+                    aConfigLines = aConfigLines.exclude(
+                        **{'config__header__readiness_complete__exact': oRequest.POST['readiness']})
+                sTableHeader += '<th style="width:175px;">Readiness Complete</th>'
+                aLineFilter.append('config.header.readiness_complete')
+
             if 'base_impact' in oRequest.POST and oRequest.POST['base_impact'] != '':
-                aConfigLines = aConfigLines.filter(config__header__baseline_impacted__iregex="^" + escape(oRequest.POST['base_impact'].strip())
+                if oRequest.POST['base_impact'] != 'n/a':
+                    aConfigLines = aConfigLines.filter(config__header__baseline_impacted__iregex="^" + escape(oRequest.POST['base_impact'].strip())
                                            .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
                 sTableHeader += '<th style="width:175px;">Baseline Impacted</th>'
                 aLineFilter.append('config.header.baseline_impacted')
@@ -182,9 +222,12 @@ def Search(oRequest, advanced=False):
                 aLineFilter.append('config.header.initial_revision')
 
             if 'status' in oRequest.POST and oRequest.POST['status'] != '':
-                aConfigLines = aConfigLines.filter(config__header__configuration_status__name__iexact=oRequest.POST['status'].replace('_', ' '))
+                if oRequest.POST['status'] != 'n/a':
+                    aConfigLines = aConfigLines.filter(config__header__configuration_status__name__iexact=oRequest.POST['status'].replace('_', ' '))
                 sTableHeader += '<th style="width:175px;">Configuration Status</th>'
                 aLineFilter.append('config.header.configuration_status.name')
+            else:
+                aConfigLines = aConfigLines.filter(config__header__configuration_status__name='Active')
 
             sTempHeaderLine = ''
             aTempFilters = ['line_number']
@@ -211,20 +254,6 @@ def Search(oRequest, advanced=False):
                 aTempFilters.append('customer_number')
                 bRemoveDuplicates = False
 
-            if 'mu_flag' in oRequest.POST and oRequest.POST['mu_flag'] != '':
-                aConfigLines = aConfigLines.filter(mu_flag__iregex="^" + escape(oRequest.POST['mu_flag'].strip())
-                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
-                sTempHeaderLine += '<th style="width:175px;">MU-Flag</th>'
-                aTempFilters.append('mu_flag')
-                bRemoveDuplicates = False
-
-            if 'xplant' in oRequest.POST and oRequest.POST['xplant'] != '':
-                aConfigLines = aConfigLines.filter(x_plant__iregex="^" + escape(oRequest.POST['xplant'].strip())
-                                           .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
-                sTempHeaderLine += '<th style="width:175px;">X-Plant Material Status</th>'
-                aTempFilters.append('x_plant')
-                bRemoveDuplicates = False
-
             if sTempHeaderLine:
                 sTableHeader += '<th style="width:175px;">Line Number</th>' + sTempHeaderLine
                 aLineFilter.extend(aTempFilters)
@@ -234,7 +263,10 @@ def Search(oRequest, advanced=False):
                                            .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
 
             if 'release' in oRequest.POST and oRequest.POST['release'] != '':
-                aConfigLines = aConfigLines.filter(**{'config__header__release_date__' + oRequest.POST['release_param']: oRequest.POST['release']})
+                if oRequest.POST['release_param'] != 'ne':
+                    aConfigLines = aConfigLines.filter(**{'config__header__release_date__' + oRequest.POST['release_param']: oRequest.POST['release']})
+                else:
+                    aConfigLines = aConfigLines.exclude(**{'config__header__release_date__exact': oRequest.POST['release']})
                 sTableHeader += '<th style="width:175px;">Release Date</th>'
                 aLineFilter.append('config.header.release_date')
 
@@ -280,7 +312,14 @@ def Search(oRequest, advanced=False):
         'header_list': aHeaders,
         'request_list': REF_REQUEST.objects.all(),
         'cust_list': REF_CUSTOMER.objects.all(),
-        'status_list': REF_STATUS.objects.all()
+        'status_list': REF_STATUS.objects.all(),
+        'prog_list': list(set(REF_PROGRAM.objects.all().values_list('name', flat=True))),
+        'tech_list': REF_TECHNOLOGY.objects.all(),
+        'baseline_list': Baseline.objects.all(),
+        'prod1_list': list(set(REF_PRODUCT_AREA_1.objects.all().values_list('name', flat=True))),
+        'prod2_list': list(set(REF_PRODUCT_AREA_2.objects.all().values_list('name', flat=True))),
+        'band_list': REF_RADIO_BAND.objects.all(),
+        'freq_list': list(set(REF_RADIO_FREQUENCY.objects.all().values_list('name', flat=True)))
     }
     return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def

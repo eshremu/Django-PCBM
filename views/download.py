@@ -4,10 +4,11 @@ from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.contrib.staticfiles.finders import find
 
-from BoMConfig.models import Header, ConfigLine, Baseline, Baseline_Revision, DistroList
+from BoMConfig.models import Header, ConfigLine, Baseline, Baseline_Revision, DistroList, REF_PROGRAM, PricingObject
 from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
 from BoMConfig.utils import GenerateRevisionSummary, GrabValue, HeaderComparison, RevisionCompare, TitleShorten
 from BoMConfig.views.configuration import BuildDataArray
+from BoMConfig.views.pricing import PricingOverviewLists
 
 import datetime
 from io import StringIO, BytesIO
@@ -15,6 +16,7 @@ from itertools import chain
 import openpyxl
 from openpyxl import utils
 from openpyxl.styles import Font, Color, colors, Border, Alignment, Side, borders, GradientFill
+from openpyxl.comments import Comment
 from openpyxl.drawing import Image
 import os
 from functools import cmp_to_key
@@ -86,7 +88,7 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
     # oFile.active.add_image(img)
 
     if oHeader.configuration:
-        oFile.active['D5'] = ('X' if oHeader.configuration.reassign else None)
+        oFile.active['D5'] = ('X' if oHeader.configuration.ready_for_forecast else None)
         oFile.active['D8'] = ('X' if oHeader.configuration.PSM_on_hold else None)
         oFile.active['N4'] = ('X' if oHeader.configuration.internal_external_linkage else None)
         oFile.active['Q4'] = (
@@ -114,6 +116,7 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
             oFile.active['O' + str(iRow)] = oConfigLine.x_plant
             oFile.active['P' + str(iRow)] = oConfigLine.internal_notes
             # oFile.active['Q' + str(iRow)] = oConfigLine.linepricing.unit_price
+            # TODO: Fix this to correctly reflect configuration prices
             oFile.active['Q' + str(iRow)] = str(oConfigLine.linepricing.override_price) if str(
                 oConfigLine.line_number) == '10' and hasattr(oConfigLine, 'linepricing') and \
                 oConfigLine.linepricing.override_price else oConfigLine.linepricing.pricing_object.unit_price \
@@ -139,7 +142,7 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
     oFile.active = oFile.sheetnames.index('2a) BoM Config ToC')
     oFile.active.sheet_view.showGridLines = False
     if oHeader.configuration:
-        oFile.active['D5'] = ('X' if oHeader.configuration.reassign else None)
+        oFile.active['D5'] = ('X' if oHeader.configuration.ready_for_forecast else None)
         oFile.active['D8'] = ('X' if oHeader.configuration.PSM_on_hold else None)
         oFile.active['A13'] = oHeader.configuration_designation
         oFile.active['B13'] = oHeader.customer_designation or None
@@ -1040,4 +1043,232 @@ def EmailDownload(oBaseline): #sBaselineTitle):
 
     oNewMessage.attach(sFileName, oStream.getvalue(), 'application/ms-excel')
     oNewMessage.send()
+# end def
+
+
+def ConfigPriceDownload(oRequest):
+    if oRequest.POST:
+        oHeader = Header.objects.get(configuration_designation=oRequest.POST['config'],
+                                     baseline=Baseline_Revision.objects.get(id=oRequest.POST['baseline']) or None,
+                                     program=REF_PROGRAM.objects.get(id=oRequest.POST['program']) or None)
+
+        sFileName = oHeader.configuration_designation + ('_' + oHeader.program.name if oHeader.program else '') + ' Pricing.xlsx'
+
+        oFile = WriteConfigPriceToFile(oHeader)
+
+        response = HttpResponse(content_type='application/ms-excel')
+        response['Content-Disposition'] = 'attachment;filename="{0}"'.format(sFileName)
+        response.set_cookie('fileMark', oRequest.POST['file_cookie'], max_age=60)
+        oFile.save(response)
+
+        return response
+    else:
+        return HttpResponse()
+# end def
+
+
+def WriteConfigPriceToFile(oHeader):
+    aLine = oHeader.configuration.configline_set.all()
+    aLine = sorted(aLine, key=lambda x: ([int(y) for y in x.line_number.split('.')]))
+
+    aConfigLines = [{
+                        '0': oLine.line_number,
+                        '1': (
+                             '..' if oLine.is_grandchild else '.' if oLine.is_child else '') + oLine.part.base.product_number,
+                        '2': str(oLine.part.base.product_number) + str('_' + oLine.spud.name if oLine.spud else ''),
+                        '3': oLine.part.product_description,
+                        '4': float(oLine.order_qty if oLine.order_qty else 0.0),
+                        '5': float(GrabValue(oLine, 'linepricing.pricing_object.unit_price', 0.0)),
+                        '6': float(oLine.order_qty or 0) * float(GrabValue(oLine, 'linepricing.pricing_object.unit_price', 0.0)),
+                        '7': GrabValue(oLine, 'linepricing.override_price', ''),
+                        '8': oLine.higher_level_item or '',
+                        '9': oLine.material_group_5 or '',
+                        '10': oLine.commodity_type or '',
+                        '11': oLine.comments or '',
+                        '12': oLine.additional_ref or ''
+                    } for oLine in aLine]
+
+    if not oHeader.pick_list:
+        config_total = sum([float(line['6']) for line in aConfigLines])
+        aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
+
+        if aConfigLines[0]['7']:
+            net_total = float(aConfigLines[0]['7'])
+        elif any(oLine['7'] for oLine in aConfigLines):
+            net_total = sum([float(line['7']) if line['7'] else float(line['6']) for line in aConfigLines if line[0] != '10'])
+        else:
+            net_total = float(aConfigLines[0]['6'])
+        # end if
+    else:
+        net_total = sum([float(line['7']) if line['7'] else float(line['6']) for line in aConfigLines])
+
+    headers = ['Line #', 'Product Number', 'Internal Product Number', 'Product Description', 'Order Qty', 'Unit Price',
+               'Total Price', 'Manual Override for Total NET Price', 'Linkage', 'Material Group 5', 'HW/SW Indicator',
+               'Comments (viewable by customer)', 'Additional Reference (viewable by customer)']
+
+    oFile = openpyxl.Workbook()
+    oSheet = oFile.active
+
+    for i in range(len(headers)):
+        oSheet[utils.get_column_letter(i + 1) + '1'] = headers[i]
+
+    for i in range(len(aConfigLines)):
+        for j in range(len(headers)):
+            oSheet[utils.get_column_letter(j + 1) + str(2 + i)] = aConfigLines[i][str(j)]
+
+    return oFile
+
+
+def PriceOverviewDownload(oRequest):
+    if oRequest.POST:
+        sFileName = 'Pricing Overview.xlsx'
+
+        oFile = WritePriceOverviewToFile(*PricingOverviewLists())
+
+        response = HttpResponse(content_type='application/ms-excel')
+        response['Content-Disposition'] = 'attachment;filename="{0}"'.format(sFileName)
+        response.set_cookie('fileMark', oRequest.POST['file_cookie'], max_age=60)
+        oFile.save(response)
+
+        return response
+    else:
+        return HttpResponse()
+
+
+def WritePriceOverviewToFile(aPricingLines, aComments):
+    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)']
+    for j in range(1,5):
+        aHeaders.append(str(datetime.datetime.now().year - j) + ' Price ($)')
+
+    oFile = openpyxl.Workbook()
+    oSheet = oFile.active
+
+    for i in range(len(aHeaders)):
+        oSheet[utils.get_column_letter(i + 1) + '1'] = aHeaders[i]
+
+    for i in range(len(aPricingLines)):
+        for j in range(len(aHeaders)):
+            oSheet[utils.get_column_letter(j + 1) + str(2 + i)] = aPricingLines[i][j]
+            if j >= 5 and aComments[i][j - 5]:
+                oSheet[utils.get_column_letter(j + 1) + str(2 + i)].comment = Comment(aComments[i][j - 5], 'System')
+
+    return oFile
+
+
+def PartPriceDownload(oRequest):
+    if oRequest.POST:
+        aPriceList = PricingObject.objects.filter(part__product_number=oRequest.POST['initial'], is_current_active=True).order_by('customer',
+                                                                                                       'sold_to', 'spud')
+
+        sFileName = oRequest.POST['initial'] + ' Pricing.xlsx'
+
+        aPriceList = [[
+                          oPriceObj.part.product_number,
+                          oPriceObj.customer.name,
+                          oPriceObj.sold_to or '(None)',
+                          getattr(oPriceObj.spud, 'name', '(None)'),
+                          getattr(oPriceObj.technology, 'name', '(None)'),
+                          oPriceObj.unit_price or '',
+                          oPriceObj.valid_to_date.strftime('%m/%d/%Y') if oPriceObj.valid_to_date else '',
+                          oPriceObj.valid_from_date.strftime('%m/%d/%Y') if oPriceObj.valid_from_date else '',
+                          oPriceObj.cutover_date.strftime('%m/%d/%Y') if oPriceObj.cutover_date else '',
+                          str(oPriceObj.price_erosion),
+                          oPriceObj.erosion_rate or '',
+                          oPriceObj.comments or '',
+                       ] for oPriceObj in aPriceList]
+
+        oFile = WritePartPriceToFile(aPriceList)
+
+        response = HttpResponse(content_type='application/ms-excel')
+        response['Content-Disposition'] = 'attachment;filename="{0}"'.format(sFileName)
+        response.set_cookie('fileMark', oRequest.POST['file_cookie'], max_age=60)
+        oFile.save(response)
+
+        return response
+    else:
+        return HttpResponse()
+# end def
+
+
+def WritePartPriceToFile(aPriceList):
+    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid To', 'Valid From', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments']
+    oFile = openpyxl.Workbook()
+    oSheet = oFile.active
+
+    for i in range(len(aHeaders)):
+        oSheet[utils.get_column_letter(i + 1) + '1'] = aHeaders[i]
+
+    for i in range(len(aPriceList)):
+        for j in range(len(aHeaders)):
+            oSheet[utils.get_column_letter(j + 1) + str(2 + i)] = aPriceList[i][j]
+
+    return oFile
+# end def
+
+
+def ErosionDownload(oRequest):
+    if oRequest.POST:
+        dArgs = {'price_erosion': True,
+                 'is_current_active': True}
+
+        if oRequest.POST['cu'] != 'all':
+            dArgs['customer__name'] = oRequest.POST['cu']
+
+        if oRequest.POST['soldto'] != 'all':
+            if oRequest.POST['soldto'] != 'None':
+                dArgs['sold_to'] = oRequest.POST['soldto']
+            else:
+                dArgs['sold_to'] = None
+
+        if oRequest.POST['spud'] != 'all':
+            if oRequest.POST['spud'] != 'None':
+                dArgs['spud__name'] = oRequest.POST['spud']
+            else:
+                dArgs['spud'] = None
+
+        if oRequest.POST['technology'] != 'all':
+            if oRequest.POST['technology'] != 'None':
+                dArgs['technology__name'] = oRequest.POST['technology']
+            else:
+                dArgs['technology'] = None
+
+        aRecords = PricingObject.objects.filter(**dArgs).order_by('part__product_number', 'customer', 'sold_to', 'spud')
+        aPriceList = [[oPO.part.product_number,
+                       oPO.customer.name,
+                       oPO.sold_to or "(None)",
+                       oPO.spud.name if oPO.spud else '(None)',
+                       oPO.technology.name if oPO.technology else "(None)",
+                       oPO.unit_price,
+                       oPO.erosion_rate,
+                       '{:.2f}'.format(round(round((float(oPO.unit_price) - (float(oPO.unit_price) * (float(oPO.erosion_rate)/100)))*100)/100, 2)),
+                       '', '', ] for oPO in aRecords] if aRecords else [[]]
+
+        sFileName = 'Price Erosion Pricing.xlsx'
+
+        oFile = WritePriceErosionToFile(aPriceList)
+
+        response = HttpResponse(content_type='application/ms-excel')
+        response['Content-Disposition'] = 'attachment;filename="{0}"'.format(sFileName)
+        response.set_cookie('fileMark', oRequest.POST['file_cookie'], max_age=60)
+        oFile.save(response)
+
+        return response
+    else:
+        return HttpResponse()
+# end def
+
+
+def WritePriceErosionToFile(aPriceList):
+    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)', 'Erosion Rate (%)', 'Projected Unit Price ($)', 'Valid From', 'Valid To']
+    oFile = openpyxl.Workbook()
+    oSheet = oFile.active
+
+    for i in range(len(aHeaders)):
+        oSheet[utils.get_column_letter(i + 1) + '1'] = aHeaders[i]
+
+    for i in range(len(aPriceList)):
+        for j in range(len(aPriceList[i])):
+            oSheet[utils.get_column_letter(j + 1) + str(2 + i)] = aPriceList[i][j]
+
+    return oFile
 # end def

@@ -236,7 +236,7 @@ def ParseUpload(oSourceFile):
         # end try
 
         dConfigDict = {
-            'reassign': oBOM.dConfigData['Reassign'],
+            'ready_for_forecast': oBOM.dConfigData['Reassign'],
             'PSM_on_hold': oBOM.dConfigData['PSM on Hold'],
             'internal_external_linkage': oBOM.dConfigData['Internal/External Linkage'],
             'net_value': "{:.2f}".format(round(float(oBOM.dConfigData['NET Value']),2)),

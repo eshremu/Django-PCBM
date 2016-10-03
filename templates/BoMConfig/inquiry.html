@@ -2,8 +2,8 @@
 {% load staticfiles %}
 {% block subcontent %}
 {% if inquiry and inquiry_read_authorized or not inquiry and sitetemplate_read_authorized %}
-    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
-    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.css' %}"/>
     <form id="configform" method="POST">
         {% csrf_token %}
         <div id="headersubform">

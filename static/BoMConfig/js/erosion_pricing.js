@@ -7,26 +7,52 @@ $(document).ready(function(){
     $(window).load(function(){
         form_resize();
     });
+
+    $(document).on('mouseup','input.modify',function(event){
+        isChecked = !isChecked;
+        hot.render();
+    });
+
+    $('.filter').change(function(event){
+        $.ajax({
+            url: ajax_url,
+            type: 'POST',
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            data: {
+                customer: $('#cu_filter').val(),
+                sold_to: $('#soldto_filter').val(),
+                spud: $('#spud_filter').val(),
+                technology: $('#tech_filter').val()
+            },
+            success: function(returned_data){
+                hot.loadData(returned_data);
+            },
+            error: function(xhr, status, error){
+                console.log("ERROR: ", status, error);
+            }
+        });
+    });
     
     $('#data_form').submit(function(){
         $('#formData').val(JSON.stringify(hot.getData()));
-        // $.ajax({
-        //     url: '',
-        //     type: 'POST',
-        //     headers:{
-        //         'X-CSRFToken': getcookie('csrftoken')
-        //     },
-        //     data: {
-        //         changed_data: JSON.stringify(hot.getData()),
-        //     },
-        //     success: function(returned_data){
-        //         //resultsDisplay(returned_data);
-        //         console.log("SUCCESS: ", returned_data);
-        //     },
-        //     error: function(xhr, status, error){
-        //         console.log("ERROR: ", status, error);
-        //     }
-        // });
+    });
+
+    $('#download_form').submit(function(){
+        $('#cu').val($('#cu_filter').val());
+        $('#soldto').val($('#soldto_filter').val());
+        $('#spud').val($('#spud_filter').val());
+        $('#technology').val($('#tech_filter').val());
+    });
+
+    $('#download').click(function(){
+        timer = setInterval(function(){
+            if(document.cookie.split('fileMark=').length == 2 && document.cookie.split('fileMark=')[1].split(';')[0] == $('#cookie').val()) {
+                clearInterval(timer);
+                $('#myModal').modal('hide');
+            }
+        },1000);
     });
 });
 
@@ -38,21 +64,19 @@ function form_resize(){
     var bodyheight = $('#main-body').height();
 
     $("#main-body").css("height", bodyheight - 5);
-    var tableheight = bodyheight - (topbuttonheight + bottombuttonheight);//  + crumbheight + subformheight);
+    var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + subformheight);//  + crumbheight );
 
     $('#table-wrapper').css("height", tableheight);
     build_table();
 }
 
-function calcRenderer (instance, td, row, col, prop, value, cellProperties) {
-    var newVal = (parseFloat(instance.getSourceDataAtCell(row, 6)) * (1 - (parseFloat(instance.getSourceDataAtCell(row, 7))/100)));
-    value = +(Math.round(newVal + 'e+2') + 'e-2');
-    moneyRenderer(instance, td, row, col, prop, value, cellProperties);
-}
-
 function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
     if (cellProperties.readOnly){
         td.style.background = '#DDDDDD';
+    }
+
+    if (value == 'NaN' || isNaN(value)){
+        value = '';
     }
 
     if (value != '' && value != undefined && value != null) {
@@ -114,27 +138,40 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties) {
 }
 
 function build_table() {
-    var headers = ['Erode?', 'Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)', 'Erosion Rate (%)', 'Projected Unit Price ($)', 'Valid-From', 'Valid-To'];
-    var container = document.getElementById('datatable');
     hot = new Handsontable(container, {
         data: data,
-        minRows: 1,
+        minRows: 0,
         minCols: 11,
         maxCols: 11,
         rowHeaders: false,
-        colHeaders: headers,
+        colHeaders: function(col){
+            switch(col){
+                case 0: return 'Erode?';
+                case 1: return 'Part Number';
+                case 2: return 'Customer';
+                case 3: return 'Sold-To';
+                case 4: return 'SPUD';
+                case 5: return 'Technology';
+                case 6: return 'Latest Unit Price ($)';
+                case 7: return 'Erosion Rate (%)<br/>Modify&nbsp;<input type="checkbox" class="modify" ' + (isChecked?'checked="checked"':'') + '>';
+                case 8: return 'Projected Unit Price ($)';
+                case 9: return 'Valid-From';
+                case 10: return 'Valid-To';
+            }
+        },
         cells: function(row, col, prop){
             var cellProperties = [];
 
             if(col != 0 && col != 9 && col != 10) {
                 cellProperties.readOnly = true;
+                if (col == 7){
+                    cellProperties.readOnly = !isChecked;
+                }
                 cellProperties.className = 'htCenter';
             }
 
             if(col == 6 || col == 8){
                 cellProperties.renderer = moneyRenderer;
-            // } else if (col == 8){
-            //     cellProperties.renderer = calcRenderer;
             } else if (col != 9 && col != 10){
                 cellProperties.renderer = readonlyRenderer;
             }
@@ -163,6 +200,9 @@ function build_table() {
                 cellProperties.type = 'checkbox';
                 cellProperties.checkedTemplate = 'True';
                 cellProperties.uncheckedTemplate = 'False';
+                if(this.instance.getSourceData()[0][1] == null){
+                    cellProperties.readOnly = true;
+                }
                 cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties){
                     td.style.textAlign = 'center';
                     if(value==""){
@@ -175,27 +215,54 @@ function build_table() {
             return cellProperties;
         },
         afterValidate: function(valid, value, row, prop, source){
-                if(!valid){
-                    return valid;
-                }
+            if(!valid){
+                return valid;
+            }
 
-                if (prop == '10' && source == 'edit'){
-                    if(Date.parse(value) <= (Date.parse(this.getDataAtCell(row, 8)) || new Date(Date.now()).setHours(0,0,0,0))){
-                        return false;
+            if (prop == '10' && source == 'edit'){
+                if(Date.parse(value) <= (Date.parse(this.getDataAtCell(row, 8)) || new Date(Date.now()).setHours(0,0,0,0))){
+                    return false;
+                }
+            }
+
+            if((prop == '9') && source == 'edit'){
+                if (new Date(Date.now()).setHours(0,0,0,0) > Date.parse(value)){
+                    return false;
+                }
+            }
+        },
+        beforeChange: function(changes, source){
+            for(var i=0; i < changes.length; i++){
+                if(changes[i][1] == '7') {
+                    if (changes[i][3] == '') {
+                        changes[i][3] = 0;
                     }
                 }
-
-                if((prop == '9') && source == 'edit'){
-                    if (new Date(Date.now()).setHours(0,0,0,0) > Date.parse(value)){
-                        return false;
+            }
+        },
+        afterChange: function(changes, source){
+            var newVal, i;
+            if(source != 'loadData'){
+                for(i=0; i < changes.length; i++){
+                    if(changes[i][1] == '7'){
+                        newVal = (parseFloat(this.getSourceDataAtCell(changes[i][0], 6)) * (1 - (parseFloat(this.getSourceDataAtCell(changes[i][0], 7))/100)));
+                        newVal = +(Math.round(newVal + 'e+2') + 'e-2');
+                        this.setDataAtCell(changes[i][0],8, newVal,'loadData');
                     }
                 }
+            } else if (changes == null){
+                for (i=0; i < this.countRows(); i++){
+                    newVal = (parseFloat(this.getSourceDataAtCell(i, 6)) * (1 - (parseFloat(this.getSourceDataAtCell(i, 7))/100)));
+                    newVal = +(Math.round(newVal + 'e+2') + 'e-2');
+                    this.setDataAtCell(i,8, newVal,'loadData');
+                }
+            }
         }
     });
 
-    for (var i=0; i < hot.countRows(); i++){
-        var newVal = (parseFloat(hot.getSourceDataAtCell(i, 6)) * (1 - (parseFloat(hot.getSourceDataAtCell(i, 7))/100)));
-        newVal = +(Math.round(newVal + 'e+2') + 'e-2');
-        hot.setDataAtCell(i,8, newVal,'loadData');
-    }
+    // for (var i=0; i < hot.countRows(); i++){
+    //     var newVal = (parseFloat(hot.getSourceDataAtCell(i, 6)) * (1 - (parseFloat(hot.getSourceDataAtCell(i, 7))/100)));
+    //     newVal = +(Math.round(newVal + 'e+2') + 'e-2');
+    //     hot.setDataAtCell(i,8, newVal,'loadData');
+    // }
 }

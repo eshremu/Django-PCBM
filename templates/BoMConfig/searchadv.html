@@ -1,9 +1,10 @@
 {% extends "BoMConfig/template.html" %}
+{% load staticfiles %}
 {% load bomconfig_customtemplatetags %}
 {% block content %}
 <div id="main-body" xmlns="http://www.w3.org/1999/html">
     {% if user.is_authenticated %}
-    <div id="action_buttons">
+    <div id="action_buttons" style="margin: 5px 0;">
 		<button class="btn" type="button" name="action" value="basic" onclick="window.location.href='{% url 'bomconfig:search' %}'">Basic</button>
 		<button class="btn" type="button" name="action" value="advanced" onclick="window.location.href='{% url 'bomconfig:searchadv' %}'">Advanced</button>
 	</div>
@@ -22,6 +23,7 @@
                         <li><label for="customer">Customer Unit</label>
                             <select id="customer" name="customer">
                                 <option value="">-------</option>
+                                <option value="n/a">Any</option>
                                 {% for cust in cust_list %}
                                 <option value="{{ cust.name }}">{{ cust.name }}</option>
                                 {% endfor %}
@@ -31,11 +33,73 @@
                         <li><label for="soldto">Sold-to Party</label>
                             <input id="soldto" type="text" name="soldto"/></li>
                         <li><label for="program">Program</label>
-                            <input id="program" type="text" name="program"/></li>
+                            <select id="program" name="program">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for program in prog_list %}
+                                <option value="{{ program|lower }}">{{ program }}</option>
+                                {% endfor %}
+                            </select></li>
                         <li><label for="tech">Technology</label>
-                            <input id="tech" type="text" name="tech"/></li>
+                            <select id="tech" name="tech">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for tech in tech_list %}
+                                <option value="{{ tech.name|lower }}">{{ tech.name }}</option>
+                                {% endfor %}
+                            </select></li>
+                        <li><label for="prod1">Product Area 1</label>
+                            <select id="prod1" name="prod1">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for prod in prod1_list %}
+                                <option value="{{ prod|lower }}">{{ prod }}</option>
+                                {% endfor %}
+                            </select></li>
+                        <li><label for="prod2">Product Area 2</label>
+                            <select id="prod2" name="prod2">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for prod in prod2_list %}
+                                <option value="{{ prod|lower }}">{{ prod }}</option>
+                                {% endfor %}
+                            </select></li>
+                        <li><label for="freq">Radio Frequency</label>
+                            <select id="freq" name="freq">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for freq in freq_list %}
+                                <option value="{{ freq|lower }}">{{ freq }}</option>
+                                {% endfor %}
+                            </select></li>
+                        <li><label for="band">Radio Band</label>
+                            <select id="band" name="band">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for band in band_list %}
+                                <option value="{{ band.name|lower }}">{{ band.name }}</option>
+                                {% endfor %}
+                            </select></li>
+                        <li><label for="inquiry_site">Inquiry / Site Template Number</label>
+                            <input id="inquiry_site" type="text" name="inquiry_site"/></li>
+                        <li><label for="readiness">Readiness Complete (%)</label>
+                            <select id="readiness_param">
+                                <option value="lt"><</option>
+                                <option value="lte">&le;</option>
+                                <option value="exact" selected>=</option>
+                                <option value="gte">&ge;</option>
+                                <option value="gt">></option>
+                                <option value="ne">&ne;</option>
+                            </select>
+                            <input id="readiness" type="number" name="readiness" min="0" max="100" maxlength="3"/></li>
                         <li><label for="base_impact">Baseline Impacted</label>
-                            <input id="base_impact" type="text" name="base_impact"/></li>
+                            <select id="base_impact" name="base_impact">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for base in baseline_list %}
+                                <option value="{{ base.title }}">{{ base.title }}</option>
+                                {% endfor %}
+                            </select></li>
                         <li><label for="model">Model</label>
                             <input id="model" type="text" name="model"/></li>
                         <li><label for="model_desc">Model Description</label>
@@ -45,12 +109,11 @@
                         <li><label for="status">Configuration/Ordering Status</label>
                             <select id="status" name="status">
                                 <option value="">-------</option>
+                                <option value="n/a">Any</option>
                                 {% for status in status_list %}
                                 <option value="{{ status.name|lower|replacewhitespace:"_" }}">{{ status.name }}</option>
                                 {% endfor %}
                             </select></li>
-                        <li><label for="inquiry_site">Inquiry / Site Template Number</label>
-                            <input id="inquiry_site" type="text" name="inquiry_site"/></li>
                     </ul>
                 </div>
 
@@ -63,14 +126,6 @@
                             <input id="prod_desc" type="text"/></li>
                         <li><label for="cust_num">Customer Number</label>
                             <input id="cust_num" type="text"/></li>
-                        <li><label for="mu_flag">MU-Flag</label>
-                            <select id="mu_flag">
-                                <option value="">----</option>
-                                <option value="Yes">Yes</option>
-                                <option value="No">No</option>
-                            </select>
-                        <li><label for="xplant">X-Plant Material Status</label>
-                            <input id="xplant" type="text"/></li>
                     </ul>
                 </div>
 
@@ -82,10 +137,11 @@
                         <li><label for="release">Release Date</label>
                             <select id="release_param">
                                 <option value="lt"><</option>
-                                <option value="lte"><=</option>
+                                <option value="lte">&le;</option>
                                 <option value="exact" selected>=</option>
-                                <option value="gte">>=</option>
+                                <option value="gte">&ge;</option>
                                 <option value="gt">></option>
+                                <option value="ne">&ne;</option>
                             </select>
                             <input id="release" type="date"/></li>
                     </ul>
@@ -103,6 +159,8 @@
     <h4>You must log in to use this function</h4>
     {% endif %}
 </div>
+<link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+<script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
 <script>
     $('a:contains("Search")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc')
     $('button[value="advanced"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
@@ -110,6 +168,16 @@
     $(document).ready(function(){
         $('#search_button').click(function(){
             $('#search_form').submit();
+        });
+
+        $('#readiness').change(function(event){
+            if($(this).val() < 0){
+                $(this).val(0);
+            }
+
+            if($(this).val() > 100){
+                $(this).val(100);
+            }
         });
 
         $('input').keydown(function(e){
@@ -184,12 +252,16 @@
                 status: $('#status').val(),
                 inquiry_site: $('#inquiry_site').val(),
                 person: $('#person').val(),
+                product1: $('#prod1').val(),
+                product2: $('#prod2').val(),
+                frequency: $('#freq').val(),
+                band: $('#band').val(),
+                readiness: $('#readiness').val(),
+                readiness_param: $('#readiness_param').val(),
 
                 product_num: $('#prod_num').val(),
                 customer_num: $('#cust_num').val(),
                 description: $('#prod_desc').val(),
-                mu_flag: $('#mu_flag').val(),
-                xplant: $('#xplant').val(),
 
                 base_rev: $('#base_rev').val(),
                 release_param: $('#release_param').val(),
@@ -213,9 +285,22 @@
                 if($('#revision_search').hasClass('in')){
                     $('#revision_search').collapse('toggle');
                 }
+                $('#result_table').DataTable({
+                    paging: false,
+                    searching: false,
+                    info: false,
+                    order: [],
+                    columnDefs: [
+                        {
+                            orderable: false,
+                            targets: 0
+                        }
+                    ]
+                });
                 $('#myModal').modal('hide');
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.log('ERROR:', status, error);
                 $('#myModal').modal('hide');
             }
         });

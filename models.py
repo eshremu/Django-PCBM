@@ -2,11 +2,12 @@ from django.db import models
 from django.contrib.sessions.models import Session
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
+from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
+import re
+
 # Create your models here.
-
-
 class ParseException(Exception):
     pass
 
@@ -313,18 +314,9 @@ class Baseline_Revision(models.Model):
 class Header(models.Model):
     person_responsible = models.CharField(max_length=50, verbose_name='Person Responsible')
     react_request = models.CharField(max_length=25, verbose_name='REACT Request', blank=True, null=True)
-    # bom_request_type = models.CharField(max_length=50, choices=(('', '-----'), ('New', 'New'), ('Update', 'Update'),
-    #                                                             ('Replacement', 'Replacement'),
-    #                                                             ('Discontinued', 'Discontinued'), ('Legacy', 'Legacy'),
-    #                                                             ('Preliminary', 'Preliminary')),
-    #                                     verbose_name='BoM Request Type', default='new')
     bom_request_type = models.ForeignKey(REF_REQUEST, verbose_name='BoM Request Type', db_constraint=False)
-    # customer_unit = models.CharField(max_length=50, choices=(
-    #     ('', '-----'), ('AT&T', 'AT&T'), ('Verizon', 'Verizon'), ('Sprint', 'Sprint'), ('T-Mobile', 'T-Mobile')
-    # ), verbose_name='Customer Unit')
     customer_unit = models.ForeignKey(REF_CUSTOMER, verbose_name='Customer Unit', db_constraint=False)
     customer_name = models.CharField(max_length=50, verbose_name='Customer Name', blank=True, null=True)
-    # customer_name = models.ForeignKey(REF_CUSTOMER_NAME, verbose_name='Customer Name', blank=True, null=True, db_constraint=False)
     sales_office = models.CharField(max_length=50, verbose_name='Sales Office', blank=True, null=True)
     sales_group = models.CharField(max_length=50, verbose_name='Sales Group', blank=True, null=True)
     sold_to_party = models.IntegerField(verbose_name='Sold-to Party', blank=True, null=True)
@@ -333,25 +325,19 @@ class Header(models.Model):
     ericsson_contract = models.IntegerField(verbose_name='Ericsson Contract #', blank=True, null=True)
     payment_terms = models.CharField(max_length=50, verbose_name='Payment Terms', blank=True, null=True)
     projected_cutover = models.DateField(verbose_name='Projected Cut-over Date', blank=True, null=True)
-    # program = models.CharField(max_length=50, verbose_name='Program', blank=True, null=True)
     program = models.ForeignKey(REF_PROGRAM, verbose_name='Program', blank=True, null=True, db_constraint=False)
     configuration_designation = models.CharField(max_length=50, verbose_name='Configuration')
     customer_designation = models.CharField(max_length=50, verbose_name='Customer Designation', blank=True, null=True)
     technology = models.ForeignKey(REF_TECHNOLOGY, verbose_name='Technology', blank=True, null=True, db_constraint=False)
-    # technology = models.CharField(max_length=50, verbose_name='Technology', blank=True, null=True)
     product_area1 = models.ForeignKey(REF_PRODUCT_AREA_1, verbose_name='Product Area 1', blank=True, null=True, db_constraint=False)
-    # product_area1 = models.CharField(max_length=50, verbose_name='Product Area 1', blank=True, null=True)
     product_area2 = models.ForeignKey(REF_PRODUCT_AREA_2, verbose_name='Product Area 2', blank=True, null=True, db_constraint=False)
-    # product_area2 = models.CharField(max_length=50, verbose_name='Product Area 2', blank=True, null=True)
-    # radio_frequency = models.CharField(max_length=50, verbose_name='Radio Frequency', blank=True, null=True)
     radio_frequency = models.ForeignKey(REF_RADIO_FREQUENCY, verbose_name='Radio Frequency', blank=True, null=True, db_constraint=False)
-    # radio_band = models.CharField(max_length=50, verbose_name='Radio Band', blank=True, null=True)
     radio_band = models.ForeignKey(REF_RADIO_BAND, verbose_name='Radio Band', blank=True, null=True, db_constraint=False)
     optional_free_text1 = models.CharField(max_length=50, verbose_name='Optional Free Text Field 1', blank=True, null=True)
     optional_free_text2 = models.CharField(max_length=50, verbose_name='Optional Free Text Field 2', blank=True, null=True)
     optional_free_text3 = models.CharField(max_length=50, verbose_name='Optional Free Text Field 3', blank=True, null=True)
     inquiry_site_template = models.IntegerField(verbose_name='Inquiry/Site Template #', blank=True, null=True)
-    readiness_complete = models.IntegerField(verbose_name='Readiness Complete (%)', blank=True, null=True)
+    readiness_complete = models.IntegerField(verbose_name='Readiness Complete (%)', blank=True, null=False, default=0)
     complete_delivery = models.BooleanField(verbose_name='Complete Delivery', default=True)
     no_zip_routing = models.BooleanField(default=False, verbose_name='No ZipRouting')
     valid_from_date = models.DateField(verbose_name='Valid-from Date', blank=True, null=True)
@@ -363,11 +349,9 @@ class Header(models.Model):
     model_replaced = models.CharField(max_length=50, verbose_name='What Model is this replacing?', blank=True, null=True)
     model_replaced_link = models.ForeignKey('Header', related_name='replaced_by_model', blank=True, null=True)
     initial_revision = models.CharField(max_length=50, verbose_name='Initial Revision', blank=True, null=True)  # This is the root model
-    # configuration_status = models.CharField(max_length=50, default='In Process', verbose_name='Configuration/Ordering Status')
     configuration_status = models.ForeignKey(REF_STATUS, verbose_name='Configuration/Ordering Status',
                                              default=1, db_index=False,
                                              db_constraint=False, unique=False)
-    # old_configuration_status = models.CharField(max_length=50, blank=True, null=True)
     old_configuration_status = models.ForeignKey(REF_STATUS, default=None, related_name='old_status', db_index=False,
                                                  db_constraint=False, unique=False, null=True, blank=True)
     workgroup = models.CharField(max_length=50, verbose_name='Workgroup', blank=True, null=True)
@@ -423,6 +407,36 @@ class Header(models.Model):
                 # end if
             # end if
         # end if
+        # print(self.readiness_complete)
+        if self.configuration_status.name == 'In Process':
+            if self.bom_request_type.name == 'Preliminary':
+                self.readiness_complete = 25
+            else:
+                self.readiness_complete = 50
+
+                if hasattr(self, 'configuration') and self.configuration.ready_for_forecast:
+                    self.readiness_complete = 70
+                    aRecips = User.objects.filter(groups__securitypermission__title__in=HeaderTimeTracker.permission_entry('scm1')).values_list('email', flat=True)
+                    oMessage = EmailMultiAlternatives(subject='Preliminary Bill of Materials',
+                                                      body='The attached bill of materials is ready for forecasting',
+                                                      from_email='pcbm.admin@ericsson.com',
+                                                      to=aRecips)
+                    oMessage.attach_alternative('The attached bill of materials is ready for forecasting', 'text/html')
+
+                    from BoMConfig.views.download import WriteConfigToFile
+                    from io import BytesIO
+                    oStream = BytesIO()
+                    WriteConfigToFile(self).save(oStream)
+                    oMessage.attach(filename=self.configuration_designation + ('_' + self.program.name if self.program else '') + '.xlsx',
+                                    content=oStream.getvalue(),
+                                    mimetype='application/ms-excel')
+                    oMessage.send()
+        elif self.configuration_status.name == 'In Process/Pending':
+            self.readiness_complete = 90
+        else:
+            self.readiness_complete = 100
+        # print(self.readiness_complete)
+
         super().save(*args, **kwargs)
         if not hasattr(self, 'headertimetracker_set') or not self.headertimetracker_set.all():
             HeaderTimeTracker.objects.create(**{'header':self})
@@ -462,7 +476,7 @@ class Header(models.Model):
 
 
 class Configuration(models.Model):
-    reassign = models.BooleanField(default=False, verbose_name="Reassign?")
+    ready_for_forecast = models.BooleanField(default=False, verbose_name="Ready for Forecast")
     PSM_on_hold = models.BooleanField(default=False, verbose_name="PSM On Hold?")
     internal_external_linkage = models.BooleanField(default=False, verbose_name="Internal/External Linkage")
     net_value = models.FloatField(blank=True, null=True, verbose_name="Net Value")
@@ -476,12 +490,13 @@ class Configuration(models.Model):
         if self.PSM_on_hold and self.header.configuration_status.name != 'On Hold':
             self.header.old_configuration_status = self.header.configuration_status
             self.header.configuration_status = REF_STATUS.objects.get(name='On Hold')
-            self.header.save()
+            # self.header.save()
         elif not self.PSM_on_hold and self.header.old_configuration_status is not None:
             self.header.configuration_status = self.header.old_configuration_status
             self.header.old_configuration_status = None
-            self.header.save()
+            # self.header.save()
         # end if
+        self.header.save()
 
         super().save(*args, **kwargs)
     # end def
@@ -873,10 +888,26 @@ class HeaderTimeTracker(models.Model):
         else:
             return None
 
+    @property
+    def next_chevron(self):
+        val = self.next_approval
+        if val:
+            return re.sub(r'(\d+)', r' \1', val.upper()).replace('CUST_', '')
+        else:
+            return val
+
+    @property
+    def chevron_levels(self):
+        return [re.sub(r'(\d+)', r' \1', level.upper()).replace('CUST_', '') for level in self.__class__.approvals() if level != 'psm_config' and getattr(self, level + '_approver') != 'system']
+
     @classmethod
     def approvals(cls):
         return ['psm_config', 'scm1', 'scm2', 'csr', 'cpm', 'acr', 'blm', 'cust1', 'cust2', 'cust_whse', 'evar', 'brd']
     # end def
+
+    @classmethod
+    def all_chevron_levels(cls):
+        return ['SCM 1', 'SCM 2', 'CSR', 'CPM', 'ACR', 'BLM', 'CUST 1', 'CUST 2', 'WHSE', 'EVAR', 'BRD']
 
     @classmethod
     def permission_map(cls):

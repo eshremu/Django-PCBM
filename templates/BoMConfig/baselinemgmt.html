@@ -5,8 +5,8 @@
 <div id="main-body">
 	{% if user.is_authenticated %}
 	{% load staticfiles %}
-    <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.css' %}"/>
-    <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.js' %}"></script>
+    <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+    <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'BoMConfig/js/baseline_mgmt.js' %}"></script>
     <div id="headersubform">
 		<form enctype="multipart/form-data" method="POST" onsubmit="$('#myModal').modal('show');" action="{% url 'bomconfig:baseline' %}">
@@ -117,7 +117,7 @@
         {% endif %}
     </div>
     {% if downloadable %}
-    <div id="action_buttons" style="margin-top: 1px;">
+    <div id="action_buttons" style="margin-top: 5px;">
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinedownload' %}">
             {% csrf_token %}
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
@@ -135,7 +135,7 @@
         {% endif %}
     </div>
     {% else %}
-    <div id="action_buttons" style="margin-top: 1px;">
+    <div id="action_buttons" style="margin-top: 5px;">
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinemasterdownload' %}">
             {% csrf_token %}
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>

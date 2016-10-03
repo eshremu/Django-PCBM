@@ -142,6 +142,27 @@ $(document).ready(function(){
         form_resize();
     });
 
+    $('#saveForm').click(function(event){
+        $('#headersubform').removeAttr('action');
+        $('<input/>').attr('id','data_form').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#headersubform');form_save=true;
+        $('#headersubform').attr('onsubmit','return formSubmit();');
+    });
+
+    $('#search').click(function(event) {
+        $('#headersubform').removeAttr('action');
+    });
+
+    $('#download').click(function(event){
+        $('<input/>').attr('id','cookie').attr('type', 'hidden').attr('name','file_cookie').attr('value', file_cookie).appendTo('#headersubform');
+        $('#headersubform').attr('action', download_url);
+        timer = setInterval(function(){
+            if(document.cookie.split('fileMark=').length == 2 && document.cookie.split('fileMark=')[1].split(';')[0] == $('#cookie').val()) {
+                clearInterval(timer);
+                $('#myModal').modal('hide');
+            }
+        },1000);
+    });
+
     function form_resize() {
         var topbuttonheight = $('#action_buttons').outerHeight(true);
         var bottombuttonheight = $('#formbuttons').height();

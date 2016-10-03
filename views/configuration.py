@@ -147,7 +147,6 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 # end if
 
                 if headerForm.is_valid():
-                    # if headerForm.cleaned_data['configuration_status'] == REF_STATUS.objects.get(name='In Process'):
                     if headerForm.cleaned_data['configuration_status'].name in ('In Process','In Process/Pending'):
                         try:
                             if bCanWriteHeader:
@@ -359,7 +358,10 @@ def AddConfig(oRequest):
     bCanReadConfigBaseline = bool(SecurityPermission.objects.filter(title='Config_Entry_Baseline_Read').filter(user__in=oRequest.user.groups.all()))
 
     sNeededLevel = oHeader.latesttracker.next_approval
-    bApprovalPermission = bool(oRequest.user.groups.filter(securitypermission__title__in=HeaderTimeTracker.permission_entry(sNeededLevel)))
+    if sNeededLevel:
+        bApprovalPermission = bool(oRequest.user.groups.filter(securitypermission__title__in=HeaderTimeTracker.permission_entry(sNeededLevel)))
+    else:
+        bApprovalPermission = False
 
     if bFrameReadOnly:
         bCanWriteConfigBOM = bCanWriteConfigSAP = bCanWriteConfigAttr = bCanWriteConfigPrice = bCanWriteConfigCust = bCanWriteConfigBaseline = False
@@ -422,7 +424,6 @@ def AddConfig(oRequest):
                         # end if
                     # end for
 
-                    # aExistingConfigLines = list(ConfigLine.objects.filter(config=oConfig))
                     oUpdateDate = timezone.now()
 
                     for dConfigLine in oForm:
@@ -461,55 +462,15 @@ def AddConfig(oRequest):
 
                         if ConfigLine.objects.filter(config=oConfig).filter(line_number=dConfigLine['1']):
                             oConfigLine = ConfigLine.objects.get(**{'config': oConfig, 'line_number': dConfigLine['1']})
-                            # oConfigLine = ConfigLine.objects.filter(config=oConfig).filter(line_number=dConfigLine['1'])[0].pk
-                            # ConfigLine.objects.filter(pk=oConfigLine).update(**dLineData)
                             ConfigLine.objects.filter(pk=oConfigLine.pk).update(**dLineData)
                         else:
                             oConfigLine = ConfigLine(**dLineData)
                             oConfigLine.save()
                         # end if
 
-                        # dPriceData = {'unit_price': dConfigLine['17'] or None, 'config_line': oConfigLine}
                         dPriceData = {'config_line': oConfigLine}
                         (oPrice, _) = LinePricing.objects.get_or_create(**dPriceData)
                         oPriceObj = PricingObject.getClosestMatch(oConfigLine)
-                        # try:
-                        #     oPriceObj = PricingObject.objects.get(
-                        #         part=oConfigLine.part.base,
-                        #         customer=oConfigLine.config.header.customer_unit,
-                        #         sold_to=oConfigLine.config.header.sold_to_party,
-                        #         spud=oConfigLine.spud,
-                        #         is_current_active=True
-                        #     )
-                        # except PricingObject.DoesNotExist:
-                        #     try:
-                        #         oPriceObj = PricingObject.objects.get(
-                        #             part=oConfigLine.part.base,
-                        #             customer=oConfigLine.config.header.customer_unit,
-                        #             sold_to=oConfigLine.config.header.sold_to_party,
-                        #             spud=None,
-                        #             is_current_active=True
-                        #         )
-                        #     except PricingObject.DoesNotExist:
-                        #         try:
-                        #             oPriceObj = PricingObject.objects.get(
-                        #                 part=oConfigLine.part.base,
-                        #                 customer=oConfigLine.config.header.customer_unit,
-                        #                 sold_to=None,
-                        #                 spud=oConfigLine.spud,
-                        #                 is_current_active=True
-                        #             )
-                        #         except PricingObject.DoesNotExist:
-                        #             try:
-                        #                 oPriceObj = PricingObject.objects.get(
-                        #                     part=oConfigLine.part.base,
-                        #                     customer=oConfigLine.config.header.customer_unit,
-                        #                     sold_to=None,
-                        #                     spud=None,
-                        #                     is_current_active=True
-                        #                 )
-                        #             except PricingObject.DoesNotExist:
-                        #                 pass
                         oPrice.pricing_object = oPriceObj
                         oPrice.save()
 
@@ -1476,6 +1437,7 @@ def Validator(oRequest):
                                                                                 .replace(',','')))) +\
                                          float(form_data[index]['22'].replace('$','').replace(',','') if '22' in form_data[index] and form_data[index]['22']=='ZUST' else 0)
                         # end if
+                    # end if
                     # form_data[index]['17'] = form_data[index]['17'].replace('!','')
                 # end if
             # end if

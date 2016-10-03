@@ -3,16 +3,25 @@ $(document).ready(function(){
     $(window).load(function(){
         form_resize();
     });
+    
+    $('#download').click(function(event){
+        timer = setInterval(function(){
+            if(document.cookie.split('fileMark=').length == 2 && document.cookie.split('fileMark=')[1].split(';')[0] == $('#cookie').val()) {
+                clearInterval(timer);
+                $('#myModal').modal('hide');
+            }
+        },1000);
+    });
 });
 
 function form_resize(){
     var topbuttonheight = $('#action_buttons').outerHeight(true);
-    var bottombuttonheight = $('#formbuttons').height();
+    var bottombuttonheight = $('#formbuttons').outerHeight(true);
     var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
     var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
     var bodyheight = $('#main-body').height();
 
-    var tableheight = bodyheight - (topbuttonheight);// + bottombuttonheight + crumbheight + subformheight);
+    var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + 5);//  + crumbheight + subformheight);
 
     $('#table-wrapper').css("height", tableheight);
     build_table();
