@@ -17,6 +17,8 @@
     <form id="configform" method="POST" onsubmit="data_submit();">
         {% csrf_token %}
         {{ form.needs_zpru.as_hidden }}
+        {{ form.net_value.as_hidden }}
+        {{ form.override_net_value.as_hidden }}
         <div id="headersubform">
             <table>
                 <tbody>
@@ -27,7 +29,7 @@
                         <td style="width:170px;"><b>Projected Cut-over Date:</b></td>
                             <td style="border: 1px inset grey; width:100px;">{% if header.projected_cutover %}{{ header.projected_cutover }}{% endif %}</td>
                         <td style="width:50px;"></td>
-                        <td>{{ form.net_value.label_tag }}{{ form.net_value }}</td>
+                        <td>{{ form.total_value.label_tag }}{{ form.total_value }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -238,8 +240,8 @@
         function form_resize(){
             var topbuttonheight = $('#action_buttons').height();
             var bottombuttonheight = $('#formbuttons').height();
-            var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
-            var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
+            var subformheight = $("#headersubform").outerHeight(true);// + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
+            var crumbheight = $('#breadcrumbs').outerHeight(true);// + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
             var bodyheight = $('#main-body').height();
 
             var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + crumbheight + subformheight);
@@ -296,8 +298,9 @@
             if(PriceVis === true && {{ config_price_read_authorized|lower }}) {
                 cols.push({data: 17}, {data: 18}, {data: 19}, {data: 20}, {data: 21}, {data: 22});
                 headers.push('Unit Price', "Higher Level Item", 'Material Group 5', 'Purchase Order Item No', 'Condition Type', 'Amount');
+                readonly.push(5 + offset);
                 {% if not config_price_write_authorized %}
-                readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset, 10 + offset);
+                readonly.push(6 + offset, 7 + offset, 8 + offset, 9 + offset, 10 + offset);
                 {% endif %}
                 offset += 6;
 {#                header += "<th colspan='6'><div class='relative'><span>Price Links</span></div></th>";#}
@@ -349,7 +352,7 @@
             if (value != '' && value != undefined && value != null) {
                 var result;
                 var overridden = String(value).charAt(0) == "!";
-                var dummy = String(value).replace("$","").replace(',','').replace(' ','').replace('!','');
+                var dummy = String(value).replace("$","").replace(',','').replace(' ','').replace("!","");
                 var decimal = dummy.indexOf('.');
                 var wholeDummy, fracDummy;
 
@@ -397,7 +400,7 @@
         function customRenderer(instance, td, row, col, prop, value, cellProperties) {
             if (row === 0 && col === 17 && typeof(value) == 'string' && value.charAt(0)==='!' && PriceVis){
                 value = value.slice(1);
-                cellProperties.comment = '! - CPM override in effect.\n';
+{#                cellProperties.comment = '! - CPM override in effect.\n';#}
             }
 
             if (/<[a-zA-Z][\s\S/]*>/.test(value) === false) {
@@ -466,7 +469,7 @@
                         }
                     }
 
-                    if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
+                    if (['Amount'].indexOf(this.instance.getColHeader(col)) != -1){
                         cellProperties.validator = function(value, callback){
                             if(/^(?:-)?(?:\$)?\d{1,3}(?:,\d{3})*(?:\.\d{2})?$|^(?:-)?\d+(?:\.\d{2})?$|^$|^null$|^undefined$/.test(value)){
                                 callback(true);
@@ -609,15 +612,15 @@
                     data = returndata.data;
                     error_matrix = returndata.errors;
                     load_table();
-                    $('#id_net_value').attr('value', floatFormat(returndata.nettotal));
+                    $('#id_total_value').attr('value', floatFormat(returndata.nettotal));
                     $('#id_zpru_total').attr('value', floatFormat(returndata.zprutotal));
                     $('#id_needs_zpru').attr('value', returndata.zpru);
 
                     if( returndata.zpru == true && returndata.nettotal != returndata.zprutotal){
-                        $('#id_net_value').css('border', '3px solid red');
+                        $('#id_total_value').css('border', '3px solid red');
                         $('#id_zpru_total').css('border', '3px solid red');
                     } else {
-                        $('#id_net_value').removeAttr('style');
+                        $('#id_total_value').removeAttr('style');
                         $('#id_zpru_total').removeAttr('style');
                     }
 

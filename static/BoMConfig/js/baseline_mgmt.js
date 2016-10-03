@@ -18,6 +18,12 @@ $(document).ready(function() {
                 });
                 next_sib = $(next_sib).next();
             }
+
+            var searchlist = search_string.split(/\s+/);
+            var searchset = new Set(searchlist);
+            searchlist = Array.from(searchset.values());
+            search_string = searchlist.join(' ');
+
             var width = $(el).find('>:nth-child(2)').css('width');
             $(el).find('>:nth-child(2)').css('display','none').css('max-width', width).text(search_string);
         });
@@ -52,12 +58,45 @@ function BuildTable(){
 
 function downloadModal(){
     messageToModal('Download Baseline',
-            '<label style="padding-right: 5px;">Revision</label><select>' + revision_list + '</select>',
+            '<label style="padding-right:5px;">Revision:</label><select>' + revision_list + '</select>',
             function(){
                 $("#downloadform input[name='version']").val($('#messageModal .modal-body select').val());
                 $('#downloadform').submit();
             }
     );
+}
+
+function rollbackTest(){
+    $('#myModal').modal('show');
+    $.ajax({
+        url: rollbacktest_url,
+        dataType: "json",
+        type: "POST",
+        data: {
+            form: $('#rollbackform').serialize()
+        },
+        headers:{
+            'X-CSRFToken': getcookie('csrftoken')
+        },
+        success: function(returned) {
+            // var returned = JSON.parse(data);
+            $('#myModal').modal('hide');
+            if(returned.status == 1) {
+                rollbackModal();
+            } else {
+                var errorMessage = 'The baseline cannot be rolled back due to the following error:';
+                for(var index in returned.errors){
+                    errorMessage += '<br/>' + returned.errors[index];
+                }
+                messageToModal('Unable to rollback baseline', errorMessage);
+            }
+        },
+        error: function(xhr, status, error){
+            messageToModal('Unknown error', 'The following error occurred while checking rollback.<br/>' + 
+                status + ": " + error + '<br/>If this issue persists, contact a tool admin.');
+            $('#myModal').modal('hide');
+        }
+    });
 }
 
 function rollbackModal(){
@@ -92,8 +131,9 @@ function rollbackModal(){
                         }
                         $('#myModal').modal('hide');
                     },
-                    error: function(){
-                        messageToModal('Unknown error', 'An error occurred during rollback.  If this issue persists, contact a tool admin.');
+                    error: function(xhr, status, error){
+                        messageToModal('Unknown error', 'The following error occurred during rollback.<br/>' +
+                            status + ": " + error + '<br/>If this issue persists, contact a tool admin.');
                         $('#myModal').modal('hide');
                     }
                 });

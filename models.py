@@ -305,7 +305,7 @@ class Baseline_Revision(models.Model):
     # end def
 
     def __str__(self):
-        return self.title + "_Rev_" + self.version + ('_' + self.completed_date.strftime('%m/%d/%Y') + 'C' if self.completed_date else '')
+        return self.title + " Rev " + self.version + (' ' + self.completed_date.strftime('%m%d%y') + 'C' if self.completed_date else '')
     # end def
 # end class
 
@@ -361,7 +361,7 @@ class Header(models.Model):
     model = models.CharField(max_length=50, verbose_name='Model', blank=True, null=True)
     model_description = models.CharField(max_length=50, verbose_name='Model Description', blank=True, null=True)
     model_replaced = models.CharField(max_length=50, verbose_name='What Model is this replacing?', blank=True, null=True)
-    model_replaced_link = models.ForeignKey('Header', blank=True, null=True)
+    model_replaced_link = models.ForeignKey('Header', related_name='replaced_by_model', blank=True, null=True)
     initial_revision = models.CharField(max_length=50, verbose_name='Initial Revision', blank=True, null=True)  # This is the root model
     # configuration_status = models.CharField(max_length=50, default='In Process', verbose_name='Configuration/Ordering Status')
     configuration_status = models.ForeignKey(REF_STATUS, verbose_name='Configuration/Ordering Status',
@@ -456,6 +456,7 @@ class Configuration(models.Model):
     internal_external_linkage = models.BooleanField(default=False, verbose_name="Internal/External Linkage")
     net_value = models.FloatField(blank=True, null=True, verbose_name="Net Value")
     override_net_value = models.FloatField(blank=True, null=True, verbose_name="Overriden Net Value")
+    total_value = models.FloatField(blank=True, null=True, verbose_name="Total Net Value")
     zpru_total = models.FloatField(blank=True, null=True, verbose_name="ZPRU Total")
     header = models.OneToOneField(Header)
     needs_zpru = models.BooleanField(default=False)
@@ -475,7 +476,7 @@ class Configuration(models.Model):
     # end def
 
     def __str__(self):
-        return self.header.configuration_designation + ("__" + self.header.baseline_version if self.header.baseline_version else '')
+        return self.title + ("__" + self.header.baseline_version if self.header.baseline_version else '')
     # end def
 
     def get_first_line(self):
@@ -491,6 +492,14 @@ class Configuration(models.Model):
     @property
     def first_line(self):
         return self.get_first_line()
+
+    @property
+    def title(self):
+        return self.header.configuration_designation
+
+    @property
+    def version(self):
+        return self.header.baseline_version or '(Not baselined)'
 # end class
 
 
@@ -513,8 +522,16 @@ class Part(models.Model):
     # end class
 
     def __str__(self):
-        return str(self.pk) + " - " + self.base.product_number + " - " + (self.product_description if self.product_description else '(None)')
+        return str(self.pk) + " - " + self.product_number + " - " + (self.product_description if self.product_description else '(None)')
     # end def
+
+    @property
+    def product_number(self):
+        return self.base.product_number
+
+    @property
+    def description(self):
+        return self.product_description or '(None)'
 # end class
 
 
@@ -554,6 +571,14 @@ class ConfigLine(models.Model):
     def __str__(self):
         return str(self.config) + "_" + self.line_number
     # end def
+
+    @property
+    def title(self):
+        return self.config.title
+
+    @property
+    def version(self):
+        return self.config.version
 # end class
 
 
@@ -569,6 +594,10 @@ class RevisionHistory(models.Model):
     def __str__(self):
         return str(self.baseline) + "_" + self.revision
     # end def
+
+    @property
+    def title(self):
+        return self.baseline.title
 # end class
 
 
@@ -581,6 +610,21 @@ class LinePricing(models.Model):
     def __str__(self):
         return str(self.config_line) + ("_" + str(self.pricing_object.unit_price) if self.pricing_object else '')
     # end def
+
+    @property
+    def configuration_designation(self):
+        return self.config_line.config.header.configuration_designation
+
+    @property
+    def version(self):
+        try:
+            return self.config_line.config.header.baseline.version
+        except AttributeError:
+            return
+
+    @property
+    def line_number(self):
+        return self.config_line.line_number
 # end class
 
 
@@ -652,51 +696,61 @@ class HeaderTimeTracker(models.Model):
     scm1_denied_approval = models.DateTimeField(blank=True, null=True)
     scm1_approved_on = models.DateTimeField(blank=True, null=True)
     scm1_comments = models.TextField(blank=True, null=True)
+    scm1_notify = models.TextField(blank=True, null=True)
 
     scm2_approver = models.CharField(max_length=50, blank=True, null=True)
     scm2_denied_approval = models.DateTimeField(blank=True, null=True)
     scm2_approved_on = models.DateTimeField(blank=True, null=True)
     scm2_comments = models.TextField(blank=True, null=True)
+    scm2_notify = models.TextField(blank=True, null=True)
 
     csr_approver = models.CharField(max_length=50, blank=True, null=True)
     csr_denied_approval = models.DateTimeField(blank=True, null=True)
     csr_approved_on = models.DateTimeField(blank=True, null=True)
     csr_comments = models.TextField(blank=True, null=True)
+    csr_notify = models.TextField(blank=True, null=True)
 
     cpm_approver = models.CharField(max_length=50, blank=True, null=True)
     cpm_denied_approval = models.DateTimeField(blank=True, null=True)
     cpm_approved_on = models.DateTimeField(blank=True, null=True)
     cpm_comments = models.TextField(blank=True, null=True)
+    cpm_notify = models.TextField(blank=True, null=True)
 
     acr_approver = models.CharField(max_length=50, blank=True, null=True)
     acr_denied_approval = models.DateTimeField(blank=True, null=True)
     acr_approved_on = models.DateTimeField(blank=True, null=True)
     acr_comments = models.TextField(blank=True, null=True)
+    acr_notify = models.TextField(blank=True, null=True)
 
     blm_approver = models.CharField(max_length=50, blank=True, null=True)
     blm_denied_approval = models.DateTimeField(blank=True, null=True)
     blm_approved_on = models.DateTimeField(blank=True, null=True)
     blm_comments = models.TextField(blank=True, null=True)
+    blm_notify = models.TextField(blank=True, null=True)
 
     cust1_approver = models.CharField(max_length=50, blank=True, null=True)
     cust1_denied_approval = models.DateTimeField(blank=True, null=True)
     cust1_approved_on = models.DateTimeField(blank=True, null=True)
     cust1_comments = models.TextField(blank=True, null=True)
+    cust1_notify = models.TextField(blank=True, null=True)
 
     cust2_approver = models.CharField(max_length=50, blank=True, null=True)
     cust2_denied_approval = models.DateTimeField(blank=True, null=True)
     cust2_approved_on = models.DateTimeField(blank=True, null=True)
     cust2_comments = models.TextField(blank=True, null=True)
+    cust2_notify = models.TextField(blank=True, null=True)
 
     cust_whse_approver = models.CharField(max_length=50, blank=True, null=True)
     cust_whse_denied_approval = models.DateTimeField(blank=True, null=True)
     cust_whse_approved_on = models.DateTimeField(blank=True, null=True)
     cust_whse_comments = models.TextField(blank=True, null=True)
+    cust_whse_notify = models.TextField(blank=True, null=True)
 
     evar_approver = models.CharField(max_length=50, blank=True, null=True)
     evar_denied_approval = models.DateTimeField(blank=True, null=True)
     evar_approved_on = models.DateTimeField(blank=True, null=True)
     evar_comments = models.TextField(blank=True, null=True)
+    evar_notify = models.TextField(blank=True, null=True)
 
     brd_approver = models.CharField(max_length=50, blank=True, null=True)
     brd_denied_approval = models.DateTimeField(blank=True, null=True)
@@ -709,6 +763,64 @@ class HeaderTimeTracker(models.Model):
     def __str__(self):
         return str(self.header)
     # end def
+
+    @property
+    def end_date(self):
+        return self.completed_on
+    # end def
+
+    @property
+    def header_name(self):
+        return self.header.configuration_designation
+
+    @property
+    def baseline(self):
+        return self.header.baseline.baseline.title if self.header.baseline else None
+
+    @property
+    def version(self):
+        return self.header.baseline_version
+
+    @property
+    def next_approval(self):
+        if not self.completed_on and not self.disapproved_on:
+            for level in self.__class__.approvals():
+                if not getattr(self, level + '_approver'):
+                    return level
+        else:
+            return None
+
+    @property
+    def disapproved_level(self):
+        if self.disapproved_on:
+            for level in self.__class__.approvals():
+                if hasattr(self, level + '_denied_approval') and getattr(self, level + '_denied_approval'):
+                    return level
+        else:
+            return None
+
+    @property
+    def last_approval_comment(self):
+        if not self.disapproved_on:
+            levels = self.__class__.approvals()
+            levels.reverse()
+            for level in levels:
+                if getattr(self, level + '_approved_on') and getattr(self, level + '_approved_on').strftime(
+                        '%Y-%m-%d') != timezone.datetime(1900, 1, 1).strftime('%Y-%m-%d'):
+                    return getattr(self, level + '_comments')
+        else:
+            return None
+
+    @property
+    def last_disapproval_comment(self):
+        if self.disapproved_on:
+            levels = self.__class__.approvals()
+            levels.reverse()
+            for level in levels:
+                if getattr(self, level + '_denied_approval'):
+                    return getattr(self, level + '_comments')
+        else:
+            return None
 
     @classmethod
     def approvals(cls):
@@ -752,6 +864,69 @@ class DistroList(models.Model):
     def __str__(self):
         return self.customer_unit.name
 #end def
+
+
+class ApprovalList(models.Model):
+    customer = models.OneToOneField(REF_CUSTOMER)
+    required = models.CharField(max_length=25, null=True, blank=True)
+    optional = models.CharField(max_length=25, null=True, blank=True)
+    disallowed = models.CharField(max_length=25, null=True, blank=True)
+
+    def __str__(self):
+        return str(self.customer)
+# end class
+
+
+class CustomerPartInfo(models.Model):
+    part = models.ForeignKey(PartBase)
+    customer = models.ForeignKey(REF_CUSTOMER)
+    customer_number = models.CharField(max_length=50)
+    second_customer_number = models.CharField(max_length=50, blank=True, null=True)
+    # customer_asset = models.CharField(max_length=50, blank=True, null=True)
+    customer_asset = models.NullBooleanField(blank=True)
+    # customer_asset_tagging = models.CharField(max_length=50, blank=True, null=True)
+    customer_asset_tagging = models.NullBooleanField(blank=True)
+    # traceability_req = models.CharField(max_length=50, blank=True, null=True)
+    traceability_req = models.NullBooleanField(blank=True)
+    active = models.BooleanField(default=False)
+    priority = models.BooleanField(default=False)
+
+    def __str__(self):
+        return str(self.part) + " - " + self.customer_number + (
+            "/" + self.second_customer_number if self.second_customer_number else "") + " (" + self.customer.name + ")"
+    # end def
+
+    def __eq__(self, other):
+        if not isinstance(other, CustomerPartInfo):
+            return False
+
+        if self.part != other.part:
+            return False
+        if self.customer != other.customer:
+            return False
+        if self.customer_number != other.customer_number:
+            return False
+        if self.customer_asset_tagging != other.customer_asset_tagging:
+            return False
+        if self.customer_asset != other.customer_asset:
+            return False
+
+        return True
+    # end def
+
+    def save(self, *args, **kwargs):
+        dUpdate = {'active': False}
+
+        if self.priority:
+            dUpdate.update({'priority': False})
+
+        if self.active:
+            self.__class__.objects.filter(part=self.part, customer=self.customer).exclude(pk=self.pk).update(**dUpdate)
+            self.__class__.objects.filter(customer_number=self.customer_number, customer=self.customer).exclude(pk=self.pk).update(**dUpdate)
+        # end def
+        super().save(*args, **kwargs)
+    # end def
+# end class
 
 
 def sessionstr(self):

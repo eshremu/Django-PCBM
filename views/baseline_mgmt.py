@@ -6,7 +6,7 @@ from django.db import IntegrityError
 from BoMConfig.models import Header, Baseline, SecurityPermission, Baseline_Revision
 from BoMConfig.forms import SubmitForm
 from BoMConfig.views.landing import Unlock, Default
-from BoMConfig.utils import GrabValue, RollbackBaseline
+from BoMConfig.utils import GrabValue, RollbackBaseline, TestRollbackBaseline, RollbackError
 
 from functools import cmp_to_key
 import json
@@ -71,16 +71,18 @@ def BaselineMgmt(oRequest):
         form = SubmitForm()
         aBaselines = Baseline.objects.all()
         for oBaseline in aBaselines:
-            aRevisions = sorted(list(set([oBaseRev.version for oBaseRev in oBaseline.baseline_revision_set.order_by('version') if oBaseRev.version in (oBaseRev.baseline.current_active_version, oBaseRev.baseline.current_inprocess_version)])),
-                                key=cmp_to_key(lambda x,y:(-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
-                                                                 or list(x.strip('1234567890')) < (['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) +
-                                                                                                   list(y.strip('1234567890')))
-                                                                 or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y)) else 0 if x == y else 1)),
-                                reverse=True)
-
+            # aRevisions = sorted(list(set([oBaseRev.version for oBaseRev in oBaseline.baseline_revision_set.order_by('version') if oBaseRev.version in (oBaseRev.baseline.current_active_version, oBaseRev.baseline.current_inprocess_version)])),
+            #                     key=cmp_to_key(lambda x,y:(-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
+            #                                                      or list(x.strip('1234567890')) < (['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) +
+            #                                                                                        list(y.strip('1234567890')))
+            #                                                      or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y)) else 0 if x == y else 1)),
+            #                     reverse=True)
+            aRevisions = [oBaseline.current_inprocess_version or None, oBaseline.current_active_version or None]
             dTableData = {'baseline': oBaseline.title, 'revisions': []}
 
             for sRev in aRevisions:
+                if not sRev:
+                    continue
                 aHeads = Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version=sRev).order_by('configuration_status', 'pick_list', 'configuration_designation')
                 if aHeads:
                     dTableData['revisions'].append({'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev), 'configs': aHeads})
@@ -107,6 +109,36 @@ def BaselineMgmt(oRequest):
                'Inquiry/Site Template Number','Model Replacing','Comments','Release Date','ZUST','P-Code','Plant']
 
     return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html', dContext={'form': form, 'tables': aTable, 'downloadable': bDownloadable, 'column_titles': aTitles})
+# end def
+
+
+def BaselineRollbackTest(oRequest):
+    data = QueryDict(oRequest.POST.get('form'))
+    oBaseline = Baseline.objects.get(title=data['baseline'])
+
+    dResult = {
+        'status': 0,
+        'errors': []
+    }
+
+    try:
+        aDuplicates = TestRollbackBaseline(oBaseline)
+        if not aDuplicates:
+            dResult['status'] = 1
+        else:
+            sTemp = '<p>The following configurations must be removed from the in-process revision</p>'
+            sTemp += '<ul>'
+            for oHead in aDuplicates:
+                sTemp += '<li>{}{}</li>'.format(oHead.configuration_designation, " (" + oHead.program.name + ")" if oHead.program else '')
+            sTemp += '</ul>'
+            dResult['errors'].append(sTemp)
+    except RollbackError as ex:
+        if 'release date' in str(ex):
+            dResult['errors'].append("<p>Active revision was not released via the PCBM tool.</p>")
+        elif 'previous revision' in str(ex):
+            dResult['errors'].append("<p>No previous revision exists in the PCBM tool.</p>")
+
+    return JsonResponse(dResult)
 # end def
 
 

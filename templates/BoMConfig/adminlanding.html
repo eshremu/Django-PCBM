@@ -8,6 +8,7 @@
     <div id="action_buttons">
 		<button class="btn" type="button" name="action" value="user" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:useradmin' %}'>User</button>
 		<button class="btn" type="button" name="action" value="mailing" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:mailadmin' %}'>Mailing</button>
+        <button class="btn" type="button" name="action" value="approval" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:approvaladmin' %}'>Approval</button>
 	</div>
     {% block subcontent %}{% endblock %}
     {% else %}
