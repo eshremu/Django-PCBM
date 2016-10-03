@@ -4,42 +4,61 @@
 {% block content %}
 {% if user.is_authenticated %}
 {% if frame_readonly %}
-<div id="prog_chev">
-    <div style="display:inline">
-        <img src="{% static 'BoMConfig/images/ActiveStart.png' %}" style="width:10%"/>
-        <span style="color:white; position: relative; left:-70px;">PSM</span>
+<div id="prog_chev" style="overflow-x: hidden; white-space: nowrap;">
+    <div class="start_chev" style="display:inline; position: relative;">
+        <img src="{% static 'BoMConfig/images/ActiveStart.png' %}" style="width:97px;"/>
+        <span style="color:white; position: absolute; left:30px; top:-2px;">PSM</span>
     </div>
 
-    {% if header.configuration_status.name == 'In Process'  %}
-    <div style="display:inline">
-        <img src="{% static 'BoMConfig/images/ActiveChev.png' %}" style="width:10%;"/> <!-- position:relative; left:-3.5%; -->
-        <span style="color:white; position: relative; left:-70px;">SCM 1</span>
+    {% if header.configuration_status.name == 'In Process' or header.old_configuration_status.name == 'In Process' %}
+    {% with header.latesttracker.get_class.all_chevron_levels as levels %}
+    {% for level in levels %}
+    <div class="chev" style="display:inline; position: relative; left: {{ -30|multiply:forloop.counter }}px;">
+        <img src="{% static 'BoMConfig/images/InactiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
+        <span style="color:white; position: absolute; left:30px; top:-2px;">{{ level }}</span>
     </div>
+    {% endfor %}
+    {% endwith %}
+    {% elif header.configuration_status.name != 'In Process/Pending' and header.old_configuration_status.name != 'In Process/Pending' %}
+    {% with header.latesttracker.chevron_levels as levels %}
+    {% for level in levels %}
+    <div class="chev" style="display:inline; position: relative; left: {{ -30|multiply:forloop.counter }}px;">
+        <img src="{% static 'BoMConfig/images/ActiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
+        <span style="color:white; position: absolute; left:30px; top:-2px;">{{ level }}</span>
+    </div>
+    {% endfor %}
+    {% endwith %}
     {% else %}
     {% with header.latesttracker.chevron_levels as levels %}
     {% with header.latesttracker.next_chevron as current_level %}
     {% for level in levels %}
-    <div style="display:inline">
+    <div class="chev" style="display:inline; position: relative; left: {{ -30|multiply:forloop.counter }}px;">
         {% if levels|getindexof:current_level >= forloop.counter0 %}
-        <img src="{% static 'BoMConfig/images/ActiveChev.png' %}" style="width:10%;"/> <!-- position:relative; left:-7%; -->
+        <img src="{% static 'BoMConfig/images/ActiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
         {% else %}
-        <img src="{% static 'BoMConfig/images/InactiveChev.png' %}" style="width:10%;"/> <!-- position:relative; left:-7%; -->
+        <img src="{% static 'BoMConfig/images/InactiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
         {% endif %}
-        <span style="color:white; position: relative; left:-70px;">{{ level }}</span>
+        <span style="color:white; position: absolute; left:30px; top:-2px;">{{ level }}</span>
     </div>
     {% endfor %}
     {% endwith %}
     {% endwith %}
     {% endif %}
 
-    <div style="display:inline">
-        {% if header.configuration_status.name|slice:10 != 'In Process'  %}
-        <img src="{% static 'BoMConfig/images/ActiveFinal.png' %}" style="width:10%;"/> <!-- position:relative; left:-9%; -->
+    <div class="end_chev" style="display:inline; position: relative; left: -20px;">
+        {% if header.configuration_status.name|slice:':10' != 'In Process' and header.old_configuration_status.name|slice:':10' != 'In Process' %}
+        <img src="{% static 'BoMConfig/images/ActiveFinal.png' %}" style="width:97px;"/> <!-- position:relative; left:-9%; -->
         {% else %}
-        <img src="{% static 'BoMConfig/images/InactiveFinal.png' %}" style="width:10%;"/>
+        <img src="{% static 'BoMConfig/images/InactiveFinal.png' %}" style="width:97px;"/>
         {% endif %}
-        <span style="color:white; position: relative; left:-70px;">Active</span>
+        <span style="color:white; position: absolute; left:30px; top:-2px;">Active</span>
     </div>
+
+    {% if header.configuration_status.name == 'On Hold' %}
+    <div class="on_hold_bar">
+        <span style="color:white; position: absolute; left:30px; top: 9px;">On Hold</span>
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 <div id="main-body">
@@ -67,6 +86,15 @@
         #copynote {
             display: none
         }
+
+        .on_hold_bar {
+            display: inline;
+            position: absolute;
+            left: 60px;
+            top: 10px;
+            height: 40px;
+            background-color: rgba(255, 0, 0, 0.65)
+        }
         {% endif %}
     </style>
 </div>
@@ -82,6 +110,30 @@
                 url: "{% url 'bomconfig:initlock' %}"
             });
         });
+
+        $('.chev span').each(function(idx, elem){
+            var width = 53.5 - ($(this).width()/2);
+            $(elem).css('left', width + 'px');
+        });
+
+        $('.end_chev').css('left', (-30 * $('.chev').size() - 15) + 'px');
+
+        $('.on_hold_bar').css('width',
+                function(idx, old_val){
+                    var total = 0;
+
+                    $('[class$="chev"]').each(function(sub_idx, elem){
+                        total += $(elem).width();
+                    });
+
+                    total += parseInt($('.end_chev').css('left'));
+                    total -= 120;
+
+                    return total;
+                }
+        );
+
+        $('.on_hold_bar span').css('left', ($('.on_hold_bar').width()/2 - $('.on_hold_bar span').width()/2) + 'px');
     });
 </script>
 {% else %}

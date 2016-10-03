@@ -35,6 +35,10 @@
                             <input id="new_baseline" type="text" name="new_baseline" placeholder="Baseline Name" style="display:none;"/>
                             &nbsp;&nbsp;&nbsp;&nbsp;
                         </td>
+                    {% elif field.label == 'Configuration/Ordering Status' and headerForm.configuration_status.value == 4 %}
+                        <td>
+                            <input type="text" style="border: none" value="({{ headerForm.instance.old_configuration_status.name }})" readonly/>
+                        </td>
                     {% endif %}
                     {% for error in field.errors %}
                         <td>{{ error }}</td>

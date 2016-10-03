@@ -122,3 +122,12 @@ def random_string(length):
 def has_group(user, group):
     return bool(user.groups.filter(name__istartswith=group))
 # end def
+
+
+@register.filter(name='multiply')
+def multiply(multiplicand, multiplier):
+    if isinstance(multiplicand, (int, float)) and isinstance(multiplier, (int, float)):
+        return multiplicand * multiplier
+    else:
+        return None
+# end def

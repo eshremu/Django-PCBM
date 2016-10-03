@@ -32,7 +32,6 @@ class HeaderForm(forms.ModelForm):
         self.fields['configuration_status'].widget.attrs['style'] += '-webkit-appearance:none;'
 
         self.fields['readiness_complete'].widget.attrs['readonly'] = 'True'
-        self.fields['readiness_complete'].widget.attrs['disabled'] = 'True'
         self.fields['readiness_complete'].widget.attrs['style'] = 'border:none;'
         self.fields['readiness_complete'].widget.attrs['style'] += '-webkit-appearance:none;'
 

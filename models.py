@@ -900,6 +900,10 @@ class HeaderTimeTracker(models.Model):
     def chevron_levels(self):
         return [re.sub(r'(\d+)', r' \1', level.upper()).replace('CUST_', '') for level in self.__class__.approvals() if level != 'psm_config' and getattr(self, level + '_approver') != 'system']
 
+    @property
+    def get_class(self):
+        return self.__class__
+
     @classmethod
     def approvals(cls):
         return ['psm_config', 'scm1', 'scm2', 'csr', 'cpm', 'acr', 'blm', 'cust1', 'cust2', 'cust_whse', 'evar', 'brd']
