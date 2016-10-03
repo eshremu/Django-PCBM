@@ -1,5 +1,6 @@
 {% extends "BoMConfig/template.html" %}
 {% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
 {% block content %}
 <div id="main-body">
     {% if user.is_authenticated %}
@@ -110,126 +111,10 @@
         }
     </style>
     <script>
-        $('a.headtitle:contains("Actions")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
-
-        function cleanDataCheck(link){
-            window.location.href = link.dataset.href;
-        }
-
-        function cust_filter(customer){
-            if(customer !== 'All') {
-                $('tr').not('.' + customer).attr('style', 'display:none;');
-                $('tr:not(".' + customer + '") input').removeAttr('checked');
-                $('tr.' + customer).removeAttr('style');
-                $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
-            } else {
-                $('tr').removeAttr('style');
-                $('#cu_filter').html('Customer <span class="caret"></span>');
-            }
-        }
-
-        function process(action){
-            var records = [];
-
-            if(action === 'send_to_approve' || action === 'delete' || action === 'hold' || action === 'cancel') {
-                $('.inprocess:checked').each(function (index, element) {
-                    records.push(element.dataset.index);
-                });
-            } else if (action === 'clone'){
-                $('.active:checked').each(function (index, element) {
-                    records.push(element.dataset.index);
-                });
-            } else if (action === 'unhold'){
-                $('.hold:checked').each(function (index, element) {
-                    records.push(element.dataset.index);
-                });
-            }
-
-            $.ajax({
-                url: "{% url 'bomconfig:approve' %}",
-                type: "POST",
-                data: {
-                    action: action,
-                    data: JSON.stringify(records)
-                },
-                headers:{
-                    'X-CSRFToken': getcookie('csrftoken'),
-                },
-                success: function(data) {
-                    if(data){
-                        location.href = data;
-                    } else {
-                        location.reload(true);
-                    }
-                },
-                error: function(){
-                    alert('An error occured during submission.  Please try again or contact a tool admin.');
-                    $('#myModal').modal('hide');
-                }
-            });
-        }
-
-        $(document).ready(function(){
-            $('#approval_submit').click(function(){
-                if($('.inprocess:checked').length > 0) {
-                    if (confirm('Are you sure you wish to submit the selected records for approval?')) {
-                        $('#myModal').modal('show');
-                        process($(this).val());
-                    }
-                } else {
-                    alert('Please select at least 1 record for approval.');
-                }
-            });
-
-            $('#cancel').click(function(){
-                if($('.inprocess:checked').length > 0) {
-                    if (confirm('Are you sure you wish to cancel the selected records?')) {
-                        $('#myModal').modal('show');
-                        process($(this).val());
-                    }
-                } else {
-                    alert('Please select at least 1 record for cancellation.');
-                }
-            });
-
-            $('#delete').click(function(){
-                if($('.inprocess:checked').length > 0) {
-                    if (confirm('STOP!!! Are you sure you wish to delete the selected records? This is permanent and CANNOT be undone.')) {
-                        $('#myModal').modal('show');
-                        process($(this).val());
-                    }
-                } else {
-                    alert('Please select at least 1 record for deletion.');
-                }
-            });
-
-            $('#clone').click(function(){
-                if($('.active:checked').length === 1) {
-                    $('#myModal').modal('show');
-                    process($(this).val());
-                } else {
-                    alert('Please select a single record for cloning.');
-                }
-            });
-
-            $('#hold').click(function(){
-                if($('.inprocess:checked').length > 0) {
-                    $('#myModal').modal('show');
-                    process($(this).val());
-                } else {
-                    alert('Please select at least 1 record to hold.');
-                }
-            });
-
-            $('#unhold').click(function(){
-                if($('.hold:checked').length > 0) {
-                    $('#myModal').modal('show');
-                    process($(this).val());
-                } else {
-                    alert('Please select at least 1 record to remove from hold.');
-                }
-            });
-        });
+        var approve_list_url="{% url 'bomconfig:approve_list' %}";
+        var approve_url="{% url 'bomconfig:approve' %}";
+        var approval_levels ={{ approval_seq|slice:"1:-1"|safe }};
     </script>
+    <script type="text/javascript" src="{% static 'BoMConfig/js/actions.js' %}"></script>
 {% endif %}
 {% endblock %}

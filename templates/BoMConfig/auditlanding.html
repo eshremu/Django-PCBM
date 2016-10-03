@@ -1,0 +1,24 @@
+{% extends "BoMConfig/template.html" %}
+{% load bomconfig_customtemplatetags %}
+{% block content %}
+{% if user.is_authenticated %}
+<div id="main-body">
+    <div id="action_buttons" style="margin: 5px 0;">
+        <button class="btn" type="button" name="action" value="audit" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:customeraudit' %}'>Search/Audit</button>
+        {% if user|has_group:'BOM_PSM_Baseline' or user|has_group:'BOM_BPMA_Architect' %}
+		<button class="btn" type="button" name="action" value="upload" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:customerauditupload' %}'>Upload</button>
+        {% endif %}
+	</div>
+    {% block subcontent %}{% endblock %}
+    <style>
+        #action_buttons button:hover {
+            background-color: #cccccc;
+        }
+    </style>
+</div>
+{% else %}
+<div>
+    <h4>You must log in to use this function</h4>
+</div>
+{% endif %}
+{% endblock %}

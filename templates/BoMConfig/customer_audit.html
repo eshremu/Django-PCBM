@@ -1,0 +1,39 @@
+{% extends "BoMConfig/auditlanding.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+<script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+<link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+
+    <h4 id="title" style="margin-top:0;">Customer Part Number Audit / Search</h4>
+    <form id="select-form" method="post">
+        {% csrf_token %}
+        <input type="hidden" id="dataForm" name="dataForm" value="" />
+        <label for="customer-select">Customer:</label>
+        <select id="customer-select" name="customerSelect">
+        {% for customer in customer_list %}
+            <option value="{{ customer.id }}"{% if customer.id == selectedCust.id %} selected{% endif %}>{{ customer.name }}</option>
+        {% endfor %}
+        </select>
+    </form>
+    <div class="table-holder" style="display: inline-block">
+        <h4>Input</h4>
+        <div id="input-table"></div>
+    </div>
+    <div class="table-holder" style="display: inline-block">
+        <h4>Output</h4>
+        <div id="output-table"></div>
+    </div>
+    {% if user|has_group:'BOM_PSM_Baseline' or user|has_group:'BOM_BPMA_Architect' %}<div style="margin: 10px 0">
+        <label for="override">Overwrite?: <input type="checkbox" form="select-form" id="override" name="override" value="true" /></label>
+    </div>{% endif %}
+    <div id="action_buttons" style="margin: 10px 0">
+        <button id="save-button" class="btn btn-primary" value="save" type="button" form="select-form">Save</button>
+    </div>
+
+<script>
+    var data = JSON.parse('{{ data|safe }}');
+    var validate_url = '{% url 'bomconfig:audit_validate' %}';
+</script>
+<script type="text/javascript" src="{% static 'BoMConfig/js/customer_audit.js' %}"></script>
+{% endblock %}

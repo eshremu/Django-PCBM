@@ -4,8 +4,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.conf import settings
 
-from BoMConfig.models import DistroList
-from BoMConfig.forms import DistroForm, UserForm, UserAddForm
+from BoMConfig.models import DistroList, ApprovalList
+from BoMConfig.forms import DistroForm, UserForm, UserAddForm, CustomerApprovalLevelForm
 from BoMConfig.views.landing import Default
 
 
@@ -145,4 +145,63 @@ def UserChange(oRequest, id=''):
         'message_type_is_error': oRequest.session.pop('message_is_error', False)
     }
     return Default(oRequest, 'BoMConfig/adminuserchange.html', dContext)
+# end def
+
+
+def ApprovalAdmin(oRequest):
+    dContext = {
+        'list': ApprovalList.objects.all(),
+        'errors': oRequest.session.pop('errors', None),
+        'message_type_is_error': oRequest.session.pop('message_is_error', False)
+    }
+    sTemplate = 'BoMConfig/adminapproval.html'
+    return Default(oRequest, sTemplate, dContext)
+
+
+def ApprovalChange(oRequest, id=None):
+    dInit = {}
+    oApproveList = None
+
+    if id:
+        try:
+            oApproveList = ApprovalList.objects.get(id=id)
+            dInit.update({
+                'customer': oApproveList.customer,
+                'required_choices': oApproveList.required.split(','),
+                'optional_choices': oApproveList.optional.split(','),
+                'disallowed_choices': oApproveList.disallowed.split(',')
+            })
+        except ApprovalList.DoesNotExist:
+            return redirect(reverse('bomconfig:approvaladd'))
+
+    form = CustomerApprovalLevelForm(initial=dInit, readonly=bool(oApproveList))
+
+    if oRequest.POST:
+        form = CustomerApprovalLevelForm(oRequest.POST, readonly=bool(oApproveList))
+        if form.is_valid():
+            if oApproveList:  # Update existing
+                oApproveList.required = ','.join(form.cleaned_data['required_choices'])
+                oApproveList.optional = ','.join(form.cleaned_data['optional_choices'])
+                oApproveList.disallowed = ','.join(form.cleaned_data['disallowed_choices'])
+                oApproveList.save()
+                oRequest.session['errors'] = ['Changes saved successfully']
+                oRequest.session['message_is_error'] = False
+            else:
+                oNewApproveList = ApprovalList()
+                oNewApproveList.customer = form.cleaned_data['customer']
+                oNewApproveList.required = ','.join(form.cleaned_data['required_choices'])
+                oNewApproveList.optional = ','.join(form.cleaned_data['optional_choices'])
+                oNewApproveList.disallowed = ','.join(form.cleaned_data['disallowed_choices'])
+                oNewApproveList.save()
+                oRequest.session['errors'] = ['Approval created successfully']
+                oRequest.session['message_is_error'] = False
+                return redirect(reverse('bomconfig:approvalchange', kwargs={'id': oNewApproveList.id}))
+
+    dContext = {
+        'form': form,
+        'errors': oRequest.session.pop('errors', None),
+        'message_type_is_error': oRequest.session.pop('message_is_error', False)
+    }
+
+    return Default(oRequest, 'BoMConfig/adminapprovalchange.html', dContext)
 # end def

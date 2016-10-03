@@ -1,0 +1,37 @@
+{% extends "BoMConfig/auditlanding.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+    <h4 style="margin-top:0;">Customer Part Number Upload</h4>
+    {% if status_message %}
+    <div class="messageblock {% if status_error %}errorblock{% else %}successblock{% endif %}">
+        <p>{{ status_message }}</p>
+    </div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="customer">Customer:</label>
+        <select id="customer" name="customer" required>
+            <option value="">------</option>
+            {% for cust in customer_list %}
+            <option value="{{ cust.id }}">{{ cust.name }}</option>
+            {% endfor %}
+        </select>
+        <br/>
+        <label for="file_type">File Type:</label>
+        <select id="file_type" name="file_type" required>
+            <option value="">------</option>
+            <option value="1">BOM Report</option>
+            <option value="2">IM Report</option>
+        </select>
+        <br/>
+        <input type="file" name="file" required/>
+        <button class="btn btn-primary" type="submit" style="margin-top:10px;">Upload</button>
+    </form>
+    <script>
+        $('button[value="upload"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        function cleanDataCheck(link){
+            window.location.href = link.dataset.href;
+        }
+    </script>
+{% endblock %}

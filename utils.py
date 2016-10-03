@@ -1,7 +1,8 @@
 __author__ = 'epastag'
 from django.utils import timezone
 from django.db.models import Q
-from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS, LinePricing
+from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS, LinePricing, \
+    REF_CUSTOMER, REF_REQUEST
 from copy import deepcopy
 import datetime
 from functools import cmp_to_key
@@ -69,6 +70,10 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
                 oNewHeader.react_request = ''
             # end if
             oNewHeader.baseline = oCurrInprocRev
+            oNewHeader.model_replaced_link = oHeader
+            if oNewHeader.bom_request_type.name == 'New':
+                oNewHeader.bom_request_type = REF_REQUEST.objects.get(name='Update')
+                oNewHeader.model_replaced = ''
             oNewHeader.save()
 
             oNewConfig = deepcopy(oHeader.configuration)
@@ -442,13 +447,47 @@ def GenerateRevisionSummary_old(oBaseline, sPrevious, sCurrent):
 # end def
 
 
-def GrabValue(oStartObj, sAttrChain):
+def GrabValue(oStartObj, sAttrChain, default=None):
     import functools
     try:
-        return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj) or None
+        return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj) or default
     except AttributeError:
-        return None
+        return default
 # end def
+
+
+class RollbackError(Exception):
+    pass
+
+
+def TestRollbackBaseline(oBaseline):
+    oCurrentActive = oBaseline.latest_revision
+
+    if oCurrentActive is None:
+        raise RollbackError('No previous revision exists')
+
+    try:
+        oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
+                            oHead.headertimetracker_set.all() if oTrack.completed_on])
+    except ValueError:
+        raise RollbackError('No release date could be determined')
+
+    oCurrentInprocess = Baseline_Revision.objects.get(baseline=oBaseline, version=oBaseline.current_inprocess_version)
+
+    aRemainingHeaders = []
+    aDuplicates = []
+
+    for oHead in oCurrentActive.header_set.all():
+        if any([oTrack for oTrack in oHead.headertimetracker_set.all() if
+                abs(oTrack.created_on - oReleaseDate) > datetime.timedelta(minutes=1)]):
+            aRemainingHeaders.append(oHead)
+
+    for oHead in aRemainingHeaders:
+        if oCurrentInprocess.header_set.filter(configuration_designation=oHead.configuration_designation, program=oHead.program):
+            aDuplicates.append(oHead)
+
+    return aDuplicates
+#end def
 
 
 def RollbackBaseline(oBaseline):
@@ -470,7 +509,7 @@ def RollbackBaseline(oBaseline):
         oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
                             oHead.headertimetracker_set.all() if oTrack.completed_on])
     except ValueError:
-        raise Exception('No release date could be determined')
+        raise RollbackError('No release date could be determined')
 
     oCurrentActive = oBaseline.latest_revision
     oCurrentInprocess = Baseline_Revision.objects.get(baseline=oBaseline, version=oBaseline.current_inprocess_version)
@@ -549,13 +588,13 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     oToDiscontinue = Q(bom_request_type__name='Discontinue')
     aDiscontinuedHeaders = [oHead for oHead in Baseline_Revision
         .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(oDiscontinued|oToDiscontinue)
-        .exclude(program__name__in=('DTS',))]
+        .exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
     aAddedHeaders = [oHead for oHead in Baseline_Revision
         .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='New')
-        .exclude(program__name__in=('DTS',))]
+        .exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
     aUpdatedHeaders = [oHead for oHead in Baseline_Revision
         .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='Update')
-        .exclude(oDiscontinued).exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold')]
+        .exclude(oDiscontinued).exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
 
     aPrevHeaders = []
     aPrevButNotCurrent = []
@@ -569,7 +608,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
             else:
                 aPrevButNotCurrent.append(obj)
             # end if
-        except Header.DoesNotExist:
+        except (Header.DoesNotExist, Baseline_Revision.DoesNotExist):
             aCurrButNotPrev.append(oHead)
         # end try
 
@@ -606,6 +645,16 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                  if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
             )
         else:
+            # If a previous revision exists and a matching header exists in previous revision and the Header has a
+            # time tracker without a completed date or disapproved date, but is not In-Process, then the Header must
+            # have been carried forward from a previous revision, and therefore is not ACTUALLY New / Added
+            if Baseline_Revision.objects.filter(baseline=oBaseline, version=sPrevious) and \
+                    Baseline_Revision.objects.get(baseline=oBaseline, version=sPrevious).header_set \
+                    .filter(configuration_designation=oHead.configuration_designation, program=oHead.program) and \
+                    not oHead.configuration_status.name == 'In Process/Pending' and \
+                    oHead.headertimetracker_set.filter(completed_on=None, disapproved_on=None):
+                continue
+
             sNewSummary += '    {} added\n'.format(
                 oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
                 ('  {}'.format(oHead.configuration.get_first_line().customer_number)
@@ -623,13 +672,14 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     # end for
 
     for oHead in aDiscontinuedHeaders:
-        if (oHead.model_replaced_link and any([obj in oHead.model_replaced_link.header_set.all() for obj in aAddedHeaders])) or\
-                any([obj in oHead.header_set.all() for obj in aAddedHeaders]):
+        if (oHead.model_replaced_link and any([obj in oHead.model_replaced_link.header_set.all() for obj in aAddedHeaders
+                                               if hasattr(oHead.model_replaced_link, 'header_set')])) or\
+                any([obj in oHead.header_set.all() for obj in aAddedHeaders if hasattr(oHead, 'header_set')]):
             continue
 
         sRemovedSummary += '    {} discontinued\n'.format(
             oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
-                (' {}'.format(oHead.configuration.get_first_line().customer_number)
+                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
                  if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
         )
     # end for
@@ -637,7 +687,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     for oHead in aPrevButNotCurrent:
         sRemovedSummary += '    {} removed\n'.format(
             oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
-                (' {}'.format(oHead.configuration.get_first_line().customer_number)
+                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
                  if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
         )
     # end for
@@ -667,7 +717,10 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
         if sTemp:
             oHead.change_notes = sTemp
             oHead.save()
-            sUpdateSummary += '    {}:\n'.format(oHead.configuration_designation + (' ({})'.format(oHead.program) if oHead.program else ''))
+            sUpdateSummary += '    {}:\n'.format(oHead.configuration_designation + \
+                                                 (' ({})'.format(oHead.program) if oHead.program else '')) + \
+                              ('  {}'.format(oHead.configuration.get_first_line().customer_number) if not oHead.pick_list
+                                                     and oHead.configuration.get_first_line().customer_number else '')
             for sLine in sTemp.split('\n'):
                 sUpdateSummary += (' ' * 8) + sLine + '\n'
         # end if
@@ -701,6 +754,7 @@ def HeaderComparison(oHead, oPrev):
         """
     dPrevious = {}
     dCurrent = {}
+    oATT = REF_CUSTOMER.objects.get(name='AT&T')
 
     for oConfigLine in oHead.configuration.configline_set.all():
         dCurrent[(oConfigLine.part.base.product_number, oConfigLine.line_number)] = [
@@ -721,7 +775,7 @@ def HeaderComparison(oHead, oPrev):
     for oConfigLine in oPrev.configuration.configline_set.all():
         dPrevious[(oConfigLine.part.base.product_number, oConfigLine.line_number)] = [
             oConfigLine.order_qty,
-            oConfigLine.linepricing.override_price or GrabValue(oConfigLine,
+            GrabValue(oConfigLine, 'linepricing.override_price') or GrabValue(oConfigLine,
                                                                 'linepricing.pricing_object.unit_price') or None,
             (
                 oHead.configuration.configline_set.get(
@@ -757,7 +811,10 @@ def HeaderComparison(oHead, oPrev):
                                                                                        dPrevious[(sPart, sLine)][0],
                                                                                        dCurrent[(sPart, sLine)][0])
 
-                if dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
+                if dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1] and \
+                        ((oHead.customer_unit == oATT and not oHead.pick_list and sLine == '10') or
+                         (oHead.customer_unit == oATT and oHead.pick_list) or
+                         oHead.customer_unit != oATT):
                     sTemp += '{} - {} line price changed from {} to {}\n'.format(sLine, sPart,
                                                                                          dPrevious[(sPart, sLine)][1],
                                                                                          dCurrent[(sPart, sLine)][1])
@@ -782,7 +839,10 @@ def HeaderComparison(oHead, oPrev):
                                                                                            dCurrent[dPrevious[
                                                                                                (sPart, sLine)][3]][0])
 
-                    if dCurrent[dPrevious[(sPart, sLine)][3]][1] != dPrevious[(sPart, sLine)][1]:
+                    if dCurrent[dPrevious[(sPart, sLine)][3]][1] != dPrevious[(sPart, sLine)][1] and \
+                            ((oHead.customer_unit == oATT and not oHead.pick_list and sLine == '10') or
+                             (oHead.customer_unit == oATT and oHead.pick_list) or
+                             oHead.customer_unit != oATT):
                         sTemp += '{} - {} line price changed from {} to {}\n'.format(dPrevious[(sPart, sLine)][3][1], sPart,
                                                                                              dPrevious[(sPart, sLine)][
                                                                                                  1],
@@ -843,3 +903,50 @@ def TitleShorten(sTitle):
     sTitle = re.sub('Pick List', 'PL', sTitle, flags=re.IGNORECASE)
     sTitle = re.sub('_+CLONE(\d*)_+', '_CLONE\1_', sTitle, flags=re.IGNORECASE)
     return sTitle
+
+
+def StrToBool(sValue, bDefault = None):
+    """Convert a string to a bool. If the string is empty and a default is
+    provided, it is returned; otherwise an exception is raised. If the string is
+    not one that can be clearly interpreted as a Boolean value, raises an
+    exception."""
+
+    sUpper = sValue.strip().upper()
+    if sUpper in ('Y', 'YES', 'T', 'TRUE', '1'):
+        return True
+    elif sUpper in ('N', 'NO', 'F', 'FALSE', '0'):
+        return False
+    elif not sUpper:
+        if bDefault is None:
+            ValueError("Empty string provided and no default to return.")
+        #end if
+        return bDefault
+    else:
+        TypeError("Unrecognized Boolean string: " + sValue)
+    #end if
+#end def
+
+
+def DetectBrowser(oRequest):
+    sUserAgent = oRequest.META['HTTP_USER_AGENT']
+    oRegex = re.compile(r'(?:[^ (]|\([^)]*\))+')
+    aTokens = oRegex.findall(sUserAgent)
+
+    if "Windows" in sUserAgent and 'Chrome' in sUserAgent:
+        return next(token for token in aTokens if 'Chrome' in token)
+    elif "Windows" in sUserAgent and 'Firefox' in sUserAgent:
+        return next(token for token in aTokens if 'Firefox' in token)
+    elif "Windows" in sUserAgent:
+        sTemp = 'Internet Explorer'
+        sRev = ''
+        if 'rv:' in sUserAgent:
+            iStart = sUserAgent.find('rv:')
+            iStop = sUserAgent.find(')', iStart)
+            sRev = sUserAgent[iStart + 3:iStop]
+
+        if sRev:
+            sTemp += '/' + sRev
+
+        return sTemp
+    # end if
+# end def

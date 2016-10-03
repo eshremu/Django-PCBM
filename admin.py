@@ -3,6 +3,7 @@ from django import forms
 
 from BoMConfig.models import *
 from BoMConfig.forms import LinePricingForm, DistroForm, SecurityForm
+from BoMConfig.utils import RevisionCompare
 from django.contrib.sessions.models import Session
 
 # Register your models here.
@@ -10,11 +11,14 @@ from django.contrib.sessions.models import Session
 
 class PartBaseAdmin(admin.ModelAdmin):
     ordering = ('product_number',)
+    search_fields = ('product_number',)
 # end class
 
 
 class PartAdmin(admin.ModelAdmin):
-    ordering = ('base__product_number',)
+    list_display = ('product_number', 'description')
+    search_fields = ('base__product_number', 'product_description')
+    ordering = ('base__product_number', 'product_description')
 # end class
 
 
@@ -31,12 +35,14 @@ class SessionAdmin(admin.ModelAdmin):
 class TimeStampAdmin(admin.ModelAdmin):
     # fields = ('header','created_on' ,'submitted_for_approval','completed_on')
     # readonly_fields = ('header','created_on' ,'submitted_for_approval', 'completed_on')
-    list_display = ('header', 'created_on')
+    list_display = ('header_name', 'version', 'baseline', 'created_on', 'end_date')
+    search_fields = ('header__configuration_designation', 'header__baseline_version', 'header__baseline__baseline__title')
 # end class
 
 
 class HeaderAdmin(admin.ModelAdmin):
     list_display = ('configuration_designation', 'baseline_version', 'program')
+    search_fields = ('configuration_designation', 'baseline_version')
 
 
 class ProgramAdmin(admin.ModelAdmin):
@@ -56,14 +62,30 @@ class HeaderLockAdmin(admin.ModelAdmin):
 
 class LinePriceAdmin(admin.ModelAdmin):
     form = LinePricingForm
+    list_display = ('configuration_designation',
+                    'version',
+                    'line_number',)
+    search_fields = ('config_line__config__header__configuration_designation', 'config_line__config__header__baseline__version', 'config_line__line_number',)
+    # ordering = ('config_line__config__header__configuration_designation',
+    #             'config_line__config__header__baseline__version',
+    #             'config_line__line_number',
+    #             )
 
 
 class RevisionAdmin(admin.ModelAdmin):
+    list_display = ('title', 'version', 'completed_date')
+    search_fields = ('baseline__title', 'version')
+
     def render_change_form(self, request, context, *args, **kwargs):
-        context['adminform'].form.fields['previous_revision'].queryset = Baseline_Revision.objects\
+        orderQuery = sorted(Baseline_Revision.objects\
             .filter(baseline__title=context['original'].baseline.title)\
-            .exclude(pk=context['original'].pk)\
-            .order_by('baseline__title', 'version')
+            .order_by('version'), key=lambda x: RevisionCompare(x.version))
+        orderQuery = orderQuery[:orderQuery.index(context['original'])]
+        choices = [(
+                       context['adminform'].form.fields['previous_revision'].prepare_value(obj),
+                       context['adminform'].form.fields['previous_revision'].label_from_instance(obj)
+                   ) for obj in orderQuery]
+        context['adminform'].form.fields['previous_revision'].choices = [('','----------')] + choices
         return super(RevisionAdmin, self).render_change_form(request, context, *args, **kwargs)
 
 
@@ -76,16 +98,50 @@ class SecurityPermissionAdmin(admin.ModelAdmin):
     form = SecurityForm
 
 
+class CustomerInfoAdmin(admin.ModelAdmin):
+    list_display = ('part', 'customer_number', 'customer', 'customer_asset_tagging', 'customer_asset', 'active', 'priority')
+    search_fields = ('part__product_number', 'customer_number')
+    list_filter = ('active', 'priority')
+
+
+class BaselineAdmin(admin.ModelAdmin):
+    list_display = ('title', 'current_active_version', 'current_inprocess_version', 'customer')
+    search_fields = ('title', 'customer__name')
+
+
+class ConfigLineAdmin(admin.ModelAdmin):
+    list_display = ('title','version','line_number')
+    search_fields = ('config__header__configuration_designation', 'line_number')
+
+
+class ConfigAdmin(admin.ModelAdmin):
+    list_display = ('title', 'version')
+    search_fields = ('header__configuration_designation', 'header__baseline_version')
+
+
+class RevHistoryAdmin(admin.ModelAdmin):
+    list_display = ('title', 'revision')
+    search_fields = ('baseline__title', 'revision')
+
+
+class SubProductAreaAdmin(admin.ModelAdmin):
+    list_display = ('name', 'parent')
+
+
+class CustomerNameAdmin(admin.ModelAdmin):
+    list_display = ('name','parent')
+
+
 admin.site.register(Alert)
 admin.site.register(NewsItem)
 admin.site.register(Header, HeaderAdmin)
-admin.site.register(Configuration)
-admin.site.register(ConfigLine)
+admin.site.register(Configuration, ConfigAdmin)
+admin.site.register(ConfigLine, ConfigLineAdmin)
 admin.site.register(Part, PartAdmin)
 admin.site.register(PartBase, PartBaseAdmin)
-admin.site.register(Baseline)
+admin.site.register(Baseline, BaselineAdmin)
 admin.site.register(Baseline_Revision, RevisionAdmin)
-admin.site.register(RevisionHistory)
+admin.site.register(RevisionHistory, RevHistoryAdmin)
 admin.site.register(LinePricing, LinePriceAdmin)
 admin.site.register(PricingObject, PriceObjAdmin)
 admin.site.register(REF_CUSTOMER)
@@ -96,8 +152,8 @@ admin.site.register(HeaderTimeTracker, TimeStampAdmin)
 admin.site.register(HeaderLock, HeaderLockAdmin)
 admin.site.register(REF_TECHNOLOGY)
 admin.site.register(REF_PRODUCT_AREA_1)
-admin.site.register(REF_PRODUCT_AREA_2)
-admin.site.register(REF_CUSTOMER_NAME)
+admin.site.register(REF_PRODUCT_AREA_2, SubProductAreaAdmin)
+admin.site.register(REF_CUSTOMER_NAME, CustomerNameAdmin)
 admin.site.register(REF_PROGRAM, ProgramAdmin)
 admin.site.register(REF_CONDITION)
 admin.site.register(REF_PRODUCT_PKG)
@@ -107,3 +163,5 @@ admin.site.register(REF_RADIO_FREQUENCY)
 admin.site.register(REF_RADIO_BAND)
 admin.site.register(REF_STATUS)
 admin.site.register(DistroList, DistroAdmin)
+admin.site.register(ApprovalList)
+admin.site.register(CustomerPartInfo, CustomerInfoAdmin)

@@ -6,7 +6,7 @@ menulisting = [
     {'title':"Pricing","destination":"bomconfig:pricing"},
     {'title':"Approvals","destination":"bomconfig:approval"},
     {'title':"Actions","destination":"bomconfig:action"},
-    {'title':"Reporting","destination":"bomconfig:reporting"},
+    {'title':"Customer Audit","destination":"bomconfig:customeraudit"},
     {'title':"Admin","destination":"bomconfig:adminlanding"},
     {'title':"Tools","children":[
         {'title':'REACT', 'destination':'http://eusaamw0065/REACT_test/default.asp?timesin=1'},
@@ -16,7 +16,7 @@ menulisting = [
 
 pagetitle = "Configuration & Baseline Mgmt"
 
-supportcontact = "paul.staggs@ericsson.com"
+supportcontact = "sherri.xi.parolini@ericsson.com"
 
 headerFile = "BoMConfig/header.html"
 footerFile = "BoMConfig/footer.html"

@@ -23,6 +23,16 @@ def getindex(obj, attr):
 # end def
 
 
+@register.filter(name='getkeyvalue')
+def getkeyvalue(dict, key=''):
+    """ Returns the attribute specified by 'attr' from the object specified by 'obj'. """
+    try:
+        return dict[key]
+    except KeyError:
+        return None
+# end def
+
+
 @register.filter(name='replacewithspace')
 @stringfilter
 def replacewithspace(source, old):

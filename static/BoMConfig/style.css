@@ -10,6 +10,15 @@ a:hover {
 	color: #00285e;
 }
 
+select:disabled{
+	border: none;
+	-webkit-appearance: none;
+}
+
+input.input-invalid, select.input-invalid {
+	border: 2px solid red;
+}
+
 .row {
 	margin-right: 0;
 }

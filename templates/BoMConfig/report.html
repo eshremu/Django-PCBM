@@ -1,12 +1,144 @@
 {% extends "BoMConfig/template.html" %}
 {% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
 {% block content %}
+<script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+<link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
 <div id="main-body">
     <h4>Page under construction</h4>
+    <div class="" style="display: inline-block">
+        <h4>Input</h4>
+        <div id="input-table">
+        </div>
+    </div>
+    <div class="" style="display: inline-block">
+        <h4>Output</h4>
+        <div id="output-table">
+        </div>
+    </div>
 </div>
 <script>
     function cleanDataCheck(link){
         window.location.href = link.dataset.href;
+    }
+
+    var data = [[]];
+    var outputdata = [[]];
+    var outputformat;
+    var inputTable = new Handsontable(document.getElementById('input-table'),{
+        data: data,
+        colHeaders: ['Ericsson Part','Customer Part','Customer Asset tagging Requirement', 'Customer Asset'],
+        rowHeaders: true,
+        minRows: 1,
+        minCols: 4,
+        minSpareRows: 1,
+        afterCreateRow: function(index, amount, auto){
+            addOutputRow(index, amount, auto);
+        },
+        afterChange: function(changes, source){
+            if (['alter', 'edit', 'paste'].indexOf(source) != -1){
+                var altered_data = {};
+
+                // Gather changed data
+                for(var idx in changes){
+                    if (altered_data.hasOwnProperty(changes[idx][0])){
+                        altered_data[changes[idx][0]][changes[idx][1]] = changes[idx][3];
+                    } else {
+                        altered_data[changes[idx][0]] = new Array(4).fill(null);
+                        altered_data[changes[idx][0]][changes[idx][1]] = changes[idx][3];
+                    }
+                }
+
+                // Combine unchanged data (cell still containing null are assumed to have not been changed,
+                // but may still reflect null after this loop
+                for (var key in altered_data){
+                    for (var i=0; i < altered_data[key].length; i++){
+                        if (altered_data[key][i] == null){
+                            altered_data[key][i] = this.getDataAtCell(key, i);
+                        }
+                    }
+                }
+                $.ajax({
+                    url: "{% url 'bomconfig:audit_validate' %}",
+                    type: 'POST',
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    data: {
+                        changed_data: JSON.stringify(altered_data)
+                    },
+                    success: function(returned_data){
+                        resultsDisplay(returned_data);
+                    },
+                    error: function(xhr, status, error){
+                        console.log(xhr, status, error);
+                    }
+                });
+            } else if (source == 'empty'){
+                //
+            }
+
+        }
+    });
+    var outputTable = new Handsontable(document.getElementById('output-table'),{
+        data: outputdata,
+        colHeaders: ['Ericsson Part','Customer Part','Customer Asset tagging Requirement', 'Customer Asset'],
+        rowHeaders: true,
+        minRows: 1,
+        minCols: 4,
+        minSpareRows: 1,
+        cells: function(row, col, prop){
+            var cellProperties = {};
+            cellProperties.readOnly = true;
+            cellProperties.renderer = customRenderer;
+            return cellProperties;
+        }
+    });
+
+{#    inputTable.addHook('afterCreateRow', function(index, amount){#}
+{#        outputTable.alter('insert_row');#}
+{#    });#}
+
+    function addOutputRow(index, amount, auto){
+        if (outputTable != undefined) {
+{#            outputTable.render();#}
+            outputTable.alter('insert_row');
+        }
+    }
+
+    function resultsDisplay(returned_data){
+        if(outputformat == undefined) {
+            outputformat = returned_data.table_info;
+        } else {
+            for(var key in returned_data.table_info){
+                outputformat[key] = returned_data.table_info[key];
+            }
+        }
+        for(var key in returned_data.table_data){
+            outputdata[key] = returned_data.table_data[key]
+        }
+        outputTable.loadData(outputdata);
+        outputTable.render();
+    }
+
+    function customRenderer(instance, td, row, col, prop, value, cellProperties){
+        if(outputformat != undefined && outputformat.hasOwnProperty(row)){
+            if(outputformat[row][col] == true){
+                td.style.background = '#90E990';
+            } else if (outputformat[row][col] == false){
+                td.style.background = '#E99090';
+            } else if (outputformat[row][col] == null){
+                if ([null, ''].indexOf(value) != -1){
+                    td.style.background = '#DDDDDD';
+                } else {
+                    td.style.background = '#85ADD6';
+                }
+            }
+        } else {
+{#            td.style.background = '#DDDDDD';#}
+        }
+        td.style.color = '#000000';
+        Handsontable.renderers.TextRenderer.apply(this, arguments);
     }
 </script>
 {% endblock %}

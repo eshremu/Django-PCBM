@@ -190,11 +190,11 @@ def ConfigPricing(oRequest):
 
             dLineFilters = {
                 'config__header__configuration_status__name__startswith': 'In Process',
-                'config__header__configuration_designation__iexact': sConfig,
+                'config__header__configuration_designation__iexact':sConfig,
             }
             dConfigFilters = {
                 'header__configuration_status__name__startswith': 'In Process',
-                'header__configuration_designation__iexact': sConfig,
+                'header__configuration_designation__iexact':sConfig,
             }
 
             if iProgValue is not None:
@@ -213,6 +213,7 @@ def ConfigPricing(oRequest):
 
             if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
                 if oRequest.POST['config'] == oRequest.POST['initial']:
+                    net_total = 0
                     for dLine in json.loads(oRequest.POST['data_form']):
                         # Change dLine to dict with str keys
                         if isinstance(dLine, list):
@@ -225,12 +226,19 @@ def ConfigPricing(oRequest):
                         oLineToEdit = ConfigLine.objects.filter(**dLineFilters)[0]
                         oLinePrice = LinePricing.objects.get(config_line=oLineToEdit)
                         oLinePrice.override_price = dLine['7'] or None
+
+                        if not oLineToEdit.config.header.pick_list and dLine['0'] == '10':
+                            net_total = float(dLine['6'])
+                        elif oLineToEdit.config.header.pick_list:
+                            net_total += float(dLine['6'])
+
                         oLinePrice.save()
                     # end for
                     dLineFilters.pop('line_number', None)
 
                     oConfig = Configuration.objects.get(**dConfigFilters)
                     oConfig.override_net_value = float(oRequest.POST['net_value'])
+                    oConfig.net_value = net_total
                     oConfig.save()
 
                     status_message = 'Data saved.'
@@ -249,9 +257,9 @@ def ConfigPricing(oRequest):
                 '2': str(oLine.part.base.product_number) + str('_'+ oLine.spud if oLine.spud else ''),
                 '3': oLine.part.product_description,
                 '4': float(oLine.order_qty if oLine.order_qty else 0),
-                '5': float(GrabValue(oLine.linepricing, 'pricing_object.unit_price') or 0),
-                '6': float(oLine.order_qty or 0) * float(GrabValue(oLine.linepricing, 'pricing_object.unit_price') or 0),
-                '7': oLine.linepricing.override_price or '',
+                '5': float(GrabValue(oLine,'linepricing.pricing_object.unit_price', 0)),
+                '6': float(oLine.order_qty or 0) * float(GrabValue(oLine,'linepricing.pricing_object.unit_price', 0)),
+                '7': GrabValue(oLine,'linepricing.override_price', ''),
                 '8': oLine.higher_level_item or '',
                 '9': oLine.material_group_5 or '',
                 '10': oLine.commodity_type or '',
@@ -259,8 +267,9 @@ def ConfigPricing(oRequest):
                 '12': oLine.additional_ref or ''
                             } for oLine in aLine]
 
-            config_total = sum([float(line['6']) for line in aConfigLines])
-            aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
+            if not aLine[0].config.header.pick_list:
+                config_total = sum([float(line['6']) for line in aConfigLines])
+                aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
 
             dContext['configlines'] = aConfigLines
             dContext.update({'config': sConfig,

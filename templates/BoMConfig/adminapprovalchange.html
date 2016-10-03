@@ -1,0 +1,95 @@
+{% extends 'BoMConfig/adminlanding.html' %}
+{% load staticfiles %}
+{% load bomconfig_customtemplatetags %}
+{% block subcontent %}
+    <h3><u>{% if form.readonly %}Change{% else %}Add{% endif %} Baseline Approval List</u></h3>
+    {% if form.non_field_errors %}
+        <div class="messageblock errorblock">
+            <p>Select a choice level for all approval stages</p>
+        </div>
+    {% endif %}
+    {% if errors %}
+        <div class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">
+            {% for error in errors %}
+            <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+    {% endif %}
+    <form method="post" onsubmit="document.getElementById('id_customer').removeAttribute('disabled');">
+        {% csrf_token %}
+        <table>
+            <tbody>
+                <tr>
+                    <td>{{ form.customer.label_tag }}</td>
+                    <td style="padding-left: 5px;">{{ form.customer }}</td>
+                    {% for error in form.customer.errors %}
+                    <td class="errortext">{{ error }}</td>
+                    {% endfor %}
+                </tr>
+            </tbody>
+        </table>
+        <br/><br/>
+        <table>
+            <thead>
+                <tr>
+                    <th></th>
+                    {% for choice in form.required_choices %}
+                    <th class="title_cell{% if forloop.counter|slugify in form.non_field_errors %} error{% endif %}">{{ choice.choice_label|replacewithspace:"_"|upper }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for field in form %}
+                    {% if field.name != 'customer' %}
+                <tr>
+                    <td>{{ field.label_tag }}</td>
+                    {% for choice in field %}
+                    <td class="data_cell {{ field.label|lower|replacewhitespace:"_" }}_cell{% if forloop.counter|slugify in form.non_field_errors %} error{% endif %}">{{ choice.tag }}</td>
+                    {% endfor %}
+                </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+        <button class="btn btn-primary" type="submit">Save</button>
+    </form>
+    <style>
+        th.title_cell, td.data_cell {
+            text-align: center;
+        }
+
+        th.title_cell {
+            min-width: 70px;
+        }
+
+        .error {
+            border-left: 2px solid red;
+            border-right: 2px solid red;
+        }
+
+        .title_cell.error {
+            border-top: 2px solid red;
+        }
+
+        .disallowed_choices_cell.error {
+            border-bottom: 2px solid red;
+        }
+    </style>
+    <script type="text/javascript">
+        $('button[value="approval"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        $(document).ready(function(){
+            $('input[type="checkbox"]').on('change', function(){
+                if($(this).prop('checked')) {
+                    var master = this;
+                    $('input[type="checkbox"][value="' + $(this).val() + '"]').each(function(idx, elem){
+                        if(elem != master){
+                            $(elem).prop('checked', false);
+                        }
+                    });
+
+                }
+            });
+        });
+
+    </script>
+{% endblock %}

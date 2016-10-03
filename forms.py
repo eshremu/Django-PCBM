@@ -4,7 +4,8 @@ from django.utils.safestring import mark_safe
 from django.contrib.auth.models import User, Group
 from django.contrib.admin.widgets import FilteredSelectMultiple
 
-from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject, DistroList, SecurityPermission
+from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject,\
+    DistroList, SecurityPermission, HeaderTimeTracker, ApprovalList
 
 import datetime
 import os
@@ -20,12 +21,8 @@ class HeaderForm(forms.ModelForm):
     # end class
 
     def __init__(self, *args, **kwargs):
-        bReadOnly = False
-
-        if 'readonly' in kwargs:
-            bReadOnly = kwargs['readonly']
-            del kwargs['readonly']
-        # end if
+        bReadOnly = kwargs.pop('readonly', False)
+        sBrowser = kwargs.pop('browser', None)
 
         super().__init__(*args, **kwargs)
 
@@ -53,6 +50,7 @@ class HeaderForm(forms.ModelForm):
         else:
             self.fields['model_replaced'].widget = AutocompleteInput(
                 'header_list',
+                sBrowser,
                 list([(head.id,
                        head.configuration_designation +
                        (" (" + str(head.program) + ")" if head.program else ''),
@@ -168,7 +166,7 @@ class HeaderForm(forms.ModelForm):
                   " WHERE [Sales Office Description] = %s")
 
         if 'customer_unit' in data and data['customer_unit']:
-            oCursor.execute(sQuery, [REF_CUSTOMER.objects.get(name=data['customer_unit']).name])
+            oCursor.execute(sQuery, [bytes(REF_CUSTOMER.objects.get(name=data['customer_unit']).name, 'ascii')])
             oResults = oCursor.fetchall()
             if 'sales_office' in data and data['sales_office']:
                 if (REF_CUSTOMER.objects.get(name=data['customer_unit']).name, data['sales_office']) not in [(obj[0],obj[1]) for obj in oResults]:
@@ -264,19 +262,36 @@ class LinePricingForm(forms.ModelForm):
 
 
 class AutocompleteInput(forms.TextInput):
-    def __init__(self, name, choices=(), *args, **kwargs):
+    def __init__(self, name, browser, choices=(), *args, **kwargs):
         super(AutocompleteInput, self).__init__(*args, **kwargs)
         self._name = name
         self._choices = choices
+        self._browser = browser
         self.attrs.update({'list': 'list_{}'.format(self._name)})
     # end def
 
     def render(self, name, value, attrs=None):
+        if 'Firefox' in self._browser:
+            iMinLength = 50
+            for item in self._choices:
+                if isinstance(item, (list, tuple)):
+                    iMinLength = max(iMinLength, len(item[1] + item[2])+2)
+                else:
+                    iMinLength = max(iMinLength, len(item))
+                # end if
+            # end for
+
+            attrs.update({'style': 'width: {}px'.format(iMinLength * 6 + 17)})
+        # end if
+
         input_html = super(AutocompleteInput, self).render(name, value, attrs=attrs)
         datatlist_html = '<datalist id="list_{}">'.format(self._name)
         for item in self._choices:
             if isinstance(item, (list, tuple)):
-                datatlist_html += '<option data-value="{}" value="{}">{}</option>'.format(item[0], item[1], item[2])
+                if 'Chrome' in self._browser:
+                    datatlist_html += '<option data-value="{0}" value="{1}">{2}</option>'.format(item[0], item[1], item[2])
+                else:
+                    datatlist_html += '<option data-value="{0}" value="{1}">{1} - {2}</option>'.format(item[0], item[1], item[2])
             else:
                 datatlist_html += '<option value="{}"/>'.format(item)
         # end for
@@ -323,14 +338,16 @@ class UserForm(forms.Form):
     last_name = forms.CharField(label='Last Name')
     email = forms.EmailField(label='Ericsson Email')
     assigned_group = forms.ModelMultipleChoiceField(Group.objects.filter(name__startswith='BOM_')
-                                            .exclude(name__contains='BPMA')
-                                            .exclude(name__contains='SuperApprover'), label='Assigned Group')
+                                                    .exclude(name__contains='BPMA')
+                                                    .exclude(name__contains='SuperApprover'), label='Assigned Group',)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['signum'].widget.attrs['readonly'] = 'True'
         self.fields['signum'].widget.attrs['style'] = 'border: none;'
-        self.fields['assigned_group'].label_from_instance = lambda inst: "%s" % (inst.name.replace('BOM_', '').replace('_', ' - ', 1).replace('_', ' '))
+        self.fields['assigned_group'].label_from_instance = lambda inst: "%s" % (inst.name.replace('BOM_', '')
+                                                                                 .replace('_', ' - ', 1)
+                                                                                 .replace('_', ' '))
 
     def clean_email(self):
         if not self.cleaned_data['email'].lower().endswith('@ericsson.com'):
@@ -353,4 +370,38 @@ class UserAddForm(forms.Form):
             pass
 
         return submitted_signum
+# end class
+
+
+class CustomerApprovalLevelForm(forms.Form):
+    customer = forms.ModelChoiceField(queryset=REF_CUSTOMER.objects.all())
+    required_choices = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple, required=False)
+    optional_choices = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple, required=False)
+    disallowed_choices = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple, required=False)
+
+    def __init__(self, *args, **kwargs):
+        self.readonly = kwargs.pop('readonly', False)
+        super().__init__(*args, **kwargs)
+
+        self.fields['customer'].widget.attrs['readonly'] = str(self.readonly)
+
+        if self.readonly:
+            self.fields['customer'].widget.attrs['disabled'] = 'disabled'
+            self.fields['customer'].widget.attrs['style'] = 'border:none;-webkit-appearance:none;'
+        self.fields['required_choices'].choices = enumerate(HeaderTimeTracker.approvals()[1:-1], 1)
+        self.fields['optional_choices'].choices = enumerate(HeaderTimeTracker.approvals()[1:-1], 1)
+        self.fields['disallowed_choices'].choices = enumerate(HeaderTimeTracker.approvals()[1:-1], 1)
+
+        if not self.readonly:
+            self.fields['customer'].queryset = REF_CUSTOMER.objects.exclude(id__in=[app.customer.id for app in ApprovalList.objects.all()])
+    # end def
+
+    def clean(self):
+        data = self.cleaned_data
+        included_values = set(data['required_choices']).union(set(data['optional_choices'])).union(set(data['disallowed_choices']))
+
+        for index in range(1, len(HeaderTimeTracker.approvals())-1):
+            if str(index) not in included_values:
+                self.add_error(None, index)
+    # end def
 # end class

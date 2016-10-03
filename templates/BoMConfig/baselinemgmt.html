@@ -130,9 +130,17 @@
         <form id="rollbackform" style="display: inline">
             {% csrf_token %}
             <input name="baseline" type="hidden" value="{{ tables.0.baseline }}"/>
-            <button style="display: inline" id="rollback" type="button" onclick="rollbackModal()">Rollback</button>
+            <button style="display: inline" id="rollback" type="button" onclick="rollbackTest()">Rollback</button>
         </form>
         {% endif %}
+    </div>
+    {% else %}
+    <div id="action_buttons" style="margin-top: 1px;">
+        <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinemasterdownload' %}">
+            {% csrf_token %}
+            <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
+            <button style="display: inline" id="download" type="submit">Download</button>
+        </form>
     </div>
     {% endif %}
 	{% else %}
@@ -142,6 +150,7 @@
 <script>
     var revision_list = '{% for revision in tables.0.revisions %}<option value="{{ revision.revision.version }}">{{ revision.revision.version }}</option>{% endfor %}';
     var rollback_url = "{% url 'bomconfig:baselinerollback' %}";
+    var rollbacktest_url = "{% url 'bomconfig:baselinerollbacktest' %}";
 </script>
 
 <style>
