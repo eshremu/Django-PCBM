@@ -63,7 +63,8 @@ def Action(oRequest, **kwargs):
 
     dContext = {
         'in_process': Header.objects.filter(configuration_status__name='In Process'),
-        'active': Header.objects.filter(configuration_status__name='Active', inquiry_site_template=None, pick_list=False),
+        'active': [obj for obj in Header.objects.filter(configuration_status__name='In Process/Pending', pick_list=False,)
+                   if HeaderTimeTracker.approvals().index(obj.latesttracker.next_approval) > HeaderTimeTracker.approvals().index('cust1')],
         'on_hold': Header.objects.filter(configuration_status__name='On Hold'),
         'customer_list': ['All'] + [obj.name for obj in REF_CUSTOMER.objects.all()],
         'viewauthorized': bool(oRequest.user.groups.filter(name__in=['BOM_BPMA_Architect','BOM_PSM_Product_Supply_Manager', 'BOM_PSM_Baseline_Manager'])),
@@ -420,6 +421,7 @@ def CloneHeader(oHeader):
     oNewHeader.pk = None
     oNewHeader.configuration_designation = oOldHeader.configuration_designation + '_______CLONE_______'
     oNewHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
+    oNewHeader.inquiry_site_template = None
     if oNewHeader.react_request is None:
         oNewHeader.react_request = ''
     # end if
@@ -589,7 +591,6 @@ def ChangePart(oRequest):
                             oHeader = Header.objects.get(id=id)
                             # print(oHeader)
                             if oHeader.configuration_status.name != 'In Process':
-                                # print('Clone header')
                                 oNewHeader = CloneHeader(oHeader)
                                 oNewHeader.configuration_designation = oHeader.configuration_designation
                                 oNewHeader.bom_request_type = REF_REQUEST.objects.get(name='Update')
@@ -612,47 +613,6 @@ def ChangePart(oRequest):
                                 oLine.vendor_article_number = sReplacePart.strip('./')
                                 # print('Update LinePricing object for new part')
                                 oLinePrice = PricingObject.getClosestMatch(oLine)
-                                # try:
-                                #     oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                                #                                            part=oReplacementBase,
-                                #                                            is_current_active=True,
-                                #                                            sold_to=oHeader.sold_to_party,
-                                #                                            spud=oLine.spud,
-                                #                                            technology=oHeader.technology)
-                                # except PricingObject.DoesNotExist:
-                                #     try:
-                                #         oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                                #                                                part=oReplacementBase,
-                                #                                                is_current_active=True,
-                                #                                                sold_to=oHeader.sold_to_party,
-                                #                                                spud=oLine.spud,
-                                #                                                technology=None)
-                                #     except PricingObject.DoesNotExist:
-                                #         try:
-                                #             oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                                #                                                    part=oReplacementBase,
-                                #                                                    is_current_active=True,
-                                #                                                    sold_to=oHeader.sold_to_party,
-                                #                                                    spud=None,
-                                #                                                    technology=None)
-                                #         except PricingObject.DoesNotExist:
-                                #             try:
-                                #                 oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                                #                                                        part=oReplacementBase,
-                                #                                                        is_current_active=True,
-                                #                                                        sold_to=None,
-                                #                                                        spud=oLine.spud,
-                                #                                                        technology=None)
-                                #             except PricingObject.DoesNotExist:
-                                #                 try:
-                                #                     oLinePrice = PricingObject.objects.get(customer=oHeader.customer_unit,
-                                #                                                            part=oReplacementBase,
-                                #                                                            is_current_active=True,
-                                #                                                            sold_to=None,
-                                #                                                            spud=None,
-                                #                                                            technology=None)
-                                #                 except PricingObject.DoesNotExist:
-                                #                     pass
 
                                 if not hasattr(oLine, 'linepricing'):
                                     LinePricing.objects.create(**{'config_line': oLine})
