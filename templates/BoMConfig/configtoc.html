@@ -23,7 +23,7 @@
             <table>
                 <tbody>
                     <tr>
-                        <td style="width:125px;">{{ form.ready_for_forecast.label_tag }}{{ form.ready_for_forecast }}</td>
+                        <td style="width:200px;">{{ form.ready_for_forecast.label_tag }}{{ form.ready_for_forecast }}</td>
                         <td style="width:150px;">{{ form.PSM_on_hold.label_tag }}{{ form.PSM_on_hold }}</td>
                         <td style="width:225px;"></td>
                         <td style="width:170px;"></td>
@@ -140,10 +140,10 @@
         });
 
         function form_resize(){
-            var topbuttonheight = $('#action_buttons').height();
-            var bottombuttonheight = $('#formbuttons').height();
-            var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
-            var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
+            var topbuttonheight = $('#action_buttons').outerHeight(true);
+            var bottombuttonheight = $('#formbuttons').outerHeight(true);
+            var subformheight = $("#headersubform").outerHeight(true);
+            var crumbheight = $('#breadcrumbs').outerHeight(true);
             var bodyheight = $('#main-body').height();
 
             var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + crumbheight + subformheight);

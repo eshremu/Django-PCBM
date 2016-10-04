@@ -64,6 +64,8 @@
 				availableHeight -= parseInt(divMargin);
 				availableHeight -= parseInt(divPad);
 
+                availableHeight -= $('#prog_chev').outerHeight(true) + 5;
+
 				$("#main-body").css("height", availableHeight);
 			}
 

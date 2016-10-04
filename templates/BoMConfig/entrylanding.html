@@ -6,7 +6,7 @@
 {% if frame_readonly %}
 <div id="prog_chev" style="overflow-x: hidden; white-space: nowrap;">
     <div class="start_chev" style="display:inline; position: relative;">
-        <img src="{% static 'BoMConfig/images/ActiveStart.png' %}" style="width:97px;"/>
+        <img src="{% static 'BoMConfig/images/ActiveStart.png' %}" style="width:97px; border-radius: 30px 0 0 30px;"/>
         <span style="color:white; position: absolute; left:30px; top:-2px;">PSM</span>
     </div>
 
@@ -56,7 +56,7 @@
 
     {% if header.configuration_status.name == 'On Hold' %}
     <div class="on_hold_bar">
-        <span style="color:white; position: absolute; left:30px; top: 9px;">On Hold</span>
+        <span style="color:white; position: absolute; left:30px;">On Hold</span>
     </div>
     {% endif %}
 </div>
@@ -82,6 +82,10 @@
         #action_buttons button:hover {
             background-color: #cccccc;
         }
+
+        td {
+            padding: 0 0 1px 0;
+        }
         {% if frame_readonly %}
         #copynote {
             display: none
@@ -91,9 +95,9 @@
             display: inline;
             position: absolute;
             left: 60px;
-            top: 10px;
-            height: 40px;
-            background-color: rgba(255, 0, 0, 0.65)
+            top: 40px;
+            height: 20px;
+            background-color: rgba(225, 35, 30, 0.75)
         }
         {% endif %}
     </style>
