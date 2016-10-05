@@ -651,6 +651,7 @@
                     }
                 },
                 error: function(){
+                    validating = false;
                     $('#validate').removeAttr('disabled').attr('value','Validate').css('color','');
                     $('#myModal').modal('hide');
                     $('#statuses').html('Error during validation. Try again');
