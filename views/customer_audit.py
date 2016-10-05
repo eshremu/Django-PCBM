@@ -355,28 +355,9 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
             # We should log in error if this line data is attempting to overwrite protected  (priority) information
             elif oExactMap and ((oExactMap.active and oExactMap.priority and "Phase" in tPart[5]) or
                                   (not oExactMap.active and oExactMap.priority and "Active" in tPart[5])):
-                # if oExactMap.active:  # If the match is already active
-                #     if "Phase" in tPart[5] and not oExactMap.priority:
-                #         oExactMap.active = False
-                #         oExactMap.save()
-                #     elif "Phase" in tPart[5] and oExactMap.priority:
-                #         aDuplicateInactive.append(tPart)
-                #
-                # else:
-                #     if "Active" in tPart[5] and not oExactMap.priority:
-                #         oExactMap.active = True
-                #         oExactMap.save()
-                #     elif "Active" in tPart[5] and oExactMap.priority:
                 aDuplicateInactive.append(tPart)
 
                 continue
-                # # If the match is inactive, but the line record is supposed to be Active, log the
-                # # error
-                # else:
-                #     if 'Active' in tPart[5]:
-                #         aDuplicateInactive.append(tPart)
-                #     continue
-                # end if
 
             # If the Part match and Customer number match are the same, then there is really only one match,
             # the only difference between the match and line record is the customer asset information
@@ -445,8 +426,6 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
         # Send discrepancy email
         subject = 'Customer Part Number upload discrepancies'
         from_email = 'pcbm.admin@ericsson.com'
-        to_email = [user.email for user in get_user_model().objects.filter(groups__name='BOM_PSM_Baseline_Manager')]
-        to_email = [oUser.email]
         text_message = GenerateEmailMessage(**{'cust': aDuplicateCust, 'mpn': aDuplicateMPN, 'tag': aDuplicateTag,
                                                'inactive': aDuplicateInactive, 'user': oUser, 'invalid': aInvalidEntries,
                                                'filename': oStream.name, 'type': iFileType})

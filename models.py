@@ -407,7 +407,7 @@ class Header(models.Model):
                 # end if
             # end if
         # end if
-        # print(self.readiness_complete)
+
         if self.configuration_status.name == 'In Process':
             if self.bom_request_type.name == 'Preliminary':
                 self.readiness_complete = 25
@@ -418,10 +418,10 @@ class Header(models.Model):
                     self.readiness_complete = 70
                     aRecips = User.objects.filter(groups__securitypermission__title__in=HeaderTimeTracker.permission_entry('scm1')).values_list('email', flat=True)
                     oMessage = EmailMultiAlternatives(subject='Preliminary Bill of Materials',
-                                                      body='The attached bill of materials is ready for forecasting',
+                                                      body='The attached bill of materials is ready for forecasting',  # TODO: Actual text message
                                                       from_email='pcbm.admin@ericsson.com',
                                                       to=aRecips)
-                    oMessage.attach_alternative('The attached bill of materials is ready for forecasting', 'text/html')
+                    oMessage.attach_alternative('The attached bill of materials is ready for forecasting', 'text/html')  # TODO: Actual HTML message
 
                     from BoMConfig.views.download import WriteConfigToFile
                     from io import BytesIO
@@ -431,11 +431,13 @@ class Header(models.Model):
                                     content=oStream.getvalue(),
                                     mimetype='application/ms-excel')
                     oMessage.send()
+                # end if
+            # end if
         elif self.configuration_status.name == 'In Process/Pending':
             self.readiness_complete = 90
         else:
             self.readiness_complete = 100
-        # print(self.readiness_complete)
+        # end if
 
         super().save(*args, **kwargs)
         if not hasattr(self, 'headertimetracker_set') or not self.headertimetracker_set.all():
@@ -490,11 +492,9 @@ class Configuration(models.Model):
         if self.PSM_on_hold and self.header.configuration_status.name != 'On Hold':
             self.header.old_configuration_status = self.header.configuration_status
             self.header.configuration_status = REF_STATUS.objects.get(name='On Hold')
-            # self.header.save()
         elif not self.PSM_on_hold and self.header.old_configuration_status is not None:
             self.header.configuration_status = self.header.old_configuration_status
             self.header.old_configuration_status = None
-            # self.header.save()
         # end if
         self.header.save()
 
