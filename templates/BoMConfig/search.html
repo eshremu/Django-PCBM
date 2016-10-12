@@ -1,9 +1,10 @@
 {% extends "BoMConfig/template.html" %}
+{% load staticfiles %}
 {% load bomconfig_customtemplatetags %}
 {% block content %}
 <div id="main-body" xmlns="http://www.w3.org/1999/html">
     {% if user.is_authenticated %}
-    <div id="action_buttons">
+    <div id="action_buttons" style="margin: 5px 0;">
 		<button class="btn" type="button" name="action" value="basic" onclick="window.location.href='{% url 'bomconfig:search' %}'">Basic</button>
 		<button class="btn" type="button" name="action" value="advanced" onclick="window.location.href='{% url 'bomconfig:searchadv' %}'">Advanced</button>
 	</div>
@@ -36,41 +37,43 @@
                 <option value="{{ status.name|lower|replacewhitespace:"_" }}">{{ status.name }}</option>
                 {% endfor %}
             </select>
-            <button id="search_button" class="submit" type="button" name="search_button" value="search">Search</button>
+            <button id="search_button" class="submit btn" type="button" name="search_button" value="search">Search</button>
         </form>
     </div>
     <div id="search_results">
     <h3>Latest Configurations</h3>
     {% if header_list %}
-        <table>
-        <thead>
+        <table id="result_table">
+            <thead>
+                <tr>
+                    <th style="width: 20px;"><input class="selectall" type="checkbox"></th>
+                    <th style="width:175px;">Configuration</th>
+                    <th style="width:175px;">Program</th>
+                    <th style="width:175px;">Version</th>
+                    <th style="width:175px;">Person Responsible</th>
+                    <th style="width:175px;">BoM Request Type</th>
+                    <th style="width:175px;">Customer Unit</th>
+                    <th style="width:175px;">Status</th>
+                    <th style="width:175px;">Readiness Complete</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for header in header_list %}
             <tr>
-                <th style="width: 20px;"><input class="selectall" type="checkbox"></th>
-                <th style="width:175px;">Configuration</th>
-                <th style="width:175px;">Program</th>
-                <th style="width:175px;">Version</th>
-                <th style="width:175px;">Person Responsible</th>
-                <th style="width:175px;">BoM Request Type</th>
-                <th style="width:175px;">Customer Unit</th>
-                <th style="width:175px;">Status</th>
+                <td><input class="recordselect" type="checkbox" value="{{ header.pk }}"></td>
+                <td><a href="?link={{ header.pk|searchscramble }}">{{ header.configuration_designation }}</a></td>
+                <td>{{ header.program }}</td>
+                <td>{{ header.baseline_version }}</td>
+                <td>{{ header.person_responsible }}</td>
+                <td>{{ header.bom_request_type }}</td>
+                <td>{{ header.customer_unit }}</td>
+                <td>{{ header.configuration_status }}</td>
+                <td>{{ header.readiness_complete|default:0 }}</td>
             </tr>
-        </thead>
-        <tbody>
-        {% for header in header_list %}
-        <tr>
-            <td><input class="recordselect" type="checkbox" value="{{ header.pk }}"></td>
-            <td><a href="?link={{ header.pk|searchscramble }}">{{ header.configuration_designation }}</a></td>
-            <td>{{ header.program }}</td>
-            <td>{{ header.baseline_version }}</td>
-            <td>{{ header.person_responsible }}</td>
-            <td>{{ header.bom_request_type }}</td>
-            <td>{{ header.customer_unit }}</td>
-            <td>{{ header.configuration_status }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
+            {% endfor %}
+            </tbody>
         </table>
-        <button id="download" disabled>Download</button>
+        <button id="download" class="btn btn-primary" disabled>Download</button>
     {% else %}
         <p>NO CONFIGURATIONS DEFINED</p>
     {% endif %}
@@ -79,6 +82,8 @@
     <h4>You must log in to use this function</h4>
     {% endif %}
 </div>
+<link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+<script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
 <script>
     $('a.headtitle:contains("Search")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
     $('button[value="basic"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
@@ -150,6 +155,18 @@
                 $results.empty();
                 $results.append($('<h3>Search Results</h3>'));
                 $results.append(data);
+                $('#result_table').DataTable({
+                    paging: false,
+                    searching: false,
+                    info: false,
+                    order: [],
+                    columnDefs: [
+                        {
+                            orderable: false,
+                            targets: 0
+                        }
+                    ]
+                });
                 $('#myModal').modal('hide');
             },
             error: function() {

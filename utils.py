@@ -450,7 +450,11 @@ def GenerateRevisionSummary_old(oBaseline, sPrevious, sCurrent):
 def GrabValue(oStartObj, sAttrChain, default=None):
     import functools
     try:
-        return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj) or default
+        value = functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj)
+        if value is None:
+            return default
+        else:
+            return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj)
     except AttributeError:
         return default
 # end def

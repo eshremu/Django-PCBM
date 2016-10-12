@@ -7,6 +7,10 @@ var model_replace_initial;
 var model_replace_override = false;
 
 $(document).ready(function(){
+    var max = 0;
+    $('tr td:first-child').each(function(idx, elem){max = Math.max(max, $(elem).width())});
+    $('tr td:first-child').each(function(idx, elem){$(elem).width(max)});
+
     $('#searchSubmit').click(function(){
         req_search();
     });
@@ -262,6 +266,8 @@ function form_resize(){
 
 function save_form(){
     form_save = true;
+    $('[readonly=true]').removeAttr('readonly');
+    $('[disabled=true]').removeAttr('disabled');
     clean_form = $('#headerform').serialize();
 }
 

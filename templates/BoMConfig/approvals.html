@@ -6,12 +6,12 @@
     {% if user.is_authenticated %}
         {% if viewauthorized %}
         <div id="hintBox"></div>
-        <ul class="btn" style="border: none; padding: 0;">
+        <ul class="btn" style="border: none; padding: 5px 0 0 0;">
             <li class="dropdown" style="list-style-type: none;">
                 <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for customer in customer_list %}
-                    <li><a href="#" onclick="cust_filter('{{ customer|replace:"& _"|replacewhitespace:"-_" }}');">{{ customer }}</a></li>
+                    <li><a onclick="cust_filter('{{ customer|replace:"& _"|replacewhitespace:"-_" }}');">{{ customer }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
@@ -22,10 +22,10 @@
         <form id="pending_approval_action" onsubmit="return false;">
             <button id="approve" class="action_button btn btn-success" value="approve">Approve</button>
             <button id="disapprove" class="action_button btn btn-danger" value="disapprove">Disapprove</button>
-            {% if skip_authorized %}
-            <button id="skip" class="action_button btn btn-secondary" value="skip">Skip</button>
-            {% endif %}
             <button id="hold" class="action_button btn btn-warning" value="hold">Place on Hold</button>
+            {% if skip_authorized %}
+            <button id="skip" class="action_button btn btn-secondary" value="skip" style="margin-left:20px;">Skip</button>
+            {% endif %}
             <table id="pending_approval_records">
                 <thead>
                     <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
@@ -99,6 +99,11 @@
                                     <option value="{{ user.id }}">{{ user.get_full_name }}</option>
                                 {% endfor %}
                                 </select>
+                                {% elif record.inquiry_site_template %}
+                                <br/>
+                                <p style="color:red; font-style: italic; font-weight: bold;">WARNING:</p>
+                                <p>If you wish to update an existing SAP document (Inquiry / Site Template), be sure to do so before releasing this record.</p>
+                                <br/>
                                 {% endif %}
                                 {% endwith %}
                                 <h5>Comments:</h5>
@@ -283,8 +288,10 @@
                         $('.required').toggleClass('invalid_field', false);
                         $('#disapproval').modal('show');
                     } else {
-                        $('#myModal').modal('show');
-                        process($(this).val());
+                        messageToModal('Confirm hold','Are you sure you wish to place the selected records on hold?', function(source){
+                            $('#myModal').modal('show');
+                            process($(source).val());
+                        }, this);
                     }
                 } else {
                     messageToModal('Error','Please select at least 1 record for processing.',function(){});

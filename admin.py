@@ -111,7 +111,7 @@ class BaselineAdmin(admin.ModelAdmin):
 
 class ConfigLineAdmin(admin.ModelAdmin):
     list_display = ('title','version','line_number')
-    search_fields = ('config__header__configuration_designation', 'line_number')
+    search_fields = ('config__header__configuration_designation', 'line_number', 'config__header__baseline_version')
 
 
 class ConfigAdmin(admin.ModelAdmin):

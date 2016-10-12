@@ -5,10 +5,12 @@ from django.http import HttpResponse, Http404, JsonResponse
 from django.core.urlresolvers import reverse
 from django.template import Template, Context, loader
 from django.core.mail import send_mail, EmailMultiAlternatives
+from django.shortcuts import redirect
 from django.db import transaction
+from django.db.models import Q
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
-    HeaderTimeTracker, REF_STATUS, ApprovalList
+    HeaderTimeTracker, REF_STATUS, ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, LinePricing
 from BoMConfig.utils import UpRev, GrabValue, StrToBool
 from BoMConfig.views.landing import Unlock, Default
 from django.contrib.auth.models import User
@@ -43,7 +45,7 @@ def Approval(oRequest):
 # end def
 
 
-def Action(oRequest):
+def Action(oRequest, **kwargs):
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -54,15 +56,21 @@ def Action(oRequest):
         del oRequest.session['existing']
     # end if
 
+    if 'type' in kwargs:
+        sTemplate = 'BoMConfig/actions_{}.html'.format(kwargs['type'])
+    else:
+        return redirect('bomconfig:action_inprocess')
+
     dContext = {
         'in_process': Header.objects.filter(configuration_status__name='In Process'),
-        'active': Header.objects.filter(configuration_status__name='Active'),
+        'active': [obj for obj in Header.objects.filter(configuration_status__name='In Process/Pending', pick_list=False,)
+                   if HeaderTimeTracker.approvals().index(obj.latesttracker.next_approval) > HeaderTimeTracker.approvals().index('cust1')],
         'on_hold': Header.objects.filter(configuration_status__name='On Hold'),
         'customer_list': ['All'] + [obj.name for obj in REF_CUSTOMER.objects.all()],
         'viewauthorized': bool(oRequest.user.groups.filter(name__in=['BOM_BPMA_Architect','BOM_PSM_Product_Supply_Manager', 'BOM_PSM_Baseline_Manager'])),
         'approval_seq': HeaderTimeTracker.approvals(),
     }
-    return Default(oRequest, sTemplate='BoMConfig/actions.html', dContext=dContext)
+    return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def
 
 
@@ -164,7 +172,7 @@ def AjaxApprove(oRequest):
 
                 if hasattr(oLatestTracker, oLatestTracker.next_approval + '_notify'):
                     sNextLevel = oLatestTracker.next_approval
-                    for sRecip in list(set(getattr(oLatestTracker, sNextLevel + '_notify').split(';'))):
+                    for sRecip in list(set((getattr(oLatestTracker, sNextLevel + '_notify', '') or '').split(';'))):
                         if sRecip not in dEmailRecipients:
                             dEmailRecipients[sRecip] = {'submit': {}}
 
@@ -212,7 +220,7 @@ def AjaxApprove(oRequest):
                         sNotifyLevel = oLatestTracker.next_approval
                         if sNotifyLevel != 'brd':
                             if hasattr(oLatestTracker, str(sNotifyLevel) + '_notify') and getattr(oLatestTracker, str(sNotifyLevel) + '_notify', None):
-                                aRecipients.extend(getattr(oLatestTracker, sNotifyLevel + '_notify').split(";"))
+                                aRecipients.extend(getattr(oLatestTracker, sNotifyLevel + '_notify', '').split(";"))
                         else:
                             aRecipients.extend([user.email for user in User.objects.filter(groups__name="BOM_PSM_Baseline_Manager")])
 
@@ -322,8 +330,10 @@ def AjaxApprove(oRequest):
                         # Alter configuration status
                         if oHeader.bom_request_type.name in ('Discontinue','Legacy'):
                             oHeader.configuration_status = REF_STATUS.objects.get(name='Discontinued')
+                            # TODO: oHeader.release_date = oLatestTracker.completed_on
                         elif oHeader.bom_request_type.name in ('New','Update', 'Replacement'):
                             oHeader.configuration_status = REF_STATUS.objects.get(name='Active')
+                            # TODO: oHeader.release_date = oLatestTracker.completed_on
                         elif oHeader.bom_request_type.name == 'Preliminary':
                             oHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
                             oHeader.bom_request_type = REF_REQUEST.objects.get(name='New')
@@ -413,6 +423,7 @@ def CloneHeader(oHeader):
     oNewHeader.pk = None
     oNewHeader.configuration_designation = oOldHeader.configuration_designation + '_______CLONE_______'
     oNewHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
+    oNewHeader.inquiry_site_template = None
     if oNewHeader.react_request is None:
         oNewHeader.react_request = ''
     # end if
@@ -481,3 +492,171 @@ def AjaxApprovalForm(oRequest):
     else:
         return Http404()
 # end def
+
+
+def ChangePart(oRequest):
+    if oRequest.POST:
+        dResponse = {}
+
+        if oRequest.POST['action'] == 'search':
+            dResponse['type'] = 'search'
+            sPart = oRequest.POST.get('part','')
+            sPart = sPart.upper().strip()
+            if sPart:
+                try:
+                    oPart = PartBase.objects.get(product_number=sPart)
+                    aLines = ConfigLine.objects.filter(part__base=oPart,
+                                                       config__header__configuration_status__name='In Process')
+
+                    # Create list of tuple representing configuration name, program, baseline, object, is_changeable)
+                    aHeaders = [(oLine.config.header.configuration_designation, oLine.config.header.program,
+                                 oLine.config.header.baseline_impacted, oLine.config.header, True) for oLine in aLines]
+
+                    # In-Process/Pending records are not changeable, since they are pending approval
+                    aLines = ConfigLine.objects.filter(part__base=oPart,
+                                                       config__header__configuration_status__name='In Process/Pending')
+
+                    aHeaders.extend([(oLine.config.header.configuration_designation, oLine.config.header.program,
+                                 oLine.config.header.baseline_impacted, oLine.config.header, False) for oLine in aLines])
+
+                    # Active records are only changeable if no in-process copy exists (and therefore can be cloned)
+                    aLines = ConfigLine.objects.filter(part__base=oPart,
+                                                       config__header__configuration_status__name='Active')
+
+                    oInProc = Q(configuration_status__name__in=['In Process', 'In Process/Pending'])
+                    oHoldInProc = Q(old_configuration_status__name__in=['In Process', 'In Process/Pending'])
+                    for oLine in aLines:
+                        # If in-process copy exists
+                        if Header.objects.filter(oInProc|oHoldInProc,
+                                                 configuration_designation=oLine.config.header.configuration_designation,
+                                                 program=oLine.config.header.program,
+                                                 baseline_impacted=oLine.config.header.baseline_impacted):
+                            oObj = Header.objects.filter(
+                                oInProc | oHoldInProc,
+                                configuration_designation=oLine.config.header.configuration_designation,
+                                program=oLine.config.header.program,
+                                baseline_impacted=oLine.config.header.baseline_impacted).first()
+
+                            # If in-process copy is already in list of records, skip the record
+                            if (oLine.config.header.configuration_designation, oLine.config.header.program, oLine.config.header.baseline_impacted, oObj, False) in aHeaders or\
+                                (oLine.config.header.configuration_designation, oLine.config.header.program,
+                                 oLine.config.header.baseline_impacted, oObj, True) in aHeaders:
+                                pass
+                            else:
+                                aHeaders.append((oLine.config.header.configuration_designation, oLine.config.header.program, oLine.config.header.baseline_impacted, oLine.config.header, False))
+                        else:
+                            aHeaders.append((oLine.config.header.configuration_designation,
+                                             oLine.config.header.program, oLine.config.header.baseline_impacted,
+                                             oLine.config.header, True))
+
+                    if not aHeaders:
+                        dResponse['error'] = True
+                        dResponse['status'] = 'No records containing part'
+                    else:
+                        aHeaders = list(set(aHeaders))
+                        aHeaders.sort(key=lambda x:(x[0], x[1].name if x[1] else '', x[2]))
+                        dResponse['error'] = False
+                        dResponse['records'] = [{'id': tHeader[3].id,
+                                                 'configuration_designation': tHeader[0],
+                                                 'program': tHeader[1].name if tHeader[1] else '(None)',
+                                                 'baseline': tHeader[2] or '(None)',
+                                                 'status': tHeader[3].configuration_status.name,
+                                                 'selectable': tHeader[4]} for tHeader in aHeaders]
+                        dResponse['part'] = sPart
+                except PartBase.DoesNotExist:
+                    dResponse['error'] = True
+                    dResponse['status'] = 'No matching part'
+            else:
+                dResponse['error'] = True
+                dResponse['status'] = 'No part number provided'
+        elif oRequest.POST['action'] == 'replace':
+            dResponse['type'] = 'replace'
+
+            sPart = oRequest.POST.get('part')
+            sPart = sPart.upper().strip()
+
+            sReplacePart = oRequest.POST.get('replacement')
+            sReplacePart = sReplacePart.upper().strip()
+
+            try:
+                int(sReplacePart)
+                sReplacePart += '/'
+            except ValueError:
+                pass
+
+            aRecords = json.loads(oRequest.POST.get('records'))
+
+            if sReplacePart:
+                if sReplacePart != sPart:
+                    if aRecords:
+                        for id in aRecords:
+                            oHeader = Header.objects.get(id=id)
+                            # print(oHeader)
+                            if oHeader.configuration_status.name != 'In Process':
+                                oNewHeader = CloneHeader(oHeader)
+                                oNewHeader.configuration_designation = oHeader.configuration_designation
+                                oNewHeader.bom_request_type = REF_REQUEST.objects.get(name='Update')
+                                oNewHeader.model_replaced = ''
+                                oNewHeader.model_replaced_link = oHeader
+                                oNewHeader.save()
+                                oHeader = oNewHeader
+
+                            # print('Get or create replacement part')
+                            (oReplacementBase, _) = PartBase.objects.get_or_create(product_number=sReplacePart, defaults={'unit_of_measure':'PC'})
+                            try:
+                                (oReplacement, _) = Part.objects.get_or_create(base=oReplacementBase)
+                            except Part.MultipleObjectsReturned:
+                                oReplacement = Part.objects.filter(base=oReplacementBase).first()
+
+                            for oLine in oHeader.configuration.configline_set.filter(part__base__product_number=sPart):
+                                # print(oLine)
+                                # print('Change', sPart, 'to', sReplacePart)
+                                oLine.part = oReplacement
+                                oLine.vendor_article_number = sReplacePart.strip('./')
+                                # print('Update LinePricing object for new part')
+                                oLinePrice = PricingObject.getClosestMatch(oLine)
+
+                                if not hasattr(oLine, 'linepricing'):
+                                    LinePricing.objects.create(**{'config_line': oLine})
+
+                                oLine.linepricing.pricing_object = oLinePrice
+                                oLine.linepricing.save()
+                                # print('Update customer part number for new part')
+                                try:
+                                    oCustInfo = CustomerPartInfo.objects.get(active=True, part=oReplacementBase, customer=oHeader.customer_unit)
+                                    oLine.customer_number = oCustInfo.customer_number
+                                    oLine.sec_customer_number = oCustInfo.second_customer_number
+                                    oLine.customer_asset_tagging = 'Y' if oCustInfo.customer_asset_tagging else 'N' if oCustInfo.customer_asset_tagging is False else ''
+                                    oLine.customer_asset = 'Y' if oCustInfo.customer_asset else 'N' if oCustInfo.customer_asset is False else ''
+                                except CustomerPartInfo.DoesNotExist:
+                                    oLine.customer_number = None
+                                    oLine.sec_customer_number = None
+                                    oLine.customer_asset_tagging = None
+                                    oLine.customer_asset = None
+
+                                oLine.save()
+                            # end for
+                        # end for
+
+                        dResponse['error'] = False
+                        dResponse['status'] = 'Part number successfully replaced'
+
+                    else:
+                        dResponse['error'] = True
+                        dResponse['status'] = 'No records selected for replacement'
+                    # end if
+                else:
+                    dResponse['error'] = True
+                    dResponse['status'] = 'Replacement part is the same as the searched part'
+                # end if
+
+            else:
+                dResponse['error'] = True
+                dResponse['status'] = 'No replacement part'
+            # end if
+
+        # end if
+
+        return JsonResponse(dResponse)
+    else:
+        return Http404

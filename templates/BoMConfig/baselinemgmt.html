@@ -5,8 +5,8 @@
 <div id="main-body">
 	{% if user.is_authenticated %}
 	{% load staticfiles %}
-    <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.css' %}"/>
-    <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.js' %}"></script>
+    <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+    <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'BoMConfig/js/baseline_mgmt.js' %}"></script>
     <div id="headersubform">
 		<form enctype="multipart/form-data" method="POST" onsubmit="$('#myModal').modal('show');" action="{% url 'bomconfig:baseline' %}">
@@ -20,7 +20,7 @@
 				<span style="color: #ff0000;">{{ error }}</span>
                 {% endfor %}
 			{% endfor %}
-			<input type="submit" value="Search" />
+			<input class="btn" type="submit" value="Search" />
 		</form>
 	</div>
 {#         style="overflow-x: auto"#}
@@ -117,29 +117,29 @@
         {% endif %}
     </div>
     {% if downloadable %}
-    <div id="action_buttons" style="margin-top: 1px;">
+    <div id="action_buttons" style="margin-top: 5px;">
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinedownload' %}">
             {% csrf_token %}
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
             <input name="baseline" type="hidden" value="{{ tables.0.baseline }}"/>
             <input name="version" type="hidden" value=""/>
-            <button style="display: inline" id="download" type="button" onclick="downloadModal()">Download</button>
+            <button style="display: inline" id="download" class="btn" type="button" onclick="downloadModal()">Download</button>
         </form>
 
         {% if user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_BPMA_Architect" %}
         <form id="rollbackform" style="display: inline">
             {% csrf_token %}
             <input name="baseline" type="hidden" value="{{ tables.0.baseline }}"/>
-            <button style="display: inline" id="rollback" type="button" onclick="rollbackTest()">Rollback</button>
+            <button style="display: inline" id="rollback" class="btn" type="button" onclick="rollbackTest()">Rollback</button>
         </form>
         {% endif %}
     </div>
     {% else %}
-    <div id="action_buttons" style="margin-top: 1px;">
+    <div id="action_buttons" style="margin-top: 5px;">
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinemasterdownload' %}">
             {% csrf_token %}
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
-            <button style="display: inline" id="download" type="submit">Download</button>
+            <button style="display: inline" id="download" class="btn" type="submit">Download</button>
         </form>
     </div>
     {% endif %}

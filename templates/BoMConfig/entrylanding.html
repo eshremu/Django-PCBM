@@ -1,10 +1,69 @@
 {% extends base_template %}
-		
+{% load staticfiles %}
+{% load bomconfig_customtemplatetags %}
 {% block content %}
 {% if user.is_authenticated %}
+{% if frame_readonly %}
+<div id="prog_chev" style="overflow-x: hidden; white-space: nowrap;">
+    <div class="start_chev" style="display:inline; position: relative;">
+        <img src="{% static 'BoMConfig/images/ActiveStart.png' %}" style="width:97px; border-radius: 30px 0 0 30px;"/>
+        <span style="color:white; position: absolute; left:30px; top:-2px;">PSM</span>
+    </div>
+
+    {% if header.configuration_status.name == 'In Process' or header.old_configuration_status.name == 'In Process' %}
+    {% with header.latesttracker.get_class.all_chevron_levels as levels %}
+    {% for level in levels %}
+    <div class="chev" style="display:inline; position: relative; left: {{ -30|multiply:forloop.counter }}px;">
+        <img src="{% static 'BoMConfig/images/InactiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
+        <span style="color:white; position: absolute; left:30px; top:-2px;">{{ level }}</span>
+    </div>
+    {% endfor %}
+    {% endwith %}
+    {% elif header.configuration_status.name != 'In Process/Pending' and header.old_configuration_status.name != 'In Process/Pending' %}
+    {% with header.latesttracker.chevron_levels as levels %}
+    {% for level in levels %}
+    <div class="chev" style="display:inline; position: relative; left: {{ -30|multiply:forloop.counter }}px;">
+        <img src="{% static 'BoMConfig/images/ActiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
+        <span style="color:white; position: absolute; left:30px; top:-2px;">{{ level }}</span>
+    </div>
+    {% endfor %}
+    {% endwith %}
+    {% else %}
+    {% with header.latesttracker.chevron_levels as levels %}
+    {% with header.latesttracker.next_chevron as current_level %}
+    {% for level in levels %}
+    <div class="chev" style="display:inline; position: relative; left: {{ -30|multiply:forloop.counter }}px;">
+        {% if levels|getindexof:current_level >= forloop.counter0 %}
+        <img src="{% static 'BoMConfig/images/ActiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
+        {% else %}
+        <img src="{% static 'BoMConfig/images/InactiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
+        {% endif %}
+        <span style="color:white; position: absolute; left:30px; top:-2px;">{{ level }}</span>
+    </div>
+    {% endfor %}
+    {% endwith %}
+    {% endwith %}
+    {% endif %}
+
+    <div class="end_chev" style="display:inline; position: relative; left: -20px;">
+        {% if header.configuration_status.name|slice:':10' != 'In Process' and header.old_configuration_status.name|slice:':10' != 'In Process' %}
+        <img src="{% static 'BoMConfig/images/ActiveFinal.png' %}" style="width:97px;"/> <!-- position:relative; left:-9%; -->
+        {% else %}
+        <img src="{% static 'BoMConfig/images/InactiveFinal.png' %}" style="width:97px;"/>
+        {% endif %}
+        <span style="color:white; position: absolute; left:30px; top:-2px;">Active</span>
+    </div>
+
+    {% if header.configuration_status.name == 'On Hold' %}
+    <div class="on_hold_bar">
+        <span style="color:white; position: absolute; left:30px;">On Hold</span>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
 <div id="main-body">
     {% if header_read_authorized or config_read_authorized or toc_read_authorized or revision_read_authorized or inquiry_read_authorized or sitetemplate_read_authorized %}
-    <div id="action_buttons">
+    <div id="action_buttons" style="margin: 5px 0;">
 		{% if header_read_authorized %}<button class="btn" type="button" name="action" value="header" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configheader' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Header</button>{% endif %}
 		{% if config_read_authorized %}<button class="btn" type="button" name="action" value="config" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:config' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Configuration</button>{% endif %}
         {% if toc_read_authorized %}<button class="btn" type="button" name="action" value="toc" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configtoc' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Table of Contents</button>{% endif %}
@@ -23,9 +82,22 @@
         #action_buttons button:hover {
             background-color: #cccccc;
         }
+
+        td {
+            padding: 0 0 1px 0;
+        }
         {% if frame_readonly %}
         #copynote {
             display: none
+        }
+
+        .on_hold_bar {
+            display: inline;
+            position: absolute;
+            left: 60px;
+            top: 40px;
+            height: 20px;
+            background-color: rgba(225, 35, 30, 0.75)
         }
         {% endif %}
     </style>
@@ -42,6 +114,30 @@
                 url: "{% url 'bomconfig:initlock' %}"
             });
         });
+
+        $('.chev span').each(function(idx, elem){
+            var width = 53.5 - ($(this).width()/2);
+            $(elem).css('left', width + 'px');
+        });
+
+        $('.end_chev').css('left', (-30 * $('.chev').size() - 15) + 'px');
+
+        $('.on_hold_bar').css('width',
+                function(idx, old_val){
+                    var total = 0;
+
+                    $('[class$="chev"]').each(function(sub_idx, elem){
+                        total += $(elem).width();
+                    });
+
+                    total += parseInt($('.end_chev').css('left'));
+                    total -= 120;
+
+                    return total;
+                }
+        );
+
+        $('.on_hold_bar span').css('left', ($('.on_hold_bar').width()/2 - $('.on_hold_bar span').width()/2) + 'px');
     });
 </script>
 {% else %}

@@ -5,14 +5,14 @@
 		<title>{{ header.configuration_designation }} Revision {{ header.baseline_version }}</title>
 		
 		<!-- JQuery Javascript -->
-        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-2.1.4.js' %}"></script>
-        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-migrate-1.2.1.js' %}"></script>
+        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-2.1.4.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-migrate-1.2.1.min.js' %}"></script>
 		<!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap.css' %}">
+        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap.min.css' %}">
 		<!-- Bootstrap Optional theme -->
-        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap-theme.css' %}">
+        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap-theme.min.css' %}">
 		<!-- Bootstrap JavaScript -->
-        <script type="text/javascript" src="{% static 'BoMConfig/bootstrap-3.3.6-dist/js/bootstrap.js' %}"></script>
+        <script type="text/javascript" src="{% static 'BoMConfig/bootstrap-3.3.6-dist/js/bootstrap.min.js' %}"></script>
 		
 		<!-- App specific stylesheet-->
 		<link rel="stylesheet" type="text/css" href="{% static 'BoMConfig/style.css' %}"/>
@@ -63,6 +63,8 @@
 				divPad = $("#main-body").css("padding-bottom");
 				availableHeight -= parseInt(divMargin);
 				availableHeight -= parseInt(divPad);
+
+                availableHeight -= $('#prog_chev').outerHeight(true) + 5;
 
 				$("#main-body").css("height", availableHeight);
 			}
