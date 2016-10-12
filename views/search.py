@@ -89,14 +89,18 @@ def Search(oRequest, advanced=False):
             results = HttpResponse()
             if aHeaders:
                 results.write('<h5 style="color:red">Found ' + str(len(aHeaders)) + ' matching record(s)</h5>')
-                results.write('<table id="result_table"><thead><tr><th style="width: 20px;"><input class="selectall" type="checkbox"/></th><th style="width:175px;">Configuration</th><th style="width:175px;">Program</th>' +
-                              '<th style="width:175px;">Version</th><th style="width:175px;">Person Responsible</th>' +
-                              '<th style="width:175px;">BoM Request Type</th><th style="width:175px;">Customer Unit</th>' +
+                results.write('<table id="result_table"><thead><tr><th style="width: 20px;"><input class="selectall" '
+                              'type="checkbox"/></th><th style="width:175px;">Configuration</th><th style="width:175px;">Program</th>'
+                              '<th style="width:175px;">Version</th><th style="width:175px;">Person Responsible</th>'
+                              '<th style="width:175px;">BoM Request Type</th><th style="width:175px;">Customer Unit</th>'
                               '<th style="width:175px;">Status</th><th>Readiness Complete</th></tr></thead><tbody>')
                 for header in aHeaders:
-                    results.write('<tr><td><input class="recordselect" type="checkbox" value="{8}"/></td><td><a href="?link={0}">{1}</a></td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td><td>{7}</td><td>{9}</td></tr>'\
-                        .format(searchscramble(header.pk), header.configuration_designation, GrabValue(header, 'program.name') or '', header.baseline_version,
-                                header.person_responsible, header.bom_request_type.name, header.customer_unit.name, header.configuration_status.name, header.pk, header.readiness_complete or 0))
+                    results.write(('<tr><td><input class="recordselect" type="checkbox" value="{8}"/></td><td><a href="?'
+                                  'link={0}">{1}</a></td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td><td>{7}</td><td>{9}</td></tr>')
+                                  .format(searchscramble(header.pk), header.configuration_designation,
+                                          GrabValue(header, 'program.name') or '', header.baseline_version,
+                                          header.person_responsible, header.bom_request_type.name, header.customer_unit.name,
+                                          header.configuration_status.name, header.pk, header.readiness_complete or 0))
                 # end for
                 results.write('</tbody></table><button id="download" class="btn btn-primary" disabled>Download</button>')
             else:
@@ -240,6 +244,14 @@ def Search(oRequest, advanced=False):
                 aTempFilters.append('spud')
                 bRemoveDuplicates = False
 
+            if 'context_id' in oRequest.POST and oRequest.POST['context_id'] != '':
+                aConfigLines = aConfigLines.filter(
+                    contextId__iregex="^" + escape(oRequest.POST['context_id'].strip())
+                    .replace(' ', '\W').replace('?', '.').replace('*', '.*') + "$")
+                sTempHeaderLine += '<th style="width:175px;">Context ID</th>'
+                aTempFilters.append('contextId')
+                bRemoveDuplicates = False
+
             if 'description' in oRequest.POST and oRequest.POST['description'] != '':
                 aConfigLines = aConfigLines.filter(part__product_description__iregex="^" + escape(oRequest.POST['description'].strip())
                                            .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
@@ -282,7 +294,8 @@ def Search(oRequest, advanced=False):
                 results.write('<h5 style="color:red">Found ' + str(len(aResults)) + ' matching record(s)</h5>')
                 results.write(sTableHeader + "</tr></thead><tbody>")
                 for oResult in aResults:
-                    results.write('<tr><td><input class="recordselect" type="checkbox" value="{3}"></td><td><a href="?link={0}">{1}</a></td><td>{2}</td>'.format(
+                    results.write(('<tr><td><input class="recordselect" type="checkbox" value="{3}"></td>'
+                                   '<td><a href="?link={0}">{1}</a></td><td>{2}</td>').format(
                         searchscramble(str(GrabValue(oResult,'config.header.pk' if isinstance(oResult, ConfigLine) else 'header.pk'))),
                         str(GrabValue(oResult,'config.header.configuration_designation' if isinstance(oResult, ConfigLine)
                             else 'header.configuration_designation')),

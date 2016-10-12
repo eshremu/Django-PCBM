@@ -61,7 +61,7 @@ def UpdateConfigRevisionData(oHeader):
     if oPrev:
         sTemp = HeaderComparison(oHeader, oPrev)
         oHeader.change_notes = sTemp
-        oHeader.save()
+        oHeader.save(alert=False)
     # end if
 # end def
 
@@ -188,10 +188,13 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                         bDiscontinuationAlreadyCreated = True
                                     except Exception as ex:
                                         print(ex)
-                                oHeader.save()
+                                oHeader.save(request=oRequest)
 
-                                if not hasattr(oHeader, 'configuration'):
-                                    oConfig = Configuration.objects.create(**{'header': oHeader})
+                                if not hasattr(oHeader, 'configuration') or oHeader.configuration.get_first_line() is None:
+                                    if not hasattr(oHeader, 'configuration'):
+                                        oConfig = Configuration.objects.create(**{'header': oHeader})
+                                    else:
+                                        oConfig = oHeader.configuration
 
                                     (oPartBase,_) = PartBase.objects.get_or_create(**{'product_number':oHeader.configuration_designation})
                                     oPartBase.unit_of_measure = 'PC'
@@ -401,7 +404,7 @@ def AddConfig(oRequest):
                 if not hasattr(oHeader, 'configuration'):
                     oConfig.header = oHeader
                 # end if
-                oConfig.save()
+                oConfig.save(request=oRequest)
 
                 if oHeader.configuration_status.name in ('In Process', 'In Process/Pending'):
                     oForm = json.loads(oRequest.POST['data_form'])
@@ -418,7 +421,7 @@ def AddConfig(oRequest):
                             del oForm[index]
                             continue
                         else:
-                            for x in range(31):
+                            for x in range(32):
                                 if str(x) not in oForm[index]:
                                     oForm[index][str(x)] = None
                             # end for
@@ -445,21 +448,38 @@ def AddConfig(oRequest):
                         else:
                             (oPart, _) = Part.objects.get_or_create(**dPartData)
 
-                        dLineData = {'line_number': dConfigLine['1'], 'order_qty': dConfigLine['4'] or None,
-                                     'spud': REF_SPUD.objects.get(name=dConfigLine['12']) if dConfigLine['12'] else None,
-                                     'plant': dConfigLine['6'], 'sloc': dConfigLine['7'], 'item_category': dConfigLine['8'],
-                                     'internal_notes': dConfigLine['16'],# 'unit_price': dConfigLine['17'],
-                                     'higher_level_item': dConfigLine['18'], 'material_group_5': dConfigLine['19'],
-                                     'purchase_order_item_num': dConfigLine['20'], 'condition_type': dConfigLine['21'],
-                                     'amount': dConfigLine['22'] or None, 'customer_asset': dConfigLine['24'],
-                                     'customer_asset_tagging': dConfigLine['25'], 'customer_number': dConfigLine['26'],
-                                     'sec_customer_number': dConfigLine['27'], 'vendor_article_number': dConfigLine['28'],
-                                     'comments': dConfigLine['29'], 'additional_ref': dConfigLine['30'], 'config': oConfig,
-                                     'part': oPart, 'is_child': bool(dConfigLine['2'].startswith('.') and not dConfigLine['2'].startswith('..')),
+                        dLineData = {'line_number': dConfigLine['1'],
+                                     'order_qty': dConfigLine['4'] or None,
+                                     'contextId': dConfigLine['6'],
+                                     'plant': dConfigLine['7'],
+                                     'sloc': dConfigLine['8'],
+                                     'item_category': dConfigLine['9'],
+                                     'pcode': dConfigLine['10'],
+                                     'commodity_type': dConfigLine['11'],
+                                     'package_type': dConfigLine['12'],
+                                     'spud': REF_SPUD.objects.get(name=dConfigLine['13']) if dConfigLine['13'] else None,
+                                     'REcode': dConfigLine['14'],
+                                     'mu_flag': dConfigLine['15'],
+                                     'x_plant': dConfigLine['16'],
+                                     'internal_notes': dConfigLine['17'],# 'unit_price': dConfigLine['17'],
+                                     'higher_level_item': dConfigLine['19'],
+                                     'material_group_5': dConfigLine['20'],
+                                     'purchase_order_item_num': dConfigLine['21'],
+                                     'condition_type': dConfigLine['22'],
+                                     'amount': dConfigLine['23'] or None,
+                                     'traceability_req': dConfigLine['24'],
+                                     'customer_asset': dConfigLine['25'],
+                                     'customer_asset_tagging': dConfigLine['26'],
+                                     'customer_number': dConfigLine['27'],
+                                     'sec_customer_number': dConfigLine['28'],
+                                     'vendor_article_number': dConfigLine['29'],
+                                     'comments': dConfigLine['30'],
+                                     'additional_ref': dConfigLine['31'],
+                                     'config': oConfig,
+                                     'part': oPart,
+                                     'is_child': bool(dConfigLine['2'].startswith('.') and not dConfigLine['2'].startswith('..')),
                                      'is_grandchild': bool(dConfigLine['2'].startswith('..')),
-                                     'pcode': dConfigLine['9'], 'commodity_type': dConfigLine['10'], 'REcode': dConfigLine['13'],
-                                     'package_type': dConfigLine['11'], 'mu_flag': dConfigLine['14'], 'x_plant': dConfigLine['15'],
-                                     'traceability_req': dConfigLine['23'], 'last_updated': oUpdateDate}
+                                     'last_updated': oUpdateDate}
 
                         if ConfigLine.objects.filter(config=oConfig).filter(line_number=dConfigLine['1']):
                             oConfigLine = ConfigLine.objects.get(**{'config': oConfig, 'line_number': dConfigLine['1']})
@@ -629,7 +649,7 @@ def AddTOC(oRequest):
                     if '14' in oForm[0] and oForm[0]['14'] not in ('', None):
                         oHeader.external_notes = oForm[0]['14']
 
-                    oHeader.save()
+                    oHeader.save(request=oRequest)
                     status_message = oRequest.session['status'] = 'Form data saved'
                 # end if
             # end if
@@ -759,7 +779,7 @@ def AddRevision(oRequest):
         if valid:
             try:
                 if oHeader.configuration_status.name == 'In Process' and bCanWriteRevision:
-                    oHeader.save()
+                    oHeader.save(request=oRequest)
                     status_message = oRequest.session['status'] = 'Form data saved'
                 # end if
 
@@ -925,24 +945,40 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
             if config:
                 dLine ={'1': Line.line_number,
                         '2': ('..' if Line.is_grandchild else '.' if Line.is_child else '') + Line.part.base.product_number,
-                        '3': Line.part.product_description, '4': Line.order_qty, '5': Line.part.base.unit_of_measure,
-                        '6': Line.plant, '7': ('0' * (4 - len(str(Line.sloc)))) + Line.sloc if Line.sloc else Line.sloc,
-                        '8': Line.item_category, '9': Line.pcode, '10': Line.commodity_type,
-                        '11': Line.package_type, '12': str(Line.spud), '13': Line.REcode,
-                        '14': Line.mu_flag,
-                        '15': ('0' * (2 - len(Line.x_plant))) + Line.x_plant if Line.x_plant else '',
-                        '16': Line.internal_notes,
-                        '17': (
+                        '3': Line.part.product_description,
+                        '4': Line.order_qty,
+                        '5': Line.part.base.unit_of_measure,
+                        '6': Line.contextId,
+                        '7': Line.plant,
+                        '8': ('0' * (4 - len(str(Line.sloc)))) + Line.sloc if Line.sloc else Line.sloc,
+                        '9': Line.item_category,
+                        '10': Line.pcode,
+                        '11': Line.commodity_type,
+                        '12': Line.package_type,
+                        '13': str(Line.spud),
+                        '14': Line.REcode,
+                        '15': Line.mu_flag,
+                        '16': ('0' * (2 - len(Line.x_plant))) + Line.x_plant if Line.x_plant else '',
+                        '17': Line.internal_notes,
+                        '18': (
                             "!" + str(Line.linepricing.override_price) if GrabValue(Line,'linepricing.override_price') else
                             oConfig.net_value if not oConfig.header.pick_list else
                             GrabValue(Line, 'linepricing.pricing_object.unit_price') if GrabValue(Line,'linepricing.pricing_object') else ''
                         ) if (str(Line.line_number) == '10' and not oConfig.header.pick_list) or
                              oConfig.header.pick_list else '',
-                        '18': Line.higher_level_item, '19': Line.material_group_5,
-                        '20': Line.purchase_order_item_num, '21': Line.condition_type, '22': Line.amount,
-                        '23': Line.traceability_req, '24': Line.customer_asset, '25': Line.customer_asset_tagging,
-                        '26': Line.customer_number, '27': Line.sec_customer_number, '28': Line.vendor_article_number,
-                        '29': Line.comments, '30': Line.additional_ref}
+                        '19': Line.higher_level_item,
+                        '20': Line.material_group_5,
+                        '21': Line.purchase_order_item_num,
+                        '22': Line.condition_type,
+                        '23': Line.amount,
+                        '24': Line.traceability_req,
+                        '25': Line.customer_asset,
+                        '26': Line.customer_asset_tagging,
+                        '27': Line.customer_number,
+                        '28': Line.sec_customer_number,
+                        '29': Line.vendor_article_number,
+                        '30': Line.comments,
+                        '31': Line.additional_ref}
             else:
                 LineNumber = None
                 if '.' not in Line.line_number:
@@ -1093,7 +1129,7 @@ def Validator(oRequest):
         # end for
 
         aLineNumbers = []
-        error_matrix = [['']*31 for _ in range(len(form_data))]
+        error_matrix = [['']*32 for _ in range(len(form_data))]
         for index in range(len(form_data)):
 
             # Check entered data formats
@@ -1108,8 +1144,8 @@ def Validator(oRequest):
                 # end if
             # end if
 
-            if '28' not in form_data[index] or form_data[index]['28'] in ('None', '', None, 'null'):
-                form_data[index]['28'] = form_data[index]['2'].strip('./')
+            if '29' not in form_data[index] or form_data[index]['29'] in ('None', '', None, 'null'):
+                form_data[index]['29'] = form_data[index]['2'].strip('./')
             if '1' in form_data[index] and form_data[index]['1'] not in ('None', ''):
                 # if form_data[index]['2'].startswith(('.', '..')):
                 #     pass # error_matrix[index][1] += 'X - Line number provided when product number indicates relationship.\n'
@@ -1171,79 +1207,79 @@ def Validator(oRequest):
             # end if
 
             # Plant
-            if '6' in form_data[index] and not re.match("^\d{4}$|^$", form_data[index]['6'] or ''):
-                error_matrix[index][6] += 'X - Invalid Plant.\n'
+            if '7' in form_data[index] and not re.match("^\d{4}$|^$", form_data[index]['7'] or ''):
+                error_matrix[index][7] += 'X - Invalid Plant.\n'
             # end if
 
             # SLOC
-            if '7' in form_data[index] and not re.match("^\d{4}$|^$", form_data[index]['7'] or ''):
-                error_matrix[index][7] += 'X - Invalid SLOC.\n'
+            if '8' in form_data[index] and not re.match("^\d{4}$|^$", form_data[index]['8'] or ''):
+                error_matrix[index][8] += 'X - Invalid SLOC.\n'
             # end if
 
             # Item Cat
-            if '8' in form_data[index]:
-                if not re.match("^Z[A-Z0-9]{3}$|^$", form_data[index]['8'] or '', re.IGNORECASE):
-                    error_matrix[index][8] += 'X - Invalid Item Cat.\n'
-
-                if form_data[index]['8']:
-                    form_data[index]['8'] = form_data[index]['8'].upper()
-            # end if
-
-            # P-Code
             if '9' in form_data[index]:
-                if not re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$|^\([A-Z]\d{2}-\d{4}\).*$|^$", form_data[index]['9'] or '', re.IGNORECASE):
-                    error_matrix[index][9] += 'X - Invalid P-Code.\n'
+                if not re.match("^Z[A-Z0-9]{3}$|^$", form_data[index]['9'] or '', re.IGNORECASE):
+                    error_matrix[index][9] += 'X - Invalid Item Cat.\n'
 
                 if form_data[index]['9']:
                     form_data[index]['9'] = form_data[index]['9'].upper()
             # end if
 
-            # HW/SW Ind
+            # P-Code
             if '10' in form_data[index]:
-                if not re.match("^H(ARD)?W(ARE)?$|^S(OFT)?W(ARE)?$|^CS$|^$", form_data[index]['10'] or '', re.IGNORECASE):
-                    error_matrix[index][10] += 'X - Invalid HW/SW Ind.\n'
+                if not re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$|^\([A-Z]\d{2}-\d{4}\).*$|^$", form_data[index]['10'] or '', re.IGNORECASE):
+                    error_matrix[index][10] += 'X - Invalid P-Code.\n'
 
                 if form_data[index]['10']:
                     form_data[index]['10'] = form_data[index]['10'].upper()
             # end if
 
-            # Unit Price
-            if '17' in form_data[index]:
-                if form_data[index]['17'] != 'None':
-                    form_data[index]['17'] = form_data[index]['17'].replace('$', '').replace(',','')
+            # HW/SW Ind
+            if '11' in form_data[index]:
+                if not re.match("^H(ARD)?W(ARE)?$|^S(OFT)?W(ARE)?$|^CS$|^$", form_data[index]['11'] or '', re.IGNORECASE):
+                    error_matrix[index][11] += 'X - Invalid HW/SW Ind.\n'
 
-                if not re.match("^(?:!)?(?:-)?\d+(?:\.\d+)?$|^$", form_data[index]['17'] or ''):
-                    error_matrix[index][17] += 'X - Invalid Unit Price provided.\n'
+                if form_data[index]['11']:
+                    form_data[index]['11'] = form_data[index]['11'].upper()
+            # end if
+
+            # Unit Price
+            if '18' in form_data[index]:
+                if form_data[index]['18'] != 'None':
+                    form_data[index]['18'] = form_data[index]['18'].replace('$', '').replace(',','')
+
+                if not re.match("^(?:!)?(?:-)?\d+(?:\.\d+)?$|^$", form_data[index]['18'] or ''):
+                    error_matrix[index][18] += 'X - Invalid Unit Price provided.\n'
             # end if
 
             # Condition Type & Amount Supplied Together
-            NoCondition = '21' not in form_data[index] or form_data[index]['21'] in ('', 'None')
-            NoAmount = '22' not in form_data[index] or form_data[index]['22'] in ('', 'None')
+            NoCondition = '22' not in form_data[index] or form_data[index]['22'] in ('', 'None')
+            NoAmount = '23' not in form_data[index] or form_data[index]['23'] in ('', 'None')
             if (NoCondition and not NoAmount) or (NoAmount and not NoCondition):
                 if NoAmount and not NoCondition:
-                    error_matrix[index][22] += 'X - Condition Type provided without Amount.\n'
+                    error_matrix[index][23] += 'X - Condition Type provided without Amount.\n'
                 else:
-                    error_matrix[index][21] += 'X - Amount provided without Condition Type.\n'
+                    error_matrix[index][22] += 'X - Amount provided without Condition Type.\n'
                 # end if
             # end if
 
             # Amount
-            if '22' in form_data[index]:
-                if form_data[index]['22'] != 'None':
-                    form_data[index]['22'] = form_data[index]['22'].replace('$', '').replace(',','')
+            if '23' in form_data[index]:
+                if form_data[index]['23'] != 'None':
+                    form_data[index]['23'] = form_data[index]['23'].replace('$', '').replace(',','')
 
-                if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$", form_data[index]['22'] or ''):
-                    error_matrix[index][22] += 'X - Invalid Amount provided.\n'
+                if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$", form_data[index]['23'] or ''):
+                    error_matrix[index][23] += 'X - Invalid Amount provided.\n'
             # end if
 
             # Traceability Req
-            if '23' in form_data[index]:
-                form_data[index]['23'] = form_data[index]['23'].strip() if form_data[index]['23'] else form_data[index]['23']
-                if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['23'] or '', re.I):
-                    error_matrix[index][23] += "X - Invalid Traceability Req.\n"
+            if '24' in form_data[index]:
+                form_data[index]['24'] = form_data[index]['24'].strip() if form_data[index]['24'] else form_data[index]['24']
+                if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['24'] or '', re.I):
+                    error_matrix[index][24] += "X - Invalid Traceability Req.\n"
 
-                if form_data[index]['23'] != 'None':
-                    form_data[index]['23'] = form_data[index]['23'].upper()
+                if form_data[index]['24'] != 'None':
+                    form_data[index]['24'] = form_data[index]['24'].upper()
             # end if
 
             if oHead.configuration_status.name == 'In Process' or (bCanWriteConfig and oHead.configuration_status.name == 'In Process/Pending'):
@@ -1256,42 +1292,42 @@ def Validator(oRequest):
                 # end try
 
                 # Customer Asset
-                if '24' in form_data[index]:
-                    form_data[index]['24'] = form_data[index]['24'].strip() if form_data[index]['24'] else form_data[index]['24']
-                    if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['24'] or '', re.I):
-                        error_matrix[index][24] += "X - Invalid Customer Asset.\n"
+                if '25' in form_data[index]:
+                    form_data[index]['25'] = form_data[index]['25'].strip() if form_data[index]['25'] else form_data[index]['25']
+                    if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['25'] or '', re.I):
+                        error_matrix[index][25] += "X - Invalid Customer Asset.\n"
 
-                    if form_data[index]['24'] not in ('None', None, ''):
-                        form_data[index]['24'] = form_data[index]['24'].upper()
+                    if form_data[index]['25'] not in ('None', None, ''):
+                        form_data[index]['25'] = form_data[index]['25'].upper()
 
                     if oMPNCustMap:
-                        if (oMPNCustMap.customer_asset is True and form_data[index]['24'] not in ('Y', 'YES')) \
-                                or (oMPNCustMap.customer_asset is False and form_data[index]['24'] not in ('N', 'NO')) \
-                                or (oMPNCustMap.customer_asset is None and form_data[index]['24'] not in ('', 'NONE', None)):
-                            error_matrix[index][24] += "! - Customer Asset does not match stored data.\n"
+                        if (oMPNCustMap.customer_asset is True and form_data[index]['25'] not in ('Y', 'YES')) \
+                                or (oMPNCustMap.customer_asset is False and form_data[index]['25'] not in ('N', 'NO')) \
+                                or (oMPNCustMap.customer_asset is None and form_data[index]['25'] not in ('', 'NONE', None)):
+                            error_matrix[index][25] += "! - Customer Asset does not match stored data.\n"
 
                     # if '23' not in form_data[index] or form_data[index]['23'] in ('None', ''):
                     #     pass  # error_matrix[index][24] += "X - Customer assest set without Traceability Req.\n"
                     # if '23' in form_data[index] and form_data[index]['23'] in ('N', 'NO') and form_data[index]['24'] in ('Y', 'YES'):
                     #     pass  # error_matrix[index][24] += "X - Customer asset cannot be 'Y' when Traceability is 'N'.\n"
                 elif oMPNCustMap:
-                    form_data[index]['24'] = 'Y' if oMPNCustMap.customer_asset else 'N' if oMPNCustMap.customer_asset is False else ''
+                    form_data[index]['25'] = 'Y' if oMPNCustMap.customer_asset else 'N' if oMPNCustMap.customer_asset is False else ''
                 # end if
 
                 # Customer Asset tagging Req
-                if '25' in form_data[index]:
-                    form_data[index]['25'] = form_data[index]['25'].strip() if form_data[index]['25'] else form_data[index]['25']
-                    if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['25'] or '', re.I):
-                        error_matrix[index][25] += "X - Invalid Customer Asset tagging Req.\n"
+                if '26' in form_data[index]:
+                    form_data[index]['26'] = form_data[index]['26'].strip() if form_data[index]['26'] else form_data[index]['26']
+                    if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['26'] or '', re.I):
+                        error_matrix[index][26] += "X - Invalid Customer Asset tagging Req.\n"
 
-                    if form_data[index]['25'] not in ('None', None, ''):
-                        form_data[index]['25'] = form_data[index]['25'].upper()
+                    if form_data[index]['26'] not in ('None', None, ''):
+                        form_data[index]['26'] = form_data[index]['26'].upper()
 
                     if oMPNCustMap:
-                        if (oMPNCustMap.customer_asset_tagging is True and form_data[index]['25'] not in ('Y', 'YES'))\
-                                or (oMPNCustMap.customer_asset_tagging is False and form_data[index]['25'] not in ('N', 'NO'))\
-                                or (oMPNCustMap.customer_asset_tagging is None and form_data[index]['25'] not in ('', 'NONE', None)):
-                            error_matrix[index][25] += "! - Customer Asset tagging Req. does not match stored data.\n"
+                        if (oMPNCustMap.customer_asset_tagging is True and form_data[index]['26'] not in ('Y', 'YES'))\
+                                or (oMPNCustMap.customer_asset_tagging is False and form_data[index]['26'] not in ('N', 'NO'))\
+                                or (oMPNCustMap.customer_asset_tagging is None and form_data[index]['26'] not in ('', 'NONE', None)):
+                            error_matrix[index][26] += "! - Customer Asset tagging Req. does not match stored data.\n"
                     # end if
 
                     # if '24' not in form_data[index] or form_data[index]['24'] in ('None', ''):
@@ -1299,37 +1335,37 @@ def Validator(oRequest):
                     # if '24' in form_data[index] and form_data[index]['24'] in ('N', 'NO') and form_data[index]['25'] in ('Y', 'YES'):
                     #     error_matrix[index][25] += 'X - Cannot mark Customer Asset Tagging when part is not Customer Asset.\n'
                 elif oMPNCustMap:
-                    form_data[index]['25'] = 'Y' if oMPNCustMap.customer_asset_tagging else 'N' if oMPNCustMap.customer_asset_tagging is False else ''
+                    form_data[index]['26'] = 'Y' if oMPNCustMap.customer_asset_tagging else 'N' if oMPNCustMap.customer_asset_tagging is False else ''
                 # end if
-                if '24' in form_data[index] and form_data[index]['24'] in ('N', 'NO') and '25' in form_data[index] and form_data[index]['25'] in ('Y', 'YES'):
-                    error_matrix[index][25] += 'X - Cannot mark Customer Asset Tagging when part is not Customer Asset.\n'
+                if '25' in form_data[index] and form_data[index]['25'] in ('N', 'NO') and '26' in form_data[index] and form_data[index]['26'] in ('Y', 'YES'):
+                    error_matrix[index][26] += 'X - Cannot mark Customer Asset Tagging when part is not Customer Asset.\n'
 
                 # Customer Number
-                if '26' in form_data[index]:
-                    if form_data[index]['26'] not in ('None', None, ''):
-                        form_data[index]['26'] = form_data[index]['26'].upper()
-
-                    if oMPNCustMap:
-                        if oMPNCustMap.customer_number != form_data[index]['26']:
-                            error_matrix[index][26] += '! - Customer Number does not match stored data.\n'
-                    else:
-                        error_matrix[index][26] += '! - No Customer Number found for line item.\n'
-                elif oMPNCustMap:
-                    form_data[index]['26'] = oMPNCustMap.customer_number or ''
-                # end if
-
-                # Second Customer Number
                 if '27' in form_data[index]:
                     if form_data[index]['27'] not in ('None', None, ''):
                         form_data[index]['27'] = form_data[index]['27'].upper()
 
                     if oMPNCustMap:
-                        if oMPNCustMap.second_customer_number and form_data[index]['27'] and oMPNCustMap.second_customer_number != form_data[index]['27']:
-                            error_matrix[index][27] += '! - Second Customer Number does not match stored data.\n'
+                        if oMPNCustMap.customer_number != form_data[index]['27']:
+                            error_matrix[index][27] += '! - Customer Number does not match stored data.\n'
                     else:
-                        error_matrix[index][27] += '! - No Second Customer Number found for line item.\n'
+                        error_matrix[index][27] += '! - No Customer Number found for line item.\n'
                 elif oMPNCustMap:
-                    form_data[index]['27'] = oMPNCustMap.second_customer_number or ''
+                    form_data[index]['27'] = oMPNCustMap.customer_number or ''
+                # end if
+
+                # Second Customer Number
+                if '28' in form_data[index]:
+                    if form_data[index]['28'] not in ('None', None, ''):
+                        form_data[index]['28'] = form_data[index]['28'].upper()
+
+                    if oMPNCustMap:
+                        if oMPNCustMap.second_customer_number and form_data[index]['28'] and oMPNCustMap.second_customer_number != form_data[index]['28']:
+                            error_matrix[index][28] += '! - Second Customer Number does not match stored data.\n'
+                    else:
+                        error_matrix[index][28] += '! - No Second Customer Number found for line item.\n'
+                elif oMPNCustMap:
+                    form_data[index]['28'] = oMPNCustMap.second_customer_number or ''
                 # end if
             # end if
 
@@ -1337,7 +1373,7 @@ def Validator(oRequest):
             oCursor = connections['BCAMDB'].cursor()
 
             # Populate Read-only fields
-            P_Code = form_data[index]['9'] if '9' in form_data[index] and re.match("^\d{2,3}$", form_data[index]['9'], re.IGNORECASE) else None
+            P_Code = form_data[index]['10'] if '10' in form_data[index] and re.match("^\d{2,3}$", form_data[index]['10'], re.IGNORECASE) else None
             tPCode = None
             oCursor.execute('SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],[Base Unit of Measure],' +
                             '[P Code] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s', [bytes(form_data[index]['2'].strip('.'), 'ascii') if form_data[index]['2'] else None])
@@ -1346,14 +1382,14 @@ def Validator(oRequest):
                 if oHead.configuration_status.name == 'In Process':
                     if '3' not in form_data[index] or form_data[index]['3'] in ('None', None, ''):
                         form_data[index]['3'] = tPartData[0][0] if tPartData[0][0] not in (None, 'NONE', 'None') else ''
-                    if '14' not in form_data[index] or form_data[index]['14'] in ('None', None, ''):
-                        form_data[index]['14'] = tPartData[0][1] if tPartData[0][1] not in (None, 'NONE', 'None') else ''
                     if '15' not in form_data[index] or form_data[index]['15'] in ('None', None, ''):
-                        form_data[index]['15'] = tPartData[0][2] if tPartData[0][2] not in (None, 'NONE', 'None') else ''
+                        form_data[index]['15'] = tPartData[0][1] if tPartData[0][1] not in (None, 'NONE', 'None') else ''
+                    if '16' not in form_data[index] or form_data[index]['16'] in ('None', None, ''):
+                        form_data[index]['16'] = tPartData[0][2] if tPartData[0][2] not in (None, 'NONE', 'None') else ''
                     if '5' not in form_data[index] or form_data[index]['5'] in ('None', None, ''):
                         form_data[index]['5'] = tPartData[0][3] if tPartData[0][3] not in (None, 'NONE', 'None') else ''
 
-                P_Code = form_data[index]['9'] if '9' in form_data[index] and re.match("^\d{2,3}$", form_data[index]['9'], re.IGNORECASE) else tPartData[0][4]
+                P_Code = form_data[index]['10'] if '10' in form_data[index] and re.match("^\d{2,3}$", form_data[index]['10'], re.IGNORECASE) else tPartData[0][4]
             else:
                 error_matrix[index][2] += '! - Product Number not found.'
                 # if Header.objects.get(pk=oRequest.session['existing']).pick_list or index != 0:
@@ -1375,34 +1411,34 @@ def Validator(oRequest):
 
             if tPCode:
                 # form_data[index]['9'] = '(' + tPCode[0][0] + " - " + tPCode[0][1] + "), " + tPCode[0][2]
-                if '9' not in form_data[index] or form_data[index]['9'] in (None, 'None', '') or re.match("^\d{2,3}$", form_data[index]['9'], re.IGNORECASE):
-                    form_data[index]['9'] = tPCode[0][2] if tPCode[0][2] else ''
-                if '10' not in form_data[index] or form_data[index]['10'] == 'None':
-                    form_data[index]['10'] = tPCode[0][3] if tPCode[0][3] else ''
+                if '10' not in form_data[index] or form_data[index]['10'] in (None, 'None', '') or re.match("^\d{2,3}$", form_data[index]['10'], re.IGNORECASE):
+                    form_data[index]['10'] = tPCode[0][2] if tPCode[0][2] else ''
+                if '11' not in form_data[index] or form_data[index]['11'] == 'None':
+                    form_data[index]['11'] = tPCode[0][3] if tPCode[0][3] else ''
                 # end if
             # end if
 
-            if '6' in form_data[index] and form_data[index]['6'] not in ('None', ''):
+            if '7' in form_data[index] and form_data[index]['7'] not in ('None', ''):
                 oCursor.execute('SELECT [Plant] FROM dbo.REF_PLANTS')
                 tPlants = [element[0] for element in oCursor.fetchall()]
-                if form_data[index]['6'] not in tPlants:
-                    error_matrix[index][6] += "! - Plant not found in database.\n"
+                if form_data[index]['7'] not in tPlants:
+                    error_matrix[index][7] += "! - Plant not found in database.\n"
             # end if
 
-            if '7' in form_data[index] and form_data[index]['7'] not in ('None', ''):
+            if '8' in form_data[index] and form_data[index]['8'] not in ('None', ''):
                 oCursor.execute('SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC')
                 tSLOC = [element[0] for element in oCursor.fetchall()]
-                if form_data[index]['7'] not in tSLOC:
-                    error_matrix[index][7] += "! - SLOC not found in database.\n"
+                if form_data[index]['8'] not in tSLOC:
+                    error_matrix[index][8] += "! - SLOC not found in database.\n"
             # end if
 
-            if '6' in form_data[index] and form_data[index]['6'] not in ('None', '')\
-                    and '7' in form_data[index] and form_data[index]['7'] not in ('None', ''):
-                oCursor.execute('SELECT [Plant],[SLOC] FROM dbo.REF_PLANT_SLOC WHERE [Plant]=%s AND [SLOC]=%s', [bytes(form_data[index]['6'], 'ascii'), bytes(form_data[index]['7'], 'ascii')])
+            if '7' in form_data[index] and form_data[index]['7'] not in ('None', '')\
+                    and '8' in form_data[index] and form_data[index]['8'] not in ('None', ''):
+                oCursor.execute('SELECT [Plant],[SLOC] FROM dbo.REF_PLANT_SLOC WHERE [Plant]=%s AND [SLOC]=%s', [bytes(form_data[index]['7'], 'ascii'), bytes(form_data[index]['8'], 'ascii')])
                 tResults = oCursor.fetchall()
-                if (form_data[index]['6'], form_data[index]['7']) not in tResults:
-                    error_matrix[index][6] += '! - Plant/SLOC combination not found.\n'
+                if (form_data[index]['7'], form_data[index]['8']) not in tResults:
                     error_matrix[index][7] += '! - Plant/SLOC combination not found.\n'
+                    error_matrix[index][8] += '! - Plant/SLOC combination not found.\n'
                 # end if
             # end if
 
@@ -1410,33 +1446,33 @@ def Validator(oRequest):
 
             # Accumulate running total
             if '4' in form_data[index] and form_data[index]['4'] not in ('None', ''):
-                if '21' in form_data[index] and form_data[index]['21'] == 'ZPR1':
+                if '22' in form_data[index] and form_data[index]['22'] == 'ZPR1':
                     needs_zpru = True
-                    zpru_total += (float(form_data[index]['22'] if '22' in form_data[index] and form_data[index]['22'] else 0) * float(form_data[index]['4']))
-                elif '21' in form_data[index] and form_data[index]['21'] == 'ZPRU':
+                    zpru_total += (float(form_data[index]['23'] if '23' in form_data[index] and form_data[index]['23'] else 0) * float(form_data[index]['4']))
+                elif '22' in form_data[index] and form_data[index]['22'] == 'ZPRU':
                     needs_zpru = True
-                elif '17' in form_data[index] and form_data[index]['17'] not in ('None', None, ''):
-                    if str(form_data[index]['17']).startswith('!'):
-                        error_matrix[index][17] = '! - CPM override in effect.\n'
+                elif '18' in form_data[index] and form_data[index]['18'] not in ('None', None, ''):
+                    if str(form_data[index]['18']).startswith('!'):
+                        error_matrix[index][18] = '! - CPM override in effect.\n'
                     if not oHead.pick_list:
                         if index == 0:
                             # base_total = oHead.configuration.override_net_value or oHead.configuration.net_value
-                            base_total = float(form_data[index]['17'].replace('!','')) if form_data[index]['17'] not in (None, '', 'None') else 0
+                            base_total = float(form_data[index]['18'].replace('!','')) if form_data[index]['18'] not in (None, '', 'None') else 0
 
-                            if '21' in form_data[index] and form_data[index]['21'] == 'ZUST' and  '22' in form_data[index] and form_data[index]['22']:
-                                base_total += float(form_data[index]['22'].replace('$','').replace(',',''))
+                            if '22' in form_data[index] and form_data[index]['22'] == 'ZUST' and  '23' in form_data[index] and form_data[index]['23']:
+                                base_total += float(form_data[index]['23'].replace('$','').replace(',',''))
                             # end if
                         # end if
                     else:
-                        if str(form_data[index]['17']).startswith('!'):
-                            override_total += float(form_data[index]['17'][1:].replace('$','').replace(',','')) +\
-                                              float(form_data[index]['22'].replace('$','').replace(',','')\
-                                                        if '22' in form_data[index] and form_data[index]['22']=='ZUST' else 0)
+                        if str(form_data[index]['18']).startswith('!'):
+                            override_total += float(form_data[index]['18'][1:].replace('$','').replace(',','')) +\
+                                              float(form_data[index]['23'].replace('$','').replace(',','')\
+                                                        if '23' in form_data[index] and form_data[index]['23']=='ZUST' else 0)
 
                         else:
-                            net_total += (float(form_data[index]['4']) * (float(form_data[index]['17'].replace('$','')
+                            net_total += (float(form_data[index]['4']) * (float(form_data[index]['18'].replace('$','')
                                                                                 .replace(',','')))) +\
-                                         float(form_data[index]['22'].replace('$','').replace(',','') if '22' in form_data[index] and form_data[index]['22']=='ZUST' else 0)
+                                         float(form_data[index]['23'].replace('$','').replace(',','') if '23' in form_data[index] and form_data[index]['23']=='ZUST' else 0)
                         # end if
                     # end if
                     # form_data[index]['17'] = form_data[index]['17'].replace('!','')
@@ -1484,7 +1520,7 @@ def Validator(oRequest):
         # end for
 
         if not oHead.pick_list and override_total and not base_total:
-            form_data[0]['17'] = '!' + str(override_total)
+            form_data[0]['18'] = '!' + str(override_total)
         # end if
 
         dReturned = {'data': form_data, 'nettotal': round(base_total or override_total or net_total, 2), 'zprutotal': round(zpru_total, 2), 'errors': error_matrix,

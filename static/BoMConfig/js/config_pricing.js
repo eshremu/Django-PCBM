@@ -73,9 +73,8 @@ function form_resize(){
 }
 
 function readonlyRenderer(instance, td, row, col, prop, value, cellProperties) {
-    customRenderer(instance, td, row, col, prop, value, cellProperties);
-
     td.style.background = '#DDDDDD';
+    customRenderer(instance, td, row, col, prop, value, cellProperties);
 }
 
 function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
@@ -129,6 +128,10 @@ function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
 function customRenderer(instance, td, row, col, prop, value, cellProperties) {
     if(row == 0 && not_picklist){
         td.style.fontWeight = 'bold';
+    }
+
+    if (!instance.getDataAtCell(row, 0).includes('.') && cellProperties.readOnly){
+        td.style.background = '#C8FF9F';
     }
 
     if (/<[a-zA-Z][\s\S/]*>/.test(value) === false) {

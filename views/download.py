@@ -934,6 +934,7 @@ def WriteBaselineToFile(oBaseline, sVersion):
             iCurrentRow += 1
         # end for
         if not oHeader.pick_list:
+            # TODO: Fix this to correctly reflect configuration prices
             oSheet['G2'] = GrabValue(oHeader.configuration.get_first_line(), 'linepricing.override_price') or \
                            GrabValue(oHeader.configuration.get_first_line(),
                                      'linepricing.pricing_object.unit_price') or ''

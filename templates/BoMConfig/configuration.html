@@ -259,15 +259,15 @@
             var offset = 0;
 
             if(SAPVis === true && {{ config_sap_read_authorized|lower }}){
-                cols.push({data: 5}, {data: 6}, {data: 7}, {data: 8}, {data: 9});
-                headers.push('UoM', 'Plant', 'SLOC', 'Item Cat', 'P-Code - Fire Code, Desc');
+                cols.push({data: 5}, {data:6}, {data: 7}, {data: 8}, {data: 9}, {data: 10});
+                headers.push('UoM', 'Context ID','Plant', 'SLOC', 'Item Cat', 'P-Code - Fire Code, Desc');
                 {% if config_sap_write_authorized %}
 {#                readonly.push(5, 9);#}
                 readonly.push(5);
                 {% else %}
-                readonly.push(5, 6, 7, 8, 9);
+                readonly.push(5, 6, 7, 8, 9, 10);
                 {% endif %}
-                offset += 5;
+                offset += 6;
 {#                header += "<th colspan='5'><div class='relative'><span>SAP Doc</span></div></th>";#}
                 $('#viewsap').css('background-color', '#FFFF4D');
             } else {
@@ -275,7 +275,7 @@
             }
 
             if(AttrVis === true && {{ config_attr_read_authorized|lower }}){
-                cols.push({data: 10}, {data: 11}, {data: 12}, {data: 13}, {data: 14}, {data: 15}, {data: 16});
+                cols.push({data: 11}, {data: 12}, {data: 13}, {data: 14}, {data: 15}, {data: 16}, {data: 17});
                 headers.push('HW/SW Ind', 'Prod Pkg Type', 'SPUD', 'RE-Code', 'MU-Flag', "X-Plant Mat'l Stat", 'Int Notes');
                 {% if config_attr_write_authorized and header.configuration_status.name == 'In Process' %}
                 readonly.push(9 + offset, 10 + offset);
@@ -294,7 +294,7 @@
             }
 
             if(PriceVis === true && {{ config_price_read_authorized|lower }}) {
-                cols.push({data: 17}, {data: 18}, {data: 19}, {data: 20}, {data: 21}, {data: 22});
+                cols.push({data: 18}, {data: 19}, {data: 20}, {data: 21}, {data: 22}, {data: 23});
                 headers.push('Unit Price', "Higher Level Item", 'Material Group 5', 'Purchase Order Item No', 'Condition Type', 'Amount');
                 readonly.push(5 + offset);
                 {% if not config_price_write_authorized %}
@@ -308,7 +308,7 @@
             }
 
             if(CustVis === true && {{ config_cust_read_authorized|lower }}) {
-                cols.push({data: 23}, {data: 24}, {data: 25}, {data: 26}, {data: 27});
+                cols.push({data: 24}, {data: 25}, {data: 26}, {data: 27}, {data: 28});
                 headers.push('Traceability Req. (Serialization)', 'Customer Asset?', 'Customer Asset tagging Requirement', 'Customer Number', 'Second Customer Number');
                 //readonly.push(5 + offset); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
                 {% if not config_cust_write_authorized %}
@@ -324,7 +324,7 @@
             }
 
             if(BaselineVis === true && {{ config_baseline_read_authorized|lower }}){
-                cols.push({data: 28}, {data: 29}, {data: 30});
+                cols.push({data: 29}, {data: 30}, {data: 31});
                 headers.push('Vendor Article Number', 'Comments', 'Additional Reference (if required)');
                 {% if not config_baseline_write_authorized %}
                 readonly.push(5 + offset, 6 + offset, 7 + offset);
@@ -402,7 +402,7 @@
         }
 
         function customRenderer(instance, td, row, col, prop, value, cellProperties) {
-            if (row === 0 && col === 17 && typeof(value) == 'string' && value.charAt(0)==='!' && PriceVis){
+            if (row === 0 && col === 18 && typeof(value) == 'string' && value.charAt(0)==='!' && PriceVis){
                 value = value.slice(1);
 {#                cellProperties.comment = '! - CPM override in effect.\n';#}
             }
@@ -423,8 +423,8 @@
             hot = new Handsontable(container, {
                 data: data,
                 minRows: 1,
-                minCols: 31,
-                maxCols: 31,
+                minCols: 32,
+                maxCols: 32,
                 minSpareRows: {% if config_write_authorized and not frame_readonly %}5{% else %}0{% endif %},
                 rowHeaders: false,
                 colHeaders: headers,
@@ -642,6 +642,7 @@
                     }
                 },
                 error: function(){
+                    validating = false;
                     $('#validate').removeAttr('disabled').attr('value','Validate').css('color','');
                     $('#myModal').modal('hide');
                     $('#statuses').html('Error during validation. Try again');
@@ -649,7 +650,6 @@
                 }
             });
         }
-
     </script>
 {% else %}
 <div>

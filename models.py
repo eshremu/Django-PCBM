@@ -379,6 +379,8 @@ class Header(models.Model):
     # end def
 
     def save(self, *args, **kwargs):
+        bMessage = kwargs.pop('alert', True)
+        oRequest = kwargs.pop('request', None)
         if not self.pk:
             oBase = Baseline.objects.filter(title__iexact=self.baseline_impacted)
 
@@ -408,6 +410,7 @@ class Header(models.Model):
             # end if
         # end if
 
+        iPrevRC = self.readiness_complete
         if self.configuration_status.name == 'In Process':
             if self.bom_request_type.name == 'Preliminary':
                 self.readiness_complete = 25
@@ -416,21 +419,47 @@ class Header(models.Model):
 
                 if hasattr(self, 'configuration') and self.configuration.ready_for_forecast:
                     self.readiness_complete = 70
-                    aRecips = User.objects.filter(groups__securitypermission__title__in=HeaderTimeTracker.permission_entry('scm1')).values_list('email', flat=True)
-                    oMessage = EmailMultiAlternatives(subject='Preliminary Bill of Materials',
-                                                      body='The attached bill of materials is ready for forecasting',  # TODO: Actual text message
-                                                      from_email='pcbm.admin@ericsson.com',
-                                                      to=aRecips)
-                    oMessage.attach_alternative('The attached bill of materials is ready for forecasting', 'text/html')  # TODO: Actual HTML message
+                    if bMessage and iPrevRC < self.readiness_complete:
+                        # aRecips = User.objects.filter(groups__securitypermission__title__in=HeaderTimeTracker.permission_entry('scm1')).values_list('email', flat=True)
+                        aRecips = User.objects.filter(groups__name__in=['BOM_Forecast/Demand_Demand_Manager']).values_list('email', flat=True)
+                        oMessage = EmailMultiAlternatives(subject='Review for Forecast Readiness',
+                                                          body=('Hello SCM user,\n\n'
+                                                                'Log into the PSM Configuration & Baseline Management (PCBM) tool to review the following Configuration for forecast readiness.'
+                                                                'Attached is a copy for your convenience and discussion with Forecasting and Commodity Planning.'
+                                                                'This Configuration is currently at 70% Readiness Complete.\n\n'
+                                                                '\t{} - {} - {}\n\n'
+                                                                'If there are questions, please contact the appropriate Configuration Manager.'
+                                                                'You can locate this information on the "Header" tab of the attacher Configuration file.\n\n'
+                                                                'PCBM Link: https://rnamsupply.internal.ericsson.com/pcbm').format(self.configuration_designation,
+                                                                                                                                   self.baseline_impacted or '',
+                                                                                                                                   self.react_request or ''),
+                                                          from_email='pcbm.admin@ericsson.com',
+                                                          to=aRecips,
+                                                          cc=[oRequest.user.email] if oRequest else None)
+                        oMessage.attach_alternative(('<html lang="en"><head><meta charset="UTF-8"><title>Configuration {0}</title>'
+                                                     '<style>body {{font-family: "Calibri", sans-serif;font-size: 11pt;}}'
+                                                     'a {{font-style: italic;font-weight: bold;}}</style></head><body><p>Hello SCM user,</p>'
+                                                     '<p>Log into the PSM Configuration & Baseline Management (PCBM) tool to review the following Configuration for forecast readiness.'
+                                                     'Attached is a copy for your convenience and discussion with Forecasting and Commodity Planning.'
+                                                     'This Configuration is currently at 70% Readiness Complete.</p>'
+                                                     '<ul><li>{0} - {1} - {2}</li></ul>'
+                                                     '<p>If there are questions, please contact the appropriate Configuration Manager.'
+                                                     'You can locate this information on the "Header" tab of the attacher Configuration file.</p>'
+                                                     '<p>PCBM Link: <a href="https://rnamsupply.internal.ericsson.com/pcbm">'
+                                                     'https://rnamsupply.internal.ericsson.com/pcbm</a></p></body></html>').format(self.configuration_designation,
+                                                                                                                        self.baseline_impacted or '',
+                                                                                                                        self.react_request or ''), 'text/html')
 
-                    from BoMConfig.views.download import WriteConfigToFile
-                    from io import BytesIO
-                    oStream = BytesIO()
-                    WriteConfigToFile(self).save(oStream)
-                    oMessage.attach(filename=self.configuration_designation + ('_' + self.program.name if self.program else '') + '.xlsx',
-                                    content=oStream.getvalue(),
-                                    mimetype='application/ms-excel')
-                    oMessage.send()
+                        from BoMConfig.views.download import WriteConfigToFile
+                        from io import BytesIO
+                        oStream = BytesIO()
+                        WriteConfigToFile(self).save(oStream)
+                        oMessage.attach(filename=self.configuration_designation + ('_' + self.program.name if self.program else '') + '.xlsx',
+                                        content=oStream.getvalue(),
+                                        mimetype='application/ms-excel')
+
+                        oMessage.send()
+                    # end if
                 # end if
             # end if
         elif self.configuration_status.name == 'In Process/Pending':
@@ -496,7 +525,7 @@ class Configuration(models.Model):
             self.header.configuration_status = self.header.old_configuration_status
             self.header.old_configuration_status = None
         # end if
-        self.header.save()
+        self.header.save(request=kwargs.pop('request', None))
 
         super().save(*args, **kwargs)
     # end def
@@ -594,6 +623,7 @@ class ConfigLine(models.Model):
     x_plant = models.CharField(max_length=50, blank=True, null=True)
     traceability_req = models.CharField(max_length=50, blank=True, null=True)  # TODO: Move to CustomerPartInfo (when built)
     last_updated = models.DateTimeField(blank=True, null=True)
+    contextId = models.CharField(max_length=50, blank=True, null=True)
 
     def __str__(self):
         return str(self.config) + "_" + self.line_number
@@ -833,7 +863,7 @@ class HeaderTimeTracker(models.Model):
 
     @property
     def end_date(self):
-        return self.completed_on
+        return self.disapproved_on or self.completed_on
     # end def
 
     @property

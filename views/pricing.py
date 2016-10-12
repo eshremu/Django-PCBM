@@ -196,15 +196,20 @@ def ConfigPricing(oRequest):
         aConfigMatches = Header.objects.filter(configuration_designation__iexact=sConfig)#, configuration_status__name__startswith='In Process')
         if iProgram and iProgram not in ('None', 'NONE'):
             aConfigMatches = aConfigMatches.filter(program__id=iProgram)
+        elif iProgram:
+            aConfigMatches = aConfigMatches.filter(program=None)
+
         if iBaseline and iBaseline not in ('None', 'NONE'):
             aConfigMatches = aConfigMatches.filter(baseline__id=iBaseline)
+        elif iBaseline:
+            aConfigMatches = aConfigMatches.filter(baseline=None)
 
         if len(aConfigMatches) == 0:
             status_message = 'No matching configuration found'
             dContext.update({'config': sConfig})
         elif len(aConfigMatches) > 1:
-            aProgramList = list([oHead.program.id, oHead.program.name] for oHead in aConfigMatches)
-            aBaselineList = list([oHead.baseline.id, str(oHead.baseline)] if oHead.baseline else [None, ''] for oHead in aConfigMatches)
+            aProgramList = list([oHead.program.id, oHead.program.name]  if oHead.program else ['None', '(No Program)'] for oHead in aConfigMatches)
+            aBaselineList = list([oHead.baseline.id, str(oHead.baseline)] if oHead.baseline else ['None', '(No Baseline)'] for oHead in aConfigMatches)
             dContext.update({'prog_list': aProgramList, 'config': sConfig, 'base_list': aBaselineList})
         else:
             iProgValue = aConfigMatches[0].program.id if aConfigMatches[0].program else None

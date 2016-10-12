@@ -462,40 +462,4 @@ def GenerateEmailMessage(cust=(), mpn=(), tag=(), inactive=(), invalid=(), user=
     # end for
 
     return temp
-
-    # if tag:
-    #     maplist = tag
-    #     temp += 'Matches priority Customer Number/MPN mapping with different customer asset information\n'
-    #     for map in maplist:
-    #         temp += '\t' + map[0] + ' / ' + map[3] + ' / ' + ('Y' if map[1] else "N" if map[1] is False else "(None)")+\
-    #                 ' / ' + ('Y' if map[2] else "N" if map[2] is False else "(None)") + '\n'
-    #     temp += '\n'
-    # # end if
-    #
-    # if mpn:
-    #     maplist = mpn
-    #     temp += 'MPN priority mapped to different Customer number\n'
-    #     for map in maplist:
-    #         temp += '\t' + map[0] + ' / ' + map[3] + ' / ' + ('Y' if map[1] else "N" if map[1] is False else "(None)")+\
-    #                 ' / ' + ('Y' if map[2] else "N" if map[2] is False else "(None)") + '\n'
-    #     temp += '\n'
-    # # end if
-    #
-    # if cust:
-    #     maplist = cust
-    #     temp += 'Customer Number priority mapped to different MPN\n'
-    #     for map in maplist:
-    #         temp += '\t' + map[0] + ' / ' + map[3] + ' / ' + ('Y' if map[1] else "N" if map[1] is False else "(None)")+\
-    #                 ' / ' + ('Y' if map[2] else "N" if map[2] is False else "(None)") + '\n'
-    #     temp += '\n'
-    # # end if
-    #
-    # if invalid:
-    #     maplist = invalid
-    #     temp += 'Customer Number and/or MPN is invalid\n'
-    #     for map in maplist:
-    #         temp += '\t' + map[0] + ' / ' + map[3] + ' / ' + ('Y' if map[1] else "N" if map[1] is False else "(None)")+\
-    #                 ' / ' + ('Y' if map[2] else "N" if map[2] is False else "(None)") + '\n'
-    #     temp += '\n'
-    # # end if
 # end def
