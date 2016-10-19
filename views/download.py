@@ -1293,6 +1293,10 @@ def DownloadSearchResults(oRequest):
     keys.remove('header')
     keys.sort(key=lambda x: int(x.replace('row','')))
 
+    aWidths = [0] * len(getDict['header'])
+
+    oHeadingFont = Font(name='Arial', size=10, bold=True)
+
     sFileName = "Search Results " + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + ".xlsx"
 
     oFile = openpyxl.Workbook()
@@ -1302,12 +1306,18 @@ def DownloadSearchResults(oRequest):
 
     for col in range(len(getDict['header'])):
         oSheet[utils.get_column_letter(col + 1) + '1'] = getDict['header'][col]
+        oSheet[utils.get_column_letter(col + 1) + '1'].font = oHeadingFont
+        aWidths[col] = max(aWidths[col], len(getDict['header'][col]))
 
     row = 2
     for rowKey in keys:
         for col in range(len(getDict[rowKey])):
             oSheet[utils.get_column_letter(col + 1) + str(row)] = getDict[rowKey][col]
+            aWidths[col] = max(aWidths[col], len(getDict[rowKey][col]))
         row += 1
+
+    for col in range(len(aWidths)):
+        oSheet.column_dimensions[utils.get_column_letter(col + 1)].width = aWidths[col] + 3
 
     response = HttpResponse(content_type='application/ms-excel')
     response['Content-Disposition'] = 'attachment;filename="{0}"'.format(sFileName)

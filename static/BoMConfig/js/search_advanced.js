@@ -80,6 +80,8 @@ $(document).ready(function(){
 
         $set.each(function(idx, elem){
             var $td = $('<td>');
+            
+            if(idx==1){return;}
 
             $td.append('<div style="display: inline;"><input id="'+idx+'" type="checkbox"></div>');
             $td.append($('<label>').text($(elem).text()).attr('for', idx));
@@ -87,7 +89,7 @@ $(document).ready(function(){
             $td.css('padding-right', '10px');
 
             $row.append($td);
-            if ((idx + 1) % 4 == 0 || idx == $set.length - 1){
+            if (Math.max(idx, 1) % 4 == 0 || idx == $set.length - 1){
                 $table.append($row);
                 if (idx != $set.length - 1) {
                     $row = $('<tr>');
