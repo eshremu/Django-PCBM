@@ -36,6 +36,7 @@ urlpatterns = patterns(
     url(r'^validate/$', views.Validator, name='validator'),
     url(r'^download/$', views.Download, name='download'),
     url(r'^downloadmulti/$', views.DownloadMultiple, name='downloadmulti'),
+    url(r'^downloadresult/$', views.DownloadSearchResults, name='downloadresult'),
     url(r'^reactsearch/$', views.ReactSearch, name='reactsearch'),
     url(r'^upload/$', views.Upload, name='upload'),
     url(r'^baseline/$', views.BaselineMgmt, name='baseline'),

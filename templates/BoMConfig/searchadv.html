@@ -159,6 +159,10 @@
                         <li><label for="base_rev">Baseline Revision</label>
                             <input id="base_rev" type="text"/>
                         </li>
+                        <li>
+                            <label for="latest_only">Latest Revision Only</label>
+                            <input type="checkbox" id="latest_only" value=1/>
+                        </li>
                         <li><label for="release">Release Date</label>
                             <select id="release_param">
                                 <option value="lt"><</option>
@@ -190,6 +194,7 @@
 <script type="text/javascript">
     var downloadmultiurl = "{% url 'bomconfig:downloadmulti' %}";
     var searchurl = "{% url 'bomconfig:searchadv' %}";
+    var reporturl = '{% url 'bomconfig:downloadresult' %}';
 </script>
 <script type="text/javascript" src="{% static 'BoMConfig/js/search_advanced.js' %}"></script>
 <style>

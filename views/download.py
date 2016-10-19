@@ -116,11 +116,14 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
             oFile.active['O' + str(iRow)] = oConfigLine.x_plant
             oFile.active['P' + str(iRow)] = oConfigLine.internal_notes
             # oFile.active['Q' + str(iRow)] = oConfigLine.linepricing.unit_price
-            # TODO: Fix this to correctly reflect configuration prices
-            oFile.active['Q' + str(iRow)] = str(oConfigLine.linepricing.override_price) if str(
-                oConfigLine.line_number) == '10' and hasattr(oConfigLine, 'linepricing') and \
-                oConfigLine.linepricing.override_price else oConfigLine.linepricing.pricing_object.unit_price \
-                if GrabValue(oConfigLine, 'linepricing.pricing_object') else ''
+            # DONE: Fix this to correctly reflect configuration prices
+            # oFile.active['Q' + str(iRow)] = str(oConfigLine.linepricing.override_price) if str(
+            #     oConfigLine.line_number) == '10' and hasattr(oConfigLine, 'linepricing') and \
+            #     oConfigLine.linepricing.override_price else oConfigLine.linepricing.pricing_object.unit_price \
+            #     if GrabValue(oConfigLine, 'linepricing.pricing_object') else ''
+            oFile.active['Q' + str(iRow)] = '' if not oHeader.pick_list and str(oConfigLine.line_number) != '10' else \
+                str(GrabValue(oConfigLine, 'linepricing.override_price',GrabValue(oConfigLine, 'linepricing.pricing_object.unit_price', '')))
+
             oFile.active['R' + str(iRow)] = oConfigLine.higher_level_item
             oFile.active['S' + str(iRow)] = oConfigLine.material_group_5
             oFile.active['T' + str(iRow)] = oConfigLine.purchase_order_item_num
@@ -725,7 +728,8 @@ def WriteBaselineToFile(oBaseline, sVersion):
         oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]\:\'\?\/]', '_', sTitle))
         if 'In Process' in oHeader.configuration_status.name and oHeader.bom_request_type.name in ('New', 'Update'):
             oSheet.sheet_properties.tabColor = '80FF00'
-        elif oHeader.bom_request_type.name == "Discontinue" or oHeader.configuration_status.name == 'Discontinued' or (hasattr(oHeader,'header_set') and oHeader.header_set.first() in aHeaders):
+        elif oHeader.bom_request_type.name == "Discontinue" or oHeader.configuration_status.name == 'Discontinued' or\
+                (hasattr(oHeader,'header_set') and oHeader.header_set.first() in aHeaders):
             oSheet.sheet_properties.tabColor = 'FF0000'
 
         # Build Header row
@@ -934,10 +938,11 @@ def WriteBaselineToFile(oBaseline, sVersion):
             iCurrentRow += 1
         # end for
         if not oHeader.pick_list:
-            # TODO: Fix this to correctly reflect configuration prices
-            oSheet['G2'] = GrabValue(oHeader.configuration.get_first_line(), 'linepricing.override_price') or \
-                           GrabValue(oHeader.configuration.get_first_line(),
-                                     'linepricing.pricing_object.unit_price') or ''
+            # DONE: Fix this to correctly reflect configuration prices
+            # oSheet['G2'] = GrabValue(oHeader.configuration.get_first_line(), 'linepricing.override_price') or \
+            #                GrabValue(oHeader.configuration.get_first_line(),
+            #                          'linepricing.pricing_object.unit_price') or ''
+            oSheet['G2'] = oHeader.configuration.override_net_value or oHeader.configuration.net_value or ''
             # end if
 
         for iIndex in range(len(aColumnTitles)):
@@ -1158,8 +1163,8 @@ def WritePriceOverviewToFile(aPricingLines, aComments):
 
 def PartPriceDownload(oRequest):
     if oRequest.POST:
-        aPriceList = PricingObject.objects.filter(part__product_number=oRequest.POST['initial'], is_current_active=True).order_by('customer',
-                                                                                                       'sold_to', 'spud')
+        aPriceList = PricingObject.objects.filter(part__product_number=oRequest.POST['initial'],
+                                                  is_current_active=True).order_by('customer', 'sold_to', 'spud')
 
         sFileName = oRequest.POST['initial'] + ' Pricing.xlsx'
 
@@ -1192,7 +1197,8 @@ def PartPriceDownload(oRequest):
 
 
 def WritePartPriceToFile(aPriceList):
-    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid To', 'Valid From', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments']
+    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid To',
+                'Valid From', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments']
     oFile = openpyxl.Workbook()
     oSheet = oFile.active
 
@@ -1241,7 +1247,12 @@ def ErosionDownload(oRequest):
                        oPO.technology.name if oPO.technology else "(None)",
                        oPO.unit_price,
                        oPO.erosion_rate,
-                       '{:.2f}'.format(round(round((float(oPO.unit_price) - (float(oPO.unit_price) * (float(oPO.erosion_rate)/100)))*100)/100, 2)),
+                       '{:.2f}'.format(
+                           round(
+                               round(
+                                   (float(oPO.unit_price) - (float(oPO.unit_price) * (float(oPO.erosion_rate)/100)))*100
+                               )/100, 2)
+                       ),
                        '', '', ] for oPO in aRecords] if aRecords else [[]]
 
         sFileName = 'Price Erosion Pricing.xlsx'
@@ -1260,7 +1271,8 @@ def ErosionDownload(oRequest):
 
 
 def WritePriceErosionToFile(aPriceList):
-    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)', 'Erosion Rate (%)', 'Projected Unit Price ($)', 'Valid From', 'Valid To']
+    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)', 'Erosion Rate (%)',
+                'Projected Unit Price ($)', 'Valid From', 'Valid To']
     oFile = openpyxl.Workbook()
     oSheet = oFile.active
 
@@ -1273,3 +1285,32 @@ def WritePriceErosionToFile(aPriceList):
 
     return oFile
 # end def
+
+
+def DownloadSearchResults(oRequest):
+    getDict = dict(oRequest.GET)
+    keys = list(getDict.keys())
+    keys.remove('header')
+    keys.sort(key=lambda x: int(x.replace('row','')))
+
+    sFileName = "Search Results " + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + ".xlsx"
+
+    oFile = openpyxl.Workbook()
+
+    # Fill Revision tab
+    oSheet = oFile.active
+
+    for col in range(len(getDict['header'])):
+        oSheet[utils.get_column_letter(col + 1) + '1'] = getDict['header'][col]
+
+    row = 2
+    for rowKey in keys:
+        for col in range(len(getDict[rowKey])):
+            oSheet[utils.get_column_letter(col + 1) + str(row)] = getDict[rowKey][col]
+        row += 1
+
+    response = HttpResponse(content_type='application/ms-excel')
+    response['Content-Disposition'] = 'attachment;filename="{0}"'.format(sFileName)
+    oFile.save(response)
+
+    return response

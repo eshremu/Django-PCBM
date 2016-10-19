@@ -330,10 +330,10 @@ def AjaxApprove(oRequest):
                         # Alter configuration status
                         if oHeader.bom_request_type.name in ('Discontinue','Legacy'):
                             oHeader.configuration_status = REF_STATUS.objects.get(name='Discontinued')
-                            # TODO: oHeader.release_date = oLatestTracker.completed_on
+                            oHeader.release_date = oLatestTracker.completed_on
                         elif oHeader.bom_request_type.name in ('New','Update', 'Replacement'):
                             oHeader.configuration_status = REF_STATUS.objects.get(name='Active')
-                            # TODO: oHeader.release_date = oLatestTracker.completed_on
+                            oHeader.release_date = oLatestTracker.completed_on
                         elif oHeader.bom_request_type.name == 'Preliminary':
                             oHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
                             oHeader.bom_request_type = REF_REQUEST.objects.get(name='New')

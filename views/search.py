@@ -3,6 +3,7 @@ __author__ = 'epastag'
 from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.core.urlresolvers import reverse
+from django.db.models import F, Q
 
 from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, REF_STATUS, REF_PROGRAM, REF_PRODUCT_AREA_1,\
     REF_PRODUCT_AREA_2, REF_TECHNOLOGY, REF_RADIO_BAND, REF_RADIO_FREQUENCY, Baseline
@@ -90,19 +91,23 @@ def Search(oRequest, advanced=False):
             if aHeaders:
                 results.write('<h5 style="color:red">Found ' + str(len(aHeaders)) + ' matching record(s)</h5>')
                 results.write('<table id="result_table"><thead><tr><th style="width: 20px;"><input class="selectall" '
-                              'type="checkbox"/></th><th style="width:175px;">Configuration</th><th style="width:175px;">Program</th>'
-                              '<th style="width:175px;">Version</th><th style="width:175px;">Person Responsible</th>'
+                              'type="checkbox"/></th><th style="width:175px;">Configuration</th><th style="25px;"></th><th style="width:175px;">Program</th>'
+                              '<th style="width:175px;">Baseline</th><th style="width:75px;">Version</th><th style="width:175px;">Person Responsible</th>'
                               '<th style="width:175px;">BoM Request Type</th><th style="width:175px;">Customer Unit</th>'
                               '<th style="width:175px;">Status</th><th>Readiness Complete</th></tr></thead><tbody>')
                 for header in aHeaders:
                     results.write(('<tr><td><input class="recordselect" type="checkbox" value="{8}"/></td><td><a href="?'
-                                  'link={0}">{1}</a></td><td>{2}</td><td>{3}</td><td>{4}</td><td>{5}</td><td>{6}</td><td>{7}</td><td>{9}</td></tr>')
+                                    'link={0}">{1}</a></td><td><a href="?link={0}&readonly=1" target="_blank"><span class="glyphicon '
+                                    'glyphicon-new-window"></span></a></td><td>{2}</td><td>{10}</td><td>{3}</td><td>{4}'
+                                    '</td><td>{5}</td><td>{6}</td><td>{7}</td><td>{9}</td></tr>')
                                   .format(searchscramble(header.pk), header.configuration_designation,
-                                          GrabValue(header, 'program.name') or '', header.baseline_version,
+                                          GrabValue(header, 'program.name') or '(None)', header.baseline_version,
                                           header.person_responsible, header.bom_request_type.name, header.customer_unit.name,
-                                          header.configuration_status.name, header.pk, header.readiness_complete or 0))
+                                          header.configuration_status.name, header.pk, header.readiness_complete or 0,
+                                          header.baseline.title if header.baseline else '(Not Baselined)'))
                 # end for
-                results.write('</tbody></table><button id="download" class="btn btn-primary" disabled>Download</button>')
+                results.write('</tbody></table><div><button id="download" class="btn btn-primary" style="margin-right: 5px;" disabled>Download Records</button>'
+                              '<button id="downloadcustom" class="btn btn-primary" disabled>Download Results</button></div>')
             else:
                 results.write('NO CONFIGURATIONS MATCHING SEARCH')
             # end if
@@ -110,14 +115,15 @@ def Search(oRequest, advanced=False):
             return results
         else:
             bRemoveDuplicates = True
-            sTableHeader = '<table id="result_table"><thead><tr><th style="width: 20px;"><input class="selectall" type="checkbox"></th>'+\
-                           '<th style="width:175px;">Configuration</th><th style="width:175px;">Version</th>'+\
-                           '<th style="width:175px;">Inquiry / Site Template Number</th>'
+            sTableHeader = ('<table id="result_table"><thead><tr><th style="width: 20px;"><input class="selectall"'
+                            ' type="checkbox"></th><th style="width:175px;">Configuration</th><th style="width: 20px;">'
+                            '</th><th style="width:175px;">Baseline Impacted</th><th style="width:175px;">Version</th>'
+                            '<th style="width:175px;">Inquiry / Site Template Number</th><th style="width:175px;">Customer</th>')
 
             """ This will be a list of strings.  Each string will be the dot-operator-separated string of attributes
              that would retrieve the desired value (i.e.: 'config.configline.part.description')
              This will be so that the search results list can be easily repeated"""
-            aLineFilter = ['config.header.inquiry_site_template']
+            aLineFilter = ['config.header.inquiry_site_template', 'config.header.customer_unit.name']
 
             aConfigLines = ConfigLine.objects.all()
 
@@ -140,8 +146,8 @@ def Search(oRequest, advanced=False):
             if 'customer' in oRequest.POST and oRequest.POST['customer'] != '':
                 if oRequest.POST['customer'] != 'n/a':
                     aConfigLines = aConfigLines.filter(config__header__customer_unit__name=oRequest.POST['customer'])
-                sTableHeader += '<th style="width:175px;">Customer</th>'
-                aLineFilter.append('config.header.customer_unit.name')
+                # sTableHeader += '<th style="width:175px;">Customer</th>'
+                # aLineFilter.append('config.header.customer_unit.name')
 
             if 'person' in oRequest.POST and oRequest.POST['person'] != '':
                 aConfigLines = aConfigLines.filter(config__header__person_responsible__iregex="^" + escape(oRequest.POST['person'].strip())
@@ -204,8 +210,8 @@ def Search(oRequest, advanced=False):
                 if oRequest.POST['base_impact'] != 'n/a':
                     aConfigLines = aConfigLines.filter(config__header__baseline_impacted__iregex="^" + escape(oRequest.POST['base_impact'].strip())
                                            .replace(' ','\W').replace('?','.').replace('*', '.*') + "$")
-                sTableHeader += '<th style="width:175px;">Baseline Impacted</th>'
-                aLineFilter.append('config.header.baseline_impacted')
+                # sTableHeader += '<th style="width:175px;">Baseline Impacted</th>'
+                # aLineFilter.append('config.header.baseline_impacted')
 
             if 'model' in oRequest.POST and oRequest.POST['model'] != '':
                 aConfigLines = aConfigLines.filter(config__header__model__iregex="^" + escape(oRequest.POST['model'].strip())
@@ -282,6 +288,9 @@ def Search(oRequest, advanced=False):
                 sTableHeader += '<th style="width:175px;">Release Date</th>'
                 aLineFilter.append('config.header.release_date')
 
+            if 'latest_only' in oRequest.POST and oRequest.POST['latest_only'] != 'false':
+                aConfigLines = aConfigLines.filter(config__header__baseline__baseline__current_active_version=F('config__header__baseline_version'))
+
             if bRemoveDuplicates:
                 aResults = [obj.config for obj in aConfigLines]
                 aResults = set(aResults)
@@ -294,11 +303,14 @@ def Search(oRequest, advanced=False):
                 results.write('<h5 style="color:red">Found ' + str(len(aResults)) + ' matching record(s)</h5>')
                 results.write(sTableHeader + "</tr></thead><tbody>")
                 for oResult in aResults:
-                    results.write(('<tr><td><input class="recordselect" type="checkbox" value="{3}"></td>'
-                                   '<td><a href="?link={0}">{1}</a></td><td>{2}</td>').format(
+                    results.write(('<tr><td><input class="recordselect" type="checkbox" value="{4}"></td>'
+                                   '<td><a href="?link={0}">{1}</a></td><td><a href="?link={0}&readonly=1" target="_blank">'
+                                   '<span class="glyphicon glyphicon-new-window"></span></a></td>'
+                                   '<td>{2}</td><td>{3}</td>').format(
                         searchscramble(str(GrabValue(oResult,'config.header.pk' if isinstance(oResult, ConfigLine) else 'header.pk'))),
                         str(GrabValue(oResult,'config.header.configuration_designation' if isinstance(oResult, ConfigLine)
                             else 'header.configuration_designation')),
+                        str(GrabValue(oResult, 'config.header.baseline.title' if isinstance(oResult, ConfigLine) else 'header.baseline.title', '(Not Baselined)')),
                         str(GrabValue(oResult,'config.header.baseline_version' if isinstance(oResult, ConfigLine) else 'header.baseline_version', '-----')),
                         oResult.config.header.pk if isinstance(oResult, ConfigLine) else oResult.header.pk
                         )
@@ -310,7 +322,8 @@ def Search(oRequest, advanced=False):
 
                     results.write('</tr>')
                 # end for
-                results.write('</tbody></table><button id="download" class="btn btn-primary" disabled>Download</button>')
+                results.write('</tbody></table><div><button id="download" class="btn btn-primary" style="margin-right: 5px" disabled>Download Records</button>'
+                              '<button id="downloadcustom" class="btn btn-primary" disabled>Download Results</button></div>')
             else:
                 results.write('NO CONFIGURATIONS MATCHING SEARCH')
             # end if
