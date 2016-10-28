@@ -172,10 +172,15 @@ def ConfigPricing(oRequest):
             iBaseline = None
 
         aConfigMatches = Header.objects.filter(configuration_designation__iexact=sConfig, configuration_status__name__startswith='In Process')
-        if iProgram:
+        if iProgram and iProgram not in ('None', 'NONE', None):
             aConfigMatches = aConfigMatches.filter(program__id=iProgram)
-        if iBaseline:
+        elif iProgram:
+            aConfigMatches = aConfigMatches.filter(program=None)
+
+        if iBaseline and iBaseline not in ('None', 'NONE', None):
             aConfigMatches = aConfigMatches.filter(baseline__baseline__id=iBaseline)
+        elif iBaseline:
+            aConfigMatches = aConfigMatches.filter(baseline=None)
 
         if len(aConfigMatches) == 0:
             status_message = 'No matching configuration found'
