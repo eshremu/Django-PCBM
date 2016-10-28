@@ -503,6 +503,14 @@ class Header(models.Model):
             return self.valid_from_date + timezone.timedelta(days=1)
         elif not self.valid_from_date and not self.valid_to_date:
             return timezone.now().date()
+
+    @property
+    def site_template_eligible(self):
+        if self.configuration:
+            for oLine in self.configuration.configline_set.all():
+                if oLine.item_category in ['ZBIL', 'ZERV']:
+                    return False
+        return True
 # end class
 
 
