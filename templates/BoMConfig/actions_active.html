@@ -33,12 +33,38 @@
                             <td>{{ record.baseline | default:"(Not baselined)" }}</td>
                             <td>{{ record.program | default:"(None)" }}</td>
                             {% if user|has_group:"BOM_PSM_SAP_Document" or user|has_group:"BOM_BPMA_Architect" %}
-                                {% if not record.inquiry_site_template and user|has_group:"BOM_PSM_SAP_Document_Creation" %}
-                            <td style="padding: 0 5px 5px 0;"><button class="btn btn-primary">Create Inquiry</button></td>
-                            <td style="padding: 0 0 5px 0;"><button class="btn btn-primary" {% if record.site_template_eligible %}disabled title="Configuration contains ZBIL or ZERV"{% endif %}>Create ST</button></td>
-                                {% elif record.inquiry_site_template and user|has_group:"BOM_PSM_SAP_Document_Modification" %}
-                            <td style="padding: 0 5px 5px 0;"><button class="btn btn-primary">Update Inquiry</button></td>
-                            <td style="padding: 0 0 5px 0;"><button class="btn btn-primary" {% if record.site_template_eligible %}disabled title="Configuration contains ZBIL or ZERV"{% endif %}>Update ST</button></td>
+                                {% if not record.inquiry_site_template or record.inquiry_site_template == -1 %}
+                                    {% if user|has_group:"BOM_PSM_SAP_Document_Creation" %}
+                            <td style="padding: 0 5px 5px 0;"><button class="btn btn-primary doc_button" data-id="{{ record.id }}" data-update="0" data-type="0"
+                                    {% if record.inquiry_site_template == -1 %}
+                                                                      disabled title="Document creation in work"
+                                    {% endif %}>Create Inquiry</button></td>
+                            <td style="padding: 0 0 5px 0;"><button class="btn btn-primary doc_button" data-id="{{ record.id }}" data-update="0" data-type="1"
+                                                                    {% if not record.site_template_eligible or record.inquiry_site_template == -1 %}
+                                                                        disabled title="
+                                                                        {% if not record.site_template_eligible %}
+                                                                            Configuration contains ZBIL or ZERV
+                                                                        {% elif record.inquiry_site_template == -1 %}
+                                                                            Document creation in work
+                                                                        {% endif %}"
+                                                                    {% endif %}>Create ST</button></td>
+                                    {% endif %}
+                                {% elif record.inquiry_site_template or record.inquiry_site_template < -1 %}
+                                    {% if user|has_group:"BOM_PSM_SAP_Document_Modification" %}
+                            <td style="padding: 0 5px 5px 0;"><button class="btn btn-primary doc_button" data-id="{{ record.id }}" data-update="1" data-type="0"
+                                    {% if record.inquiry_site_template <= -1 %}
+                                                                      disabled title="Document creation in work"
+                                    {% endif %}>Update Inquiry</button></td>
+                            <td style="padding: 0 0 5px 0;"><button class="btn btn-primary doc_button" data-id="{{ record.id }}" data-update="1" data-type="1"
+                                                                    {% if not record.site_template_eligible or record.inquiry_site_template <= -1 %}
+                                                                        disabled title="
+                                                                        {% if not record.site_template_eligible %}
+                                                                            Configuration contains ZBIL or ZERV
+                                                                        {% elif record.inquiry_site_template <= -1 %}
+                                                                            Document creation in work
+                                                                        {% endif %}"
+                                                                    {% endif %}>Update ST</button></td>
+                                    {% endif %}
                                 {% endif %}
                             {% endif %}
 

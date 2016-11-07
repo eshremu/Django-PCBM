@@ -589,8 +589,8 @@ def ChangePart(oRequest):
             if sReplacePart:
                 if sReplacePart != sPart:
                     if aRecords:
-                        for id in aRecords:
-                            oHeader = Header.objects.get(id=id)
+                        for iId in aRecords:
+                            oHeader = Header.objects.get(id=iId)
                             # print(oHeader)
                             if oHeader.configuration_status.name != 'In Process':
                                 oNewHeader = CloneHeader(oHeader)
@@ -660,3 +660,102 @@ def ChangePart(oRequest):
         return JsonResponse(dResponse)
     else:
         return Http404
+# end def
+
+
+def CreateDocument(oRequest):
+    oHeader = Header.objects.get(id=oRequest.POST.get('id'))
+    if not StrToBool(oRequest.POST.get('type')):
+        # Create Inquiry
+        data = {
+            "inquiry_type": "ZDOT",
+            "sales_org": "1259" if oHeader.customer_unit.name in ['EMC', 'Canada', 'New Canadian'] else "1263",
+            "distribution_channel": "XX",
+            "division": "XX",
+            "sales_office": oHeader.sales_office,
+            "sales_group": oHeader.sales_group,
+            "sold_to_party": oHeader.sold_to_party,
+            "ship_to_party": oHeader.ship_to_party,
+            "bill_to_party": oHeader.bill_to_party,
+            "configuration_designation": oHeader.configuration_designation,
+            "valid_from_date": max(oHeader.valid_from_date, timezone.datetime.now().date()).strftime('%Y-%m-%d') if oHeader.valid_from_date else None,
+            "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else None,
+            "payment_terms": oHeader.payment_terms,
+            "ericsson_contract": oHeader.ericsson_contract,
+            "line_items": [
+                {
+                    'line_number': oLine.line_number,
+                    'product_number': oLine.part.base.product_number,
+                    'product_description': oLine.part.product_description,
+                    'order_qty': oLine.order_qty,
+                    'plant': oLine.plant,
+                    'sloc': oLine.sloc,
+                    'item_category': oLine.item_category,
+                    'pcode': oLine.pcode,
+                    'unit_price': oHeader.configuration.override_net_value or oHeader.configuration.net_value if not oHeader.pick_list and oLine.line_number=='10'
+                        else None if not oHeader.pick_list
+                        else GrabValue(oLine.linepricing, 'override_price') or GrabValue(oLine.linepricing, 'pricing_object.unit_price') or None,
+                    'condition_type': oLine.condition_type,
+                    'amount': oLine.amount,
+                    'contextId': oLine.contextId
+                }
+                for oLine in sorted(oHeader.configuration.configline_set.exclude(line_number__contains='.'), key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
+            ]
+        }
+    else:
+        # Create Site Template
+        data = {
+            "contract_type": "ZTPL",
+            "sales_org": "1259" if oHeader.customer_unit.name in ['EMC', 'Canada', 'New Canadian'] else "1263",
+            "distribution_channel": "XX",
+            "division": "XX",
+            "sales_office": '',
+            "sales_group": '',
+            "sold_to_party": oHeader.sold_to_party,
+            "ship_to_party": oHeader.ship_to_party,
+            "bill_to_party": oHeader.bill_to_party,
+            "configuration_designation": oHeader.configuration_designation,
+            "model_description": oHeader.model_description,
+            "valid_from_date": oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else None,
+            "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else None,
+            "ericsson_contract": oHeader.ericsson_contract,
+            "line_items": [
+                {
+                    'line_number': oLine.line_number,
+                    'product_number': oLine.part.base.product_number,
+                    'product_description': oLine.part.product_description,
+                    'order_qty': oLine.order_qty,
+                    'plant': oLine.plant,
+                    'sloc': oLine.sloc,
+                    'item_category': oLine.item_category,
+                    'pcode': oLine.pcode,
+                    'higher_level_item': oLine.higher_level_item,
+                    'contextId': oLine.contextId,
+                }
+                for oLine in sorted(
+                    oHeader.configuration.configline_set.exclude(line_number__contains='.'),
+                    key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')]
+                )
+            ]
+        }
+    # end if
+
+    # If updating existing document
+    # if StrToBool(oRequest.POST.get('update'), False):
+    #     oHeader.inquiry_site_template *= -1
+    # else:
+    #     oHeader.inquiry_site_template = -1
+    # oHeader.save()
+
+    export_dict = {
+        "data": data,
+        "pdf": StrToBool(oRequest.POST.get('pdf'), False),
+        "update": StrToBool(oRequest.POST.get('update'), False),
+        "type": StrToBool(oRequest.POST.get('type'), False)
+    }
+
+    import pprint
+    pprint.PrettyPrinter().pprint(export_dict)
+
+    return HttpResponse(status=200)
+# end def

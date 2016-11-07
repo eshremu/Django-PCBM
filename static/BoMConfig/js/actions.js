@@ -12,7 +12,11 @@ var returnedFormData = null;
 var approvalFormData = {};
 
 function cleanDataCheck(link){
-    window.location.href = link.dataset.href;
+    if (link.target == "_blank"){
+        window.open(link.dataset.href);
+    } else {
+        window.location.href = link.dataset.href;
+    }
 }
 
 function cust_filter(customer){
@@ -164,6 +168,29 @@ $(document).ready(function(){
         } else {
             messageToModal('Error','Please select at least 1 record to release from hold.', function(){});
         }
+    });
+    
+    $('.doc_button').click(function(){
+        var title = `Confirm document ${this.dataset.update=="0"?"creation":"update"}`;
+        var message = `<p>You are about to ${this.dataset.update=="0"?"create":"update"} a(n) ${this.dataset.type=="0"?"Inquiry":"Site Template"} for ${$($(this).parent().siblings()[1]).text()}.  Are you sure?</p><label for="makepdf">Create PDF:&nbsp;&nbsp;</label><input id="makepdf" type="checkbox"/>`;
+        messageToModal(title, message, function(source){
+            $.ajax({
+                url: doc_url,
+                type: "POST",
+                data: {
+                    id: source.dataset.id,
+                    type: source.dataset.type,
+                    update: source.dataset.update,
+                    pdf: $('#makepdf').prop('checked')
+                },
+                headers:{
+                    'X-CSRFToken': getcookie('csrftoken')
+                },
+                success: function(){
+                    window.location.reload(true);
+                }
+            });
+        }, this);
     });
 
     $(document).on("pcbm.modal.formdisplay", processForms);

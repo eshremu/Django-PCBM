@@ -45,6 +45,7 @@ urlpatterns = patterns(
     url(r'^baselinemasterdwnld/$', views.DownloadBaselineMaster, name='baselinemasterdownload'),
     url(r'^baselinerollback/$', views.BaselineRollback, name='baselinerollback'),
     url(r'^baselinerollbackcheck/$', views.BaselineRollbackTest, name='baselinerollbacktest'),
+    url(r'^document/$', views.CreateDocument, name='document_create'),
     url(r'^unlock/$', views.FinalUnlock, name='finalunlock'),
     url(r'^lock/$', views.InitialLock, name='initlock'),
     url(r'^logout/$', views.Logout, name='logout'),

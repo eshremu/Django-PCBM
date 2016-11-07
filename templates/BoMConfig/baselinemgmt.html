@@ -84,7 +84,13 @@
                             {% endif %}
                         </td>
                         <td>{{ header.headertimetracker_set.first.created_on|date:"Y" }}</td>
-                        <td>{{ header.inquiry_site_template|default:'' }}</td>
+                        <td>{% if header.inquiry_site_template and header.inquiry_site_template < 0 %}
+                            {% if header.inquiry_site_template < -1 %}
+                                {{ header.inquiry_site_template|slice:"1:" }}(Pending Update)
+                            {% else %}
+                                Pending
+                            {% endif %}
+                        {% else %}{{ header.inquiry_site_template|default:'' }}{% endif %}</td>
                         <td>{{ header.model_replaced|default:'' }}</td>
                         <td>{{ header.change_comments|default:'' }}</td>
                         <td>{{ header.release_date|date:"m/d/Y" }}</td>

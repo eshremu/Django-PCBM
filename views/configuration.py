@@ -182,7 +182,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                     oDiscontinued.configuration_designation = oHeader.model_replaced_link.configuration_designation
                                     oDiscontinued.model_replaced = oHeader.model_replaced_link.configuration_designation
                                     oDiscontinued.model_replaced_link = oHeader.model_replaced_link
-                                    oDiscontinued.inquiry_site_template = oHeader.inquiry_site_template
+                                    oDiscontinued.inquiry_site_template = oHeader.inquiry_site_template if oHeader.inquiry_site_template > 0 else None
                                     try:
                                         oDiscontinued.save()
                                         bDiscontinuationAlreadyCreated = True
@@ -1021,12 +1021,24 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
         if not oHeader:
             return [[]]
         else:
-            return [{'0': oHeader.configuration_designation, '1': oHeader.customer_designation or '', '2': oHeader.technology.name if oHeader.technology else '',
-                     '3': oHeader.product_area1.name if oHeader.product_area1 else '', '4': oHeader.product_area2.name if oHeader.product_area2 else '', '5': oHeader.model or '', '6': oHeader.model_description or '',
-                     '7': oHeader.model_replaced or '', '9': oHeader.bom_request_type.name, '10': oHeader.configuration_status.name,
-                     '11': oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('1') else '',
-                     '12': oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('4') else '',
-                     '13': (oHeader.internal_notes or ''), '14': (oHeader.external_notes or '')}]
+            return [{'0': oHeader.configuration_designation,
+                     '1': oHeader.customer_designation or '',
+                     '2': oHeader.technology.name if oHeader.technology else '',
+                     '3': oHeader.product_area1.name if oHeader.product_area1 else '',
+                     '4': oHeader.product_area2.name if oHeader.product_area2 else '',
+                     '5': oHeader.model or '',
+                     '6': oHeader.model_description or '',
+                     '7': oHeader.model_replaced or '',
+                     '9': oHeader.bom_request_type.name,
+                     '10': oHeader.configuration_status.name,
+                     '11': oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('1') else
+                        oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and
+                                                              str(oHeader.inquiry_site_template).startswith('-1') else '',
+                     '12': oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('4') else
+                        oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and
+                                                              str(oHeader.inquiry_site_template).startswith('-4') else '',
+                     '13': (oHeader.internal_notes or ''),
+                     '14': (oHeader.external_notes or '')}]
     elif revision:
         if not oHeader or not hasattr(oHeader, 'configuration'):
             return [{}]

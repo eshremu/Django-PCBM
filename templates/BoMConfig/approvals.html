@@ -99,7 +99,7 @@
                                     <option value="{{ user.id }}">{{ user.get_full_name }}</option>
                                 {% endfor %}
                                 </select>
-                                {% elif record.inquiry_site_template %}
+                                {% elif record.inquiry_site_template and record.inquiry_site_template > 0 %}
                                 <br/>
                                 <p style="color:red; font-style: italic; font-weight: bold;">WARNING:</p>
                                 <p>If you wish to update an existing SAP document (Inquiry / Site Template), be sure to do so before releasing this record.</p>
@@ -204,7 +204,11 @@
         var xhr;
 
         function cleanDataCheck(link){
-            window.location.href = link.dataset.href;
+            if (link.target == "_blank"){
+                window.open(link.dataset.href);
+            } else {
+                window.location.href = link.dataset.href;
+            }
         }
 
         function cust_filter(customer){

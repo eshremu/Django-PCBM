@@ -317,7 +317,21 @@ def Search(oRequest, advanced=False):
                     )
 
                     for sFilter in aLineFilter:
-                        results.write('<td>' + str(GrabValue(oResult, sFilter, '-----')) + '</td>')
+                        if 'header.inquiry_site_template' in sFilter:
+                            results.write('<td>')
+                            iInqValue = GrabValue(oResult, sFilter, None)
+                            if iInqValue is not None:
+                                if iInqValue > 0:
+                                    results.write(iInqValue)
+                                elif iInqValue == -1:
+                                    results.write('(Pending)')
+                                elif iInqValue < -1:
+                                    results.write(str(iInqValue * -1) + ' (Pending Update)')
+                            else:
+                                results.write('-----')
+                            results.write('</td>')
+                        else:
+                            results.write('<td>' + str(GrabValue(oResult, sFilter, '-----')) + '</td>')
                     # end for
 
                     results.write('</tr>')

@@ -57,7 +57,8 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
     oFile.active['B23'] = oHeader.optional_free_text1
     oFile.active['B24'] = oHeader.optional_free_text2
     oFile.active['B25'] = oHeader.optional_free_text3
-    oFile.active['B26'] = oHeader.inquiry_site_template
+    oFile.active['B26'] = (oHeader.inquiry_site_template * -1) if oHeader.inquiry_site_template and \
+                                                                  oHeader.inquiry_site_template < -1 else oHeader.inquiry_site_template
     oFile.active['B27'] = oHeader.readiness_complete / 100 if oHeader.readiness_complete else oHeader.readiness_complete
     oFile.active['B28'] = ('X' if oHeader.complete_delivery else None)
     oFile.active['B29'] = ('X' if oHeader.no_zip_routing else None)
@@ -157,10 +158,10 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
         oFile.active['H13'] = oHeader.model_replaced or None
         oFile.active['J13'] = oHeader.bom_request_type.name
         oFile.active['K13'] = oHeader.configuration_status.name or None
-        oFile.active['L13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith(
-            '1') else None
-        oFile.active['M13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith(
-            '4') else None
+        oFile.active['L13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('1') else \
+            oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and str(oHeader.inquiry_site_template).startswith('-1') else None
+        oFile.active['M13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('4') else \
+            oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and str(oHeader.inquiry_site_template).startswith('-4') else None
         oFile.active['N13'] = oHeader.internal_notes
         oFile.active['O13'] = oHeader.external_notes
         if sHyperlinkURL:
@@ -517,7 +518,8 @@ def DownloadBaselineMaster(oRequest):
             else:
                 oSheet['I' + str(iRow)].font = activeFont
 
-            oSheet['L' + str(iRow)] = oHead.inquiry_site_template if str(oHead.inquiry_site_template).startswith('4') else ''
+            oSheet['L' + str(iRow)] = oHead.inquiry_site_template if str(oHead.inquiry_site_template).startswith('4')\
+                else oHead.inquiry_site_template * -1 if oHead.inquiry_site_template < -1 and str(oHead.inquiry_site_template).startswith('-4') else ''
             oSheet['L' + str(iRow)].alignment = centerAlign
             if 'In Process' in oHead.configuration_status.name:
                 oSheet['L' + str(iRow)].font = ipFont
@@ -994,14 +996,20 @@ def WriteBaselineToFile(oBaseline, sVersion):
                     oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = str(
                         GrabValue(oHeader, dTOCData[iIndex][1], '')).replace('/Pending', '')
             elif dTOCData[iIndex][1] == 'inquiry_site_template':
-                if dTOCData[iIndex][0] == 'Inquiry' and str(
-                        GrabValue(oHeader, dTOCData[iIndex][1], None)).startswith('1'):
-                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
-                                                                                               dTOCData[iIndex][1], '')
-                elif dTOCData[iIndex][0] == 'Site Template' and str(
-                        GrabValue(oHeader, dTOCData[iIndex][1], None)).startswith('4'):
-                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
-                                                                                               dTOCData[iIndex][1], '')
+                if dTOCData[iIndex][0] == 'Inquiry':
+                    if str(GrabValue(oHeader, dTOCData[iIndex][1], None)).startswith('1'):
+                        oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                                     dTOCData[iIndex][1], '')
+                    elif GrabValue(oHeader, dTOCData[iIndex][1], 0) < -1 and str(GrabValue(oHeader, dTOCData[iIndex][1], 0) * -1).startswith('1'):
+                        oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                                     dTOCData[iIndex][1], 0) * -1
+                elif dTOCData[iIndex][0] == 'Site Template':
+                    if str(GrabValue(oHeader, dTOCData[iIndex][1], None)).startswith('4'):
+                        oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                                     dTOCData[iIndex][1], '')
+                    elif GrabValue(oHeader, dTOCData[iIndex][1], 0) < -1 and str(GrabValue(oHeader, dTOCData[iIndex][1], 0) * -1).startswith('4'):
+                        oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                                     dTOCData[iIndex][1], 0) * -1
                 else:
                     oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = None
             elif not dTOCData[iIndex][1]:

@@ -8,6 +8,6 @@ from BoMConfig.views.pricing import ConfigPricing, OverviewPricing, PartPricing,
 from BoMConfig.views.reporting import Report
 from BoMConfig.views.upload import Upload
 from BoMConfig.views.download import Download, DownloadBaseline, DownloadMultiple, DownloadBaselineMaster, ConfigPriceDownload, PriceOverviewDownload, PartPriceDownload, ErosionDownload, DownloadSearchResults
-from BoMConfig.views.approvals_actions import Approval, Action, AjaxApprove, ApprovalData, AjaxApprovalForm, ChangePart
+from BoMConfig.views.approvals_actions import Approval, Action, AjaxApprove, ApprovalData, AjaxApprovalForm, ChangePart, CreateDocument
 from BoMConfig.views.admin import MailingAdmin, MailingChange, UserAdmin, AdminLanding, UserAdd, UserChange, ApprovalAdmin, ApprovalChange
 from BoMConfig.views.customer_audit import CustomerAuditTableValidate, CustomerAudit, CustomerAuditLand, CustomerAuditUpload

@@ -166,5 +166,9 @@ function form_resize(){
 }
 
 function cleanDataCheck(link){
-    window.location.href = link.dataset.href;
+    if (link.target == "_blank"){
+        window.open(link.dataset.href);
+    } else {
+        window.location.href = link.dataset.href;
+    }
 }

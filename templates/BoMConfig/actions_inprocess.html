@@ -39,7 +39,7 @@
                         <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }}">
                             <td><input class="inprocess" type="checkbox" data-index="{{ record.id }}"/></td>
                             <td></td>
-                            <td><a href="../search?link={{ record.pk|searchscramble }}">{{ record.configuration_designation }}</a></td>
+                            <td><a href="{% url 'bomconfig:search' %}?link={{ record.pk|searchscramble }}">{{ record.configuration_designation }}</a></td>
                             <td></td>
                             <td>{{ record.baseline|default:"(Not baselined)" }}</td>
                             <td></td>
