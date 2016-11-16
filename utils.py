@@ -915,6 +915,9 @@ def StrToBool(sValue, bDefault = None):
     not one that can be clearly interpreted as a Boolean value, raises an
     exception."""
 
+    if sValue is None:
+        return False
+
     sUpper = sValue.strip().upper()
     if sUpper in ('Y', 'YES', 'T', 'TRUE', '1'):
         return True

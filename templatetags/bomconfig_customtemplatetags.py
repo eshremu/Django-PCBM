@@ -131,3 +131,9 @@ def multiply(multiplicand, multiplier):
     else:
         return None
 # end def
+
+
+@register.filter(name='startswith')
+def startswith(string, substring):
+    return str(string).startswith(substring)
+# end def

@@ -24,25 +24,39 @@ class HeaderForm(forms.ModelForm):
         bReadOnly = kwargs.pop('readonly', False)
         sBrowser = kwargs.pop('browser', None)
 
+        if kwargs['instance']:
+            if kwargs['instance'].inquiry_site_template == -1:
+                kwargs.update(initial={'inquiry_site_template': '(Pending)'})
+            else:
+                kwargs.update(initial={'inquiry_site_template': str(kwargs['instance'].inquiry_site_template)[1:] + ' (Pending Update)'})
+            # end if
+        # end if
+
         super().__init__(*args, **kwargs)
 
-        self.fields['configuration_status'].widget.attrs['readonly'] = 'True'
+        self.fields['configuration_status'].widget.attrs['readonly'] = True
         self.fields['configuration_status'].widget.attrs['disabled'] = 'True'
         self.fields['configuration_status'].widget.attrs['style'] = 'border:none;'
         self.fields['configuration_status'].widget.attrs['style'] += '-webkit-appearance:none;'
 
-        self.fields['readiness_complete'].widget.attrs['readonly'] = 'True'
+        self.fields['readiness_complete'].widget.attrs['readonly'] = True
         self.fields['readiness_complete'].widget.attrs['style'] = 'border:none;'
         self.fields['readiness_complete'].widget.attrs['style'] += '-webkit-appearance:none;'
 
         self.fields['react_request'].widget.attrs['size'] = 25
         self.fields['model_description'].widget.attrs['size'] = 45
 
+        if self.instance.inquiry_site_template and self.instance.inquiry_site_template < 0:
+            self.fields['inquiry_site_template'] = forms.CharField()
+            self.fields['inquiry_site_template'].widget.attrs['readonly'] = True
+            self.fields['inquiry_site_template'].widget.attrs['style'] = 'border:none;'
+        # end if
+
         if bReadOnly or (hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name != 'In Process'):
             for field in self.fields.keys():
                 # if not bReadOnly and hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name == 'In Process/Pending' and field == 'projected_cutover':
                 #     continue
-                self.fields[field].widget.attrs['readonly'] = 'True'
+                self.fields[field].widget.attrs['readonly'] = True
                 self.fields[field].widget.attrs['style'] = 'border:none;'
                 if self.initial:
                     if self.initial[field] and isinstance(self.initial[field], str):
@@ -211,8 +225,9 @@ class ConfigForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(ConfigForm, self).__init__(*args, **kwargs)
-        self.fields['net_value'].widget.attrs['readonly'] = 'True'
-        self.fields['zpru_total'].widget.attrs['readonly'] = 'True'
+        self.fields['net_value'].widget.attrs['readonly'] = True
+        self.fields['zpru_total'].widget.attrs['readonly'] = True
+        self.fields['PSM_on_hold'].widget.attrs['readonly'] = True
     # end def
 
     def clean(self):
@@ -364,7 +379,7 @@ class UserForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['signum'].widget.attrs['readonly'] = 'True'
+        self.fields['signum'].widget.attrs['readonly'] = True
         self.fields['signum'].widget.attrs['style'] = 'border: none;'
         self.fields['assigned_group'].label_from_instance = lambda inst: "%s" % (inst.name.replace('BOM_', '')
                                                                                  .replace('_', ' - ', 1)
@@ -404,7 +419,7 @@ class CustomerApprovalLevelForm(forms.Form):
         self.readonly = kwargs.pop('readonly', False)
         super().__init__(*args, **kwargs)
 
-        self.fields['customer'].widget.attrs['readonly'] = str(self.readonly)
+        self.fields['customer'].widget.attrs['readonly'] = self.readonly
 
         if self.readonly:
             self.fields['customer'].widget.attrs['disabled'] = 'disabled'

@@ -665,10 +665,17 @@ def ChangePart(oRequest):
 
 def CreateDocument(oRequest):
     oHeader = Header.objects.get(id=oRequest.POST.get('id'))
+
+    if oHeader.valid_from_date < timezone.datetime.now().date():
+        oHeader.valid_from_date = timezone.datetime.now().date()
+
     if not StrToBool(oRequest.POST.get('type')):
         # Create Inquiry
         data = {
             "inquiry_type": "ZDOT",
+            "order_type": "ZTP",
+            'zy_delivery_partner': None,
+            'site_id': "PCBM Controlled",
             "sales_org": "1259" if oHeader.customer_unit.name in ['EMC', 'Canada', 'New Canadian'] else "1263",
             "distribution_channel": "XX",
             "division": "XX",
@@ -679,9 +686,15 @@ def CreateDocument(oRequest):
             "bill_to_party": oHeader.bill_to_party,
             "configuration_designation": oHeader.configuration_designation,
             "valid_from_date": max(oHeader.valid_from_date, timezone.datetime.now().date()).strftime('%Y-%m-%d') if oHeader.valid_from_date else None,
+            'po_date': oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else None,
             "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else None,
             "payment_terms": oHeader.payment_terms,
             "ericsson_contract": oHeader.ericsson_contract,
+            'no_zip_routing': oHeader.no_zip_routing,
+            'internal_external_linkage': oHeader.configuration.internal_external_linkage,
+            'shipping_condition': oHeader.shipping_condition,
+            'complete_delivery': oHeader.complete_delivery,
+            'form_header': None,
             "line_items": [
                 {
                     'line_number': oLine.line_number,
@@ -697,7 +710,10 @@ def CreateDocument(oRequest):
                         else GrabValue(oLine.linepricing, 'override_price') or GrabValue(oLine.linepricing, 'pricing_object.unit_price') or None,
                     'condition_type': oLine.condition_type,
                     'amount': oLine.amount,
-                    'contextId': oLine.contextId
+                    'contextId': oLine.contextId,
+                    'higher_level_item': oLine.higher_level_item,
+                    'material_group_5': oLine.material_group_5,
+                    'purchase_order_item_num': oLine.purchase_order_item_num,
                 }
                 for oLine in sorted(oHeader.configuration.configline_set.exclude(line_number__contains='.'), key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
             ]
@@ -706,6 +722,8 @@ def CreateDocument(oRequest):
         # Create Site Template
         data = {
             "contract_type": "ZTPL",
+            'order_type': None,
+            'zy_delivery_partner': None,
             "sales_org": "1259" if oHeader.customer_unit.name in ['EMC', 'Canada', 'New Canadian'] else "1263",
             "distribution_channel": "XX",
             "division": "XX",
@@ -719,6 +737,10 @@ def CreateDocument(oRequest):
             "valid_from_date": oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else None,
             "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else None,
             "ericsson_contract": oHeader.ericsson_contract,
+            'no_zip_routing': oHeader.no_zip_routing,
+            'internal_external_linkage': oHeader.configuration.internal_external_linkage,
+            'shipping_condition': oHeader.shipping_condition,
+            'complete_delivery': oHeader.complete_delivery,
             "line_items": [
                 {
                     'line_number': oLine.line_number,
@@ -731,6 +753,8 @@ def CreateDocument(oRequest):
                     'pcode': oLine.pcode,
                     'higher_level_item': oLine.higher_level_item,
                     'contextId': oLine.contextId,
+                    'material_group_5': oLine.material_group_5,
+                    'customer_number': oLine.customer_number,
                 }
                 for oLine in sorted(
                     oHeader.configuration.configline_set.exclude(line_number__contains='.'),
@@ -740,6 +764,17 @@ def CreateDocument(oRequest):
         }
     # end if
 
+    export_dict = {
+        "data": data,
+        "pdf": StrToBool(oRequest.POST.get('pdf'), False),
+        "update": StrToBool(oRequest.POST.get('update'), False),
+        "type": StrToBool(oRequest.POST.get('type'), False),
+        "record_id": oHeader.id,
+    }
+
+    if StrToBool(oRequest.POST.get('update'), False):
+        export_dict.update({'existing_doc': oHeader.inquiry_site_template})
+
     # If updating existing document
     # if StrToBool(oRequest.POST.get('update'), False):
     #     oHeader.inquiry_site_template *= -1
@@ -747,13 +782,7 @@ def CreateDocument(oRequest):
     #     oHeader.inquiry_site_template = -1
     # oHeader.save()
 
-    export_dict = {
-        "data": data,
-        "pdf": StrToBool(oRequest.POST.get('pdf'), False),
-        "update": StrToBool(oRequest.POST.get('update'), False),
-        "type": StrToBool(oRequest.POST.get('type'), False)
-    }
-
+    # TODO: This is where the data package gets exported
     import pprint
     pprint.PrettyPrinter().pprint(export_dict)
 
