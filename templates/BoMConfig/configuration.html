@@ -134,10 +134,20 @@
             if (!valid && !form_save){
                 messageToModal('Unsaved changes detected',
                         "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
-                        function(){window.location.href = link.dataset.href;}
+                        function(){
+                            if (link.target == "_blank"){
+                                window.open(link.dataset.href);
+                            } else {
+                                window.location.href = link.dataset.href;
+                            }
+                        }
                 );
             } else {
-                window.location.href = link.dataset.href;
+                if (link.target == "_blank"){
+                    window.open(link.dataset.href);
+                } else {
+                    window.location.href = link.dataset.href;
+                }
             }
         }
 
@@ -278,7 +288,7 @@
                 cols.push({data: 11}, {data: 12}, {data: 13}, {data: 14}, {data: 15}, {data: 16}, {data: 17});
                 headers.push('HW/SW Ind', 'Prod Pkg Type', 'SPUD', 'RE-Code', 'MU-Flag', "X-Plant Mat'l Stat", 'Int Notes');
                 {% if config_attr_write_authorized and header.configuration_status.name == 'In Process' %}
-                readonly.push(9 + offset, 10 + offset);
+                readonly.push(8 + offset, 9 + offset, 10 + offset);
                 {% elif config_attr_write_authorized %}
                 readonly.push(5 + offset, 6 + offset, 8 + offset, 9 + offset, 10 + offset, 11 + offset);
                 {% else %}

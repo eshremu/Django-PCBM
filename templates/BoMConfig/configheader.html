@@ -98,7 +98,7 @@
     var listfill_url = "{% url 'bomconfig:list_fill' %}";
     var listreactfill_url = "{% url 'bomconfig:list_react_fill' %}";
     var clone_url = "{% url 'bomconfig:configclone' %}";
-    var download_url = '{% url 'bomconfig:download' %}';
+    var download_url = '{% url 'bomconfig:download' %}'{% if frame_readonly %}+ '?download={{ header.id|searchscramble }}'{% endif %};
     var reactrequest_id = "#{{ headerForm.react_request.auto_id }}";
     var personresponsible_id = "#{{ headerForm.person_responsible.auto_id }}";
     var customername_id = "#{{ headerForm.customer_name.auto_id }}";

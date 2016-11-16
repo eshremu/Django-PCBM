@@ -182,7 +182,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                     oDiscontinued.configuration_designation = oHeader.model_replaced_link.configuration_designation
                                     oDiscontinued.model_replaced = oHeader.model_replaced_link.configuration_designation
                                     oDiscontinued.model_replaced_link = oHeader.model_replaced_link
-                                    oDiscontinued.inquiry_site_template = oHeader.inquiry_site_template
+                                    oDiscontinued.inquiry_site_template = oHeader.inquiry_site_template if oHeader.inquiry_site_template > 0 else None
                                     try:
                                         oDiscontinued.save()
                                         bDiscontinuationAlreadyCreated = True
@@ -943,42 +943,59 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
         aData = []
         for Line in aConfigLines:
             if config:
-                dLine ={'1': Line.line_number,
-                        '2': ('..' if Line.is_grandchild else '.' if Line.is_child else '') + Line.part.base.product_number,
-                        '3': Line.part.product_description,
-                        '4': Line.order_qty,
-                        '5': Line.part.base.unit_of_measure,
-                        '6': Line.contextId,
-                        '7': Line.plant,
-                        '8': ('0' * (4 - len(str(Line.sloc)))) + Line.sloc if Line.sloc else Line.sloc,
-                        '9': Line.item_category,
-                        '10': Line.pcode,
-                        '11': Line.commodity_type,
-                        '12': Line.package_type,
-                        '13': str(Line.spud),
-                        '14': Line.REcode,
-                        '15': Line.mu_flag,
-                        '16': ('0' * (2 - len(Line.x_plant))) + Line.x_plant if Line.x_plant else '',
-                        '17': Line.internal_notes,
-                        '18': (
-                            "!" + str(Line.linepricing.override_price) if GrabValue(Line,'linepricing.override_price') else
-                            oConfig.net_value if not oConfig.header.pick_list else
-                            GrabValue(Line, 'linepricing.pricing_object.unit_price') if GrabValue(Line,'linepricing.pricing_object') else ''
-                        ) if (str(Line.line_number) == '10' and not oConfig.header.pick_list) or
-                             oConfig.header.pick_list else '',
-                        '19': Line.higher_level_item,
-                        '20': Line.material_group_5,
-                        '21': Line.purchase_order_item_num,
-                        '22': Line.condition_type,
-                        '23': Line.amount,
-                        '24': Line.traceability_req,
-                        '25': Line.customer_asset,
-                        '26': Line.customer_asset_tagging,
-                        '27': Line.customer_number,
-                        '28': Line.sec_customer_number,
-                        '29': Line.vendor_article_number,
-                        '30': Line.comments,
-                        '31': Line.additional_ref}
+                dLine = {
+                    '1': Line.line_number,
+                    '2': ('..' if Line.is_grandchild else '.' if Line.is_child else '') + Line.part.base.product_number,
+                    '3': Line.part.product_description,
+                    '4': Line.order_qty,
+                    '5': Line.part.base.unit_of_measure,
+                    '6': Line.contextId,
+                    '7': Line.plant,
+                    '8': ('0' * (4 - len(str(Line.sloc)))) + Line.sloc if Line.sloc else Line.sloc,
+                    '9': Line.item_category,
+                    '10': Line.pcode,
+                    '11': Line.commodity_type,
+                    '12': Line.package_type,
+                    '13': str(Line.spud),
+                    '14': Line.REcode,
+                    '15': Line.mu_flag,
+                    '16': ('0' * (2 - len(Line.x_plant))) + Line.x_plant if Line.x_plant else '',
+                    '17': Line.internal_notes,
+
+                    '19': Line.higher_level_item,
+                    '20': Line.material_group_5,
+                    '21': Line.purchase_order_item_num,
+                    '22': Line.condition_type,
+                    '23': Line.amount,
+                    '24': Line.traceability_req,
+                    '25': Line.customer_asset,
+                    '26': Line.customer_asset_tagging,
+                    '27': Line.customer_number,
+                    '28': Line.sec_customer_number,
+                    '29': Line.vendor_article_number,
+                    '30': Line.comments,
+                    '31': Line.additional_ref
+                }
+
+                if not oHeader.pick_list:
+                    if str(Line.line_number) == '10':
+                        if oConfig.override_net_value:
+                            dLine.update({'18': '!' + str(oConfig.override_net_value)})
+                        else:
+                            dLine.update({'18': oConfig.net_value})
+                        # end if
+                    else:
+                        dLine.update({'18': ''})
+                    # end if
+                else:
+                    if GrabValue(Line, 'linepricing.override_price'):
+                        dLine.update({'18': "!" + str(Line.linepricing.override_price)})
+                    elif GrabValue(Line, 'linepricing.pricing_object.unit_price'):
+                        dLine.update({'18': Line.linepricing.pricing_object.unit_price})
+                    else:
+                        dLine.update({'18': ''})
+                    # end if
+                # end if
             else:
                 LineNumber = None
                 if '.' not in Line.line_number:
@@ -990,18 +1007,45 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                 # end if
 
                 if LineNumber:
-                    dLine = {'0': Line.line_number, '1': Line.part.base.product_number, '2': Line.part.product_description,
-                             '3': Line.order_qty, '4': Line.plant, '5': Line.sloc,
+                    dLine = {'0': Line.line_number,
+                             '1': Line.part.base.product_number,
+                             '2': Line.part.product_description,
+                             '3': Line.order_qty,
+                             '4': Line.plant,
+                             '5': Line.sloc,
                              '6': Line.item_category}
                     if inquiry:
-                        dLine.update({'7': Line.linepricing.override_price if
-                                        (str(Line.line_number) == '10' or oHeader.pick_list) and hasattr(Line,'linepricing') and
-                                        GrabValue(Line,'linepricing.override_price') else GrabValue(Line,'linepricing.pricing_object.unit_price') if
-                                        hasattr(Line,'linepricing') and (str(Line.line_number) == '10' or oHeader.pick_list) else '',
-                                      '9': Line.material_group_5, '10': Line.purchase_order_item_num,
-                                      '11': Line.condition_type, '12': Line.amount})
+                        dLine.update(
+                            {
+                                '9': Line.material_group_5,
+                                '10': Line.purchase_order_item_num,
+                                '11': Line.condition_type,
+                                '12': Line.amount
+                            }
+                        )
+
+                        if not oHeader.pick_list:
+                            if str(Line.line_number) == '10':
+                                if oConfig.override_net_value:
+                                    dLine.update({'7': oConfig.override_net_value})
+                                else:
+                                    dLine.update({'7': oConfig.net_value})
+                                    # end if
+                            else:
+                                dLine.update({'7': ''})
+                                # end if
+                        else:
+                            if GrabValue(Line, 'linepricing.override_price'):
+                                dLine.update({'7': Line.linepricing.override_price})
+                            elif GrabValue(Line, 'linepricing.pricing_object.unit_price'):
+                                dLine.update({'7': Line.linepricing.pricing_object.unit_price})
+                            else:
+                                dLine.update({'7': ''})
+                                # end if
+                        # end if
+
                         if LineNumber == 10 and not oHeader.pick_list:
-                            dLine.update({'8': oHeader.configuration.net_value})
+                            dLine.update({'8': oHeader.configuration.override_net_value or oHeader.configuration.net_value})
                     else:
                         dLine.update(({'7': Line.higher_level_item}))
                     # end if
@@ -1021,12 +1065,24 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
         if not oHeader:
             return [[]]
         else:
-            return [{'0': oHeader.configuration_designation, '1': oHeader.customer_designation or '', '2': oHeader.technology.name if oHeader.technology else '',
-                     '3': oHeader.product_area1.name if oHeader.product_area1 else '', '4': oHeader.product_area2.name if oHeader.product_area2 else '', '5': oHeader.model or '', '6': oHeader.model_description or '',
-                     '7': oHeader.model_replaced or '', '9': oHeader.bom_request_type.name, '10': oHeader.configuration_status.name,
-                     '11': oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('1') else '',
-                     '12': oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('4') else '',
-                     '13': (oHeader.internal_notes or ''), '14': (oHeader.external_notes or '')}]
+            return [{'0': oHeader.configuration_designation,
+                     '1': oHeader.customer_designation or '',
+                     '2': oHeader.technology.name if oHeader.technology else '',
+                     '3': oHeader.product_area1.name if oHeader.product_area1 else '',
+                     '4': oHeader.product_area2.name if oHeader.product_area2 else '',
+                     '5': oHeader.model or '',
+                     '6': oHeader.model_description or '',
+                     '7': oHeader.model_replaced or '',
+                     '9': oHeader.bom_request_type.name,
+                     '10': oHeader.configuration_status.name,
+                     '11': oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('1') else
+                        oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and
+                                                              str(oHeader.inquiry_site_template).startswith('-1') else '',
+                     '12': oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('4') else
+                        oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and
+                                                              str(oHeader.inquiry_site_template).startswith('-4') else '',
+                     '13': (oHeader.internal_notes or ''),
+                     '14': (oHeader.external_notes or '')}]
     elif revision:
         if not oHeader or not hasattr(oHeader, 'configuration'):
             return [{}]
@@ -1109,7 +1165,7 @@ def Validator(oRequest):
         Grandchild = 0
 
         # Convert list of lists to list of dicts
-        if type(form_data[1]) == list:
+        if type(form_data[0]) == list:
             for index in range(len(form_data)):
                 form_data[index] = {str(key): (value if value != '' else None) for key, value in enumerate(form_data[index])}
             #end for)
@@ -1252,6 +1308,15 @@ def Validator(oRequest):
                     error_matrix[index][18] += 'X - Invalid Unit Price provided.\n'
             # end if
 
+            # Higher Level Item
+            if '19' not in form_data[index]:
+                if '.' not in form_data[index]['1'] and form_data[index]['1'] != '10' and not oHead.pick_list:
+                    form_data[index]['19'] = '10'
+                elif '.' in form_data[index]['1']:
+                    form_data[index]['19'] = form_data[index]['1'][:form_data[index]['1'].rfind('.')]
+                # end if
+            # end if
+
             # Condition Type & Amount Supplied Together
             NoCondition = '22' not in form_data[index] or form_data[index]['22'] in ('', 'None')
             NoAmount = '23' not in form_data[index] or form_data[index]['23'] in ('', 'None')
@@ -1270,16 +1335,6 @@ def Validator(oRequest):
 
                 if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$", form_data[index]['23'] or ''):
                     error_matrix[index][23] += 'X - Invalid Amount provided.\n'
-            # end if
-
-            # Traceability Req
-            if '24' in form_data[index]:
-                form_data[index]['24'] = form_data[index]['24'].strip() if form_data[index]['24'] else form_data[index]['24']
-                if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['24'] or '', re.I):
-                    error_matrix[index][24] += "X - Invalid Traceability Req.\n"
-
-                if form_data[index]['24'] != 'None':
-                    form_data[index]['24'] = form_data[index]['24'].upper()
             # end if
 
             if oHead.configuration_status.name == 'In Process' or (bCanWriteConfig and oHead.configuration_status.name == 'In Process/Pending'):
@@ -1382,12 +1437,18 @@ def Validator(oRequest):
                 if oHead.configuration_status.name == 'In Process':
                     if '3' not in form_data[index] or form_data[index]['3'] in ('None', None, ''):
                         form_data[index]['3'] = tPartData[0][0] if tPartData[0][0] not in (None, 'NONE', 'None') else ''
-                    if '15' not in form_data[index] or form_data[index]['15'] in ('None', None, ''):
-                        form_data[index]['15'] = tPartData[0][1] if tPartData[0][1] not in (None, 'NONE', 'None') else ''
-                    if '16' not in form_data[index] or form_data[index]['16'] in ('None', None, ''):
-                        form_data[index]['16'] = tPartData[0][2] if tPartData[0][2] not in (None, 'NONE', 'None') else ''
-                    if '5' not in form_data[index] or form_data[index]['5'] in ('None', None, ''):
-                        form_data[index]['5'] = tPartData[0][3] if tPartData[0][3] not in (None, 'NONE', 'None') else ''
+                    # if '15' not in form_data[index] or form_data[index]['15'] in ('None', None, ''):
+                    form_data[index]['15'] = tPartData[0][1] if tPartData[0][1] not in (None, 'NONE', 'None') else ''
+                    # if '16' not in form_data[index] or form_data[index]['16'] in ('None', None, ''):
+                    form_data[index]['16'] = tPartData[0][2] if tPartData[0][2] not in (None, 'NONE', 'None') else ''
+                    # if '5' not in form_data[index] or form_data[index]['5'] in ('None', None, ''):
+                    form_data[index]['5'] = tPartData[0][3] if tPartData[0][3] not in (None, 'NONE', 'None') else ''
+
+                    oCursor.execute('SELECT [Description] FROM dbo.[REF_X-PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
+                        [bytes(tPartData[0][2], 'ascii')])
+                    tXPlant = oCursor.fetchall()
+                    if tXPlant:
+                        error_matrix[index][16] += tXPlant[0][0] + '\n'
 
                 P_Code = form_data[index]['10'] if '10' in form_data[index] and re.match("^\d{2,3}$", form_data[index]['10'], re.IGNORECASE) else tPartData[0][4]
             else:
@@ -1418,6 +1479,30 @@ def Validator(oRequest):
                 # end if
             # end if
 
+            oCursor.execute('SELECT DISTINCT [PRIM RE Code],[PRIM Traceability] FROM dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
+                            [bytes(form_data[index]['2'].strip('.'), 'ascii') if form_data[index]['2'] else None])
+            tPartData = oCursor.fetchall()
+            if tPartData:
+                # RE-Code
+                form_data[index]['14'] = tPartData[0][0] if tPartData[0][0] else ''
+
+                # Traceability Req
+                form_data[index]['24'] = 'Y' if tPartData[0][1]=='Z001' else 'N' if tPartData[0][1]=='Z002' else ''
+
+                oCursor.execute('SELECT DISTINCT [Title],[Description] FROM dbo.REF_PRODUCT_STATUS_CODES WHERE [Status Code]=%s',
+                            [bytes(tPartData[0][0] or '', 'ascii')])
+                tRECode = oCursor.fetchall()
+                if tRECode:
+                    form_data[index]['17'] = form_data[index]['17'] + '; ' + tRECode[0][0] if '17' in form_data[index] and form_data[index]['17'] else tRECode[0][0]
+                    error_matrix[index][14] += tRECode[0][1] + '\n'
+                # end if
+            else:
+                # RE-Code
+                form_data[index]['14'] = ''
+                # Traceability Req
+                form_data[index]['24'] = ''
+            # end if
+
             if '7' in form_data[index] and form_data[index]['7'] not in ('None', ''):
                 oCursor.execute('SELECT [Plant] FROM dbo.REF_PLANTS')
                 tPlants = [element[0] for element in oCursor.fetchall()]
@@ -1441,6 +1526,8 @@ def Validator(oRequest):
                     error_matrix[index][8] += '! - Plant/SLOC combination not found.\n'
                 # end if
             # end if
+
+            oCursor.close()
 
             # Validate entries
 

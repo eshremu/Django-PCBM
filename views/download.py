@@ -57,7 +57,8 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
     oFile.active['B23'] = oHeader.optional_free_text1
     oFile.active['B24'] = oHeader.optional_free_text2
     oFile.active['B25'] = oHeader.optional_free_text3
-    oFile.active['B26'] = oHeader.inquiry_site_template
+    oFile.active['B26'] = (oHeader.inquiry_site_template * -1) if oHeader.inquiry_site_template and \
+                                                                  oHeader.inquiry_site_template < -1 else oHeader.inquiry_site_template
     oFile.active['B27'] = oHeader.readiness_complete / 100 if oHeader.readiness_complete else oHeader.readiness_complete
     oFile.active['B28'] = ('X' if oHeader.complete_delivery else None)
     oFile.active['B29'] = ('X' if oHeader.no_zip_routing else None)
@@ -116,11 +117,14 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
             oFile.active['O' + str(iRow)] = oConfigLine.x_plant
             oFile.active['P' + str(iRow)] = oConfigLine.internal_notes
             # oFile.active['Q' + str(iRow)] = oConfigLine.linepricing.unit_price
-            # TODO: Fix this to correctly reflect configuration prices
-            oFile.active['Q' + str(iRow)] = str(oConfigLine.linepricing.override_price) if str(
-                oConfigLine.line_number) == '10' and hasattr(oConfigLine, 'linepricing') and \
-                oConfigLine.linepricing.override_price else oConfigLine.linepricing.pricing_object.unit_price \
-                if GrabValue(oConfigLine, 'linepricing.pricing_object') else ''
+            # DONE: Fix this to correctly reflect configuration prices
+            # oFile.active['Q' + str(iRow)] = str(oConfigLine.linepricing.override_price) if str(
+            #     oConfigLine.line_number) == '10' and hasattr(oConfigLine, 'linepricing') and \
+            #     oConfigLine.linepricing.override_price else oConfigLine.linepricing.pricing_object.unit_price \
+            #     if GrabValue(oConfigLine, 'linepricing.pricing_object') else ''
+            oFile.active['Q' + str(iRow)] = '' if not oHeader.pick_list and str(oConfigLine.line_number) != '10' else \
+                str(GrabValue(oConfigLine, 'linepricing.override_price',GrabValue(oConfigLine, 'linepricing.pricing_object.unit_price', '')))
+
             oFile.active['R' + str(iRow)] = oConfigLine.higher_level_item
             oFile.active['S' + str(iRow)] = oConfigLine.material_group_5
             oFile.active['T' + str(iRow)] = oConfigLine.purchase_order_item_num
@@ -154,10 +158,10 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
         oFile.active['H13'] = oHeader.model_replaced or None
         oFile.active['J13'] = oHeader.bom_request_type.name
         oFile.active['K13'] = oHeader.configuration_status.name or None
-        oFile.active['L13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith(
-            '1') else None
-        oFile.active['M13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith(
-            '4') else None
+        oFile.active['L13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('1') else \
+            oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and str(oHeader.inquiry_site_template).startswith('-1') else None
+        oFile.active['M13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('4') else \
+            oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and str(oHeader.inquiry_site_template).startswith('-4') else None
         oFile.active['N13'] = oHeader.internal_notes
         oFile.active['O13'] = oHeader.external_notes
         if sHyperlinkURL:
@@ -514,7 +518,8 @@ def DownloadBaselineMaster(oRequest):
             else:
                 oSheet['I' + str(iRow)].font = activeFont
 
-            oSheet['L' + str(iRow)] = oHead.inquiry_site_template if str(oHead.inquiry_site_template).startswith('4') else ''
+            oSheet['L' + str(iRow)] = oHead.inquiry_site_template if str(oHead.inquiry_site_template).startswith('4')\
+                else oHead.inquiry_site_template * -1 if oHead.inquiry_site_template < -1 and str(oHead.inquiry_site_template).startswith('-4') else ''
             oSheet['L' + str(iRow)].alignment = centerAlign
             if 'In Process' in oHead.configuration_status.name:
                 oSheet['L' + str(iRow)].font = ipFont
@@ -725,7 +730,8 @@ def WriteBaselineToFile(oBaseline, sVersion):
         oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]\:\'\?\/]', '_', sTitle))
         if 'In Process' in oHeader.configuration_status.name and oHeader.bom_request_type.name in ('New', 'Update'):
             oSheet.sheet_properties.tabColor = '80FF00'
-        elif oHeader.bom_request_type.name == "Discontinue" or oHeader.configuration_status.name == 'Discontinued' or (hasattr(oHeader,'header_set') and oHeader.header_set.first() in aHeaders):
+        elif oHeader.bom_request_type.name == "Discontinue" or oHeader.configuration_status.name == 'Discontinued' or\
+                (hasattr(oHeader,'header_set') and oHeader.header_set.first() in aHeaders):
             oSheet.sheet_properties.tabColor = 'FF0000'
 
         # Build Header row
@@ -934,10 +940,11 @@ def WriteBaselineToFile(oBaseline, sVersion):
             iCurrentRow += 1
         # end for
         if not oHeader.pick_list:
-            # TODO: Fix this to correctly reflect configuration prices
-            oSheet['G2'] = GrabValue(oHeader.configuration.get_first_line(), 'linepricing.override_price') or \
-                           GrabValue(oHeader.configuration.get_first_line(),
-                                     'linepricing.pricing_object.unit_price') or ''
+            # DONE: Fix this to correctly reflect configuration prices
+            # oSheet['G2'] = GrabValue(oHeader.configuration.get_first_line(), 'linepricing.override_price') or \
+            #                GrabValue(oHeader.configuration.get_first_line(),
+            #                          'linepricing.pricing_object.unit_price') or ''
+            oSheet['G2'] = oHeader.configuration.override_net_value or oHeader.configuration.net_value or ''
             # end if
 
         for iIndex in range(len(aColumnTitles)):
@@ -989,14 +996,20 @@ def WriteBaselineToFile(oBaseline, sVersion):
                     oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = str(
                         GrabValue(oHeader, dTOCData[iIndex][1], '')).replace('/Pending', '')
             elif dTOCData[iIndex][1] == 'inquiry_site_template':
-                if dTOCData[iIndex][0] == 'Inquiry' and str(
-                        GrabValue(oHeader, dTOCData[iIndex][1], None)).startswith('1'):
-                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
-                                                                                               dTOCData[iIndex][1], '')
-                elif dTOCData[iIndex][0] == 'Site Template' and str(
-                        GrabValue(oHeader, dTOCData[iIndex][1], None)).startswith('4'):
-                    oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
-                                                                                               dTOCData[iIndex][1], '')
+                if dTOCData[iIndex][0] == 'Inquiry':
+                    if str(GrabValue(oHeader, dTOCData[iIndex][1], None)).startswith('1'):
+                        oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                                     dTOCData[iIndex][1], '')
+                    elif GrabValue(oHeader, dTOCData[iIndex][1], 0) < -1 and str(GrabValue(oHeader, dTOCData[iIndex][1], 0) * -1).startswith('1'):
+                        oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                                     dTOCData[iIndex][1], 0) * -1
+                elif dTOCData[iIndex][0] == 'Site Template':
+                    if str(GrabValue(oHeader, dTOCData[iIndex][1], None)).startswith('4'):
+                        oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                                     dTOCData[iIndex][1], '')
+                    elif GrabValue(oHeader, dTOCData[iIndex][1], 0) < -1 and str(GrabValue(oHeader, dTOCData[iIndex][1], 0) * -1).startswith('4'):
+                        oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = GrabValue(oHeader,
+                                                                                                     dTOCData[iIndex][1], 0) * -1
                 else:
                     oSheet[utils.get_column_letter(iIndex) + str(iCurrentRow)].value = None
             elif not dTOCData[iIndex][1]:
@@ -1158,8 +1171,8 @@ def WritePriceOverviewToFile(aPricingLines, aComments):
 
 def PartPriceDownload(oRequest):
     if oRequest.POST:
-        aPriceList = PricingObject.objects.filter(part__product_number=oRequest.POST['initial'], is_current_active=True).order_by('customer',
-                                                                                                       'sold_to', 'spud')
+        aPriceList = PricingObject.objects.filter(part__product_number=oRequest.POST['initial'],
+                                                  is_current_active=True).order_by('customer', 'sold_to', 'spud')
 
         sFileName = oRequest.POST['initial'] + ' Pricing.xlsx'
 
@@ -1192,7 +1205,8 @@ def PartPriceDownload(oRequest):
 
 
 def WritePartPriceToFile(aPriceList):
-    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid To', 'Valid From', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments']
+    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid To',
+                'Valid From', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments']
     oFile = openpyxl.Workbook()
     oSheet = oFile.active
 
@@ -1241,7 +1255,12 @@ def ErosionDownload(oRequest):
                        oPO.technology.name if oPO.technology else "(None)",
                        oPO.unit_price,
                        oPO.erosion_rate,
-                       '{:.2f}'.format(round(round((float(oPO.unit_price) - (float(oPO.unit_price) * (float(oPO.erosion_rate)/100)))*100)/100, 2)),
+                       '{:.2f}'.format(
+                           round(
+                               round(
+                                   (float(oPO.unit_price) - (float(oPO.unit_price) * (float(oPO.erosion_rate)/100)))*100
+                               )/100, 2)
+                       ),
                        '', '', ] for oPO in aRecords] if aRecords else [[]]
 
         sFileName = 'Price Erosion Pricing.xlsx'
@@ -1260,7 +1279,8 @@ def ErosionDownload(oRequest):
 
 
 def WritePriceErosionToFile(aPriceList):
-    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)', 'Erosion Rate (%)', 'Projected Unit Price ($)', 'Valid From', 'Valid To']
+    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)', 'Erosion Rate (%)',
+                'Projected Unit Price ($)', 'Valid From', 'Valid To']
     oFile = openpyxl.Workbook()
     oSheet = oFile.active
 
@@ -1273,3 +1293,42 @@ def WritePriceErosionToFile(aPriceList):
 
     return oFile
 # end def
+
+
+def DownloadSearchResults(oRequest):
+    getDict = dict(oRequest.GET)
+    keys = list(getDict.keys())
+    keys.remove('header')
+    keys.sort(key=lambda x: int(x.replace('row','')))
+
+    aWidths = [0] * len(getDict['header'])
+
+    oHeadingFont = Font(name='Arial', size=10, bold=True)
+
+    sFileName = "Search Results " + datetime.datetime.now().strftime('%Y%m%d_%H%M%S') + ".xlsx"
+
+    oFile = openpyxl.Workbook()
+
+    # Fill Revision tab
+    oSheet = oFile.active
+
+    for col in range(len(getDict['header'])):
+        oSheet[utils.get_column_letter(col + 1) + '1'] = getDict['header'][col]
+        oSheet[utils.get_column_letter(col + 1) + '1'].font = oHeadingFont
+        aWidths[col] = max(aWidths[col], len(getDict['header'][col]))
+
+    row = 2
+    for rowKey in keys:
+        for col in range(len(getDict[rowKey])):
+            oSheet[utils.get_column_letter(col + 1) + str(row)] = getDict[rowKey][col]
+            aWidths[col] = max(aWidths[col], len(getDict[rowKey][col]))
+        row += 1
+
+    for col in range(len(aWidths)):
+        oSheet.column_dimensions[utils.get_column_letter(col + 1)].width = aWidths[col] + 3
+
+    response = HttpResponse(content_type='application/ms-excel')
+    response['Content-Disposition'] = 'attachment;filename="{0}"'.format(sFileName)
+    oFile.save(response)
+
+    return response

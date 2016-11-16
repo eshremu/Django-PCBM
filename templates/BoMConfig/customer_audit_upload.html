@@ -32,7 +32,11 @@
         $('a.headtitle:contains("Customer Audit")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
         $('button[value="upload"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
         function cleanDataCheck(link){
-            window.location.href = link.dataset.href;
+            if (link.target == "_blank"){
+                window.open(link.dataset.href);
+            } else {
+                window.location.href = link.dataset.href;
+            }
         }
     </script>
 {% endblock %}

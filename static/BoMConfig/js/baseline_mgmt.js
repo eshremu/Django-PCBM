@@ -41,19 +41,26 @@ $(document).ready(function() {
 });
 
 function BuildTable(){
+    var searchText;
     if (table !== undefined){
+        searchText = $('.dataTables_filter input').val();
         table.destroy();
     }
     table = $('#data_table').DataTable({
         'paging': false,
         'ordering': false,
         'info': false,
+        'autoWidth': false,
         'scrollX': true,
         'scrollY': parseInt($('.table-wrapper').css("height")) - 71,
         fixedColumns: {
             leftColumns: 3
         }
     });
+
+    if (searchText != undefined) {
+        table.search(searchText).draw();
+    }
 }
 
 function downloadModal(){
@@ -166,5 +173,9 @@ function form_resize(){
 }
 
 function cleanDataCheck(link){
-    window.location.href = link.dataset.href;
+    if (link.target == "_blank"){
+        window.open(link.dataset.href);
+    } else {
+        window.location.href = link.dataset.href;
+    }
 }

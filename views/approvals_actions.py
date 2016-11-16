@@ -330,10 +330,10 @@ def AjaxApprove(oRequest):
                         # Alter configuration status
                         if oHeader.bom_request_type.name in ('Discontinue','Legacy'):
                             oHeader.configuration_status = REF_STATUS.objects.get(name='Discontinued')
-                            # TODO: oHeader.release_date = oLatestTracker.completed_on
+                            oHeader.release_date = oLatestTracker.completed_on
                         elif oHeader.bom_request_type.name in ('New','Update', 'Replacement'):
                             oHeader.configuration_status = REF_STATUS.objects.get(name='Active')
-                            # TODO: oHeader.release_date = oLatestTracker.completed_on
+                            oHeader.release_date = oLatestTracker.completed_on
                         elif oHeader.bom_request_type.name == 'Preliminary':
                             oHeader.configuration_status = REF_STATUS.objects.get(name='In Process')
                             oHeader.bom_request_type = REF_REQUEST.objects.get(name='New')
@@ -589,8 +589,8 @@ def ChangePart(oRequest):
             if sReplacePart:
                 if sReplacePart != sPart:
                     if aRecords:
-                        for id in aRecords:
-                            oHeader = Header.objects.get(id=id)
+                        for iId in aRecords:
+                            oHeader = Header.objects.get(id=iId)
                             # print(oHeader)
                             if oHeader.configuration_status.name != 'In Process':
                                 oNewHeader = CloneHeader(oHeader)
@@ -660,3 +660,131 @@ def ChangePart(oRequest):
         return JsonResponse(dResponse)
     else:
         return Http404
+# end def
+
+
+def CreateDocument(oRequest):
+    oHeader = Header.objects.get(id=oRequest.POST.get('id'))
+
+    if oHeader.valid_from_date < timezone.datetime.now().date():
+        oHeader.valid_from_date = timezone.datetime.now().date()
+
+    if not StrToBool(oRequest.POST.get('type')):
+        # Create Inquiry
+        data = {
+            "inquiry_type": "ZDOT",
+            "order_type": "ZTP",
+            'zy_delivery_partner': None,
+            'site_id': "PCBM Controlled",
+            "sales_org": "1259" if oHeader.customer_unit.name in ['EMC', 'Canada', 'New Canadian'] else "1263",
+            "distribution_channel": "XX",
+            "division": "XX",
+            "sales_office": oHeader.sales_office,
+            "sales_group": oHeader.sales_group,
+            "sold_to_party": oHeader.sold_to_party,
+            "ship_to_party": oHeader.ship_to_party,
+            "bill_to_party": oHeader.bill_to_party,
+            "configuration_designation": oHeader.configuration_designation,
+            "valid_from_date": max(oHeader.valid_from_date, timezone.datetime.now().date()).strftime('%Y-%m-%d') if oHeader.valid_from_date else None,
+            'po_date': oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else None,
+            "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else None,
+            "payment_terms": oHeader.payment_terms,
+            "ericsson_contract": oHeader.ericsson_contract,
+            'no_zip_routing': oHeader.no_zip_routing,
+            'internal_external_linkage': oHeader.configuration.internal_external_linkage,
+            'shipping_condition': oHeader.shipping_condition,
+            'complete_delivery': oHeader.complete_delivery,
+            'form_header': None,
+            "line_items": [
+                {
+                    'line_number': oLine.line_number,
+                    'product_number': oLine.part.base.product_number,
+                    'product_description': oLine.part.product_description,
+                    'order_qty': oLine.order_qty,
+                    'plant': oLine.plant,
+                    'sloc': oLine.sloc,
+                    'item_category': oLine.item_category,
+                    'pcode': oLine.pcode,
+                    'unit_price': oHeader.configuration.override_net_value or oHeader.configuration.net_value if not oHeader.pick_list and oLine.line_number=='10'
+                        else None if not oHeader.pick_list
+                        else GrabValue(oLine.linepricing, 'override_price') or GrabValue(oLine.linepricing, 'pricing_object.unit_price') or None,
+                    'condition_type': oLine.condition_type,
+                    'amount': oLine.amount,
+                    'contextId': oLine.contextId,
+                    'higher_level_item': oLine.higher_level_item,
+                    'material_group_5': oLine.material_group_5,
+                    'purchase_order_item_num': oLine.purchase_order_item_num,
+                }
+                for oLine in sorted(oHeader.configuration.configline_set.exclude(line_number__contains='.'), key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
+            ]
+        }
+    else:
+        # Create Site Template
+        data = {
+            "contract_type": "ZTPL",
+            'order_type': None,
+            'zy_delivery_partner': None,
+            "sales_org": "1259" if oHeader.customer_unit.name in ['EMC', 'Canada', 'New Canadian'] else "1263",
+            "distribution_channel": "XX",
+            "division": "XX",
+            "sales_office": '',
+            "sales_group": '',
+            "sold_to_party": oHeader.sold_to_party,
+            "ship_to_party": oHeader.ship_to_party,
+            "bill_to_party": oHeader.bill_to_party,
+            "configuration_designation": oHeader.configuration_designation,
+            "model_description": oHeader.model_description,
+            "valid_from_date": oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else None,
+            "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else None,
+            "ericsson_contract": oHeader.ericsson_contract,
+            'no_zip_routing': oHeader.no_zip_routing,
+            'internal_external_linkage': oHeader.configuration.internal_external_linkage,
+            'shipping_condition': oHeader.shipping_condition,
+            'complete_delivery': oHeader.complete_delivery,
+            "line_items": [
+                {
+                    'line_number': oLine.line_number,
+                    'product_number': oLine.part.base.product_number,
+                    'product_description': oLine.part.product_description,
+                    'order_qty': oLine.order_qty,
+                    'plant': oLine.plant,
+                    'sloc': oLine.sloc,
+                    'item_category': oLine.item_category,
+                    'pcode': oLine.pcode,
+                    'higher_level_item': oLine.higher_level_item,
+                    'contextId': oLine.contextId,
+                    'material_group_5': oLine.material_group_5,
+                    'customer_number': oLine.customer_number,
+                }
+                for oLine in sorted(
+                    oHeader.configuration.configline_set.exclude(line_number__contains='.'),
+                    key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')]
+                )
+            ]
+        }
+    # end if
+
+    export_dict = {
+        "data": data,
+        "pdf": StrToBool(oRequest.POST.get('pdf'), False),
+        "update": StrToBool(oRequest.POST.get('update'), False),
+        "type": StrToBool(oRequest.POST.get('type'), False),
+        "record_id": oHeader.id,
+    }
+
+    if StrToBool(oRequest.POST.get('update'), False):
+        export_dict.update({'existing_doc': oHeader.inquiry_site_template})
+
+    # If updating existing document
+    # if StrToBool(oRequest.POST.get('update'), False):
+    #     oHeader.inquiry_site_template *= -1
+    # else:
+    #     oHeader.inquiry_site_template = -1
+    # oHeader.save()
+
+    # TODO: This is where the data package gets exported
+    import pprint
+    pprint.PrettyPrinter().pprint(export_dict)
+
+    return HttpResponse(status=200)
+# end def

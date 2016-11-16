@@ -88,10 +88,20 @@
             if (!valid && !form_save){
                 messageToModal('Unsaved changes detected',
                         "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
-                        function(){window.location.href = link.dataset.href;}
+                        function(){
+                            if (link.target == "_blank"){
+                                window.open(link.dataset.href);
+                            } else {
+                                window.location.href = link.dataset.href;
+                            }
+                        }
                 );
             } else {
-                window.location.href = link.dataset.href;
+                if (link.target == "_blank"){
+                    window.open(link.dataset.href);
+                } else {
+                    window.location.href = link.dataset.href;
+                }
             }
         }
 

@@ -251,7 +251,7 @@ def ConfigPricing(oRequest):
                         dLineFilters.update({'line_number': dLine['0']})
 
                         oLineToEdit = ConfigLine.objects.filter(**dLineFilters)[0]
-                        oLinePrice = LinePricing.objects.get(config_line=oLineToEdit)
+                        (oLinePrice, _) = LinePricing.objects.get_or_create(config_line=oLineToEdit)
                         oLinePrice.override_price = dLine['7'] or None
 
                         if not oLineToEdit.config.header.pick_list and dLine['0'] == '10':
@@ -266,6 +266,11 @@ def ConfigPricing(oRequest):
                     oConfig = Configuration.objects.get(**dConfigFilters)
                     oConfig.override_net_value = float(oRequest.POST['net_value'])
                     oConfig.net_value = net_total
+                    try:
+                        ZUSTLine = oConfig.configline_set.get(line_number='10')
+                    except ConfigLine.DoesNotExist:
+                        ZUSTLine = None
+                    oConfig.total_value = (oConfig.override_net_value or oConfig.net_value) + (ZUSTLine.amount if ZUSTLine and (ZUSTLine.condition_type or '').upper()=='ZUST' else 0)
                     oConfig.save()
 
                     status_message = 'Data saved.'

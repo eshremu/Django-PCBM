@@ -24,6 +24,7 @@
         var approve_list_url="{% url 'bomconfig:approve_list' %}";
         var approve_url="{% url 'bomconfig:approve' %}";
         var approval_levels ={{ approval_seq|slice:"1:-1"|safe }};
+        var doc_url="{% url 'bomconfig:document_create' %}";
     </script>
     <script type="text/javascript" src="{% static 'BoMConfig/js/actions.js' %}"></script>
 {% endif %}

@@ -4,12 +4,12 @@ menulisting = [
     {'title':"Upload","destination":"bomconfig:upload"},
     {'title':"Baseline","destination":"bomconfig:baseload"},
     {'title':"Pricing","destination":"bomconfig:pricing"},
+    {'title': "Actions", "destination": "bomconfig:action"},
     {'title':"Approvals","destination":"bomconfig:approval"},
-    {'title':"Actions","destination":"bomconfig:action"},
     {'title':"Customer Audit","destination":"bomconfig:customeraudit"},
     {'title':"Admin","destination":"bomconfig:adminlanding"},
     {'title':"Tools","children":[
-        {'title':'REACT', 'destination':'http://eusaamw0065/REACT_test/default.asp?timesin=1'},
+        {'title':'REACT', 'destination':'http://eusaamw0065/REACT_test/default.asp?timesin=1', 'target':'_blank'},
         ]
     },
 ]

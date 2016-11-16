@@ -55,8 +55,10 @@ $(document).ready(function(){
     $(document).on('click change', '.recordselect',function(){
         if($('.recordselect:checked').length > 0) {
             $('#download').removeAttr('disabled');
+            $('#downloadcustom').removeAttr('disabled');
         } else {
             $('#download').attr('disabled', 'disabled');
+            $('#downloadcustom').attr('disabled', 'disabled');
         }
     });
 
@@ -68,6 +70,60 @@ $(document).ready(function(){
         });
         destination += '?list=' + encodeURIComponent(list.slice(0, -1));
         window.open(destination, '_blank','left=100,top=100,height=150,width=500,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no');
+    });
+
+    $(document).on('click', '#downloadcustom', function(){
+        var $table = $('<table style="white-space: nowrap">');
+        var $row = $('<tr>');
+
+        var $set = $('#result_table th:gt(0)');
+
+        $set.each(function(idx, elem){
+            var $td = $('<td>');
+            
+            if(idx==1){return;}
+
+            $td.append('<div style="display: inline;"><input id="'+idx+'" type="checkbox"></div>');
+            $td.append($('<label>').text($(elem).text()).attr('for', idx));
+            $td.css('width', '25%');
+            $td.css('padding-right', '10px');
+
+            $row.append($td);
+            if (Math.max(idx, 1) % 4 == 0 || idx == $set.length - 1){
+                $table.append($row);
+                if (idx != $set.length - 1) {
+                    $row = $('<tr>');
+                }
+            }
+        });
+
+        messageToModal('Download Results', $table, function(){
+            var destination = reporturl + '?';
+            var chosenFields = [];
+            $('#messageModal .modal-body input:checked').each(function(idx, elem){
+                chosenFields.push(parseInt($(this).attr('id')));
+            });
+
+            var $rowSet  = $('#result_table tbody tr').has('input:checked');
+            $rowSet.each(function(idx, elem){
+                $(this).find('td').each(function(){
+                    if(chosenFields.indexOf(this.cellIndex-1) != -1) {
+                        destination += 'row' + (idx + 1) + '=' + encodeURIComponent($(this).text()) + '&';
+                    }
+                });
+            });
+
+            var $rowSet  = $('#result_table thead tr');
+            $rowSet.each(function(idx, elem){
+                $(this).find('th').each(function(){
+                    if(chosenFields.indexOf(this.cellIndex-1) != -1) {
+                        destination += 'header=' + encodeURIComponent($(this).text()) + '&';
+                    }
+                });
+            });
+
+            window.open(destination, '_blank','left=100,top=100,height=150,width=500,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no');
+        });
     });
 });
 
@@ -105,7 +161,8 @@ function search(eventObj){
 
             base_rev: $('#base_rev').val(),
             release_param: $('#release_param').val(),
-            release: $('#release').val()
+            release: $('#release').val(),
+            latest_only: $('#latest_only').prop('checked')
         },
         headers:{
             'X-CSRFToken': getcookie('csrftoken')
@@ -133,7 +190,7 @@ function search(eventObj){
                 columnDefs: [
                     {
                         orderable: false,
-                        targets: 0
+                        targets: [0, 2]
                     }
                 ]
             });
@@ -147,5 +204,9 @@ function search(eventObj){
     return false;
 }
 function cleanDataCheck(link){
-    window.location.href = link.dataset.href;
+    if (link.target == "_blank"){
+        window.open(link.dataset.href);
+    } else {
+        window.location.href = link.dataset.href;
+    }
 }
