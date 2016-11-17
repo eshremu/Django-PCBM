@@ -943,7 +943,6 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
         aData = []
         for Line in aConfigLines:
             if config:
-<<<<<<< b9049f411a45ce3f9985c9545918087a90c46381
                 dLine = {
                     '1': Line.line_number,
                     '2': ('..' if Line.is_grandchild else '.' if Line.is_child else '') + Line.part.base.product_number,
@@ -997,46 +996,6 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                         dLine.update({'18': ''})
                     # end if
                 # end if
-=======
-                dLine ={'1': Line.line_number,
-                        '2': ('..' if Line.is_grandchild else '.' if Line.is_child else '') + Line.part.base.product_number,
-                        '3': Line.part.product_description,
-                        '4': Line.order_qty,
-                        '5': Line.part.base.unit_of_measure,
-                        '6': Line.contextId,
-                        '7': Line.plant,
-                        '8': ('0' * (4 - len(str(Line.sloc)))) + Line.sloc if Line.sloc else Line.sloc,
-                        '9': Line.item_category,
-                        '10': Line.pcode,
-                        '11': Line.commodity_type,
-                        '12': Line.package_type,
-                        '13': str(Line.spud),
-                        '14': Line.REcode,
-                        '15': Line.mu_flag,
-                        '16': ('0' * (2 - len(Line.x_plant))) + Line.x_plant if Line.x_plant else '',
-                        '17': Line.internal_notes,
-                        '18': (
-                            "!" + str(Line.linepricing.override_price) if GrabValue(Line,'linepricing.override_price') else
-                            oConfig.net_value if not oConfig.header.pick_list else
-                            GrabValue(Line, 'linepricing.pricing_object.unit_price') if GrabValue(Line,'linepricing.pricing_object') else ''
-                        ) if (str(Line.line_number) == '10' and not oConfig.header.pick_list) or
-                             oConfig.header.pick_list else '',
-                        '19': Line.higher_level_item,
-                        '20': Line.material_group_5,
-                        '21': Line.purchase_order_item_num,
-                        '22': Line.condition_type,
-                        '23': Line.amount,
-                        '24': Line.traceability_req,
-                        '25': Line.customer_asset,
-                        '26': Line.customer_asset_tagging,
-                        '27': Line.customer_number,
-                        '28': Line.sec_customer_number,
-                        '29': Line.vendor_article_number,
-                        '30': Line.comments,
-                        '31': Line.additional_ref,
-
-                    }
->>>>>>> Resolved PCBM 13, 15-17, 20, 22-25, 27, 30, and 36
             else:
                 LineNumber = None
                 if '.' not in Line.line_number:

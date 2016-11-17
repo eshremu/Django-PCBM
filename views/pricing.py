@@ -199,7 +199,6 @@ def ConfigPricing(oRequest):
         elif iProgram:
             aConfigMatches = aConfigMatches.filter(program=None)
 
-
         if iBaseline and iBaseline not in ('None', 'NONE', None):
             aConfigMatches = aConfigMatches.filter(baseline__baseline__id=iBaseline)
         elif iBaseline:

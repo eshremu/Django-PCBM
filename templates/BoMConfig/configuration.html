@@ -122,38 +122,8 @@
         var validating = false;
         var valid = true;
         var firstLoad = true;
-        var recode = {
-            "PR-": '<span class="legendHead">Definition of Release Object</span><br/><br/>A design object intended for release has <br/>been defined, and the product number <br/>and R-state (P-state), have been <br/>registered.',
-            "PRM": '<span class="legendHead"></span><br/><br/> ',
-            "PRT": '<span class="legendHead"></span><br/><br/> ',
-            "PR0": '<span class="legendHead"></span><br/><br/> ',
-            "PR1": '<span class="legendHead"></span><br/><br/> ',
-            "PR2": '<span class="legendHead"></span><br/><br/> ',
-            "PRX": '<span class="legendHead"></span><br/><br/> ',
-            "PRS": '<span class="legendHead"></span><br/><br/> ',
-            "PRA": '<span class="legendHead"></span><br/><br/> ',
-            "PRG": '<span class="legendHead"></span><br/><br/> ',
-            "PRB": '<span class="legendHead"></span><br/><br/> ',
-            "RE0": '<span class="legendHead"></span><br/><br/> ',
-            "RE1": '<span class="legendHead"></span><br/><br/> ',
-            "RE2": '<span class="legendHead"></span><br/><br/> ',
-            "REX": '<span class="legendHead"></span><br/><br/> ',
-            "RE3": '<span class="legendHead"></span><br/><br/> ',
-            "RE4": '<span class="legendHead"></span><br/><br/> ',
-            "REM": '<span class="legendHead"></span><br/><br/> ',
-            "RE5": '<span class="legendHead"></span><br/><br/> ',
-            "RE6": '<span class="legendHead"></span><br/><br/> ',
-            "DS-": '<span class="legendHead"></span><br/><br/> ',
-            "DS1": '<span class="legendHead"></span><br/><br/> ',
-            "DS2": '<span class="legendHead"></span><br/><br/> ',
-            "DS2/7": '<span class="legendHead"></span><br/><br/> ',
-            "DS2/8": '<span class="legendHead"></span><br/><br/> ',
-            "DS3": '<span class="legendHead"></span><br/><br/> ',
-            "DS4": '<span class="legendHead"></span><br/><br/> ',
-        };
 
         function pasting() {
-            console.log("IM FUNCKING pasting!!!");
             var text = window.clipboardData.getData('Text');
             text = text.replace(/\s/g, " ");
             console.log(text);
@@ -231,13 +201,6 @@
 
             $(window).resize(function(){
                 form_resize();
-            });
-
-            $(document).tooltip({
-                items: ".legend",
-                content: function() {
-                    return recode[$(this).contents()[0].data];
-                },
             });
 
             $('#saveForm').click(function(){
@@ -474,7 +437,6 @@
             } else {
                 Handsontable.renderers.HtmlRenderer.apply(this, arguments);
             }
-            $('td').attr('onpaste', "pasting()");
         }
 
         function build_table() {
@@ -497,7 +459,7 @@
                 columns: determined_cols,
                 colWidths: [50,50,150,342,72,50,74,50,50,62,264,81,103,50,68,63,117,65,74,119,116,162,105,62,160,118,246,124,176,151,250,250],
                 manualColumnResize: true,
-                copyPaste: false,
+                copyPaste: true,
                 wordWrap: true,
                 {% if header.configuration_status.name == 'In Process' %}
                     contextMenu: {
@@ -556,9 +518,7 @@
                         cellProperties.className = 'htLeft';
                     } else if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
                         cellProperties.className = 'htRight';
-                    } else if (['RE-Code', "X-Plant Mat'l Stat"].indexOf(this.instance.getColHeader(col)) != -1){
-                        cellProperties.className = cellProperties.className + ' legend';
-                    }
+                    } 
 
                     if(error_matrix.length !== 0 && typeof(error_matrix[row]) !== "undefined"){
                         cellProperties.comment = error_matrix[row][col];
@@ -624,8 +584,6 @@
                             }
                         } else if (['Product Number'].indexOf(this.getColHeader(changes[i][1])) != -1) {
                             changes[i][3] = changes[i][3].replace(/\s/g,'');
-                        } else {
-                            changes[i][3] = changes[i][3].replace(/\s/g,' ');
                         }
                     }
                 },
@@ -635,17 +593,12 @@
                 clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
                 $('[name="data_form"]').remove();
                 clean_sub = $('#configform').serialize();
-                $('td').attr('onpaste', "pasting()");
             }
         }
 
         function load_table() {
             hot.destroy();
             build_table();
-        }
-        
-        function showData(eventObj) {
-            console.log(hot.getSourceData());
         }
 
         function data_submit(eventObj) {
