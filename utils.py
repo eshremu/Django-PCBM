@@ -957,4 +957,3 @@ def DetectBrowser(oRequest):
         return sTemp
     # end if
 # end def
-
