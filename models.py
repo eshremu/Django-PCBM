@@ -604,7 +604,7 @@ class ConfigLine(models.Model):
     plant = models.CharField(max_length=50, blank=True, null=True)
     sloc = models.CharField(max_length=50, blank=True, null=True)
     item_category = models.CharField(max_length=50, blank=True, null=True)
-    # spud = models.CharField(max_length=50, blank=True, null=True)
+    spud = models.CharField(max_length=50, blank=True, null=True)
     spud = models.ForeignKey(REF_SPUD, blank=True, null=True, unique=False, db_constraint=False, db_index=False)
     internal_notes = models.TextField(blank=True, null=True)
     higher_level_item = models.CharField(max_length=50, blank=True, null=True)

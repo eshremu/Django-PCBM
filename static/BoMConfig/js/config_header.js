@@ -10,6 +10,8 @@ $(document).ready(function(){
     var max = 0;
     $('tr td:first-child').each(function(idx, elem){max = Math.max(max, $(elem).width())});
     $('tr td:first-child').each(function(idx, elem){$(elem).width(max)});
+    $('#id_valid_from_date').datepicker({dateFormat: "yy-mm-dd"});
+    $('#id_valid_to_date').datepicker({dateFormat: "yy-mm-dd"});
 
     $('#searchSubmit').click(function(){
         req_search();

@@ -943,6 +943,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
         aData = []
         for Line in aConfigLines:
             if config:
+<<<<<<< b9049f411a45ce3f9985c9545918087a90c46381
                 dLine = {
                     '1': Line.line_number,
                     '2': ('..' if Line.is_grandchild else '.' if Line.is_child else '') + Line.part.base.product_number,
@@ -996,6 +997,46 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                         dLine.update({'18': ''})
                     # end if
                 # end if
+=======
+                dLine ={'1': Line.line_number,
+                        '2': ('..' if Line.is_grandchild else '.' if Line.is_child else '') + Line.part.base.product_number,
+                        '3': Line.part.product_description,
+                        '4': Line.order_qty,
+                        '5': Line.part.base.unit_of_measure,
+                        '6': Line.contextId,
+                        '7': Line.plant,
+                        '8': ('0' * (4 - len(str(Line.sloc)))) + Line.sloc if Line.sloc else Line.sloc,
+                        '9': Line.item_category,
+                        '10': Line.pcode,
+                        '11': Line.commodity_type,
+                        '12': Line.package_type,
+                        '13': str(Line.spud),
+                        '14': Line.REcode,
+                        '15': Line.mu_flag,
+                        '16': ('0' * (2 - len(Line.x_plant))) + Line.x_plant if Line.x_plant else '',
+                        '17': Line.internal_notes,
+                        '18': (
+                            "!" + str(Line.linepricing.override_price) if GrabValue(Line,'linepricing.override_price') else
+                            oConfig.net_value if not oConfig.header.pick_list else
+                            GrabValue(Line, 'linepricing.pricing_object.unit_price') if GrabValue(Line,'linepricing.pricing_object') else ''
+                        ) if (str(Line.line_number) == '10' and not oConfig.header.pick_list) or
+                             oConfig.header.pick_list else '',
+                        '19': Line.higher_level_item,
+                        '20': Line.material_group_5,
+                        '21': Line.purchase_order_item_num,
+                        '22': Line.condition_type,
+                        '23': Line.amount,
+                        '24': Line.traceability_req,
+                        '25': Line.customer_asset,
+                        '26': Line.customer_asset_tagging,
+                        '27': Line.customer_number,
+                        '28': Line.sec_customer_number,
+                        '29': Line.vendor_article_number,
+                        '30': Line.comments,
+                        '31': Line.additional_ref,
+
+                    }
+>>>>>>> Resolved PCBM 13, 15-17, 20, 22-25, 27, 30, and 36
             else:
                 LineNumber = None
                 if '.' not in Line.line_number:
@@ -1163,6 +1204,8 @@ def Validator(oRequest):
         Parent = 0
         Child = 0
         Grandchild = 0
+        parents = set()
+        children = set()
 
         # Convert list of lists to list of dicts
         if type(form_data[0]) == list:
@@ -1213,14 +1256,25 @@ def Validator(oRequest):
                         Parent = int(this)
                         Child = 0
                         Grandchild = 0
+                        parents.add(str(Parent))
                     elif this.count('.') == 1:
                         Parent = int(this[:this.find('.')])
-                        Child = int(this[this.rfind('.')+1:])
-                        Grandchild = 0
-                    elif form_data[index]['1'].count('.') == 2:
+                        if str(Parent) not in parents:
+                            error_matrix[index][1] += 'X - This parent ('+str(Parent)+') does not exist.\n'
+                        else:
+                            Child = int(this[this.rfind('.')+1:])
+                            children.add(str(Parent)+"."+str(Child))
+                            Grandchild = 0
+                    elif this.count('.') == 2:
                         Parent = int(this[:this.find('.')])
-                        Child = int(this[this.find('.')+1: this.rfind('.')])
-                        Grandchild = int(this[this.rfind('.')+1:])
+                        if str(Parent) not in parents:
+                            error_matrix[index][1] += 'X - This parent ('+str(Parent)+') does not exist.\n'
+                        else:
+                            Child = int(this[this.find('.')+1: this.rfind('.')])
+                            if str(Parent)+"."+str(Child) not in children:
+                                error_matrix[index][1] += 'X - This child ('+str(Parent)+'.'+str(Child)+') does not exist.\n'
+                            else:
+                                Grandchild = int(this[this.rfind('.')+1:])
                     # end if
                 else:
                     form_data[index]['1'] = ''
@@ -1254,6 +1308,9 @@ def Validator(oRequest):
             # Product Description
             if '3' not in form_data[index] or form_data[index]['3'].strip() in ('None', ''):
                 form_data[index]['3'] = ''
+            else:
+                if len(form_data[index]['3']) > 40:
+                    error_matrix[index][3] += 'X - Product Description exceeds 40 characters.\n'
 
             # Order Qty
             if '4' not in form_data[index] or not re.match("^\d+$", form_data[index]['4'] or ''):

@@ -4,6 +4,7 @@
 {% block subcontent %}
 {% if header_read_authorized %}
 <div id="header-form">
+    <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-ui.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'BoMConfig/js/config_header.js' %}"></script>
     <form id="headerform" method="POST" autocomplete="off">
         {% csrf_token %}

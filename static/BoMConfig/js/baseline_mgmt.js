@@ -73,6 +73,16 @@ function downloadModal(){
     );
 }
 
+function pickCustomer(){
+    messageToModal('Choose Customer',
+            '<label style="padding-right:5px;">Customer:</label><select>' + cust_list + '</select>',
+            function(){
+                $("#downloadform input[name='customer']").val($('#messageModal .modal-body select').val());
+                $('#downloadform').submit();
+            }
+    );
+}
+
 function rollbackTest(){
     $('#myModal').modal('show');
     $.ajax({

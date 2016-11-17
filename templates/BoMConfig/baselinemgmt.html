@@ -144,8 +144,9 @@
     <div id="action_buttons" style="margin-top: 5px;">
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinemasterdownload' %}">
             {% csrf_token %}
+            <input id="master-cust-unit" name="customer" type="hidden" value="">
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
-            <button style="display: inline" id="download" class="btn" type="submit">Download</button>
+            <button style="display: inline" id="download" class="btn" type="button" onclick="pickCustomer()">Download</button>
         </form>
     </div>
     {% endif %}
@@ -155,6 +156,7 @@
 </div>
 <script>
     var revision_list = '{% for revision in tables.0.revisions %}<option value="{{ revision.revision.version }}">{{ revision.revision.version }}</option>{% endfor %}';
+    var cust_list = '<option value="">All</option>{% for cust in cust_list %}<option value="{{ cust.name }}">{{ cust.name }}</option>{% endfor %}';
     var rollback_url = "{% url 'bomconfig:baselinerollback' %}";
     var rollbacktest_url = "{% url 'bomconfig:baselinerollbacktest' %}";
 </script>

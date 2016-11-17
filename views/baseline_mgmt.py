@@ -3,7 +3,7 @@ __author__ = 'epastag'
 from django.http import JsonResponse, Http404, QueryDict
 from django.db import IntegrityError
 
-from BoMConfig.models import Header, Baseline, SecurityPermission, Baseline_Revision
+from BoMConfig.models import Header, Baseline, SecurityPermission, Baseline_Revision, REF_CUSTOMER
 from BoMConfig.forms import SubmitForm
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue, RollbackBaseline, TestRollbackBaseline, RollbackError
@@ -47,8 +47,7 @@ def BaselineMgmt(oRequest):
             # First get list of revisions going back to 'A'
             aRevisions = sorted(list(set([oBaseRev.version for oBaseRev in oBaseline.baseline_revision_set.order_by('version')])),
                                 key=cmp_to_key(lambda x,y:(-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
-                                                                 or list(x.strip('1234567890')) < (['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) +
-                                                                                                   list(y.strip('1234567890')))
+                                                                 or list(x.strip('1234567890')) < (['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) + list(y.strip('1234567890')))
                                                                  or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y)) else 0 if x == y else 1)),
                                 reverse=True)
 
@@ -108,7 +107,7 @@ def BaselineMgmt(oRequest):
     aTitles = ['', '', 'Configuration','Status','BoM Request Type','Program','Customer Number','Model','Model Description','Customer Price','Created Year',
                'Inquiry/Site Template Number','Model Replacing','Comments','Release Date','ZUST','P-Code','Plant']
 
-    return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html', dContext={'form': form, 'tables': aTable, 'downloadable': bDownloadable, 'column_titles': aTitles})
+    return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html', dContext={'form': form, 'tables': aTable, 'downloadable': bDownloadable, 'column_titles': aTitles, 'cust_list': REF_CUSTOMER.objects.all()})
 # end def
 
 
