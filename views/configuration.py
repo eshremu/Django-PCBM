@@ -1163,6 +1163,8 @@ def Validator(oRequest):
         Parent = 0
         Child = 0
         Grandchild = 0
+        parents = set()
+        children = set()
 
         # Convert list of lists to list of dicts
         if type(form_data[0]) == list:
@@ -1213,14 +1215,25 @@ def Validator(oRequest):
                         Parent = int(this)
                         Child = 0
                         Grandchild = 0
+                        parents.add(str(Parent))
                     elif this.count('.') == 1:
                         Parent = int(this[:this.find('.')])
-                        Child = int(this[this.rfind('.')+1:])
-                        Grandchild = 0
-                    elif form_data[index]['1'].count('.') == 2:
+                        if str(Parent) not in parents:
+                            error_matrix[index][1] += 'X - This parent ('+str(Parent)+') does not exist.\n'
+                        else:
+                            Child = int(this[this.rfind('.')+1:])
+                            children.add(str(Parent)+"."+str(Child))
+                            Grandchild = 0
+                    elif this.count('.') == 2:
                         Parent = int(this[:this.find('.')])
-                        Child = int(this[this.find('.')+1: this.rfind('.')])
-                        Grandchild = int(this[this.rfind('.')+1:])
+                        if str(Parent) not in parents:
+                            error_matrix[index][1] += 'X - This parent ('+str(Parent)+') does not exist.\n'
+                        else:
+                            Child = int(this[this.find('.')+1: this.rfind('.')])
+                            if str(Parent)+"."+str(Child) not in children:
+                                error_matrix[index][1] += 'X - This child ('+str(Parent)+'.'+str(Child)+') does not exist.\n'
+                            else:
+                                Grandchild = int(this[this.rfind('.')+1:])
                     # end if
                 else:
                     form_data[index]['1'] = ''
@@ -1254,6 +1267,9 @@ def Validator(oRequest):
             # Product Description
             if '3' not in form_data[index] or form_data[index]['3'].strip() in ('None', ''):
                 form_data[index]['3'] = ''
+            else:
+                if len(form_data[index]['3']) > 40:
+                    error_matrix[index][3] += 'X - Product Description exceeds 40 characters.\n'
 
             # Order Qty
             if '4' not in form_data[index] or not re.match("^\d+$", form_data[index]['4'] or ''):

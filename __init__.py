@@ -4,7 +4,7 @@ menulisting = [
     {'title':"Upload","destination":"bomconfig:upload"},
     {'title':"Baseline","destination":"bomconfig:baseload"},
     {'title':"Pricing","destination":"bomconfig:pricing"},
-    {'title': "Actions", "destination": "bomconfig:action"},
+    {'title':"Actions","destination":"bomconfig:action"},
     {'title':"Approvals","destination":"bomconfig:approval"},
     {'title':"Customer Audit","destination":"bomconfig:customeraudit"},
     {'title':"Admin","destination":"bomconfig:adminlanding"},

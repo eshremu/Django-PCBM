@@ -17,7 +17,7 @@ import openpyxl
 from openpyxl import utils
 from openpyxl.styles import Font, Color, colors, Border, Alignment, Side, borders, GradientFill
 from openpyxl.comments import Comment
-from openpyxl.drawing import Image
+# from openpyxl.drawing import Image
 import os
 from functools import cmp_to_key
 from urllib.parse import unquote
@@ -330,11 +330,16 @@ def DownloadBaselineMaster(oRequest):
         return Http404()
     # end if
 
+    sCustomer = oRequest.POST['customer']
     sCookie = oRequest.POST['file-cookie']
     sFileName = "BOM Master File - {}.xlsx".format(str(datetime.datetime.now().strftime('%d%b%Y')))
 
     aTable = []
-    aBaselines = Baseline.objects.all()
+    aBaselines=[]
+    if sCustomer == "" or sCustomer is None:
+        aBaselines = Baseline.objects.all()
+    else:
+        aBaselines = Baseline.objects.filter(customer__name=sCustomer)
     for oBaseline in aBaselines:
         aRevisions = [oBaseline.current_inprocess_version or None, oBaseline.current_active_version or None]
         dTableData = {'baseline': oBaseline, 'revisions': []}
@@ -352,20 +357,34 @@ def DownloadBaselineMaster(oRequest):
 
         aTable.append(dTableData)
     # end for
-
-    aTable.append(
-        {
-            'baseline': 'No Associated Baseline',
-            'revisions': [
-                {
-                    'revision': '',
-                    'configs': Header.objects.filter(baseline__isnull=True).order_by('configuration_status',
-                                                                                     'pick_list',
-                                                                                     'configuration_designation')
-                }
-            ]
-        }
-    )
+    if sCustomer == "" or sCustomer is None:
+        aTable.append(
+            {
+                'baseline': 'No Associated Baseline',
+                'revisions': [
+                    {
+                        'revision': '',
+                        'configs': Header.objects.filter(baseline__isnull=True).order_by('configuration_status',
+                                                                                         'pick_list',
+                                                                                         'configuration_designation')
+                    }
+                ]
+            }
+        )
+    else:
+        aTable.append(
+            {
+                'baseline': 'No Associated Baseline',
+                'revisions': [
+                    {
+                        'revision': '',
+                        'configs': Header.objects.filter(baseline__isnull=True, customer_unit__name=sCustomer).order_by('configuration_status',
+                                                                                         'pick_list',
+                                                                                         'configuration_designation')
+                    }
+                ]
+            }
+        )
 
     headerFont = Font(name='Arial', size=10, bold=True)
     ipFont = Font(name='Arial', size=10, color='009900')
