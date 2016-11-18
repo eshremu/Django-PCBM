@@ -51,18 +51,9 @@ def PartPricing(oRequest):
                         except PricingObject.DoesNotExist:
                             oCurrentPriceObj = None
 
-                        # Updating entry with $0 as price or updating comments will modify current PriceObject in-place
-                        if oCurrentPriceObj and ((oCurrentPriceObj.unit_price == 0 and float(aRowToSave[4]) != 0) or
-                                                 (oCurrentPriceObj.comments != aRowToSave[10])):
-                            if oCurrentPriceObj.unit_price == 0 and float(aRowToSave[4]) != 0:
-                                oCurrentPriceObj.unit_price = aRowToSave[4]
-                            if oCurrentPriceObj.comments != aRowToSave[10]:
-                                oCurrentPriceObj.comments = aRowToSave[10]
-                            oCurrentPriceObj.save()
-
                         # Creating a new PriceObject or changing price, erosion, erosion rate, or cut-over date
                         # generates new current PriceObject
-                        elif not oCurrentPriceObj or \
+                        if not oCurrentPriceObj or \
                                 oCurrentPriceObj.unit_price != float(aRowToSave[4]) or \
                                 (aRowToSave[5] and datetime.datetime.strptime(aRowToSave[5],
                                                                               '%m/%d/%Y').date() != oCurrentPriceObj.valid_to_date) or \
@@ -74,7 +65,7 @@ def PartPricing(oRequest):
                                 (aRowToSave[9] and oCurrentPriceObj.erosion_rate != float(aRowToSave[9])):
                             if oCurrentPriceObj:
                                 oCurrentPriceObj.is_current_active = False
-                                oCurrentPriceObj.valid_to_date = datetime.date.today()
+                                oCurrentPriceObj.valid_to_date = max(datetime.date.today(), datetime.datetime.strptime(aRowToSave[6], '%m/%d/%Y').date() if aRowToSave[6] else datetime.date.today())
                                 oCurrentPriceObj.save()
 
                             try:
@@ -93,6 +84,15 @@ def PartPricing(oRequest):
                                                              previous_pricing_object=oCurrentPriceObj)
                             except Exception as ex:
                                 status_message = "ERROR: " + str(ex)
+                            # end try
+                        # Updating comments only will modify current PriceObject in-place
+                        elif oCurrentPriceObj and oCurrentPriceObj.comments != aRowToSave[10]:
+                            if oCurrentPriceObj.comments != aRowToSave[10]:
+                                oCurrentPriceObj.comments = aRowToSave[10]
+                            oCurrentPriceObj.save()
+                        # end if
+                    # end for
+                # end if
 
                 aCustomers = REF_CUSTOMER.objects.all()
                 aSPUDS = REF_SPUD.objects.all()
