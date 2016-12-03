@@ -7,7 +7,7 @@
         {% if viewauthorized %}
         <div id="action_buttons" style="margin: 5px 0 10px 0;">
             <button class="btn" type="button" name="action" value="inprocess" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:action_inprocess' %}'>In Process</button>
-            <button class="btn" type="button" name="action" value="active" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:action_active' %}'>Active</button>
+            <button class="btn" type="button" name="action" value="active" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:action_active' %}'>Documents</button>
             <button class="btn" type="button" name="action" value="hold" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:action_hold' %}'>On Hold</button>
             <button class="btn" type="button" name="action" value="changepart" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:action_changepart' %}'>Change Part</button>
         </div>

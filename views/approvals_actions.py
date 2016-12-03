@@ -10,7 +10,8 @@ from django.db import transaction
 from django.db.models import Q
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
-    HeaderTimeTracker, REF_STATUS, ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, LinePricing
+    HeaderTimeTracker, REF_STATUS, ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, LinePricing,\
+    DocumentRequest
 from BoMConfig.utils import UpRev, GrabValue, StrToBool
 from BoMConfig.views.landing import Unlock, Default
 from django.contrib.auth.models import User
@@ -428,6 +429,11 @@ def CloneHeader(oHeader):
         oNewHeader.react_request = ''
     # end if
 
+    oNewHeader.change_notes = None
+    oNewHeader.change_comments = None
+    oNewHeader.release_date = None
+    oNewHeader.model_replaced_link = None
+
     if oNewHeader.baseline_impacted:
         oNewHeader.baseline = Baseline_Revision.objects.get(
             baseline=Baseline.objects.get(title=oNewHeader.baseline_impacted),
@@ -561,7 +567,8 @@ def ChangePart(oRequest):
                                                  'program': tHeader[1].name if tHeader[1] else '(None)',
                                                  'baseline': tHeader[2] or '(None)',
                                                  'status': tHeader[3].configuration_status.name,
-                                                 'selectable': tHeader[4]} for tHeader in aHeaders]
+                                                 'selectable': tHeader[4],
+                                                 'revision': tHeader[3].baseline_revision or '(None)'} for tHeader in aHeaders]
                         dResponse['part'] = sPart
                 except PartBase.DoesNotExist:
                     dResponse['error'] = True
@@ -768,7 +775,7 @@ def CreateDocument(oRequest):
         "data": data,
         "pdf": StrToBool(oRequest.POST.get('pdf'), False),
         "update": StrToBool(oRequest.POST.get('update'), False),
-        "type": StrToBool(oRequest.POST.get('type'), False),
+        "type": StrToBool(oRequest.POST.get('type'), False),  # type = False for Inquiry, True for Site Template
         "record_id": oHeader.id,
     }
 
@@ -776,15 +783,16 @@ def CreateDocument(oRequest):
         export_dict.update({'existing_doc': oHeader.inquiry_site_template})
 
     # If updating existing document
-    # if StrToBool(oRequest.POST.get('update'), False):
-    #     oHeader.inquiry_site_template *= -1
-    # else:
-    #     oHeader.inquiry_site_template = -1
-    # oHeader.save()
+    if StrToBool(oRequest.POST.get('update'), False):
+        oHeader.inquiry_site_template *= -1
+    else:
+        oHeader.inquiry_site_template = -1
+    oHeader.save()
 
-    # TODO: This is where the data package gets exported
-    import pprint
-    pprint.PrettyPrinter().pprint(export_dict)
+    # DONE: This is where the data package gets exported
+    # import pprint
+    # pprint.PrettyPrinter().pprint(export_dict)
+    DocumentRequest.objects.create(req_data=json.dumps(export_dict))
 
     return HttpResponse(status=200)
 # end def

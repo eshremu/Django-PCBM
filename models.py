@@ -1053,6 +1053,12 @@ class CustomerPartInfo(models.Model):
 # end class
 
 
+class DocumentRequest(models.Model):
+    req_data = models.TextField()
+    new_req = models.DateTimeField(null=True, default=None, blank=True)
+# end class
+
+
 def sessionstr(self):
     if '_auth_user_id' in self.get_decoded():
         return User.objects.get(pk=self.get_decoded()['_auth_user_id']).username + '_' + str(self.session_key)

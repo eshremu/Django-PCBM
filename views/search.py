@@ -98,7 +98,7 @@ def Search(oRequest, advanced=False):
                 for header in aHeaders:
                     results.write(('<tr><td><input class="recordselect" type="checkbox" value="{8}"/></td><td><a href="?'
                                     'link={0}">{1}</a></td><td><a href="?link={0}&readonly=1" target="_blank"><span class="glyphicon '
-                                    'glyphicon-new-window"></span></a></td><td>{2}</td><td>{10}</td><td>{3}</td><td>{4}'
+                                    'glyphicon-new-window" title="Open in new window"></span></a></td><td>{2}</td><td>{10}</td><td>{3}</td><td>{4}'
                                     '</td><td>{5}</td><td>{6}</td><td>{7}</td><td>{9}</td></tr>')
                                   .format(searchscramble(header.pk), header.configuration_designation,
                                           GrabValue(header, 'program.name') or '(None)', header.baseline_version,
@@ -305,7 +305,7 @@ def Search(oRequest, advanced=False):
                 for oResult in aResults:
                     results.write(('<tr><td><input class="recordselect" type="checkbox" value="{4}"></td>'
                                    '<td><a href="?link={0}">{1}</a></td><td><a href="?link={0}&readonly=1" target="_blank">'
-                                   '<span class="glyphicon glyphicon-new-window"></span></a></td>'
+                                   '<span class="glyphicon glyphicon-new-window" title="Open in new window"></span></a></td>'
                                    '<td>{2}</td><td>{3}</td>').format(
                         searchscramble(str(GrabValue(oResult,'config.header.pk' if isinstance(oResult, ConfigLine) else 'header.pk'))),
                         str(GrabValue(oResult,'config.header.configuration_designation' if isinstance(oResult, ConfigLine)

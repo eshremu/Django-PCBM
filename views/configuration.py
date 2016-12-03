@@ -1076,10 +1076,10 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                      '9': oHeader.bom_request_type.name,
                      '10': oHeader.configuration_status.name,
                      '11': oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('1') else
-                        oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and
+                        oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template and oHeader.inquiry_site_template < -1 and
                                                               str(oHeader.inquiry_site_template).startswith('-1') else '',
                      '12': oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('4') else
-                        oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and
+                        oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template and oHeader.inquiry_site_template < -1 and
                                                               str(oHeader.inquiry_site_template).startswith('-4') else '',
                      '13': (oHeader.internal_notes or ''),
                      '14': (oHeader.external_notes or '')}]

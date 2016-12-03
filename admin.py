@@ -132,6 +132,10 @@ class CustomerNameAdmin(admin.ModelAdmin):
     list_display = ('name','parent')
 
 
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'new_req')
+
+
 admin.site.register(Alert)
 admin.site.register(NewsItem)
 admin.site.register(Header, HeaderAdmin)
@@ -165,3 +169,4 @@ admin.site.register(REF_STATUS)
 admin.site.register(DistroList, DistroAdmin)
 admin.site.register(ApprovalList)
 admin.site.register(CustomerPartInfo, CustomerInfoAdmin)
+admin.site.register(DocumentRequest, DocumentAdmin)

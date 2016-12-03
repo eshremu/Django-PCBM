@@ -175,7 +175,7 @@ $(document).ready(function(){
         var message = `<p>You are about to ${this.dataset.update=="0"?"create":"update"} a(n) ${this.dataset.type=="0"?"Inquiry":"Site Template"} for ${$($(this).parent().siblings()[1]).text()}.  Are you sure?</p>`;
 
         if (this.dataset.type=="0") {
-            message += '<label for="makepdf">Create PDF:&nbsp;&nbsp;</label><input id="makepdf" type="checkbox"/>';
+            //message += '<label for="makepdf">Create PDF:&nbsp;&nbsp;</label><input id="makepdf" type="checkbox"/>';
         }
 
         messageToModal(title, message, function(source){
