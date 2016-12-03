@@ -169,6 +169,18 @@ $(document).ready(function(){
             messageToModal('Error','Please select at least 1 record to release from hold.', function(){});
         }
     });
+
+    $(document).on("change", '#toggle_pass', function(event){
+        var curVal = $('#sap_password').val();
+
+        if($(event.target).prop('checked')){
+            $('#sap_password').attr('type', 'text');
+        } else {
+            $('#sap_password').attr('type', 'password');
+        }
+
+        $('#sap_password').val(curVal);
+    });
     
     $('.doc_button').click(function(){
         var title = `Confirm document ${this.dataset.update=="0"?"creation":"update"}`;
@@ -178,22 +190,35 @@ $(document).ready(function(){
             //message += '<label for="makepdf">Create PDF:&nbsp;&nbsp;</label><input id="makepdf" type="checkbox"/>';
         }
 
+        var data = {};
         messageToModal(title, message, function(source){
-            $.ajax({
-                url: doc_url,
-                type: "POST",
-                data: {
+            data = {
                     id: source.dataset.id,
                     type: source.dataset.type,
                     update: source.dataset.update,
                     pdf: $('#makepdf').prop('checked')
-                },
-                headers:{
-                    'X-CSRFToken': getcookie('csrftoken')
-                },
-                success: function(){
-                    window.location.reload(true);
-                }
+                };
+            $('#messageModal').one('hidden.bs.modal', function () {
+                messageToModal('SAP Credentials',
+                    '<p>Please enter your SAP username and password:</p>'+
+                    '<label for="sap_username">Username</label>&nbsp;&nbsp;<input type="text" id="sap_username" name="username"/><br/>'+
+                    '<label for="sap_password">Password</label>&nbsp;&nbsp;<input type="password" id="sap_password" name="password"/><br/>'+
+                    '<input type="checkbox" id="toggle_pass" name="passwordtoggle"/><label for="toggle_pass">Show characters</label>',
+                    function(){
+                        data['user'] = $('#sap_username').val();
+                        data['pass'] = $('#sap_password').val();
+                        $.ajax({
+                            url: doc_url,
+                            type: "POST",
+                            data: data,
+                            headers:{
+                                'X-CSRFToken': getcookie('csrftoken')
+                            },
+                            success: function(){
+                                window.location.reload(true);
+                            }
+                        });
+                    });
             });
         }, this);
     });

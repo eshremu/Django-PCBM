@@ -537,8 +537,37 @@ def DownloadBaselineMaster(oRequest):
             else:
                 oSheet['I' + str(iRow)].font = activeFont
 
+            oSheet['J' + str(iRow)] = (
+                oHead.inquiry_site_template if str(oHead.inquiry_site_template).startswith('1')
+                else oHead.inquiry_site_template * -1 if oHead.inquiry_site_template and
+                                                         oHead.inquiry_site_template < -1 and
+                                                         str(oHead.inquiry_site_template).startswith('-1')
+                else ''
+            ) if not (oHead.sold_to_party==626136 or 'KGP' in str(oHead.customer_name).upper()) else ''
+            oSheet['J' + str(iRow)].alignment = centerAlign
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['J' + str(iRow)].font = ipFont
+            else:
+                oSheet['J' + str(iRow)].font = activeFont
+
+            oSheet['K' + str(iRow)] = (
+                oHead.inquiry_site_template if str(
+                    oHead.inquiry_site_template).startswith('1')
+                else oHead.inquiry_site_template * -1 if oHead.inquiry_site_template and
+                                                         oHead.inquiry_site_template < -1 and
+                                                         str(
+                                                             oHead.inquiry_site_template).startswith(
+                                                             '-1')
+                else ''
+            ) if (oHead.sold_to_party==626136 or 'KGP' in str(oHead.customer_name).upper()) else ''
+            oSheet['K' + str(iRow)].alignment = centerAlign
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['K' + str(iRow)].font = ipFont
+            else:
+                oSheet['K' + str(iRow)].font = activeFont
+
             oSheet['L' + str(iRow)] = oHead.inquiry_site_template if str(oHead.inquiry_site_template).startswith('4')\
-                else oHead.inquiry_site_template * -1 if oHead.inquiry_site_template < -1 and str(oHead.inquiry_site_template).startswith('-4') else ''
+                else oHead.inquiry_site_template * -1 if oHead.inquiry_site_template and oHead.inquiry_site_template < -1 and str(oHead.inquiry_site_template).startswith('-4') else ''
             oSheet['L' + str(iRow)].alignment = centerAlign
             if 'In Process' in oHead.configuration_status.name:
                 oSheet['L' + str(iRow)].font = ipFont

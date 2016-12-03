@@ -777,6 +777,10 @@ def CreateDocument(oRequest):
         "update": StrToBool(oRequest.POST.get('update'), False),
         "type": StrToBool(oRequest.POST.get('type'), False),  # type = False for Inquiry, True for Site Template
         "record_id": oHeader.id,
+        'credentials': {
+            'username': oRequest.POST.get('user'),
+            'password': oRequest.POST.get('pass')
+        }
     }
 
     if StrToBool(oRequest.POST.get('update'), False):

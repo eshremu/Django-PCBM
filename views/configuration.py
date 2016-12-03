@@ -1090,15 +1090,17 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
             data = []
             while oHeader and hasattr(oHeader, 'configuration'):
                 data.append({
-                    '0': oHeader.bom_version, '1': oHeader.baseline_version,
-                    '2': oHeader.release_date.strftime('%b. %d, %Y') if oHeader.release_date else '',
-                    '3': oHeader.model if not oHeader.pick_list else 'None',
-                    '4': oHeader.configuration.configline_set.filter(line_number='10')[0].customer_number if
+                    '0': oHeader.bom_version,
+                    '1': oHeader.baseline.title if oHeader.baseline else '',
+                    '2': oHeader.baseline_version,
+                    '3': oHeader.release_date.strftime('%b. %d, %Y') if oHeader.release_date else '',
+                    '4': oHeader.model if not oHeader.pick_list else 'None',
+                    '5': oHeader.configuration.configline_set.filter(line_number='10')[0].customer_number if
                     not oHeader.pick_list and oHeader.configuration.configline_set.filter(line_number='10')[
                         0].customer_number else '',
-                    '5': oHeader.change_notes or '',
-                    '6': oHeader.change_comments or '',
-                    '7': oHeader.person_responsible,
+                    '6': oHeader.change_notes or '',
+                    '7': oHeader.change_comments or '',
+                    '8': oHeader.person_responsible,
                 })
 
                 if oHeader.baseline:

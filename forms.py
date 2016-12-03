@@ -369,7 +369,7 @@ class SecurityForm(forms.ModelForm):
 
 
 class UserForm(forms.Form):
-    signum = forms.CharField(min_length=7, label='User SIGNUM')
+    signum = forms.CharField(min_length=6, label='User SIGNUM')
     first_name = forms.CharField(label='First Name')
     last_name = forms.CharField(label='Last Name')
     email = forms.EmailField(label='Ericsson Email')
@@ -394,7 +394,7 @@ class UserForm(forms.Form):
 
 
 class UserAddForm(forms.Form):
-    signum = forms.CharField(min_length=7, required=True, label='User SIGNUM')
+    signum = forms.CharField(min_length=6, required=True, label='User SIGNUM')
 
     def clean_signum(self):
         submitted_signum = self.cleaned_data['signum']
