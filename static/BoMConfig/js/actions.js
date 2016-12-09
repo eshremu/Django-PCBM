@@ -218,7 +218,8 @@ $(document).ready(function(){
                                 window.location.reload(true);
                             }
                         });
-                    });
+                    }
+                );
             });
         }, this);
     });

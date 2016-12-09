@@ -22,7 +22,10 @@
                 <table>
                     <thead>
                         <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
-                            <th style="width:25px"></th><th style="width:200px">Configuration Designation</th><th style="width:500px">Baseline</th><th style="width:200px">Inquiry / Site Template</th><th style="width:115px">Program</th><th style="width:115px"></th>
+                            <th style="width:25px"></th><th style="width:200px">Configuration Designation</th><th style="width:400px">Baseline</th><th style="width:115px">Program</th><th style="width:200px">Inquiry / Site Template</th><th style="width:115px"></th><th style="width:115px"></th>
+                            {% if user|has_group:"BOM_PSM_SAP_Document" or user|has_group:"BOM_BPMA_Architect" %}
+                            <th style="width:115px">Request Error</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -31,6 +34,7 @@
                             <td><input class="active" type="checkbox" data-index="{{ record.id }}"/></td>
                             <td>{{ record.configuration_designation }}</td>
                             <td>{{ record.baseline | default:"(Not baselined)" }}</td>
+                            <td>{{ record.program | default:"(None)" }}</td>
                             <td>
                                 {% if record.inquiry_site_template and record.inquiry_site_template < 0 %}
                                     {% if record.inquiry_site_template < -1 %}
@@ -42,15 +46,19 @@
                                     {{ record.inquiry_site_template|default:'------' }}
                                 {% endif %}
                             </td>
-                            <td>{{ record.program | default:"(None)" }}</td>
                             {% if user|has_group:"BOM_PSM_SAP_Document" or user|has_group:"BOM_BPMA_Architect" %}
                                 {% if not record.inquiry_site_template or record.inquiry_site_template == -1 or record.inquiry_site_template > 0 and not record.inquiry_site_template|startswith:"1" or record.inquiry_site_template < -1 and not record.inquiry_site_template|startswith:"-1" %}
                                     {% if user|has_group:"BOM_PSM_SAP_Document_Creation" %}
                                     <td style="padding: 0 5px 5px 0;">
                                         <button class="btn btn-primary doc_button"
                                                 data-id="{{ record.id }}" data-update="0" data-type="0"
-                                        {% if record.inquiry_site_template <= -1 %}
-                                                                          disabled title="Document creation in work"
+                                        {% if  not record.inquiry_eligible or record.inquiry_site_template <= -1 %}
+                                                disabled title="
+                                                {% if not record.inquiry_eligible %}
+                                                Configuration contains incorrect Item Category or Higher-Level Item
+                                                {% else %}
+                                                Document creation in work
+                                                {% endif %}"
                                         {% else %}title="Create new Inquiry"
                                         {% endif %}>Create Inquiry</button>
                                     </td>
@@ -60,8 +68,13 @@
                                     <td style="padding: 0 5px 5px 0;">
                                         <button class="btn btn-warning doc_button"
                                                 data-id="{{ record.id }}" data-update="1" data-type="0"
-                                        {% if record.inquiry_site_template <= -1 %}
-                                                                          disabled title="Document creation in work"
+                                        {% if not record.inquiry_eligible or record.inquiry_site_template <= -1 %}
+                                                disabled title="
+                                                {% if not record.inquiry_eligible %}
+                                                Configuration contains incorrect Item Category or Higher-Level Item
+                                                {% else %}
+                                                Document creation in work
+                                                {% endif %}"
                                         {% else %}title="Update existing Inquiry"
                                         {% endif %}>Update Inquiry</button>
                                     </td>
@@ -76,7 +89,7 @@
                                         {% if not record.site_template_eligible or record.inquiry_site_template <= -1 %}
                                             disabled title="
                                             {% if not record.site_template_eligible %}
-                                                Configuration contains ZBIL or ZERV
+                                                Configuration contains incorrect Item Category or Higher-Level Item
                                             {% elif record.inquiry_site_template <= -1 %}
                                                 Document creation in work
                                             {% endif %}"
@@ -92,7 +105,7 @@
                                         {% if not record.site_template_eligible or record.inquiry_site_template <= -1 %}
                                             disabled title="
                                             {% if not record.site_template_eligible %}
-                                                Configuration contains ZBIL or ZERV
+                                                Configuration contains incorrect Item Category or Higher-Level Item
                                             {% elif record.inquiry_site_template <= -1 %}
                                                 Document creation in work
                                             {% endif %}"
@@ -101,6 +114,7 @@
                                     </td>
                                     {% endif %}
                                 {% endif %}
+                                <td>{{ record.latestdocrequest.req_error | default:"" }}</td>
                             {% endif %}
 
                         </tr>

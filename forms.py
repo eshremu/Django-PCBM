@@ -24,10 +24,10 @@ class HeaderForm(forms.ModelForm):
         bReadOnly = kwargs.pop('readonly', False)
         sBrowser = kwargs.pop('browser', None)
 
-        if kwargs['instance']:
+        if kwargs['instance'] and kwargs['instance'].inquiry_site_template:
             if kwargs['instance'].inquiry_site_template == -1:
                 kwargs.update(initial={'inquiry_site_template': '(Pending)'})
-            else:
+            elif kwargs['instance'].inquiry_site_template < -1:
                 kwargs.update(initial={'inquiry_site_template': str(kwargs['instance'].inquiry_site_template)[1:] + ' (Pending Update)'})
             # end if
         # end if

@@ -511,6 +511,40 @@ class Header(models.Model):
                 if oLine.item_category in ['ZBIL', 'ZERV']:
                     return False
         return True
+
+    @property
+    def inquiry_eligible(self):
+        return True
+
+    # @property
+    # def site_template_eligible(self):
+    #     if self.configuration:
+    #         for oLine in self.configuration.configline_set.all():
+    #             if oLine.item_category not in ['', 'ZSBS', 'ZSBU', 'ZSBT',
+    #                                            'ZSXS',
+    #                                            'ZSBM', 'ZF36', 'ZMX4', 'ZSW7',
+    #                                            None]:
+    #                 return False
+    #             if oLine.higher_level_item in ('', None):
+    #                 return False
+    #     return True
+    #
+    # @property
+    # def inquiry_eligible(self):
+    #     if self.configuration:
+    #         for oLine in self.configuration.configline_set.all():
+    #             if oLine.item_category not in ['', 'ZTBI', 'ZI36', 'ZTNI',
+    #                                            'ZSXI',
+    #                                            'ZTFI', 'ZI25', 'ZAFP', 'ZSW7',
+    #                                            None]:
+    #                 return False
+    #             if oLine.higher_level_item not in ('', None):
+    #                 return False
+    #     return True
+
+    @property
+    def latestdocrequest(self):
+        return self.documentrequest_set.all().order_by('-new_req').first()
 # end class
 
 
@@ -600,7 +634,7 @@ class Part(models.Model):
 
 class ConfigLine(models.Model):
     line_number = models.CharField(max_length=50)
-    order_qty = models.IntegerField(blank=True, null=True)
+    order_qty = models.FloatField(blank=True, null=True)
     plant = models.CharField(max_length=50, blank=True, null=True)
     sloc = models.CharField(max_length=50, blank=True, null=True)
     item_category = models.CharField(max_length=50, blank=True, null=True)
@@ -1056,6 +1090,8 @@ class CustomerPartInfo(models.Model):
 class DocumentRequest(models.Model):
     req_data = models.TextField()
     new_req = models.DateTimeField(null=True, default=None, blank=True)
+    req_error = models.TextField(null=True, blank=True)
+    record_processed = models.ForeignKey(Header)
 # end class
 
 

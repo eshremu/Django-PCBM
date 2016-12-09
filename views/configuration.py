@@ -765,16 +765,16 @@ def AddRevision(oRequest):
         if type(oForm[0]) == list:
             oForm[0] = {str(x):y for (x,y) in enumerate(oForm[0])}
 
-        if '2' in oForm[0] and oForm[0]['2'] not in ('', None):
-            form = DateForm({'date': oForm[0]['2']})
+        if '3' in oForm[0] and oForm[0]['3'] not in ('', None):
+            form = DateForm({'date': oForm[0]['3']})
             if form.is_valid():
                 oHeader.release_date = form.cleaned_data['date']
             else:
                 error_matrix.append([None, None, 'X - Not a valid date.'])
                 valid = False
             # end if
-        if '6' in oForm[0] and oForm[0]['6'] not in ('', None):
-            oHeader.change_comments = oForm[0]['6']
+        if '7' in oForm[0] and oForm[0]['7'] not in ('', None):
+            oHeader.change_comments = oForm[0]['7']
 
         if valid:
             try:
@@ -1152,7 +1152,10 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
 def Validator(oRequest):
     if oRequest.method == "POST" and oRequest.POST:
         form_data = json.loads(oRequest.POST['entered_data'])
-        oHead = Header.objects.get(pk=oRequest.session['existing'])
+        if 'existing' in oRequest.session:
+            oHead = Header.objects.get(pk=oRequest.session['existing'])
+        else:
+            oHead = Header.objects.get(pk=oRequest.GET.get('id'))
         bCanWriteConfig = oRequest.POST['writeable']
         net_total = 0
         override_total = 0
@@ -1274,7 +1277,7 @@ def Validator(oRequest):
                     error_matrix[index][3] += 'X - Product Description exceeds 40 characters.\n'
 
             # Order Qty
-            if '4' not in form_data[index] or not re.match("^\d+$", form_data[index]['4'] or ''):
+            if '4' not in form_data[index] or not re.match("^\d+(?:.\d+)?$", form_data[index]['4'] or ''):
                 error_matrix[index][4] += 'X - Invalid Order Qty.\n'
                 if '4' in form_data[index] and form_data[index]['4'] in ('None',''):
                     form_data[index]['4'] = ''
@@ -1286,7 +1289,7 @@ def Validator(oRequest):
             # end if
 
             # SLOC
-            if '8' in form_data[index] and not re.match("^\d{4}$|^$", form_data[index]['8'] or ''):
+            if '8' in form_data[index] and not re.match("^\w{4}$|^$", form_data[index]['8'] or ''):
                 error_matrix[index][8] += 'X - Invalid SLOC.\n'
             # end if
 
@@ -1327,13 +1330,13 @@ def Validator(oRequest):
             # end if
 
             # Higher Level Item
-            if '19' not in form_data[index]:
-                if '.' not in form_data[index]['1'] and form_data[index]['1'] != '10' and not oHead.pick_list:
-                    form_data[index]['19'] = '10'
-                elif '.' in form_data[index]['1']:
-                    form_data[index]['19'] = form_data[index]['1'][:form_data[index]['1'].rfind('.')]
-                # end if
-            # end if
+            # if '19' not in form_data[index]:
+            #     if '.' not in form_data[index]['1'] and form_data[index]['1'] != '10' and not oHead.pick_list:
+            #         form_data[index]['19'] = '10'
+            #     elif '.' in form_data[index]['1']:
+            #         form_data[index]['19'] = form_data[index]['1'][:form_data[index]['1'].rfind('.')]
+            #     # end if
+            # # end if
 
             # Condition Type & Amount Supplied Together
             NoCondition = '22' not in form_data[index] or form_data[index]['22'] in ('', 'None')
@@ -1462,11 +1465,15 @@ def Validator(oRequest):
                     # if '5' not in form_data[index] or form_data[index]['5'] in ('None', None, ''):
                     form_data[index]['5'] = tPartData[0][3] if tPartData[0][3] not in (None, 'NONE', 'None') else ''
 
-                    oCursor.execute('SELECT [Description] FROM dbo.[REF_X-PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
-                        [bytes(tPartData[0][2], 'ascii')])
-                    tXPlant = oCursor.fetchall()
-                    if tXPlant:
-                        error_matrix[index][16] += tXPlant[0][0] + '\n'
+                    if tPartData[0][2]:
+                        oCursor.execute('SELECT [Description] FROM dbo.[REF_X-PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
+                            [bytes(tPartData[0][2], 'ascii')])
+                        tXPlant = oCursor.fetchall()
+                        if tXPlant:
+                            error_matrix[index][16] += tXPlant[0][0] + '\n'
+                        # end if
+                    # end if
+                # end if
 
                 P_Code = form_data[index]['10'] if '10' in form_data[index] and re.match("^\d{2,3}$", form_data[index]['10'], re.IGNORECASE) else tPartData[0][4]
             else:
@@ -1511,7 +1518,11 @@ def Validator(oRequest):
                             [bytes(tPartData[0][0] or '', 'ascii')])
                 tRECode = oCursor.fetchall()
                 if tRECode:
-                    form_data[index]['17'] = form_data[index]['17'] + '; ' + tRECode[0][0] if '17' in form_data[index] and form_data[index]['17'] else tRECode[0][0]
+                    if '17' in form_data[index] and form_data[index]['17']:
+                        if tRECode[0][0] not in form_data[index]['17']:
+                            form_data[index]['17'] = form_data[index]['17'] + '; ' + tRECode[0][0]
+                    else:
+                        form_data[index]['17'] = tRECode[0][0]
                     error_matrix[index][14] += tRECode[0][1] + '\n'
                 # end if
             else:

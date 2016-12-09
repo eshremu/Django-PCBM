@@ -722,9 +722,9 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
             oHead.change_notes = sTemp
             oHead.save()
             sUpdateSummary += '    {}:\n'.format(oHead.configuration_designation + \
-                                                 (' ({})'.format(oHead.program) if oHead.program else '')) + \
+                                                 (' ({})'.format(oHead.program) if oHead.program else '') + \
                               ('  {}'.format(oHead.configuration.get_first_line().customer_number) if not oHead.pick_list
-                                                     and oHead.configuration.get_first_line().customer_number else '')
+                                                     and oHead.configuration.get_first_line().customer_number else ''))
             for sLine in sTemp.split('\n'):
                 sUpdateSummary += (' ' * 8) + sLine + '\n'
         # end if
