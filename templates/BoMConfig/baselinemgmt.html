@@ -86,7 +86,7 @@
                         <td>{{ header.headertimetracker_set.first.created_on|date:"Y" }}</td>
                         <td>{% if header.inquiry_site_template and header.inquiry_site_template < 0 %}
                             {% if header.inquiry_site_template < -1 %}
-                                {{ header.inquiry_site_template|slice:"1:" }}(Pending Update)
+                                {{ header.inquiry_site_template|stringformat:"i"|slice:"1:" }}(Pending Update)
                             {% else %}
                                 Pending
                             {% endif %}

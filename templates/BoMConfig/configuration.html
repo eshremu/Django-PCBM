@@ -172,15 +172,15 @@
 {#                {% if header.configuration_status == 'In Process' %}data_validate();{% endif %}#}
                 {% if not frame_readonly %}data_validate();{% endif %}
                 clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
-                if (typeof clean_form[0] == 'object'){
-                    for(var j=0; j < clean_form.length; j++) {
-                        for (var i = 0; i < 31; i++) {
-                            if (!clean_form[j].hasOwnProperty(i)) {
-                                clean_form[j][i] = null;
-                            }
-                        }
-                    }
-                }
+{#                if (typeof clean_form[0] == 'object'){#}
+{#                    for(var j=0; j < clean_form.length; j++) {#}
+{#                        for (var i = 0; i < 31; i++) {#}
+{#                            if (!clean_form[j].hasOwnProperty(i)) {#}
+{#                                //clean_form[j][i] = null;#}
+{#                            }#}
+{#                        }#}
+{#                    }#}
+{#                }#}
                 $('[name="data_form"]').remove();
                 clean_sub = $('#configform').serialize();
             });

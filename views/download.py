@@ -3,6 +3,7 @@ from django.core.urlresolvers import reverse
 from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.contrib.staticfiles.templatetags.staticfiles import static
 from django.contrib.staticfiles.finders import find
+from django.contrib.auth.models import User
 
 from BoMConfig.models import Header, ConfigLine, Baseline, Baseline_Revision, DistroList, REF_PROGRAM, PricingObject
 from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
@@ -159,9 +160,9 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
         oFile.active['J13'] = oHeader.bom_request_type.name
         oFile.active['K13'] = oHeader.configuration_status.name or None
         oFile.active['L13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('1') else \
-            oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and str(oHeader.inquiry_site_template).startswith('-1') else None
+            oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template and oHeader.inquiry_site_template < -1 and str(oHeader.inquiry_site_template).startswith('-1') else None
         oFile.active['M13'] = oHeader.inquiry_site_template if str(oHeader.inquiry_site_template).startswith('4') else \
-            oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template < -1 and str(oHeader.inquiry_site_template).startswith('-4') else None
+            oHeader.inquiry_site_template * -1 if oHeader.inquiry_site_template and oHeader.inquiry_site_template < -1 and str(oHeader.inquiry_site_template).startswith('-4') else None
         oFile.active['N13'] = oHeader.internal_notes
         oFile.active['O13'] = oHeader.external_notes
         if sHyperlinkURL:
@@ -537,8 +538,37 @@ def DownloadBaselineMaster(oRequest):
             else:
                 oSheet['I' + str(iRow)].font = activeFont
 
+            oSheet['J' + str(iRow)] = (
+                oHead.inquiry_site_template if str(oHead.inquiry_site_template).startswith('1')
+                else oHead.inquiry_site_template * -1 if oHead.inquiry_site_template and
+                                                         oHead.inquiry_site_template < -1 and
+                                                         str(oHead.inquiry_site_template).startswith('-1')
+                else ''
+            ) if not (oHead.sold_to_party==626136 or 'KGP' in str(oHead.customer_name).upper()) else ''
+            oSheet['J' + str(iRow)].alignment = centerAlign
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['J' + str(iRow)].font = ipFont
+            else:
+                oSheet['J' + str(iRow)].font = activeFont
+
+            oSheet['K' + str(iRow)] = (
+                oHead.inquiry_site_template if str(
+                    oHead.inquiry_site_template).startswith('1')
+                else oHead.inquiry_site_template * -1 if oHead.inquiry_site_template and
+                                                         oHead.inquiry_site_template < -1 and
+                                                         str(
+                                                             oHead.inquiry_site_template).startswith(
+                                                             '-1')
+                else ''
+            ) if (oHead.sold_to_party==626136 or 'KGP' in str(oHead.customer_name).upper()) else ''
+            oSheet['K' + str(iRow)].alignment = centerAlign
+            if 'In Process' in oHead.configuration_status.name:
+                oSheet['K' + str(iRow)].font = ipFont
+            else:
+                oSheet['K' + str(iRow)].font = activeFont
+
             oSheet['L' + str(iRow)] = oHead.inquiry_site_template if str(oHead.inquiry_site_template).startswith('4')\
-                else oHead.inquiry_site_template * -1 if oHead.inquiry_site_template < -1 and str(oHead.inquiry_site_template).startswith('-4') else ''
+                else oHead.inquiry_site_template * -1 if oHead.inquiry_site_template and oHead.inquiry_site_template < -1 and str(oHead.inquiry_site_template).startswith('-4') else ''
             oSheet['L' + str(iRow)].alignment = centerAlign
             if 'In Process' in oHead.configuration_status.name:
                 oSheet['L' + str(iRow)].font = ipFont
@@ -705,7 +735,7 @@ def WriteBaselineToFile(oBaseline, sVersion):
         # elif oHeader.configuration_status.name == 'Inactive':
         #     continue
         if oHeader.product_area2 and oHeader.product_area2.name not in oFile.get_sheet_names():
-            oSheet = oFile.create_sheet(title=oHeader.product_area2.name)
+            oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]\:\'\?\/]', '_', oHeader.product_area2.name))
             oSheet.sheet_properties.tabColor = '0062FF'
         elif not oHeader.product_area2 and 'None' not in oFile.get_sheet_names():
             oSheet = oFile.create_sheet(title="None")
@@ -750,7 +780,7 @@ def WriteBaselineToFile(oBaseline, sVersion):
         if 'In Process' in oHeader.configuration_status.name and oHeader.bom_request_type.name in ('New', 'Update'):
             oSheet.sheet_properties.tabColor = '80FF00'
         elif oHeader.bom_request_type.name == "Discontinue" or oHeader.configuration_status.name == 'Discontinued' or\
-                (hasattr(oHeader,'header_set') and oHeader.header_set.first() in aHeaders):
+                (hasattr(oHeader,'replaced_by_model') and oHeader.replaced_by_model.first() in aHeaders):
             oSheet.sheet_properties.tabColor = 'FF0000'
 
         # Build Header row
@@ -1049,7 +1079,10 @@ def EmailDownload(oBaseline): #sBaselineTitle):
     # oBaseline = Baseline.objects.get(title=sBaselineTitle)
     sVersion = oBaseline.current_active_version
     sFileName = str(Baseline_Revision.objects.get(baseline=oBaseline, version=sVersion)) + ".xlsx"
-    oDistroList = DistroList.objects.get(customer_unit=oBaseline.customer)
+    try:
+        oDistroList = DistroList.objects.get(customer_unit=oBaseline.customer)
+    except DistroList.DoesNotExist:
+        oDistroList = None
 
     sSubject = 'New revision released: ' + oBaseline.title
     sMessage = ('Revision {} of {} has been released as of {}.  A copy of the baseline has been attached.\n'
@@ -1066,8 +1099,8 @@ def EmailDownload(oBaseline): #sBaselineTitle):
                 oBaseline.latest_revision.completed_date.strftime('%m/%d/%Y'))
 
     oNewMessage = EmailMultiAlternatives(sSubject, sMessage, 'pcbm.admin@ericsson.com',
-                                         [obj.email for obj in oDistroList.users_included.all()],
-                                         cc=oDistroList.additional_addresses.split())
+                                         [obj.email for obj in oDistroList.users_included.all()] if oDistroList else [user.email for user in User.objects.filter(groups__name="BOM_PSM_Baseline_Manager")],
+                                         cc=oDistroList.additional_addresses.split() if oDistroList else None)
     oNewMessage.attach_alternative(sMessageHtml, 'text/html')
 
     oStream = BytesIO()

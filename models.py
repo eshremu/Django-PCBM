@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, connections
 from django.contrib.sessions.models import Session
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
@@ -504,13 +504,117 @@ class Header(models.Model):
         elif not self.valid_from_date and not self.valid_to_date:
             return timezone.now().date()
 
+    # @property
+    # def site_template_eligible(self):
+    #     if self.configuration:
+    #         for oLine in self.configuration.configline_set.all():
+    #             if oLine.item_category in ['ZBIL', 'ZERV']:
+    #                 return False
+    #     return True
+    #
+    # @property
+    # def inquiry_eligible(self):
+    #     return True
+
+    @property
+    def contains_fap_parts(self):
+        for oLine in self.configuration.configline_set.all():
+            if '.' in oLine.line_number: continue
+            if oLine.part.product_number.upper().startswith('FAP'):
+                return True
+        return False
+
+    def _core_document_eligible(self):
+        if not self.sold_to_party:
+            return False
+
+        if not self.ship_to_party:
+            return False
+
+        if not self.bill_to_party:
+            return False
+
+        if not self.valid_from_date:
+            return False
+
+        if not self.valid_to_date:
+            return False
+
+        if not self.ericsson_contract:
+            return False
+
+        if not self.payment_terms:
+            return False
+
+        # Line item plant and Item Cat
+        for oLine in self.configuration.configline_set.all():
+            if '.' in oLine.line_number: continue
+            if not oLine.plant:
+                return False
+
+            if not oLine.item_category:
+                return False
+
+        # No "FAP" parts
+        return not self.contains_fap_parts
+
     @property
     def site_template_eligible(self):
-        if self.configuration:
-            for oLine in self.configuration.configline_set.all():
-                if oLine.item_category in ['ZBIL', 'ZERV']:
-                    return False
-        return True
+        if not self.configuration:
+            return False
+
+        for oLine in self.configuration.configline_set.all():
+            if '.' in oLine.line_number: continue
+            if oLine.item_category not in ['', 'ZSBS', 'ZSBU', 'ZSBT',
+                                           'ZSXS',
+                                           'ZSBM', 'ZF36', 'ZMX4', 'ZSW7',
+                                           None]:
+                return False
+
+            if oLine.higher_level_item in ('', None) and oLine.line_number != '10':
+                return False
+
+        return self._core_document_eligible()
+
+    @property
+    def inquiry_eligible(self):
+        if not self.configuration:
+            return False
+
+        if not self.pick_list and not self.configuration.net_value:
+            return False
+
+        if not self.configuration.total_value:
+            return False
+
+        for oLine in self.configuration.configline_set.all():
+            if '.' in oLine.line_number: continue
+            if oLine.item_category not in ['', 'ZTBI', 'ZI36', 'ZTNI',
+                                           'ZSXI',
+                                           'ZTFI', 'ZI25', 'ZAFP', 'ZSW7',
+                                           None]:
+                return False
+
+            if oLine.higher_level_item not in ('', None):
+                return False
+
+        return self._core_document_eligible()
+
+    @property
+    def pdf_allowed(self):
+        if self.react_request:
+            sQuery = "SELECT [req_id] FROM dbo.ps_requests WHERE [req_id]=%s AND [modified_by] IS NULL"
+
+            oCursor = connections['REACT'].cursor()
+            oCursor.execute(sQuery, [bytes(self.react_request, 'ascii')])
+            oResults = oCursor.fetchall()
+            return bool(oResults)
+        else:
+            return False
+
+    @property
+    def latestdocrequest(self):
+        return self.documentrequest_set.all().order_by('-new_req').first()
 # end class
 
 
@@ -600,7 +704,7 @@ class Part(models.Model):
 
 class ConfigLine(models.Model):
     line_number = models.CharField(max_length=50)
-    order_qty = models.IntegerField(blank=True, null=True)
+    order_qty = models.FloatField(blank=True, null=True)
     plant = models.CharField(max_length=50, blank=True, null=True)
     sloc = models.CharField(max_length=50, blank=True, null=True)
     item_category = models.CharField(max_length=50, blank=True, null=True)
@@ -1050,6 +1154,14 @@ class CustomerPartInfo(models.Model):
         # end def
         super().save(*args, **kwargs)
     # end def
+# end class
+
+
+class DocumentRequest(models.Model):
+    req_data = models.TextField()
+    new_req = models.DateTimeField(null=True, default=None, blank=True)
+    req_error = models.TextField(null=True, blank=True)
+    record_processed = models.ForeignKey(Header)
 # end class
 
 

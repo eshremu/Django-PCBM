@@ -24,10 +24,10 @@ class HeaderForm(forms.ModelForm):
         bReadOnly = kwargs.pop('readonly', False)
         sBrowser = kwargs.pop('browser', None)
 
-        if kwargs['instance']:
+        if kwargs['instance'] and kwargs['instance'].inquiry_site_template:
             if kwargs['instance'].inquiry_site_template == -1:
                 kwargs.update(initial={'inquiry_site_template': '(Pending)'})
-            else:
+            elif kwargs['instance'].inquiry_site_template < -1:
                 kwargs.update(initial={'inquiry_site_template': str(kwargs['instance'].inquiry_site_template)[1:] + ' (Pending Update)'})
             # end if
         # end if
@@ -369,7 +369,7 @@ class SecurityForm(forms.ModelForm):
 
 
 class UserForm(forms.Form):
-    signum = forms.CharField(min_length=7, label='User SIGNUM')
+    signum = forms.CharField(min_length=6, label='User SIGNUM')
     first_name = forms.CharField(label='First Name')
     last_name = forms.CharField(label='Last Name')
     email = forms.EmailField(label='Ericsson Email')
@@ -394,7 +394,7 @@ class UserForm(forms.Form):
 
 
 class UserAddForm(forms.Form):
-    signum = forms.CharField(min_length=7, required=True, label='User SIGNUM')
+    signum = forms.CharField(min_length=6, required=True, label='User SIGNUM')
 
     def clean_signum(self):
         submitted_signum = self.cleaned_data['signum']

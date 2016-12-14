@@ -6,7 +6,11 @@
 {% if frame_readonly %}
 <div id="prog_chev" style="overflow-x: hidden; white-space: nowrap;">
     <div class="start_chev" style="display:inline; position: relative;">
+        {% if header.configuration_status.name != 'In Process' %}
         <img src="{% static 'BoMConfig/images/ActiveStart.png' %}" style="width:97px; border-radius: 30px 0 0 30px;"/>
+        {% else %}
+        <img src="{% static 'BoMConfig/images/InworkStart.png' %}" style="width:97px; border-radius: 30px 0 0 30px;"/>
+        {% endif %}
         <span style="color:white; position: absolute; left:30px; top:-2px;">PSM</span>
     </div>
 
@@ -33,8 +37,10 @@
     {% with header.latesttracker.next_chevron as current_level %}
     {% for level in levels %}
     <div class="chev" style="display:inline; position: relative; left: {{ -30|multiply:forloop.counter }}px;">
-        {% if levels|getindexof:current_level >= forloop.counter0 %}
+        {% if levels|getindexof:current_level > forloop.counter0 %}
         <img src="{% static 'BoMConfig/images/ActiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
+        {% elif levels|getindexof:current_level == forloop.counter0 %}
+        <img src="{% static 'BoMConfig/images/InworkChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
         {% else %}
         <img src="{% static 'BoMConfig/images/InactiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
         {% endif %}

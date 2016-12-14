@@ -42,7 +42,9 @@ function submitForm(submitter){
                     $('<th>').css('width', '25px').appendTo(row);
                     $('<th>').text('Status').appendTo(row);
                     $('<th>').css('width', '25px').appendTo(row);
-                    $('<th>').text('Status').appendTo(row);
+                    $('<th>').text('Baseline').appendTo(row);
+                    $('<th>').css('width', '25px').appendTo(row);
+                    $('<th>').text('Revision').appendTo(row);
                     table.append($('<thead>').append(row));
 
                     for (obj in data['records']) {
@@ -61,6 +63,8 @@ function submitForm(submitter){
                         $('<td>').text(data['records'][obj]['status']).appendTo(row);
                         $('<td>').appendTo(row);
                         $('<td>').text(data['records'][obj]['baseline']).appendTo(row);
+                        $('<td>').appendTo(row);
+                        $('<td>').text(data['records'][obj]['revision']).appendTo(row);
 
                         table.append(row);
                     }

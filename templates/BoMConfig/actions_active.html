@@ -14,7 +14,7 @@
             </li>
         </ul>
 
-        <h4>Active</h4>
+        <h4>Document Creation</h4>
             {% if active %}
             <form id="active_action" onsubmit="return false;">
                 <button id="clone" class="btn" value="clone">Clone</button>
@@ -22,7 +22,10 @@
                 <table>
                     <thead>
                         <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
-                            <th style="width:25px"></th><th style="width:200px">Configuration Designation</th><th style="width:500px">Baseline</th><th style="width:115px">Program</th><th style="width:115px"></th>
+                            <th style="width:25px"></th><th style="width:200px">Configuration Designation</th><th style="width:400px">Baseline</th><th style="width:115px">Program</th><th style="width:200px">Inquiry / Site Template</th><th style="width:115px"></th><th style="width:115px"></th>
+                            {% if user|has_group:"BOM_PSM_SAP_Document" or user|has_group:"BOM_BPMA_Architect" %}
+                            <th style="width:115px">Request Error</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -32,24 +35,67 @@
                             <td>{{ record.configuration_designation }}</td>
                             <td>{{ record.baseline | default:"(Not baselined)" }}</td>
                             <td>{{ record.program | default:"(None)" }}</td>
+                            <td>
+                                {% if record.inquiry_site_template and record.inquiry_site_template < 0 %}
+                                    {% if record.inquiry_site_template < -1 %}
+                                        {{ record.inquiry_site_template|stringformat:"i"|slice:"1:" }} (Pending Update)
+                                    {% else %}
+                                        Pending
+                                    {% endif %}
+                                {% else %}
+                                    {{ record.inquiry_site_template|default:'------' }}
+                                {% endif %}
+                            </td>
                             {% if user|has_group:"BOM_PSM_SAP_Document" or user|has_group:"BOM_BPMA_Architect" %}
                                 {% if not record.inquiry_site_template or record.inquiry_site_template == -1 or record.inquiry_site_template > 0 and not record.inquiry_site_template|startswith:"1" or record.inquiry_site_template < -1 and not record.inquiry_site_template|startswith:"-1" %}
                                     {% if user|has_group:"BOM_PSM_SAP_Document_Creation" %}
                                     <td style="padding: 0 5px 5px 0;">
                                         <button class="btn btn-primary doc_button"
-                                                data-id="{{ record.id }}" data-update="0" data-type="0"
-                                        {% if record.inquiry_site_template == -1 %}
-                                                                          disabled title="Document creation in work"
+                                                data-id="{{ record.id }}" data-update="0" data-type="0" data-pdf_allowed="{% if record.pdf_allowed %}1{% else %}0{% endif %}"
+                                        {% if  not record.inquiry_eligible or record.inquiry_site_template <= -1 %}
+                                                disabled title=
+                                                {% if record.contains_fap_parts %}
+                                                "Configuration contains a DPP. Manual SAP document required."
+                                                {% elif not record.inquiry_eligible %}
+                                                "Configuration is missing needed data or contains incorrect data. Please check:
+    Net value and unit price
+    Item category
+    Higher-level item
+    Sold-to, Ship-to, Bill-to party
+    Ericsson contract
+    Payment terms
+    Valid-from & valid-to date
+    Plant"
+                                                {% else %}
+                                                "Document creation in work"
+                                                {% endif %}
+                                        {% else %}title="Create new Inquiry"
                                         {% endif %}>Create Inquiry</button>
                                     </td>
                                     {% endif %}
                                 {% elif record.inquiry_site_template and record.inquiry_site_template|startswith:"1" or record.inquiry_site_template < -1 and record.inquiry_site_template|startswith:"-1" %}
                                     {% if user|has_group:"BOM_PSM_SAP_Document_Modification" %}
                                     <td style="padding: 0 5px 5px 0;">
-                                        <button class="btn btn-primary doc_button"
-                                                data-id="{{ record.id }}" data-update="1" data-type="0"
-                                        {% if record.inquiry_site_template <= -1 %}
-                                                                          disabled title="Document creation in work"
+                                        <button class="btn btn-warning doc_button"
+                                                data-id="{{ record.id }}" data-update="1" data-type="0" data-pdf_allowed="{% if record.pdf_allowed %}1{% else %}0{% endif %}"
+                                        {% if not record.inquiry_eligible or record.inquiry_site_template <= -1 %}
+                                                disabled title=
+                                                {% if record.contains_fap_parts %}
+                                                "Configuration contains a DPP. Manual SAP document required."
+                                                {% elif not record.inquiry_eligible %}
+                                                "Configuration is missing needed data or contains incorrect data. Please check:
+    Net value and unit price
+    Item category
+    Higher-level item
+    Sold-to, Ship-to, Bill-to party
+    Ericsson contract
+    Payment terms
+    Valid-from & valid-to date
+    Plant"
+                                                {% else %}
+                                                "Document creation in work"
+                                                {% endif %}
+                                        {% else %}title="Update existing Inquiry"
                                         {% endif %}>Update Inquiry</button>
                                     </td>
                                     {% endif %}
@@ -61,31 +107,52 @@
                                         <button class="btn btn-primary doc_button"
                                                 data-id="{{ record.id }}" data-update="0" data-type="1"
                                         {% if not record.site_template_eligible or record.inquiry_site_template <= -1 %}
-                                            disabled title="
-                                            {% if not record.site_template_eligible %}
-                                                Configuration contains ZBIL or ZERV
-                                            {% elif record.inquiry_site_template == -1 %}
-                                                Document creation in work
-                                            {% endif %}"
+                                            disabled title=
+                                            {% if record.contains_fap_parts %}
+                                                "Configuration contains a DPP. Manual SAP document required."
+                                            {% elif not record.site_template_eligible %}
+                                                "Configuration is missing needed data or contains incorrect data. Please check:
+    Item category
+    Higher-level item
+    Sold-to, Ship-to, Bill-to party
+    Ericsson contract
+    Payment terms
+    Valid-from & valid-to date
+    Plant"
+                                            {% elif record.inquiry_site_template <= -1 %}
+                                                "Document creation in work"
+                                            {% endif %}
+                                        {% else %}title="Create new Site Template"
                                         {% endif %}>Create ST</button>
                                     </td>
                                     {% endif %}
                                 {% elif record.inquiry_site_template and record.inquiry_site_template|startswith:"4" or record.inquiry_site_template < -1 and record.inquiry_site_template|startswith:"-4" %}
                                     {% if user|has_group:"BOM_PSM_SAP_Document_Modification" %}
                                     <td style="padding: 0 0 5px 0;">
-                                        <button class="btn btn-primary doc_button"
+                                        <button class="btn btn-warning doc_button"
                                                 data-id="{{ record.id }}" data-update="1" data-type="1"
                                         {% if not record.site_template_eligible or record.inquiry_site_template <= -1 %}
-                                            disabled title="
-                                            {% if not record.site_template_eligible %}
-                                                Configuration contains ZBIL or ZERV
+                                            disabled title=
+                                            {% if record.contains_fap_parts %}
+                                                "Configuration contains a DPP. Manual SAP document required."
+                                            {% elif not record.site_template_eligible %}
+                                                "Configuration is missing needed data or contains incorrect data. Please check:
+    Item category
+    Higher-level item
+    Sold-to, Ship-to, Bill-to party
+    Ericsson contract
+    Payment terms
+    Valid-from & valid-to date
+    Plant"
                                             {% elif record.inquiry_site_template <= -1 %}
-                                                Document creation in work
-                                            {% endif %}"
+                                                "Document creation in work"
+                                            {% endif %}
+                                        {% else %}title="Update existing Site Template"
                                         {% endif %}>Update ST</button>
                                     </td>
                                     {% endif %}
                                 {% endif %}
+                                <td>{{ record.latestdocrequest.req_error | default:"" }}</td>
                             {% endif %}
 
                         </tr>

@@ -10,7 +10,8 @@ from django.db import transaction
 from django.db.models import Q
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
-    HeaderTimeTracker, REF_STATUS, ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, LinePricing
+    HeaderTimeTracker, REF_STATUS, ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, LinePricing,\
+    DocumentRequest
 from BoMConfig.utils import UpRev, GrabValue, StrToBool
 from BoMConfig.views.landing import Unlock, Default
 from django.contrib.auth.models import User
@@ -63,8 +64,8 @@ def Action(oRequest, **kwargs):
 
     dContext = {
         'in_process': Header.objects.filter(configuration_status__name='In Process'),
-        'active': [obj for obj in Header.objects.filter(configuration_status__name='In Process/Pending', pick_list=False,)
-                   if HeaderTimeTracker.approvals().index(obj.latesttracker.next_approval) > HeaderTimeTracker.approvals().index('cust1')],
+        'active': [obj for obj in Header.objects.filter(configuration_status__name='In Process/Pending',)
+                   if HeaderTimeTracker.approvals().index(obj.latesttracker.next_approval) > HeaderTimeTracker.approvals().index('acr')],
         'on_hold': Header.objects.filter(configuration_status__name='On Hold'),
         'customer_list': ['All'] + [obj.name for obj in REF_CUSTOMER.objects.all()],
         'viewauthorized': bool(oRequest.user.groups.filter(name__in=['BOM_BPMA_Architect','BOM_PSM_Product_Supply_Manager', 'BOM_PSM_Baseline_Manager'])),
@@ -428,6 +429,11 @@ def CloneHeader(oHeader):
         oNewHeader.react_request = ''
     # end if
 
+    oNewHeader.change_notes = None
+    oNewHeader.change_comments = None
+    oNewHeader.release_date = None
+    oNewHeader.model_replaced_link = None
+
     if oNewHeader.baseline_impacted:
         oNewHeader.baseline = Baseline_Revision.objects.get(
             baseline=Baseline.objects.get(title=oNewHeader.baseline_impacted),
@@ -451,6 +457,11 @@ def CloneHeader(oHeader):
         oNewLine = copy.deepcopy(oConfigLine)
         oNewLine.pk = None
         oNewLine.config = oNewConfig
+        oNewLine.customer_number = None
+        oNewLine.sec_customer_number = None
+        oNewLine.customer_asset = None
+        oNewLine.customer_asset_tagging = None
+        oNewLine.comments = None
         oNewLine.save()
 
         if hasattr(oConfigLine, 'linepricing'):
@@ -561,7 +572,8 @@ def ChangePart(oRequest):
                                                  'program': tHeader[1].name if tHeader[1] else '(None)',
                                                  'baseline': tHeader[2] or '(None)',
                                                  'status': tHeader[3].configuration_status.name,
-                                                 'selectable': tHeader[4]} for tHeader in aHeaders]
+                                                 'selectable': tHeader[4],
+                                                 'revision': tHeader[3].baseline_version or '(None)'} for tHeader in aHeaders]
                         dResponse['part'] = sPart
                 except PartBase.DoesNotExist:
                     dResponse['error'] = True
@@ -666,7 +678,7 @@ def ChangePart(oRequest):
 def CreateDocument(oRequest):
     oHeader = Header.objects.get(id=oRequest.POST.get('id'))
 
-    if oHeader.valid_from_date < timezone.datetime.now().date():
+    if not oHeader.valid_from_date or oHeader.valid_from_date < timezone.datetime.now().date():
         oHeader.valid_from_date = timezone.datetime.now().date()
 
     if not StrToBool(oRequest.POST.get('type')):
@@ -674,46 +686,46 @@ def CreateDocument(oRequest):
         data = {
             "inquiry_type": "ZDOT",
             "order_type": "ZTP",
-            'zy_delivery_partner': None,
+            'zy_delivery_partner': '',
             'site_id': "PCBM Controlled",
             "sales_org": "1259" if oHeader.customer_unit.name in ['EMC', 'Canada', 'New Canadian'] else "1263",
             "distribution_channel": "XX",
             "division": "XX",
             "sales_office": oHeader.sales_office,
             "sales_group": oHeader.sales_group,
-            "sold_to_party": oHeader.sold_to_party,
-            "ship_to_party": oHeader.ship_to_party,
-            "bill_to_party": oHeader.bill_to_party,
+            "sold_to_party": str(oHeader.sold_to_party or ''),
+            "ship_to_party": str(oHeader.ship_to_party or ''),
+            "bill_to_party": str(oHeader.bill_to_party or ''),
             "configuration_designation": oHeader.configuration_designation,
-            "valid_from_date": max(oHeader.valid_from_date, timezone.datetime.now().date()).strftime('%Y-%m-%d') if oHeader.valid_from_date else None,
-            'po_date': oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else None,
-            "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else None,
-            "payment_terms": oHeader.payment_terms,
-            "ericsson_contract": oHeader.ericsson_contract,
+            "valid_from_date": max(oHeader.valid_from_date, timezone.datetime.now().date()).strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
+            'po_date': oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
+            "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else '',
+            "payment_terms": oHeader.payment_terms.split()[0] if oHeader.payment_terms else '',
+            "ericsson_contract": str(oHeader.ericsson_contract or ''),
             'no_zip_routing': oHeader.no_zip_routing,
-            'internal_external_linkage': oHeader.configuration.internal_external_linkage,
+            'internal_external_linkage': "X" if oHeader.configuration.internal_external_linkage else '',
             'shipping_condition': oHeader.shipping_condition,
             'complete_delivery': oHeader.complete_delivery,
-            'form_header': None,
+            'form_header': '',
             "line_items": [
                 {
                     'line_number': oLine.line_number,
                     'product_number': oLine.part.base.product_number,
-                    'product_description': oLine.part.product_description,
-                    'order_qty': oLine.order_qty,
-                    'plant': oLine.plant,
-                    'sloc': oLine.sloc,
-                    'item_category': oLine.item_category,
-                    'pcode': oLine.pcode,
-                    'unit_price': oHeader.configuration.override_net_value or oHeader.configuration.net_value if not oHeader.pick_list and oLine.line_number=='10'
-                        else None if not oHeader.pick_list
-                        else GrabValue(oLine.linepricing, 'override_price') or GrabValue(oLine.linepricing, 'pricing_object.unit_price') or None,
-                    'condition_type': oLine.condition_type,
-                    'amount': oLine.amount,
-                    'contextId': oLine.contextId,
-                    'higher_level_item': oLine.higher_level_item,
-                    'material_group_5': oLine.material_group_5,
-                    'purchase_order_item_num': oLine.purchase_order_item_num,
+                    'product_description': oLine.part.product_description or '',
+                    'order_qty': str(oLine.order_qty),
+                    'plant': oLine.plant or '',
+                    'sloc': oLine.sloc or '',
+                    'item_category': oLine.item_category or '',
+                    'pcode': oLine.pcode[1:4] if oLine.pcode else '',
+                    'unit_price': str(oHeader.configuration.override_net_value or oHeader.configuration.net_value or '') if not oHeader.pick_list and oLine.line_number=='10'
+                        else '' if not oHeader.pick_list
+                        else str(GrabValue(oLine.linepricing, 'override_price','') or GrabValue(oLine.linepricing, 'pricing_object.unit_price','')) or '',
+                    'condition_type': oLine.condition_type or '',
+                    'amount': str(oLine.amount) if oLine.amount is not None else '',
+                    'contextId': oLine.contextId or '',
+                    'higher_level_item': oLine.higher_level_item or '',
+                    'material_group_5': oLine.material_group_5 or '', # TODO: Need to determine index/row of value (this will have to link to a table)
+                    'purchase_order_item_num': oLine.purchase_order_item_num or '',
                 }
                 for oLine in sorted(oHeader.configuration.configline_set.exclude(line_number__contains='.'), key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
             ]
@@ -722,39 +734,40 @@ def CreateDocument(oRequest):
         # Create Site Template
         data = {
             "contract_type": "ZTPL",
-            'order_type': None,
-            'zy_delivery_partner': None,
+            'order_type': '',
+            'zy_delivery_partner': '',
             "sales_org": "1259" if oHeader.customer_unit.name in ['EMC', 'Canada', 'New Canadian'] else "1263",
             "distribution_channel": "XX",
             "division": "XX",
             "sales_office": '',
             "sales_group": '',
-            "sold_to_party": oHeader.sold_to_party,
-            "ship_to_party": oHeader.ship_to_party,
-            "bill_to_party": oHeader.bill_to_party,
+            "sold_to_party": str(oHeader.sold_to_party or ''),
+            "ship_to_party": str(oHeader.ship_to_party or ''),
+            "bill_to_party": str(oHeader.bill_to_party or ''),
             "configuration_designation": oHeader.configuration_designation,
-            "model_description": oHeader.model_description,
-            "valid_from_date": oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else None,
-            "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else None,
-            "ericsson_contract": oHeader.ericsson_contract,
+            "model_description": oHeader.model_description or '',
+            "valid_from_date": oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
+            "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else '',
+            "ericsson_contract": str(oHeader.ericsson_contract or ''),
             'no_zip_routing': oHeader.no_zip_routing,
-            'internal_external_linkage': oHeader.configuration.internal_external_linkage,
+            'internal_external_linkage':"X" if oHeader.configuration.internal_external_linkage else '',
             'shipping_condition': oHeader.shipping_condition,
             'complete_delivery': oHeader.complete_delivery,
+            "payment_terms": oHeader.payment_terms.split()[0] if oHeader.payment_terms else '',
             "line_items": [
                 {
                     'line_number': oLine.line_number,
                     'product_number': oLine.part.base.product_number,
-                    'product_description': oLine.part.product_description,
-                    'order_qty': oLine.order_qty,
-                    'plant': oLine.plant,
-                    'sloc': oLine.sloc,
-                    'item_category': oLine.item_category,
-                    'pcode': oLine.pcode,
-                    'higher_level_item': oLine.higher_level_item,
-                    'contextId': oLine.contextId,
-                    'material_group_5': oLine.material_group_5,
-                    'customer_number': oLine.customer_number,
+                    'product_description': oLine.part.product_description or '',
+                    'order_qty': str(oLine.order_qty),
+                    'plant': oLine.plant or '',
+                    'sloc': oLine.sloc or '',
+                    'item_category': oLine.item_category or '',
+                    'pcode': oLine.pcode[1:4] if oLine.pcode else '',
+                    'higher_level_item': oLine.higher_level_item or '',
+                    'contextId': oLine.contextId or '',
+                    'material_group_5': oLine.material_group_5 or '', # TODO: Need to determine index/row of value (this will have to link to a table)
+                    'customer_number': oLine.customer_number or '',
                 }
                 for oLine in sorted(
                     oHeader.configuration.configline_set.exclude(line_number__contains='.'),
@@ -768,23 +781,36 @@ def CreateDocument(oRequest):
         "data": data,
         "pdf": StrToBool(oRequest.POST.get('pdf'), False),
         "update": StrToBool(oRequest.POST.get('update'), False),
-        "type": StrToBool(oRequest.POST.get('type'), False),
+        "type": StrToBool(oRequest.POST.get('type'), False),  # type = False for Inquiry, True for Site Template
         "record_id": oHeader.id,
+        'credentials': {
+            'username': oRequest.POST.get('user'),
+            'password': oRequest.POST.get('pass')
+        },
+        'user': {
+            'signum': oRequest.user.username,
+            'email': oRequest.user.email,
+            'full_name': oRequest.user.get_full_name()
+        }
     }
 
     if StrToBool(oRequest.POST.get('update'), False):
         export_dict.update({'existing_doc': oHeader.inquiry_site_template})
 
-    # If updating existing document
-    # if StrToBool(oRequest.POST.get('update'), False):
-    #     oHeader.inquiry_site_template *= -1
-    # else:
-    #     oHeader.inquiry_site_template = -1
-    # oHeader.save()
+    if StrToBool(oRequest.POST.get('pdf'), False):
+        export_dict.update({'react_req': oHeader.react_request})
 
-    # TODO: This is where the data package gets exported
-    import pprint
-    pprint.PrettyPrinter().pprint(export_dict)
+    # If updating existing document
+    if StrToBool(oRequest.POST.get('update'), False):
+        oHeader.inquiry_site_template *= -1
+    else:
+        oHeader.inquiry_site_template = -1
+    oHeader.save()
+
+    # DONE: This is where the data package gets exported
+    # import pprint
+    # pprint.PrettyPrinter().pprint(export_dict)
+    DocumentRequest.objects.create(req_data=json.dumps(export_dict), record_processed=oHeader)
 
     return HttpResponse(status=200)
 # end def
