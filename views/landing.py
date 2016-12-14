@@ -177,7 +177,8 @@ def Default(oRequest, sTemplate='BoMConfig/template.html', dContext=None, show_f
     if not dContext:
         dContext = {}
 
-    dContext.update([
+    dNewContext = {}
+    dNewContext.update([
         ('menulisting', menulisting,),
         ('header_template', headerFile,),
         ('footer_template', footerFile,),
@@ -198,8 +199,9 @@ def Default(oRequest, sTemplate='BoMConfig/template.html', dContext=None, show_f
         ('inquiry_read_authorized', bCanReadInquiry),
         ('sitetemplate_read_authorized', bCanReadSiteTemplate),
     ])
+    dNewContext.update(dContext)
 
-    response = render(oRequest, sTemplate, dContext)
+    response = render(oRequest, sTemplate, dNewContext)
     patch_cache_control(response, no_cache=True, no_store=True, must_revalidate=True, pragma='no-cache', max_age=0)
     return response
 # end def

@@ -1,26 +1,27 @@
 {% extends "BoMConfig/pricelanding.html" %}
 {% load staticfiles %}
+{% load bomconfig_customtemplatetags %}
 {% block subcontent %}
-    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.js' %}"></script>
     <script src="{% static 'BoMConfig/js/part_pricing.js' %}"></script>
-    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.css' %}"/>
 
     <form id="headersubform"
-          {% if partlines %}onsubmit="return formSubmit();"{% endif %}
           method="post">
         {% csrf_token %}
         <label for="part">Part Number</label>
         <input id="part" name="part" type="text" value="{{ part }}" required/>
         <input id="initial" name="initial" type="hidden" value="{{ part }}"/>
-        <button type="submit" name="action" value="search">Search</button>
+        <button id="search" class="btn" type="submit" name="action" value="search">Search</button>
     </form>
 
     <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
 
     <div id="formbuttons">
         {% if partlines.0 %}
-        <button id="cancelForm" name="action" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>
-        <button id="saveForm" type="submit" name="action" form="headersubform" value="save">Save</button>
+        <button id="cancelForm" class="btn" name="action" value="cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>
+        <button id="saveForm" class="btn btn-primary" type="submit" name="action" form="headersubform" value="save">Save</button>
+        <button id="download" class="btn" name="download" value="download" style="margin-left: 50px;" type="submit" form="headersubform">Download</button>
         {% endif %}
         {% if status_message %}
         <span id="statuses" style="color:red; font-size:20px; font-weight: bold; padding-left:50px;">
@@ -33,9 +34,12 @@
     </div>
 
     <script>
-        var spud_list, cust_list, orig_data;
+        var spud_list, cust_list, tech_list, orig_data;
         orig_data = {{ partlines|safe }};
         cust_list = [''].concat({{ customer_list|safe }});
         spud_list = [''].concat({{ spud_list|safe }});
+        tech_list = [''].concat({{ tech_list|safe }});
+        var file_cookie = "{% random_string 10 %}";
+        var download_url = "{% url 'bomconfig:pricingdownload' %}";
     </script>
 {% endblock %}

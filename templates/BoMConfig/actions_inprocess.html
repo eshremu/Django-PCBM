@@ -1,0 +1,61 @@
+{% extends "BoMConfig/actions.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+        <script>$('button[value="inprocess"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');</script>
+        <ul class="btn" style="border: none; padding: 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for customer in customer_list %}
+                    <li><a href="#" onclick="cust_filter('{{ customer|replace:"& _"|replacewhitespace:"-_" }}');">{{ customer }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+
+        <h4>In Process</h4>
+            {% if in_process %}
+            <form id="in_process_action" onsubmit="return false;">
+                <button id="approval_submit" class="btn btn-success" value="send_to_approve">Submit for Approval</button>
+                <button id="hold" class="btn btn-warning" value="hold">Place on Hold</button>
+                <button id="delete" class="btn btn-danger" value="delete">Delete</button>
+                <button id="cancel" class="btn btn-primary" value="cancel" style="margin-left: 20px;">Cancel Configuration</button>
+                <div><br/></div>
+                <table id="in_process_records">
+                    <thead>
+                        <tr class="{% for cust in customer_list %}{{ cust|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
+                            <th></th><th style="width:15px;"></th>
+                            <th>Configuration Designation</th><th style="width:25px;"></th>
+                            <th>Baseline</th><th style="width:25px;"></th>
+                            <th>Person Responsible</th><th style="width:25px;"></th>
+                            <th>BOM Request Type</th><th style="width:25px;"></th>
+                            <th>CU</th><th style="width:25px;"></th>
+                            <th>Customer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for record in in_process %}
+                        <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }}">
+                            <td><input class="inprocess" type="checkbox" data-index="{{ record.id }}"/></td>
+                            <td></td>
+                            <td><a href="{% url 'bomconfig:search' %}?link={{ record.pk|searchscramble }}">{{ record.configuration_designation }}</a></td>
+                            <td></td>
+                            <td>{{ record.baseline|default:"(Not baselined)" }}</td>
+                            <td></td>
+                            <td>{{ record.person_responsible }}</td>
+                            <td></td>
+                            <td>{{ record.bom_request_type.name }}</td>
+                            <td></td>
+                            <td>{{ record.customer_unit.name }}</td>
+                            <td></td>
+                            <td>{{ record.customer_name|default:"" }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </form>
+            {% else %}
+                <h5>NO IN-PROCESS RECORDS</h5>
+            {% endif %}
+{% endblock %}

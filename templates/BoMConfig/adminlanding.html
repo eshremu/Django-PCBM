@@ -5,10 +5,16 @@
 {% if user.is_authenticated %}
 <div id="main-body">
     {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
-    <div id="action_buttons">
+    <div id="action_buttons" style="margin: 5px 0;">
+        {% if user|has_group:"BOM_PSM_User_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
 		<button class="btn" type="button" name="action" value="user" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:useradmin' %}'>User</button>
+        {% endif %}
+        {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
 		<button class="btn" type="button" name="action" value="mailing" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:mailadmin' %}'>Mailing</button>
+        {% endif %}
+        {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
         <button class="btn" type="button" name="action" value="approval" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:approvaladmin' %}'>Approval</button>
+        {% endif %}
 	</div>
     {% block subcontent %}{% endblock %}
     {% else %}
@@ -25,7 +31,11 @@
     $('a.headtitle:contains("Admin")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc')
 
     function cleanDataCheck(link){
-        window.location.href = link.dataset.href;
+        if (link.target == "_blank"){
+            window.open(link.dataset.href);
+        } else {
+            window.location.href = link.dataset.href;
+        }
     }
 </script>
 {% else %}

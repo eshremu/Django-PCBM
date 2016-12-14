@@ -5,14 +5,15 @@
 		<title>{{pagetitle}}</title>
 		
 		<!-- JQuery Javascript -->
-        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-2.1.4.js' %}"></script>
-        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-migrate-1.2.1.js' %}"></script>
+        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-2.1.4.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-migrate-1.2.1.min.js' %}"></script>
 		<!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap.css' %}">
+        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap.min.css' %}">
 		<!-- Bootstrap Optional theme -->
-        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap-theme.css' %}">
+        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap-theme.min.css' %}">
+        <link rel="stylesheet" href="{% static 'BoMConfig/css/jquery-ui.min.css' %}">
 		<!-- Bootstrap JavaScript -->
-        <script type="text/javascript" src="{% static 'BoMConfig/bootstrap-3.3.6-dist/js/bootstrap.js' %}"></script>
+        <script type="text/javascript" src="{% static 'BoMConfig/bootstrap-3.3.6-dist/js/bootstrap.min.js' %}"></script>
 		
 		<!-- App specific stylesheet-->
 		<link rel="stylesheet" type="text/css" href="{% static 'BoMConfig/style.css' %}"/>
@@ -64,7 +65,7 @@
 				availableHeight -= parseInt(divMargin);
 				availableHeight -= parseInt(divPad);
 
-				$("#main-body").css("height", availableHeight);
+				$("#main-body").css("height", availableHeight - 5);
 			}
 
 			$(document).ready(function(){
@@ -129,7 +130,7 @@
 							<form action="{% url 'bomconfig:index' %}" method="post">
 								{% csrf_token %}
 								<input type="text" name="loginId" placeholder="SIGNUM"/>
-								<input type="submit" value="Login" />
+								<input class="btn" type="submit" value="Login" />
 							</form>
 						{% endif %}
 						<div class="nav-menu">
@@ -226,38 +227,39 @@
                 </div>
             </div>
         </div>
-	</body>
-    <script>
-        $(function() {
-            function reposition() {
-                var modal = $(this),
-                        dialog = modal.find('.modal-dialog');
-                modal.css('display', 'block');
-                dialog.css("margin-top", Math.max(0, ($(window).height() - dialog.height()) / 2));
-                dialog.css("margin-left", Math.max(0, ($(window).width() - dialog.width()) / 2));
 
-            }
-            $('.modal').on('show.bs.modal', reposition);
-            $(window).on('resize', function() {
-                $('.modal:visible').each(reposition);
-            });
-        });
+        <script>
+            $(function() {
+                function reposition() {
+                    var modal = $(this),
+                            dialog = modal.find('.modal-dialog');
+                    modal.css('display', 'block');
+                    dialog.css("margin-top", Math.max(0, ($(window).height() - dialog.height()) / 2));
+                    dialog.css("margin-left", Math.max(0, ($(window).width() - dialog.width()) / 2));
 
-        function messageToModal(title, message, callback){
-            var params = [];
-            for(var i = 3; i < arguments.length; i++){
-                params.push(arguments[i]);
-            }
-            $('#messageModal .modal-header h4').text(title);
-            $('#messageModal .modal-body').html(message);
-            $('.modal_submit').off('click');
-            $('.modal_submit').click(function(){
-                $('#messageModal').modal('hide');
-                if(callback != undefined) {
-                    callback.apply(this, params);
                 }
+                $('.modal').on('show.bs.modal', reposition);
+                $(window).on('resize', function() {
+                    $('.modal:visible').each(reposition);
+                });
             });
-            $('#messageModal').modal('show');
-        }
-    </script>
+
+            function messageToModal(title, message, callback){
+                var params = [];
+                for(var i = 3; i < arguments.length; i++){
+                    params.push(arguments[i]);
+                }
+                $('#messageModal .modal-header h4').text(title);
+                $('#messageModal .modal-body').html(message);
+                $('.modal_submit').off('click');
+                $('.modal_submit').click(function(){
+                    $('#messageModal').modal('hide');
+                    if(callback != undefined) {
+                        callback.apply(this, params);
+                    }
+                });
+                $('#messageModal').modal('show');
+            }
+        </script>
+    </body>
 </html>

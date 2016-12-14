@@ -4,14 +4,15 @@
 {% block subcontent %}
 {% if header_read_authorized %}
 <div id="header-form">
+    <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-ui.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'BoMConfig/js/config_header.js' %}"></script>
-    <form id="headerform" method="POST">
+    <form id="headerform" method="POST" autocomplete="off">
         {% csrf_token %}
         <input id="formaction" type="hidden" name="formaction" value=""/>
         <div id="headerformtable">
+            {% for field in headerForm %}
             <table>
                 <tbody>
-                {% for field in headerForm %}
                 <tr>
                     {% if field.label != 'Model replaced link' %}
                     <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</td>
@@ -26,7 +27,7 @@
                     {% if field.label == 'REACT Request' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
                         <td>
                             &nbsp;&nbsp;
-                            <input id="searchSubmit" type="button" value="Search"/>
+                            <input id="searchSubmit" class="btn" type="button" value="Search"/>
                             &nbsp;&nbsp;&nbsp;&nbsp;
                         </td>
                     {% elif field.label == 'Baseline Impacted' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
@@ -34,6 +35,10 @@
                             &nbsp;&nbsp;
                             <input id="new_baseline" type="text" name="new_baseline" placeholder="Baseline Name" style="display:none;"/>
                             &nbsp;&nbsp;&nbsp;&nbsp;
+                        </td>
+                    {% elif field.label == 'Configuration/Ordering Status' and headerForm.configuration_status.value == 4 %}
+                        <td>
+                            <input type="text" style="border: none" value="({{ headerForm.instance.old_configuration_status.name }})" readonly/>
                         </td>
                     {% endif %}
                     {% for error in field.errors %}
@@ -44,26 +49,26 @@
                 {% if field.label in break_list %}
                     <tr><td><h3></h3></td></tr>
                 {% endif %}
-                {% endfor %}
                 </tbody>
             </table>
+            {% endfor %}
         </div>
         <div id="formbuttons">
-            <input id="cancelForm" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close();{% else %}window.location.href='{% url 'bomconfig:index' %}';{% endif %}"/>
-            {% if headerForm.instance.configuration_status.name == 'In Process' and header_write_authorized and not frame_readonly %}
-            <input id="saveexitForm" type="button" value="Save & Exit"/>
-            <input id="saveForm" type="button" value="Save"/>
+            <input id="cancelForm" class="btn" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close();{% else %}window.location.href='{% url 'bomconfig:index' %}';{% endif %}"/>
+            {% if header_write_authorized and not frame_readonly %}
+            <input id="saveexitForm" class="btn" type="button" value="Save & Exit"/>
+            <input id="saveForm" class="btn" type="button" value="Save"/>
             {% endif %}
-            {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
+            {% if can_continue %}<input id="nextForm" class="btn" type="button" value="Next"/>{% endif %}
             <span><span style="color: red;font-size:14pt;">*</span> = Required</span>
             {% if headerForm.instance.pk %}
             {% if not frame_readonly or user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_BPMA_Architect" %}
-            <input id="download" type="button" value="Download"/>
+            <input id="download" class="btn" type="button" value="Download"/>
             {% endif %}
             {% endif %}
             {% if header.configuration_status.name not in non_clonable %}
             {% if user|has_group:"BOM_PSM_" or user|has_group:"BOM_BPMA_Architect" %}
-            <input id="clone" type="button" value="Clone" onclick="cloneHeader({{ header.id }});"/>
+            <input id="clone" class="btn" type="button" value="Clone" onclick="cloneHeader({{ header.id }});"/>
             {% endif %}
             {% endif %}
             {% if status_message %}
@@ -82,7 +87,6 @@
     input[type="number"]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{
         -webkit-appearance: none;
         -moz-appearance: none;
-        appearance: none;
         margin:0;
     }
     input[type="number"] {
@@ -95,7 +99,7 @@
     var listfill_url = "{% url 'bomconfig:list_fill' %}";
     var listreactfill_url = "{% url 'bomconfig:list_react_fill' %}";
     var clone_url = "{% url 'bomconfig:configclone' %}";
-    var download_url = '{% url 'bomconfig:download' %}';
+    var download_url = '{% url 'bomconfig:download' %}'{% if frame_readonly %}+ '?download={{ header.id|searchscramble }}'{% endif %};
     var reactrequest_id = "#{{ headerForm.react_request.auto_id }}";
     var personresponsible_id = "#{{ headerForm.person_responsible.auto_id }}";
     var customername_id = "#{{ headerForm.customer_name.auto_id }}";

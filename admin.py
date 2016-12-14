@@ -111,7 +111,7 @@ class BaselineAdmin(admin.ModelAdmin):
 
 class ConfigLineAdmin(admin.ModelAdmin):
     list_display = ('title','version','line_number')
-    search_fields = ('config__header__configuration_designation', 'line_number')
+    search_fields = ('config__header__configuration_designation', 'line_number', 'config__header__baseline_version')
 
 
 class ConfigAdmin(admin.ModelAdmin):
@@ -130,6 +130,10 @@ class SubProductAreaAdmin(admin.ModelAdmin):
 
 class CustomerNameAdmin(admin.ModelAdmin):
     list_display = ('name','parent')
+
+
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'new_req')
 
 
 admin.site.register(Alert)
@@ -165,3 +169,4 @@ admin.site.register(REF_STATUS)
 admin.site.register(DistroList, DistroAdmin)
 admin.site.register(ApprovalList)
 admin.site.register(CustomerPartInfo, CustomerInfoAdmin)
+admin.site.register(DocumentRequest, DocumentAdmin)

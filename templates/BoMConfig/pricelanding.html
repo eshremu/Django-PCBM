@@ -8,6 +8,9 @@
         <button class="btn" type="button" name="action" value="part_price" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:pricing' %}'>Unit Price Mgmt</button>
 		<button class="btn" type="button" name="action" value="config_price" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configpricing' %}'>Configuration Price Mgmt</button>
 		<button class="btn" type="button" name="action" value="price_report" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:basepricing' %}'>Pricing Overview</button>
+        {% if pricing_write_authorized %}
+        <button class="btn" type="button" name="action" value="price_erosion" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:erosionpricing' %}'>Pricing Erosion</button>
+        {% endif %}
 	</div>
     {% block subcontent %}{% endblock %}
     {% else %}
@@ -21,10 +24,20 @@
             if(clean_form != undefined && dirty_form != clean_form && !form_save){
                 messageToModal('Unsaved changes detected',
                         "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
-                        function(){window.location.href = link.dataset.href;}
+                        function(){
+                            if (link.target == "_blank"){
+                                window.open(link.dataset.href);
+                            } else {
+                                window.location.href = link.dataset.href;
+                            }
+                        }
                 );
             } else {
-                window.location.href = link.dataset.href;
+                if (link.target == "_blank"){
+                    window.open(link.dataset.href);
+                } else {
+                    window.location.href = link.dataset.href;
+                }
             }
         }
 

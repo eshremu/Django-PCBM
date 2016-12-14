@@ -7,6 +7,12 @@ var model_replace_initial;
 var model_replace_override = false;
 
 $(document).ready(function(){
+    var max = 0;
+    $('tr td:first-child').each(function(idx, elem){max = Math.max(max, $(elem).width())});
+    $('tr td:first-child').each(function(idx, elem){$(elem).width(max)});
+    $('#id_valid_from_date').datepicker({dateFormat: "yy-mm-dd"});
+    $('#id_valid_to_date').datepicker({dateFormat: "yy-mm-dd"});
+
     $('#searchSubmit').click(function(){
         req_search();
     });
@@ -170,10 +176,20 @@ function cleanDataCheck(link){
     if(dirty_form != clean_form && !form_save){
         messageToModal('Unsaved changes detected',
                 "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
-                function(){window.location.href = link.dataset.href;}
+                function(){
+                    if (link.target == "_blank"){
+                        window.open(link.dataset.href);
+                    } else {
+                        window.location.href = link.dataset.href;
+                    }
+                }
         );
     } else {
-        window.location.href = link.dataset.href;
+        if (link.target == "_blank"){
+            window.open(link.dataset.href);
+        } else {
+            window.location.href = link.dataset.href;
+        }
     }
 }
 
@@ -262,6 +278,8 @@ function form_resize(){
 
 function save_form(){
     form_save = true;
+    $('[readonly=true]').removeAttr('readonly');
+    $('[disabled=true]').removeAttr('disabled');
     clean_form = $('#headerform').serialize();
 }
 

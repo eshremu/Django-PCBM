@@ -1,0 +1,58 @@
+{% load staticfiles %}
+{% load bomconfig_customtemplatetags %}
+{% block header %}
+<div id="main-header">
+
+	<div class="logo">
+		<a style="cursor: pointer;" href="http://www.ericsson.com/"><img src="{% static 'BoMConfig/logo.png' %}"/></a>
+	</div>
+	<div class="title">
+		<a style="cursor: pointer;" href="{% url 'bomconfig:index' %}"><img src="{% static 'BoMConfig/title.png' %}"/></a>
+	</div>
+	<div class="row">
+		<div id="welcome" class="col-md-4 col-lg-4">
+			<div style="text-align: right; padding-right: 5px; padding-bottom: 5px;" {% if user.is_authenticated %}class="dropdown"{% endif %}>Welcome, {% if user.is_authenticated %}<a style="cursor: pointer;" id="user-menu" class="dropdown-toggle" data-toggle="dropdown">{% endif %}{{ user.username|default:_('User')}}{% if user.is_authenticated %}</a>
+            <ul class="dropdown-menu dropdown-menu-right">
+                <li><a style="cursor: pointer;" href="{% url 'bomconfig:change_password' %}">Change Password</a></li>
+                <li><a style="cursor: pointer;" href="{% url 'bomconfig:logout' %}">Logout</a></li>
+            </ul>{% endif %}</div>
+			{% if not user.is_authenticated %}
+				<form action="{% url 'bomconfig:login' %}" method="post">
+					{% csrf_token %}
+					<input class="btn" type="submit" value="Login" />
+				</form>
+			{% endif %}
+			<div class="nav-menu">
+				<ul class="nav nav-pills pull-right">
+					<li><a style="cursor: pointer;" href="{% url 'bomconfig:index' %}"> Home </a></li>
+					<li><a {% if user|has_group:"BOM_Tool_Admin" %}href="http://eusaamw0067/servicedesk/customer/portal/2" target="_blank" {% else %}href="mailto:{{ supportcontact }}?subject={{ pagetitle }}%20support%20request"{% endif %}>Support</a></li>
+				</ul>
+			</div>
+		</div>
+		<div id="main-menu" class="col-lg-7 col-md-8">
+			<div class="nav-menu container">
+				<ul class="nav nav-pills">
+					{% for menuitem in menulisting %}
+						{% if 'children' in menuitem %}
+							<li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">{{menuitem.title}}<span class="caret"></span></a>
+                                <ul class="dropdown-menu">
+                                    {% for submenuitem in menuitem.children %}
+                                        <li><a href="{{ submenuitem.destination }}" {% if submenuitem.target %}target="{{ submenuitem.target }}"{% endif %}>{{ submenuitem.title }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
+						{% elif menuitem.title == 'Admin' %}
+                            {% if user.is_staff or user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
+                            <li><a class="headtitle" style="cursor: pointer;" href="{% if menuitem.destination|slice:'-1:' == '/' %}{{ menuitem.destination }}{% else %}{% url menuitem.destination %}{% endif %}" {% if menuitem.target %}target="{{ menuitem.target }}"{% endif %}>{{menuitem.title}}</a></li>
+                            {% endif %}
+						{% else %}
+							<li><a class="headtitle" style="cursor: pointer;" href="{% if menuitem.destination|slice:'-1:' == '/' %}{{ menuitem.destination }}{% else %}{% url menuitem.destination %}{% endif %}" {% if menuitem.target %}target="{{ menuitem.target }}"{% endif %}>{{menuitem.title}}</a></li>
+						{% endif %}
+					{% endfor %}
+				</ul>
+			</div>
+		</div>
+	</div>
+</div>
+<!-- div id="main-header" -->
+{% endblock %}

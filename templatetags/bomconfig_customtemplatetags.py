@@ -16,9 +16,21 @@ def getattribute(obj, attr):
 
 @register.filter(name='getindex')
 def getindex(obj, attr):
-    """ Returns the attribute specified by 'attr' from the object specified by 'obj'. """
+    """ Returns the value at index specified by 'attr' from the list specified by 'obj'. """
     if attr < len(obj):
         return obj[attr]
+    return None
+# end def
+
+
+@register.filter(name='getindexof')
+def getindexof(obj, attr):
+    """ Returns the index of value specified by 'attr' from the list specified by 'obj'. """
+    if isinstance(obj, (list, tuple)):
+        try:
+            return obj.index(attr)
+        except ValueError:
+            return None
     return None
 # end def
 
@@ -109,4 +121,19 @@ def random_string(length):
 @register.filter(name='has_group')
 def has_group(user, group):
     return bool(user.groups.filter(name__istartswith=group))
+# end def
+
+
+@register.filter(name='multiply')
+def multiply(multiplicand, multiplier):
+    if isinstance(multiplicand, (int, float)) and isinstance(multiplier, (int, float)):
+        return multiplicand * multiplier
+    else:
+        return None
+# end def
+
+
+@register.filter(name='startswith')
+def startswith(string, substring):
+    return str(string).startswith(substring)
 # end def

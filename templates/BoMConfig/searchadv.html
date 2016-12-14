@@ -1,9 +1,10 @@
 {% extends "BoMConfig/template.html" %}
+{% load staticfiles %}
 {% load bomconfig_customtemplatetags %}
 {% block content %}
 <div id="main-body" xmlns="http://www.w3.org/1999/html">
     {% if user.is_authenticated %}
-    <div id="action_buttons">
+    <div id="action_buttons" style="margin: 5px 0;">
 		<button class="btn" type="button" name="action" value="basic" onclick="window.location.href='{% url 'bomconfig:search' %}'">Basic</button>
 		<button class="btn" type="button" name="action" value="advanced" onclick="window.location.href='{% url 'bomconfig:searchadv' %}'">Advanced</button>
 	</div>
@@ -16,41 +17,121 @@
                     <h4 id="header_search_title">BoM Config Header&nbsp;<span class="caret"></span></h4>
                     <ul id="header_search" style="list-style-type: none" aria-expanded="true" class="collapse in">
                         <li><label for="config">Configuration</label>
-                            <input id="config" type="text" name="config"/></li>
+                            <input id="config" type="text" name="config"/>
+                        </li>
                         <li><label for="request">REACT Request</label>
-                            <input id="request" type="text" name="request"/></li>
+                            <input id="request" type="text" name="request"/>
+                        </li>
                         <li><label for="customer">Customer Unit</label>
                             <select id="customer" name="customer">
                                 <option value="">-------</option>
+                                <option value="n/a">Any</option>
                                 {% for cust in cust_list %}
                                 <option value="{{ cust.name }}">{{ cust.name }}</option>
                                 {% endfor %}
-                            </select></li>
+                            </select>
+                        </li>
                         <li><label for="person">Person Responsible</label>
-                            <input id="person" type="text" name="person"/></li>
+                            <input id="person" type="text" name="person"/>
+                        </li>
                         <li><label for="soldto">Sold-to Party</label>
-                            <input id="soldto" type="text" name="soldto"/></li>
+                            <input id="soldto" type="text" name="soldto"/>
+                        </li>
                         <li><label for="program">Program</label>
-                            <input id="program" type="text" name="program"/></li>
+                            <select id="program" name="program">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for program in prog_list %}
+                                <option value="{{ program|lower }}">{{ program }}</option>
+                                {% endfor %}
+                            </select>
+                        </li>
                         <li><label for="tech">Technology</label>
-                            <input id="tech" type="text" name="tech"/></li>
+                            <select id="tech" name="tech">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for tech in tech_list %}
+                                <option value="{{ tech.name|lower }}">{{ tech.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </li>
+                        <li><label for="prod1">Product Area 1</label>
+                            <select id="prod1" name="prod1">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for prod in prod1_list %}
+                                <option value="{{ prod|lower }}">{{ prod }}</option>
+                                {% endfor %}
+                            </select>
+                        </li>
+                        <li><label for="prod2">Product Area 2</label>
+                            <select id="prod2" name="prod2">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for prod in prod2_list %}
+                                <option value="{{ prod|lower }}">{{ prod }}</option>
+                                {% endfor %}
+                            </select>
+                        </li>
+                        <li><label for="freq">Radio Frequency</label>
+                            <select id="freq" name="freq">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for freq in freq_list %}
+                                <option value="{{ freq|lower }}">{{ freq }}</option>
+                                {% endfor %}
+                            </select>
+                        </li>
+                        <li><label for="band">Radio Band</label>
+                            <select id="band" name="band">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for band in band_list %}
+                                <option value="{{ band.name|lower }}">{{ band.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </li>
+                        <li><label for="inquiry_site">Inquiry / Site Template Number</label>
+                            <input id="inquiry_site" type="text" name="inquiry_site"/>
+                        </li>
+                        <li><label for="readiness">Readiness Complete (%)</label>
+                            <select id="readiness_param">
+                                <option value="lt"><</option>
+                                <option value="lte">&le;</option>
+                                <option value="exact" selected>=</option>
+                                <option value="gte">&ge;</option>
+                                <option value="gt">></option>
+                                <option value="ne">&ne;</option>
+                            </select>
+                            <input id="readiness" type="number" name="readiness" min="0" max="100" maxlength="3"/>
+                        </li>
                         <li><label for="base_impact">Baseline Impacted</label>
-                            <input id="base_impact" type="text" name="base_impact"/></li>
+                            <select id="base_impact" name="base_impact">
+                                <option value="">-------</option>
+                                <option value="n/a">Any</option>
+                                {% for base in baseline_list %}
+                                <option value="{{ base.title }}">{{ base.title }}</option>
+                                {% endfor %}
+                            </select>
+                        </li>
                         <li><label for="model">Model</label>
-                            <input id="model" type="text" name="model"/></li>
+                            <input id="model" type="text" name="model"/>
+                        </li>
                         <li><label for="model_desc">Model Description</label>
-                            <input id="model_desc" type="text" name="model_desc"/></li>
+                            <input id="model_desc" type="text" name="model_desc"/>
+                        </li>
                         <li><label for="init_rev">Initial Revision</label>
-                            <input id="init_rev" type="text" name="init_rev"/></li>
+                            <input id="init_rev" type="text" name="init_rev"/>
+                        </li>
                         <li><label for="status">Configuration/Ordering Status</label>
                             <select id="status" name="status">
                                 <option value="">-------</option>
+                                <option value="n/a">Any</option>
                                 {% for status in status_list %}
                                 <option value="{{ status.name|lower|replacewhitespace:"_" }}">{{ status.name }}</option>
                                 {% endfor %}
-                            </select></li>
-                        <li><label for="inquiry_site">Inquiry / Site Template Number</label>
-                            <input id="inquiry_site" type="text" name="inquiry_site"/></li>
+                            </select>
+                        </li>
                     </ul>
                 </div>
 
@@ -58,19 +139,17 @@
                     <h4 id="entry_search_title">BoM Config Entry&nbsp;<span class="caret"></span></h4>
                     <ul id="entry_search" style="list-style-type: none" aria-expanded="true" class="collapse in">
                         <li><label for="prod_num">Product Number</label>
-                            <input id="prod_num" type="text"/></li>
+                            <input id="prod_num" type="text"/>
+                        </li>
+                        <li><label for="contextID">Context ID</label>
+                            <input id="contextID" type="text"/>
+                        </li>
                         <li><label for="prod_desc">Product Description</label>
-                            <input id="prod_desc" type="text"/></li>
+                            <input id="prod_desc" type="text"/>
+                        </li>
                         <li><label for="cust_num">Customer Number</label>
-                            <input id="cust_num" type="text"/></li>
-                        <li><label for="mu_flag">MU-Flag</label>
-                            <select id="mu_flag">
-                                <option value="">----</option>
-                                <option value="Yes">Yes</option>
-                                <option value="No">No</option>
-                            </select>
-                        <li><label for="xplant">X-Plant Material Status</label>
-                            <input id="xplant" type="text"/></li>
+                            <input id="cust_num" type="text"/>
+                        </li>
                     </ul>
                 </div>
 
@@ -78,16 +157,23 @@
                     <h4 id="revision_search_title">BoM Config Revision&nbsp;<span class="caret"></span></h4>
                     <ul id="revision_search" style="list-style-type: none" aria-expanded="true" class="collapse in">
                         <li><label for="base_rev">Baseline Revision</label>
-                            <input id="base_rev" type="text"/></li>
+                            <input id="base_rev" type="text"/>
+                        </li>
+                        <li>
+                            <label for="latest_only">Latest Revision Only</label>
+                            <input type="checkbox" id="latest_only" value=1/>
+                        </li>
                         <li><label for="release">Release Date</label>
                             <select id="release_param">
                                 <option value="lt"><</option>
-                                <option value="lte"><=</option>
+                                <option value="lte">&le;</option>
                                 <option value="exact" selected>=</option>
-                                <option value="gte">>=</option>
+                                <option value="gte">&ge;</option>
                                 <option value="gt">></option>
+                                <option value="ne">&ne;</option>
                             </select>
-                            <input id="release" type="date"/></li>
+                            <input id="release" type="date"/>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -103,128 +189,14 @@
     <h4>You must log in to use this function</h4>
     {% endif %}
 </div>
-<script>
-    $('a:contains("Search")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc')
-    $('button[value="advanced"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
-    var xhr;
-    $(document).ready(function(){
-        $('#search_button').click(function(){
-            $('#search_form').submit();
-        });
-
-        $('input').keydown(function(e){
-            if(e.keyCode == 13) {
-                $('#search_form').submit();
-            }
-        });
-
-        $(document).keydown(function(e){
-            if(e.keyCode == 27 && xhr !== undefined && $('#myModal').hasClass('in')) {
-                xhr.abort();
-            }
-        });
-
-        $('#header_search_title, #entry_search_title, #revision_search_title').click(function(){
-            $(this).next().collapse('toggle');
-        });
-
-        $('#header_search, #entry_search, #revision_search').on('hide.bs.collapse show.bs.collapse',function(event){
-            if (event.type == 'hide'){
-                $(this).prev().find('.caret').css({transform: 'rotate(-90deg)'});
-            } else {
-                $(this).prev().find('.caret').css({transform: 'rotate(0deg)'});
-            }
-        });
-
-        $(document).on('click', '.selectall', function(){
-            if($(this).prop('checked')){
-                $('.recordselect').attr('checked', 'checked');
-            } else {
-                $('.recordselect').removeAttr('checked');
-            }
-            $($('.recordselect')[0]).change();
-        });
-
-        $(document).on('click change', '.recordselect',function(){
-            if($('.recordselect:checked').length > 0) {
-                $('#download').removeAttr('disabled');
-            } else {
-                $('#download').attr('disabled', 'disabled');
-            }
-        });
-
-        $(document).on('click', '#download', function(){
-            var destination = "{% url 'bomconfig:downloadmulti' %}";
-            var list = '';
-            $('.recordselect:checked').each(function(i, elem){
-                list += $(elem).val() + ',';
-            });
-            destination += '?list=' + encodeURIComponent(list.slice(0, -1));
-            window.open(destination, '_blank','left=100,top=100,height=150,width=500,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no');
-        });
-    });
-
-    function search(eventObj){
-        $('#myModal').modal('show');
-        xhr = $.ajax({
-            url: "{% url 'bomconfig:searchadv' %}",
-            dataType: "html",
-            type: "POST",
-            data: {
-                request: $('#request').val(),
-                customer: $('#customer').val(),
-                sold_to: $('#soldto').val(),
-                program: $('#program').val(),
-                config_design: $('#config').val(),
-                technology: $('#tech').val(),
-                base_impact: $('#base_impact').val(),
-                model: $("#model").val(),
-                model_desc:$("#model_desc").val(),
-                init_rev: $("#init_rev").val(),
-                status: $('#status').val(),
-                inquiry_site: $('#inquiry_site').val(),
-                person: $('#person').val(),
-
-                product_num: $('#prod_num').val(),
-                customer_num: $('#cust_num').val(),
-                description: $('#prod_desc').val(),
-                mu_flag: $('#mu_flag').val(),
-                xplant: $('#xplant').val(),
-
-                base_rev: $('#base_rev').val(),
-                release_param: $('#release_param').val(),
-                release: $('#release').val()
-            },
-            headers:{
-                'X-CSRFToken': getcookie('csrftoken'),
-            },
-            success: function(data) {
-                xhr = undefined;
-                $('#search_results').empty();
-                $('#search_results').append($('<h3>Search Results</h3>'));
-                $('#search_results').append(data);
-                $('#search_button').blur();
-                if($('#header_search').hasClass('in')){
-                    $('#header_search').collapse('toggle');
-                }
-                if($('#entry_search').hasClass('in')){
-                    $('#entry_search').collapse('toggle');
-                }
-                if($('#revision_search').hasClass('in')){
-                    $('#revision_search').collapse('toggle');
-                }
-                $('#myModal').modal('hide');
-            },
-            error: function() {
-                $('#myModal').modal('hide');
-            }
-        });
-        return false;
-    }
-    function cleanDataCheck(link){
-        window.location.href = link.dataset.href;
-    }
+<link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+<script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
+<script type="text/javascript">
+    var downloadmultiurl = "{% url 'bomconfig:downloadmulti' %}";
+    var searchurl = "{% url 'bomconfig:searchadv' %}";
+    var reporturl = '{% url 'bomconfig:downloadresult' %}';
 </script>
+<script type="text/javascript" src="{% static 'BoMConfig/js/search_advanced.js' %}"></script>
 <style>
     button:disabled {
         color: #999999;

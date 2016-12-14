@@ -4,14 +4,19 @@
 
 $('a.headtitle:contains("Actions")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 
-new Event("pcbm.modal.formdisplay", {'cancelable': false, "bubbles": false});
+document.createEvent("CustomEvent").initCustomEvent('pcbm.modal.formdisplay', false, false, {});
+
 var iIndex = -1;
 var keys=[];
 var returnedFormData = null;
 var approvalFormData = {};
 
 function cleanDataCheck(link){
-    window.location.href = link.dataset.href;
+    if (link.target == "_blank"){
+        window.open(link.dataset.href);
+    } else {
+        window.location.href = link.dataset.href;
+    }
 }
 
 function cust_filter(customer){
@@ -163,6 +168,60 @@ $(document).ready(function(){
         } else {
             messageToModal('Error','Please select at least 1 record to release from hold.', function(){});
         }
+    });
+
+    $(document).on("change", '#toggle_pass', function(event){
+        var curVal = $('#sap_password').val();
+
+        if($(event.target).prop('checked')){
+            $('#sap_password').attr('type', 'text');
+        } else {
+            $('#sap_password').attr('type', 'password');
+        }
+
+        $('#sap_password').val(curVal);
+    });
+    
+    $('.doc_button').click(function(){
+        var title = `Confirm document ${this.dataset.update=="0"?"creation":"update"}`;
+        var message = `<p>You are about to ${this.dataset.update=="0"?"create":"update"} a(n) ${this.dataset.type=="0"?"Inquiry":"Site Template"} for ${$($(this).parent().siblings()[1]).text()}.  Are you sure?</p>`;
+
+        if (this.dataset.type=="0" && this.dataset.pdf_allowed=="1") {
+            message += '<label for="makepdf">Create PDF:&nbsp;&nbsp;</label><input id="makepdf" type="checkbox"/>';
+        }
+
+        var data = {};
+        messageToModal(title, message, function(source){
+            data = {
+                    id: source.dataset.id,
+                    type: source.dataset.type,
+                    update: source.dataset.update,
+                    pdf: $('#makepdf').prop('checked')
+                };
+            $('#messageModal').one('hidden.bs.modal', function () {
+                messageToModal('SAP Credentials',
+                    '<p>Please enter your SAP username and password:</p>'+
+                    '<label for="sap_username">Username</label>&nbsp;&nbsp;<input type="text" id="sap_username" name="username"/><br/>'+
+                    '<label for="sap_password">Password</label>&nbsp;&nbsp;<input type="password" id="sap_password" name="password"/><br/>'+
+                    '<input type="checkbox" id="toggle_pass" name="passwordtoggle"/><label for="toggle_pass">Show characters</label>',
+                    function(){
+                        data['user'] = $('#sap_username').val();
+                        data['pass'] = $('#sap_password').val();
+                        $.ajax({
+                            url: doc_url,
+                            type: "POST",
+                            data: data,
+                            headers:{
+                                'X-CSRFToken': getcookie('csrftoken')
+                            },
+                            success: function(){
+                                window.location.reload(true);
+                            }
+                        });
+                    }
+                );
+            });
+        }, this);
     });
 
     $(document).on("pcbm.modal.formdisplay", processForms);

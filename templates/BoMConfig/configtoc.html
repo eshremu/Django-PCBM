@@ -2,8 +2,8 @@
 {% load staticfiles %}
 {% block subcontent %}
 {% if toc_read_authorized %}
-    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
-    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.css' %}"/>
     <form id="tocform" method="POST" onsubmit="data_submit()">
         {% csrf_token %}
         <div id="headersubform">
@@ -23,7 +23,7 @@
             <table>
                 <tbody>
                     <tr>
-                        <td style="width:125px;">{{ form.reassign.label_tag }}{{ form.reassign }}</td>
+                        <td style="width:200px;">{{ form.ready_for_forecast.label_tag }}{{ form.ready_for_forecast }}</td>
                         <td style="width:150px;">{{ form.PSM_on_hold.label_tag }}{{ form.PSM_on_hold }}</td>
                         <td style="width:225px;"></td>
                         <td style="width:170px;"></td>
@@ -47,13 +47,13 @@
         </div>
         <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden"><div id="datatable"></div></div>
         <div id="formbuttons">
-            {% if can_previous %}<input id="prevForm" type="button" value="Prev">{% endif %}
-            <input id="cancelForm" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
+            {% if can_previous %}<input id="prevForm" class="btn" type="button" value="Prev">{% endif %}
+            <input id="cancelForm" class="btn" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
             {% if header.configuration_status.name == 'In Process' and toc_write_authorized and not frame_readonly %}
-            <input id="saveexitForm" type="button" value="Save & Exit">
-            <input id="saveForm" type="button" value="Save">
+            <input id="saveexitForm" class="btn" type="button" value="Save & Exit">
+            <input id="saveForm" class="btn" type="button" value="Save">
             {% endif %}
-            {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
+            {% if can_continue %}<input id="nextForm" class="btn" type="button" value="Next"/>{% endif %}
             {% if status_message %}
             <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
                 {{ status_message }}
@@ -88,10 +88,20 @@
             if (!valid && !form_save){
                 messageToModal('Unsaved changes detected',
                         "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
-                        function(){window.location.href = link.dataset.href;}
+                        function(){
+                            if (link.target == "_blank"){
+                                window.open(link.dataset.href);
+                            } else {
+                                window.location.href = link.dataset.href;
+                            }
+                        }
                 );
             } else {
-                window.location.href = link.dataset.href;
+                if (link.target == "_blank"){
+                    window.open(link.dataset.href);
+                } else {
+                    window.location.href = link.dataset.href;
+                }
             }
         }
 
@@ -140,10 +150,10 @@
         });
 
         function form_resize(){
-            var topbuttonheight = $('#action_buttons').height();
-            var bottombuttonheight = $('#formbuttons').height();
-            var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
-            var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
+            var topbuttonheight = $('#action_buttons').outerHeight(true);
+            var bottombuttonheight = $('#formbuttons').outerHeight(true);
+            var subformheight = $("#headersubform").outerHeight(true);
+            var crumbheight = $('#breadcrumbs').outerHeight(true);
             var bodyheight = $('#main-body').height();
 
             var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + crumbheight + subformheight);
@@ -237,7 +247,7 @@
                     return cellProperties;
                 }
             });
-            clean_form = hot.getSourceData();
+            clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
             $('[name="data_form"]').remove();
             clean_sub = $('#tocform').serialize();
         }

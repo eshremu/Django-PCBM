@@ -2,8 +2,10 @@
 {% load staticfiles %}
 {% block subcontent %}
 {% if config_read_authorized %}
-    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
-    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.js' %}"></script>
+    <script src="{% static 'BoMConfig/jQuery/jquery-ui.min.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.css' %}"/>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/css/jquery-ui.min.css' %}"/>
     <style>
         .handsontable .currentRow {
             background: #fff4d8;
@@ -12,6 +14,12 @@
         .handsontable thead th {
             white-space: pre-line;
             height: 50px;
+        }
+
+        .smallItalics {
+            font-size: 11px;
+            font-style: italic;
+            color: #333;
         }
     </style>
     <form id="configform" method="POST" onsubmit="data_submit();">
@@ -36,7 +44,7 @@
             <table>
                 <tbody>
                     <tr>
-                        <td style="width:125px;">{{ form.reassign.label_tag }}{{ form.reassign }}</td>
+                        <td style="width:200px;">{{ form.ready_for_forecast.label_tag }}{{ form.ready_for_forecast }}</td>
                         <td style="width:150px;">{{ form.PSM_on_hold.label_tag }}{{ form.PSM_on_hold }}</td>
                         <td style="width:225px;">{{ form.internal_external_linkage.label_tag }}{{ form.internal_external_linkage }}</td>
                         <td style="width:170px;"></td>
@@ -76,13 +84,13 @@
         </div>
         <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden"><div id="datatable"></div></div>
         <div id="formbuttons">
-            {% if can_previous %}<input id="prevForm" type="button" value="Prev">{% endif %}
-            <input id="cancelForm" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
-            {% if header.configuration_status.name == 'In Process' and config_write_authorized and not frame_readonly %}
-            <input id="saveexitForm" type="button" value="Save & Exit">
-            <input id="saveForm" type="button" value="Save">
+            {% if can_previous %}<input id="prevForm" class="btn" type="button" value="Prev">{% endif %}
+            <input id="cancelForm" class="btn" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
+            {% if not active_lock and config_write_authorized and not frame_readonly %}
+            <input id="saveexitForm" class="btn" type="button" value="Save & Exit">
+            <input id="saveForm" class="btn" type="button" value="Save">
             {% endif %}
-            {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
+            {% if can_continue %}<input id="nextForm" class="btn" type="button" value="Next"/>{% endif %}
 
             <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
                 {% if status_message %}{{ status_message }}{% endif %}
@@ -92,8 +100,8 @@
                 setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
             </script>
             {% endif %}
-            {% if header.configuration_status.name == 'In Process' and not frame_readonly %}
-            <input id="validate" type="button" value="Validate" style="margin-left:500px;" title="Validate current input, prefill empty cells, and update totals."/>
+            {% if not active_lock and config_write_authorized and not frame_readonly %}
+            <input id="validate" class="btn" type="button" value="Validate" style="margin-left:500px;" title="Validate current input, prefill empty cells, and update totals."/>
             <span style="padding-left: 25px;">Status: </span>
             <span id="status" style="padding-left: 10px;"></span>
             {% endif %}
@@ -107,12 +115,19 @@
         var hot;
         var header_html;
         var data = {{ data_array|safe }};
+        var config_id = data[0][2];
         var error_matrix = [];
         var clean_form, clean_sub;
         var form_save = false;
         var validating = false;
         var valid = true;
         var firstLoad = true;
+
+        function pasting() {
+            var text = window.clipboardData.getData('Text');
+            text = text.replace(/\s/g, " ");
+            console.log(text);
+        }
 
         function cleanDataCheck(link){
             var dirty_form = hot.getSourceData();
@@ -134,10 +149,20 @@
             if (!valid && !form_save){
                 messageToModal('Unsaved changes detected',
                         "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
-                        function(){window.location.href = link.dataset.href;}
+                        function(){
+                            if (link.target == "_blank"){
+                                window.open(link.dataset.href);
+                            } else {
+                                window.location.href = link.dataset.href;
+                            }
+                        }
                 );
             } else {
-                window.location.href = link.dataset.href;
+                if (link.target == "_blank"){
+                    window.open(link.dataset.href);
+                } else {
+                    window.location.href = link.dataset.href;
+                }
             }
         }
 
@@ -146,16 +171,16 @@
                 form_resize();
 {#                {% if header.configuration_status == 'In Process' %}data_validate();{% endif %}#}
                 {% if not frame_readonly %}data_validate();{% endif %}
-                clean_form = hot.getSourceData();
-                if (typeof clean_form[0] == 'object'){
-                    for(var j=0; j < clean_form.length; j++) {
-                        for (var i = 0; i < 31; i++) {
-                            if (!clean_form[j].hasOwnProperty(i)) {
-                                clean_form[j][i] = null;
-                            }
-                        }
-                    }
-                }
+                clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
+{#                if (typeof clean_form[0] == 'object'){#}
+{#                    for(var j=0; j < clean_form.length; j++) {#}
+{#                        for (var i = 0; i < 31; i++) {#}
+{#                            if (!clean_form[j].hasOwnProperty(i)) {#}
+{#                                //clean_form[j][i] = null;#}
+{#                            }#}
+{#                        }#}
+{#                    }#}
+{#                }#}
                 $('[name="data_form"]').remove();
                 clean_sub = $('#configform').serialize();
             });
@@ -181,33 +206,21 @@
             $('#saveForm').click(function(){
                 if(!validating) {
                     $('#formaction').val('save');
-                    {% if header.configuration_status.name != 'In Process' %}
-                    $('#configform').submit();
-                    {% else %}
-                    data_validate(true);
-                    {% endif %}
+                    submit();
                 }
             });
 
             $('#saveexitForm').click(function(){
                 if(!validating) {
                     $('#formaction').val('saveexit');
-                    {% if header.configuration_status.name != 'In Process' %}
-                    $('#configform').submit();
-                    {% else %}
-                    data_validate(true);
-                    {% endif %}
+                    submit();
                 }
             });
 
             $('#nextForm').click(function(){
                 if(!validating) {
                     $('#formaction').val('next');
-                    {% if header.configuration_status.name != 'In Process' %}
-                    $('#configform').submit();
-                    {% else %}
-                    data_validate(true);
-                    {% endif %}
+                    submit();
                 }
             });
 
@@ -227,6 +240,14 @@
             });
         });
 
+        function submit(){
+            {% if header.configuration_status.name != 'In Process' %}
+            $('#configform').submit();
+            {% else %}
+            data_validate(true);
+            {% endif %}
+        }
+
         function floatFormat(number){
             var array = String(number).split('.');
             if (array.length > 1){
@@ -238,8 +259,8 @@
 
 
         function form_resize(){
-            var topbuttonheight = $('#action_buttons').height();
-            var bottombuttonheight = $('#formbuttons').height();
+            var topbuttonheight = $('#action_buttons').outerHeight(true);
+            var bottombuttonheight = $('#formbuttons').outerHeight(true);
             var subformheight = $("#headersubform").outerHeight(true);// + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
             var crumbheight = $('#breadcrumbs').outerHeight(true);// + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
             var bodyheight = $('#main-body').height();
@@ -253,7 +274,7 @@
         function determineColumns(cols, headers, readonly){
 {#            var header = "<th colspan='1'><div class='relative'></div></th><th colspan='4'><div class='relative'><span>BoM</span></div></th>";#}
             cols.push({data: 0}, {data: 1}, {data: 2}, {data: 3}, {data: 4});
-            headers.push('Status', 'Line #', 'Product Number', "Product Description", 'Order Qty');
+            headers.push('Status', 'Line #', 'Product Number<br><span class="smallItalics">'+config_id+"</span>", "Product Description", 'Order Qty');
             {% if config_bom_write_authorized %}
             readonly.push(0);
             {% else %}
@@ -263,15 +284,15 @@
             var offset = 0;
 
             if(SAPVis === true && {{ config_sap_read_authorized|lower }}){
-                cols.push({data: 5}, {data: 6}, {data: 7}, {data: 8}, {data: 9});
-                headers.push('UoM', 'Plant', 'SLOC', 'Item Cat', 'P-Code - Fire Code, Desc');
+                cols.push({data: 5}, {data:6}, {data: 7}, {data: 8}, {data: 9}, {data: 10});
+                headers.push('UoM', 'Context ID','Plant', 'SLOC', 'Item Cat', 'P-Code - Fire Code, Desc');
                 {% if config_sap_write_authorized %}
 {#                readonly.push(5, 9);#}
                 readonly.push(5);
                 {% else %}
-                readonly.push(5, 6, 7, 8, 9);
+                readonly.push(5, 6, 7, 8, 9, 10);
                 {% endif %}
-                offset += 5;
+                offset += 6;
 {#                header += "<th colspan='5'><div class='relative'><span>SAP Doc</span></div></th>";#}
                 $('#viewsap').css('background-color', '#FFFF4D');
             } else {
@@ -279,10 +300,12 @@
             }
 
             if(AttrVis === true && {{ config_attr_read_authorized|lower }}){
-                cols.push({data: 10}, {data: 11}, {data: 12}, {data: 13}, {data: 14}, {data: 15}, {data: 16});
+                cols.push({data: 11}, {data: 12}, {data: 13}, {data: 14}, {data: 15}, {data: 16}, {data: 17});
                 headers.push('HW/SW Ind', 'Prod Pkg Type', 'SPUD', 'RE-Code', 'MU-Flag', "X-Plant Mat'l Stat", 'Int Notes');
-                {% if config_attr_write_authorized %}
-                readonly.push(9 + offset, 10 + offset);
+                {% if config_attr_write_authorized and header.configuration_status.name == 'In Process' %}
+                readonly.push(8 + offset, 9 + offset, 10 + offset);
+                {% elif config_attr_write_authorized %}
+                readonly.push(5 + offset, 6 + offset, 8 + offset, 9 + offset, 10 + offset, 11 + offset);
                 {% else %}
                 readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset, 10 + offset, 11 + offset);
                 {% endif %}
@@ -296,7 +319,7 @@
             }
 
             if(PriceVis === true && {{ config_price_read_authorized|lower }}) {
-                cols.push({data: 17}, {data: 18}, {data: 19}, {data: 20}, {data: 21}, {data: 22});
+                cols.push({data: 18}, {data: 19}, {data: 20}, {data: 21}, {data: 22}, {data: 23});
                 headers.push('Unit Price', "Higher Level Item", 'Material Group 5', 'Purchase Order Item No', 'Condition Type', 'Amount');
                 readonly.push(5 + offset);
                 {% if not config_price_write_authorized %}
@@ -310,11 +333,13 @@
             }
 
             if(CustVis === true && {{ config_cust_read_authorized|lower }}) {
-                cols.push({data: 23}, {data: 24}, {data: 25}, {data: 26}, {data: 27});
+                cols.push({data: 24}, {data: 25}, {data: 26}, {data: 27}, {data: 28});
                 headers.push('Traceability Req. (Serialization)', 'Customer Asset?', 'Customer Asset tagging Requirement', 'Customer Number', 'Second Customer Number');
                 //readonly.push(5 + offset); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
                 {% if not config_cust_write_authorized %}
                 readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset);
+                {% elif config_cust_write_authorized and header.configuration_status != 'In Process' %}
+                readonly.push(5 + offset);
                 {% endif %}
                 offset += 5;
 {#                header += "<th colspan='5'><div class='relative'><span>Customer Data</span></div></th>";#}
@@ -324,10 +349,14 @@
             }
 
             if(BaselineVis === true && {{ config_baseline_read_authorized|lower }}){
-                cols.push({data: 28}, {data: 29}, {data: 30});
+                cols.push({data: 29}, {data: 30}, {data: 31});
                 headers.push('Vendor Article Number', 'Comments', 'Additional Reference (if required)');
                 {% if not config_baseline_write_authorized %}
                 readonly.push(5 + offset, 6 + offset, 7 + offset);
+                {% elif config_baseline_write_authorized and header.configuration_status != 'In Process' and header.latesttracker.next_approval == 'csr' %}
+                readonly.push(5 + offset, 6 + offset);
+                {% elif config_baseline_write_authorized and header.configuration_status != 'In Process' and header.latesttracker.next_approval == 'blm' %}
+                readonly.push(5 + offset, 7 + offset);
                 {% endif %}
 {#                header += "<th colspan='3'><div class='relative'><span>Baseline</span></div></th>";#}
                 $('#viewbase').css('background-color', '#FFFF4D');
@@ -398,7 +427,7 @@
         }
 
         function customRenderer(instance, td, row, col, prop, value, cellProperties) {
-            if (row === 0 && col === 17 && typeof(value) == 'string' && value.charAt(0)==='!' && PriceVis){
+            if (row === 0 && col === 18 && typeof(value) == 'string' && value.charAt(0)==='!' && PriceVis){
                 value = value.slice(1);
 {#                cellProperties.comment = '! - CPM override in effect.\n';#}
             }
@@ -414,16 +443,13 @@
             var determined_cols = [];
             var headers = [];
             var readonly_columns = [];
-{#            header_html = determineColumns(determined_cols, headers);#}
             determineColumns(determined_cols, headers, readonly_columns);
             var container = document.getElementById('datatable');
-{#            var $container = $('#datatable');#}
-{#            determined_cols.push({renderer: firstRowRenderer})#}
             hot = new Handsontable(container, {
                 data: data,
                 minRows: 1,
-                minCols: 31,
-                maxCols: 31,
+                minCols: 32,
+                maxCols: 32,
                 minSpareRows: {% if config_write_authorized and not frame_readonly %}5{% else %}0{% endif %},
                 rowHeaders: false,
                 colHeaders: headers,
@@ -431,8 +457,12 @@
                 manualColumnFreeze: true,
                 currentRowClassName: 'currentRow',
                 columns: determined_cols,
+                colWidths: [50,50,150,342,72,50,74,50,50,62,264,81,103,50,68,63,117,65,74,119,116,162,105,62,160,118,246,124,176,151,250,250],
                 manualColumnResize: true,
-                {% if header.configuration_status.name == 'In Process' %}contextMenu: {
+                copyPaste: true,
+                wordWrap: true,
+                {% if header.configuration_status.name == 'In Process' %}
+                    contextMenu: {
                         items: {
                             'undo': {},
                             'redo': {},
@@ -448,13 +478,13 @@
                                 }
                             }
                         }
-                },
+                    },
                 {% endif %}
                 comments: true,
                 cells: function(row, col, prop){
                     var cellProperties = {};
 
-                    if({% if header.configuration_status.name != 'In Process' %}true || {% endif %}{% if not header.pick_list %}(row === 0 && [1,2,4].indexOf(col)!== -1) || {% endif %}readonly_columns.indexOf(col) !== -1){
+                    if('{{ active_lock|lower }}'==='true' || {% if not header.pick_list %}(row === 0 && [1,2,4].indexOf(col)!== -1) || {% endif %}readonly_columns.indexOf(col) !== -1){
                         cellProperties.readOnly = true;
                         if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){//(col == 17 || col == 22) && PriceVis){
                             cellProperties.renderer = moneyRenderer;
@@ -488,7 +518,7 @@
                         cellProperties.className = 'htLeft';
                     } else if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
                         cellProperties.className = 'htRight';
-                    }
+                    } 
 
                     if(error_matrix.length !== 0 && typeof(error_matrix[row]) !== "undefined"){
                         cellProperties.comment = error_matrix[row][col];
@@ -552,28 +582,15 @@
                             if (!isNaN(parseFloat(changes[i][3]))) {
                                 changes[i][3] = String(parseFloat(changes[i][3]).toFixed(2));
                             }
-                        }
-                        if (['Product Number'].indexOf(this.getColHeader(changes[i][1])) != -1) {
+                        } else if (['Product Number'].indexOf(this.getColHeader(changes[i][1])) != -1) {
                             changes[i][3] = changes[i][3].replace(/\s/g,'');
                         }
                     }
-                }
-
+                },
             });
             hot.getPlugin('comments').editor.editorStyle.zIndex = "10000";
-{#            hot.validateCells(function(isValid, value, row, prop, source) {#}
-{#                if (!isValid) {#}
-{#                    $('#prevForm').attr('disabled', 'disabled').css('color', 'gray');#}
-{#                    $("#saveexitForm").attr('disabled', 'disabled').css('color', 'gray');#}
-{#                    $("#saveForm").attr('disabled', 'disabled').css('color', 'gray');#}
-{#                    $("#nextForm").attr('disabled', 'disabled').css('color', 'gray');#}
-{#                }#}
-{#            });#}
-{#            hot.getPlugin('manualColumnFreeze').freezeColumn(0);#}
-{#            hot.getPlugin('manualColumnFreeze').freezeColumn(1);#}
-{#            hot.getPlugin('manualColumnFreeze').freezeColumn(2);#}
             if(firstLoad) {
-                clean_form = hot.getSourceData();
+                clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
                 $('[name="data_form"]').remove();
                 clean_sub = $('#configform').serialize();
             }
@@ -602,7 +619,8 @@
                 url: "{% url 'bomconfig:validator' %}",
 {#                async: false,#}
                 data: {
-                    entered_data: JSON.stringify(hot.getSourceData(), function(key, value){return value;})
+                    entered_data: JSON.stringify(hot.getSourceData(), function(key, value){return value;}),
+                    writeable: {{ config_write_authorized|lower }}
                 },
                 headers:{
                     'X-CSRFToken': getcookie('csrftoken')
@@ -638,7 +656,7 @@
                     $('#validate').removeAttr('disabled').attr('value','Validate').css('color','');
                     $('#myModal').modal('hide');
                     if(firstLoad){
-                        clean_form = hot.getSourceData();
+                        clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
                         $('[name="data_form"]').remove();
                         clean_sub = $('#configform').serialize();
                         firstLoad = false;
@@ -659,7 +677,6 @@
                 }
             });
         }
-
     </script>
 {% else %}
 <div>

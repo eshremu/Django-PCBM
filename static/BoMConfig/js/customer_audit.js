@@ -1,5 +1,9 @@
 function cleanDataCheck(link){
-    window.location.href = link.dataset.href;
+    if (link.target == "_blank"){
+        window.open(link.dataset.href);
+    } else {
+        window.location.href = link.dataset.href;
+    }
 }
 
 $('button[value="audit"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
@@ -238,6 +242,8 @@ function duplicateCheck(list){
 }
 
 $(document).ready(function(){
+    $('a.headtitle:contains("Customer Audit")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+
     $(document).on('change','#customer-select,#override', function(){
         if($(this).is($('#customer-select'))){
             $('#override').removeAttr('checked');

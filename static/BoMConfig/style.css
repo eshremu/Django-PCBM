@@ -10,9 +10,15 @@ a:hover {
 	color: #00285e;
 }
 
+select:disabled::-ms-expand{
+	display: none;
+}
+
 select:disabled{
 	border: none;
 	-webkit-appearance: none;
+	-moz-appearance: none;
+	background: none;
 }
 
 input.input-invalid, select.input-invalid {
@@ -142,6 +148,14 @@ input.input-invalid, select.input-invalid {
 	text-align:right;
 }
 
+#welcome .btn {
+	background-color: #dddddd
+}
+
+#welcome .btn:hover {
+	background-color: #cccccc
+}
+
 #main-footer {
 	background: #f3f3f3;
 	position: absolute;
@@ -151,12 +165,12 @@ input.input-invalid, select.input-invalid {
 
 @media (min-width: 1200px){
 	.container {
-		width: 860px;
+		width: 970px;
 		margin: 0px;
 	}
 }
 
-@media (min-width: 970px){
+@media (min-width: 970px) and (max-width: 1200px){
 	.container {
 		width: 860px;
 		margin: 0px;

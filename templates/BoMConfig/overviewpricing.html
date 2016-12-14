@@ -1,11 +1,21 @@
 {% extends "BoMConfig/pricelanding.html" %}
 {% load staticfiles %}
+{% load bomconfig_customtemplatetags %}
 {% block subcontent %}
-    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.js' %}"></script>
     <script src="{% static 'BoMConfig/js/overview_pricing.js' %}"></script>
-    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.css' %}"/>
 
     <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
+    <div id="formbuttons">
+        {% if pricelines.0 %}
+        <form method="post" action="{% url 'bomconfig:pricingoverviewdownload' %}">
+            {% csrf_token %}
+            <input id='cookie' type='hidden' name='file_cookie' value="{% random_string 10 %}"/>
+            <button id="download" class="btn" name="download" value="download" type="submit">Download</button>
+        </form>
+        {% endif %}
+    </div>
 
     <script>
         var hot, clean_form;

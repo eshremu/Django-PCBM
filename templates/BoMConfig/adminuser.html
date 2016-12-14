@@ -3,8 +3,8 @@
 {% load staticfiles %}
 
 {% block subcontent %}
-    <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.css' %}"/>
-    <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.js' %}"></script>
+    <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+    <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
     <h3 id="title"><u>Select a user to edit</u></h3>
     {% if errors %}
     <div class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">

@@ -450,7 +450,11 @@ def GenerateRevisionSummary_old(oBaseline, sPrevious, sCurrent):
 def GrabValue(oStartObj, sAttrChain, default=None):
     import functools
     try:
-        return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj) or default
+        value = functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj)
+        if value is None:
+            return default
+        else:
+            return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj)
     except AttributeError:
         return default
 # end def
@@ -672,9 +676,9 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     # end for
 
     for oHead in aDiscontinuedHeaders:
-        if (oHead.model_replaced_link and any([obj in oHead.model_replaced_link.header_set.all() for obj in aAddedHeaders
-                                               if hasattr(oHead.model_replaced_link, 'header_set')])) or\
-                any([obj in oHead.header_set.all() for obj in aAddedHeaders if hasattr(oHead, 'header_set')]):
+        if (oHead.model_replaced_link and any([obj in oHead.model_replaced_link.replaced_by_model.all() for obj in aAddedHeaders
+                                               if hasattr(oHead.model_replaced_link, 'replaced_by_model')])) or\
+                any([obj in oHead.replaced_by_model.all() for obj in aAddedHeaders if hasattr(oHead, 'replaced_by_model')]):
             continue
 
         sRemovedSummary += '    {} discontinued\n'.format(
@@ -718,9 +722,9 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
             oHead.change_notes = sTemp
             oHead.save()
             sUpdateSummary += '    {}:\n'.format(oHead.configuration_designation + \
-                                                 (' ({})'.format(oHead.program) if oHead.program else '')) + \
+                                                 (' ({})'.format(oHead.program) if oHead.program else '') + \
                               ('  {}'.format(oHead.configuration.get_first_line().customer_number) if not oHead.pick_list
-                                                     and oHead.configuration.get_first_line().customer_number else '')
+                                                     and oHead.configuration.get_first_line().customer_number else ''))
             for sLine in sTemp.split('\n'):
                 sUpdateSummary += (' ' * 8) + sLine + '\n'
         # end if
@@ -910,6 +914,9 @@ def StrToBool(sValue, bDefault = None):
     provided, it is returned; otherwise an exception is raised. If the string is
     not one that can be clearly interpreted as a Boolean value, raises an
     exception."""
+
+    if sValue is None:
+        return False
 
     sUpper = sValue.strip().upper()
     if sUpper in ('Y', 'YES', 'T', 'TRUE', '1'):

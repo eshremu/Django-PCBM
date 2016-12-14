@@ -1,0 +1,31 @@
+{% extends "BoMConfig/actions.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+        <script>$('button[value="changepart"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');</script>
+        <form id="headersubform" method="post">
+            {% csrf_token %}
+            <input id="initial" name="initial" type="hidden" value=""/>
+            <table>
+                <tr>
+                    <td><label for="part">Part Number to Replace</label></td>
+                    <td style="padding-left: 5px;"><input id="part" name="part" type="text" value="{{ part }}" required/></td>
+                    <td style="padding: 0 0 5px 5px;"><button class="btn" type="button" name="action" value="search" onclick="submitForm(this)">Search</button></td>
+                </tr>
+                <tr style="display: none;" class="replace_row">
+                    <td><label for="replace_part">Replacement Part Number</label></td>
+                    <td style="padding-left: 5px;"><input id="replace_part" name="replace_part" type="text" value="{{ part }}"/></td>
+                    <td style="padding-left: 5px;"><button class="btn" type="button" name="action" value="replace" onclick="submitForm(this)">Replace</button></td>
+                </tr>
+            </table>
+        </form>
+        <div class="messageblock" style="display: none;"></div>
+
+        <div id="table-wrapper"></div>
+        <div id="info_div" style="display: none;"><span style="color:red;font-size:14pt;">*</span>Record is pending approval or already has an in-process copy and cannot be cloned.</div>
+
+        <script type="text/javascript" src="{% static 'BoMConfig/js/actions_changepart.js' %}"></script>
+        <script>
+            var change_url = "{% url 'bomconfig:action_changepart_post' %}";
+        </script>
+{% endblock %}

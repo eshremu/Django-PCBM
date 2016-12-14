@@ -2,18 +2,26 @@ $('button[value="price_report"]').css('outline','5px auto -webkit-focus-ring-col
 $(document).ready(function(){
     $(window).load(function(){
         form_resize();
-        // timer = setTimeout(getTableRows, 500);
+    });
+    
+    $('#download').click(function(event){
+        timer = setInterval(function(){
+            if(document.cookie.split('fileMark=').length == 2 && document.cookie.split('fileMark=')[1].split(';')[0] == $('#cookie').val()) {
+                clearInterval(timer);
+                $('#myModal').modal('hide');
+            }
+        },1000);
     });
 });
 
 function form_resize(){
     var topbuttonheight = $('#action_buttons').outerHeight(true);
-    var bottombuttonheight = $('#formbuttons').height();
+    var bottombuttonheight = $('#formbuttons').outerHeight(true);
     var subformheight = $("#headersubform").height() + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
     var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
     var bodyheight = $('#main-body').height();
 
-    var tableheight = bodyheight - (topbuttonheight);// + bottombuttonheight + crumbheight + subformheight);
+    var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + 5);//  + crumbheight + subformheight);
 
     $('#table-wrapper').css("height", tableheight);
     build_table();
@@ -81,15 +89,17 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties) {
 }
 
 function build_table() {
-    var headers = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Latest Unit Price ($)'];
-    for (var i = headers.length; i < max_length; i++){
-        headers.push('Previous Price ($)');
+    var headers = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)'];
+    for (var i = headers.length, j=1; i < max_length; i++, j++){
+        var temp = new Date();
+
+        headers.push(String(temp.getFullYear()-j) + ' Price ($)');
     }
     var container = document.getElementById('datatable');
     hot = new Handsontable(container, {
         data: data,
         minRows: 1,
-        minCols: 5,
+        minCols: 6,
         maxCols: max_length,
         rowHeaders: false,
         colHeaders: headers,
@@ -99,13 +109,11 @@ function build_table() {
 
             cellProperties.readOnly = true;
             cellProperties.className = 'htCenter';
-            if(col > 3){
+            if(col > 4){
+                cellProperties.comment = comment_list[row][col - 5];
                 cellProperties.renderer = moneyRenderer;
             } else {
                 cellProperties.renderer = readonlyRenderer;
-            }
-            if(col >= 4) {
-                cellProperties.comment = comment_list[row][col - 4];
             }
 
             return cellProperties;

@@ -1,0 +1,51 @@
+{% extends "BoMConfig/actions.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+        <script>$('button[value="hold"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');</script>
+        <ul class="btn" style="border: none; padding: 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for customer in customer_list %}
+                    <li><a href="#" onclick="cust_filter('{{ customer|replace:"& _"|replacewhitespace:"-_" }}');">{{ customer }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+
+        <h4>On Hold</h4>
+            {% if on_hold %}
+            <form id="hold_action" onsubmit="return false;">
+                <button id="unhold" class="btn" value="unhold">Remove from Hold</button>
+                <table>
+                    <thead>
+                        <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
+                            <th></th>
+                            <th style="min-width: 25px;"></th>
+                            <th>Configuration Designation</th>
+                            <th style="min-width: 25px;"></th>
+                            <th>Version</th>
+                            <th style="min-width: 25px;"></th>
+                            <th>Program</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for record in on_hold %}
+                        <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }}">
+                            <td><input class="hold" type="checkbox" data-index="{{ record.id }}"/></td>
+                            <td></td>
+                            <td>{{ record.configuration_designation }}</td>
+                            <td></td>
+                            <td>{{ record.baseline_version }}</td>
+                            <td></td>
+                            <td>{{ record.program | default:"(None)" }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </form>
+            {% else %}
+                <h5>NO ON-HOLD RECORDS</h5>
+            {% endif %}
+{% endblock %}

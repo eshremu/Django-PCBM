@@ -2,8 +2,8 @@
 {% load staticfiles %}
 {% block subcontent %}
 {% if inquiry and inquiry_read_authorized or not inquiry and sitetemplate_read_authorized %}
-    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
-    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.css' %}"/>
     <form id="configform" method="POST">
         {% csrf_token %}
         <div id="headersubform">
@@ -17,7 +17,7 @@
                             <td style="border: 1px inset grey; width:100px;">{% if header.projected_cutover %}{{ header.projected_cutover }}{% endif %}</td>
                 {% if inquiry %}
                         <td style="width:50px;"></td>
-                        <td>{{ form.net_value.label_tag }}{{ form.net_value }}</td>
+                        <td>{{ form.total_value.label_tag }}{{ form.total_value }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -40,9 +40,9 @@
         </div>
         <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden"><div id="datatable"></div></div>
         <div id="formbuttons">
-            {% if can_previous %}<input id="prevForm" type="button" value="Prev">{% endif %}
-            <input id="cancelForm" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
-            {% if can_continue %}<input id="nextForm" type="button" value="Next"/>{% endif %}
+            {% if can_previous %}<input id="prevForm" class="btn" type="button" value="Prev">{% endif %}
+            <input id="cancelForm" class="btn" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close(){% else %}window.location.href='{% url 'bomconfig:index' %}'{% endif %}">
+            {% if can_continue %}<input id="nextForm" class="btn" type="button" value="Next"/>{% endif %}
             {% if status_message %}
             <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
                 {{ status_message }}
@@ -62,7 +62,11 @@
         {% endif %}
 
         function cleanDataCheck(link){
-            window.location.href = link.dataset.href;
+            if (link.target == "_blank"){
+                window.open(link.dataset.href);
+            } else {
+                window.location.href = link.dataset.href;
+            }
         }
 
         var hot;
