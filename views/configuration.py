@@ -108,8 +108,8 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                     Lock(oRequest, oExisting)
                 oExisting = Header.objects.get(pk=oExisting)
                 bDiscontinuationAlreadyCreated = True if oExisting.model_replaced_link and \
-                                                         hasattr(oExisting.model_replaced_link,'header_set') and \
-                                                         oExisting.model_replaced_link.header_set.filter(
+                                                         hasattr(oExisting.model_replaced_link,'replaced_by_model') and \
+                                                         oExisting.model_replaced_link.replaced_by_model.filter(
                                                              bom_request_type__name='Discontinue',
                                                              configuration_designation=oExisting.model_replaced_link.configuration_designation
                                                          ) else False

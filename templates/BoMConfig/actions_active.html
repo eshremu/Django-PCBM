@@ -51,11 +51,13 @@
                                     {% if user|has_group:"BOM_PSM_SAP_Document_Creation" %}
                                     <td style="padding: 0 5px 5px 0;">
                                         <button class="btn btn-primary doc_button"
-                                                data-id="{{ record.id }}" data-update="0" data-type="0"
+                                                data-id="{{ record.id }}" data-update="0" data-type="0" data-pdf_allowed="{% if record.pdf_allowed %}1{% else %}0{% endif %}"
                                         {% if  not record.inquiry_eligible or record.inquiry_site_template <= -1 %}
                                                 disabled title="
-                                                {% if not record.inquiry_eligible %}
-                                                Configuration contains incorrect Item Category or Higher-Level Item
+                                                {% if record.contains_fap_parts %}
+                                                Configuration contains a DPP. Manual SAP document required.
+                                                {% elif not record.inquiry_eligible %}
+                                                Configuration is missing needed data or contains incorrect data
                                                 {% else %}
                                                 Document creation in work
                                                 {% endif %}"
@@ -67,11 +69,13 @@
                                     {% if user|has_group:"BOM_PSM_SAP_Document_Modification" %}
                                     <td style="padding: 0 5px 5px 0;">
                                         <button class="btn btn-warning doc_button"
-                                                data-id="{{ record.id }}" data-update="1" data-type="0"
+                                                data-id="{{ record.id }}" data-update="1" data-type="0" data-pdf_allowed="{% if record.pdf_allowed %}1{% else %}0{% endif %}"
                                         {% if not record.inquiry_eligible or record.inquiry_site_template <= -1 %}
                                                 disabled title="
-                                                {% if not record.inquiry_eligible %}
-                                                Configuration contains incorrect Item Category or Higher-Level Item
+                                                {% if record.contains_fap_parts %}
+                                                Configuration contains a DPP. Manual SAP document required.
+                                                {% elif not record.inquiry_eligible %}
+                                                Configuration is missing needed data or contains incorrect data
                                                 {% else %}
                                                 Document creation in work
                                                 {% endif %}"
@@ -88,8 +92,10 @@
                                                 data-id="{{ record.id }}" data-update="0" data-type="1"
                                         {% if not record.site_template_eligible or record.inquiry_site_template <= -1 %}
                                             disabled title="
-                                            {% if not record.site_template_eligible %}
-                                                Configuration contains incorrect Item Category or Higher-Level Item
+                                            {% if record.contains_fap_parts %}
+                                                Configuration contains a DPP. Manual SAP document required.
+                                            {% elif not record.site_template_eligible %}
+                                                Configuration is missing needed data or contains incorrect data
                                             {% elif record.inquiry_site_template <= -1 %}
                                                 Document creation in work
                                             {% endif %}"
@@ -104,8 +110,10 @@
                                                 data-id="{{ record.id }}" data-update="1" data-type="1"
                                         {% if not record.site_template_eligible or record.inquiry_site_template <= -1 %}
                                             disabled title="
-                                            {% if not record.site_template_eligible %}
-                                                Configuration contains incorrect Item Category or Higher-Level Item
+                                            {% if record.contains_fap_parts %}
+                                                Configuration contains a DPP. Manual SAP document required.
+                                            {% elif not record.site_template_eligible %}
+                                                Configuration is missing needed data or contains incorrect data
                                             {% elif record.inquiry_site_template <= -1 %}
                                                 Document creation in work
                                             {% endif %}"

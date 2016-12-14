@@ -186,8 +186,8 @@ $(document).ready(function(){
         var title = `Confirm document ${this.dataset.update=="0"?"creation":"update"}`;
         var message = `<p>You are about to ${this.dataset.update=="0"?"create":"update"} a(n) ${this.dataset.type=="0"?"Inquiry":"Site Template"} for ${$($(this).parent().siblings()[1]).text()}.  Are you sure?</p>`;
 
-        if (this.dataset.type=="0") {
-            //message += '<label for="makepdf">Create PDF:&nbsp;&nbsp;</label><input id="makepdf" type="checkbox"/>';
+        if (this.dataset.type=="0" && this.dataset.pdf_allowed=="1") {
+            message += '<label for="makepdf">Create PDF:&nbsp;&nbsp;</label><input id="makepdf" type="checkbox"/>';
         }
 
         var data = {};

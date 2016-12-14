@@ -780,7 +780,7 @@ def WriteBaselineToFile(oBaseline, sVersion):
         if 'In Process' in oHeader.configuration_status.name and oHeader.bom_request_type.name in ('New', 'Update'):
             oSheet.sheet_properties.tabColor = '80FF00'
         elif oHeader.bom_request_type.name == "Discontinue" or oHeader.configuration_status.name == 'Discontinued' or\
-                (hasattr(oHeader,'header_set') and oHeader.header_set.first() in aHeaders):
+                (hasattr(oHeader,'replaced_by_model') and oHeader.replaced_by_model.first() in aHeaders):
             oSheet.sheet_properties.tabColor = 'FF0000'
 
         # Build Header row
