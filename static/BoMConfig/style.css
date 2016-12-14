@@ -148,6 +148,14 @@ input.input-invalid, select.input-invalid {
 	text-align:right;
 }
 
+#welcome .btn {
+	background-color: #dddddd
+}
+
+#welcome .btn:hover {
+	background-color: #cccccc
+}
+
 #main-footer {
 	background: #f3f3f3;
 	position: absolute;

@@ -53,14 +53,22 @@
                                         <button class="btn btn-primary doc_button"
                                                 data-id="{{ record.id }}" data-update="0" data-type="0" data-pdf_allowed="{% if record.pdf_allowed %}1{% else %}0{% endif %}"
                                         {% if  not record.inquiry_eligible or record.inquiry_site_template <= -1 %}
-                                                disabled title="
+                                                disabled title=
                                                 {% if record.contains_fap_parts %}
-                                                Configuration contains a DPP. Manual SAP document required.
+                                                "Configuration contains a DPP. Manual SAP document required."
                                                 {% elif not record.inquiry_eligible %}
-                                                Configuration is missing needed data or contains incorrect data
+                                                "Configuration is missing needed data or contains incorrect data. Please check:
+    Net value and unit price
+    Item category
+    Higher-level item
+    Sold-to, Ship-to, Bill-to party
+    Ericsson contract
+    Payment terms
+    Valid-from & valid-to date
+    Plant"
                                                 {% else %}
-                                                Document creation in work
-                                                {% endif %}"
+                                                "Document creation in work"
+                                                {% endif %}
                                         {% else %}title="Create new Inquiry"
                                         {% endif %}>Create Inquiry</button>
                                     </td>
@@ -71,14 +79,22 @@
                                         <button class="btn btn-warning doc_button"
                                                 data-id="{{ record.id }}" data-update="1" data-type="0" data-pdf_allowed="{% if record.pdf_allowed %}1{% else %}0{% endif %}"
                                         {% if not record.inquiry_eligible or record.inquiry_site_template <= -1 %}
-                                                disabled title="
+                                                disabled title=
                                                 {% if record.contains_fap_parts %}
-                                                Configuration contains a DPP. Manual SAP document required.
+                                                "Configuration contains a DPP. Manual SAP document required."
                                                 {% elif not record.inquiry_eligible %}
-                                                Configuration is missing needed data or contains incorrect data
+                                                "Configuration is missing needed data or contains incorrect data. Please check:
+    Net value and unit price
+    Item category
+    Higher-level item
+    Sold-to, Ship-to, Bill-to party
+    Ericsson contract
+    Payment terms
+    Valid-from & valid-to date
+    Plant"
                                                 {% else %}
-                                                Document creation in work
-                                                {% endif %}"
+                                                "Document creation in work"
+                                                {% endif %}
                                         {% else %}title="Update existing Inquiry"
                                         {% endif %}>Update Inquiry</button>
                                     </td>
@@ -91,14 +107,21 @@
                                         <button class="btn btn-primary doc_button"
                                                 data-id="{{ record.id }}" data-update="0" data-type="1"
                                         {% if not record.site_template_eligible or record.inquiry_site_template <= -1 %}
-                                            disabled title="
+                                            disabled title=
                                             {% if record.contains_fap_parts %}
-                                                Configuration contains a DPP. Manual SAP document required.
+                                                "Configuration contains a DPP. Manual SAP document required."
                                             {% elif not record.site_template_eligible %}
-                                                Configuration is missing needed data or contains incorrect data
+                                                "Configuration is missing needed data or contains incorrect data. Please check:
+    Item category
+    Higher-level item
+    Sold-to, Ship-to, Bill-to party
+    Ericsson contract
+    Payment terms
+    Valid-from & valid-to date
+    Plant"
                                             {% elif record.inquiry_site_template <= -1 %}
-                                                Document creation in work
-                                            {% endif %}"
+                                                "Document creation in work"
+                                            {% endif %}
                                         {% else %}title="Create new Site Template"
                                         {% endif %}>Create ST</button>
                                     </td>
@@ -109,14 +132,21 @@
                                         <button class="btn btn-warning doc_button"
                                                 data-id="{{ record.id }}" data-update="1" data-type="1"
                                         {% if not record.site_template_eligible or record.inquiry_site_template <= -1 %}
-                                            disabled title="
+                                            disabled title=
                                             {% if record.contains_fap_parts %}
-                                                Configuration contains a DPP. Manual SAP document required.
+                                                "Configuration contains a DPP. Manual SAP document required."
                                             {% elif not record.site_template_eligible %}
-                                                Configuration is missing needed data or contains incorrect data
+                                                "Configuration is missing needed data or contains incorrect data. Please check:
+    Item category
+    Higher-level item
+    Sold-to, Ship-to, Bill-to party
+    Ericsson contract
+    Payment terms
+    Valid-from & valid-to date
+    Plant"
                                             {% elif record.inquiry_site_template <= -1 %}
-                                                Document creation in work
-                                            {% endif %}"
+                                                "Document creation in work"
+                                            {% endif %}
                                         {% else %}title="Update existing Site Template"
                                         {% endif %}>Update ST</button>
                                     </td>
