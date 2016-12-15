@@ -41,19 +41,26 @@ $(document).ready(function() {
 });
 
 function BuildTable(){
+    var searchText;
     if (table !== undefined){
+        searchText = $('.dataTables_filter input').val();
         table.destroy();
     }
     table = $('#data_table').DataTable({
         'paging': false,
         'ordering': false,
         'info': false,
+        'autoWidth': false,
         'scrollX': true,
         'scrollY': parseInt($('.table-wrapper').css("height")) - 71,
         fixedColumns: {
             leftColumns: 3
         }
     });
+
+    if (searchText != undefined) {
+        table.search(searchText).draw();
+    }
 }
 
 function downloadModal(){
@@ -61,6 +68,16 @@ function downloadModal(){
             '<label style="padding-right:5px;">Revision:</label><select>' + revision_list + '</select>',
             function(){
                 $("#downloadform input[name='version']").val($('#messageModal .modal-body select').val());
+                $('#downloadform').submit();
+            }
+    );
+}
+
+function pickCustomer(){
+    messageToModal('Choose Customer',
+            '<label style="padding-right:5px;">Customer:</label><select>' + cust_list + '</select>',
+            function(){
+                $("#downloadform input[name='customer']").val($('#messageModal .modal-body select').val());
                 $('#downloadform').submit();
             }
     );
@@ -166,5 +183,9 @@ function form_resize(){
 }
 
 function cleanDataCheck(link){
-    window.location.href = link.dataset.href;
+    if (link.target == "_blank"){
+        window.open(link.dataset.href);
+    } else {
+        window.location.href = link.dataset.href;
+    }
 }

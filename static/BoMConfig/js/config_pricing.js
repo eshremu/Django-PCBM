@@ -10,7 +10,7 @@ $(document).ready(function(){
             clean_form = JSON.stringify(hot.getSourceData());
         }
 
-        if(program_list.length > 1){
+        if(program_list != undefined && program_list.length > 1){
             var message = "Multiple matching configurations were found.<br/>Please select the program & baseline for the desired configuration.";
             message += '<br/><label for="desiredprog" style="padding-right: 5px;">Program|Baseline:</label><select name="desiredprog">';
             for(var i=0; i<program_list.length; i++) {
@@ -32,6 +32,26 @@ $(document).ready(function(){
     $(window).resize(function(){
         form_resize();
     });
+    
+    $('#saveForm').click(function(event){
+        $('#headersubform').removeAttr('action');
+        $('<input/>').attr('id','data_form').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#headersubform');form_save=true;
+    });
+
+    $('#search').click(function(event) {
+        $('#headersubform').removeAttr('action');
+    });
+
+    $('#download').click(function(event){
+        $('<input/>').attr('id','cookie').attr('type', 'hidden').attr('name','file_cookie').attr('value', file_cookie).appendTo('#headersubform');
+        $('#headersubform').attr('action', download_url);
+        timer = setInterval(function(){
+            if(document.cookie.split('fileMark=').length == 2 && document.cookie.split('fileMark=')[1].split(';')[0] == $('#cookie').val()) {
+                clearInterval(timer);
+                $('#myModal').modal('hide');
+            }
+        },1000);
+    });
 });
 
 function form_resize(){
@@ -42,7 +62,7 @@ function form_resize(){
     var crumbheight = $('#breadcrumbs').height() + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
     var bodyheight = $('#main-body').height();
 
-    var tableheight = bodyheight - (subformheight + bottombuttonheight + topbuttonheight + displayformheight); //+ crumbheight);
+    var tableheight = bodyheight - (subformheight + bottombuttonheight + topbuttonheight + displayformheight + 5); //+ crumbheight);
 
     $('#table-wrapper').css("max-height", tableheight);
     $('#table-wrapper').css("height", tableheight);
@@ -53,9 +73,8 @@ function form_resize(){
 }
 
 function readonlyRenderer(instance, td, row, col, prop, value, cellProperties) {
-    customRenderer(instance, td, row, col, prop, value, cellProperties);
-
     td.style.background = '#DDDDDD';
+    customRenderer(instance, td, row, col, prop, value, cellProperties);
 }
 
 function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
@@ -107,6 +126,14 @@ function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
 }
 
 function customRenderer(instance, td, row, col, prop, value, cellProperties) {
+    if(row == 0 && not_picklist){
+        td.style.fontWeight = 'bold';
+    }
+
+    if (!instance.getDataAtCell(row, 0).includes('.') && cellProperties.readOnly){
+        td.style.background = '#C8FF9F';
+    }
+
     if (/<[a-zA-Z][\s\S/]*>/.test(value) === false) {
         Handsontable.renderers.TextRenderer.apply(this, arguments);
     } else {
@@ -145,7 +172,7 @@ function build_table() {
                 cellProperties.readOnly = true;
                 cellProperties.renderer = calcRenderer;
             } else {
-                if(can_write) {
+                if(can_write && !readonly) {
                     cellProperties.validator = function (value, callback) {
                         if (/^\d+(?:\.\d{2})?$|^$/.test(value)) {
                             callback(true);

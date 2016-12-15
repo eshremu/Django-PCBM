@@ -2,8 +2,8 @@
 {% load bomconfig_customtemplatetags %}
 {% load staticfiles %}
 {% block subcontent %}
-<script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.js' %}"></script>
-<link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.css' %}"/>
+<script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.js' %}"></script>
+<link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.css' %}"/>
 
     <h4 id="title" style="margin-top:0;">Customer Part Number Audit / Search</h4>
     <form id="select-form" method="post">
@@ -27,7 +27,7 @@
     {% if user|has_group:'BOM_PSM_Baseline' or user|has_group:'BOM_BPMA_Architect' %}<div style="margin: 10px 0">
         <label for="override">Overwrite?: <input type="checkbox" form="select-form" id="override" name="override" value="true" /></label>
     </div>{% endif %}
-    <div id="action_buttons" style="margin: 10px 0">
+    <div id="formbuttons" style="margin: 10px 0">
         <button id="save-button" class="btn btn-primary" value="save" type="button" form="select-form">Save</button>
     </div>
 

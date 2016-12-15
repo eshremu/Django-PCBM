@@ -7,7 +7,7 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties){
     var new_value;
 
     new_value = value;
-    if (col < 4){
+    if (col < 5){
         td.style.background = '#DDDDDD';
         if(col < 3 && instance.getDataAtCell(row - 1, col) == value && instance.getDataAtCell(row, col - 1) == instance.getDataAtCell(row - 1, col - 1))
         {
@@ -115,7 +115,7 @@ function formSubmit(event){
 
         if ($(document.activeElement).val() == 'save' && $('.htInvalid').length > 0) {
             messageToModal('The form contains invalid data',
-                    "Required fields are missing.  Please enter the required data before submitting the form.",
+                    "Invalid cell found.  Please enter valid data before submitting the form.",
                     function () {
                     }
             );
@@ -142,6 +142,27 @@ $(document).ready(function(){
         form_resize();
     });
 
+    $('#saveForm').click(function(event){
+        $('#headersubform').removeAttr('action');
+        $('<input/>').attr('id','data_form').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#headersubform');form_save=true;
+        $('#headersubform').attr('onsubmit','return formSubmit();');
+    });
+
+    $('#search').click(function(event) {
+        $('#headersubform').removeAttr('action');
+    });
+
+    $('#download').click(function(event){
+        $('<input/>').attr('id','cookie').attr('type', 'hidden').attr('name','file_cookie').attr('value', file_cookie).appendTo('#headersubform');
+        $('#headersubform').attr('action', download_url);
+        timer = setInterval(function(){
+            if(document.cookie.split('fileMark=').length == 2 && document.cookie.split('fileMark=')[1].split(';')[0] == $('#cookie').val()) {
+                clearInterval(timer);
+                $('#myModal').modal('hide');
+            }
+        },1000);
+    });
+
     function form_resize() {
         var topbuttonheight = $('#action_buttons').outerHeight(true);
         var bottombuttonheight = $('#formbuttons').height();
@@ -162,7 +183,7 @@ $(document).ready(function(){
         hot = new Handsontable($('#datatable')[0], {
             data: data,
             minSpareRows: 1,
-            colHeaders: ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Latest Unit Price ($)','Valid To', 'Valid From', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments'],
+            colHeaders: ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid To', 'Valid From', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments'],
             cells: function(row, col, prop){
                 var cellProperties = [];
 
@@ -210,26 +231,20 @@ $(document).ready(function(){
                         break;
 
                     case 4:
-                        cellProperties.validator = /^\d+(.\d+)?$/;
-                        cellProperties.renderer = moneyRenderer;
+                        if (row > (orig_length - 1) || (orig_length == 1 && orig_data[0].join().replace(/,/g, '') == $('#initial').val())) {
+                            cellProperties.type = "dropdown";
+                            // cellProperties.source = [''].concat({{ customer_list|safe }});
+                            cellProperties.source = tech_list;
+                            cellProperties.validator = /.+|^$/;
+                        } else {
+                            cellProperties.readOnly = true;
+                            cellProperties.renderer = customRenderer;
+                        }
                         break;
 
                     case 5:
-                        cellProperties.type = "date";
-                        cellProperties.dateFormat = "MM/DD/YYYY";
-                        cellProperties.correctFormat = true;
-                        cellProperties.datePickerConfig = {
-                            firstDay: 1,
-                            showWeekNumber: true,
-                            numberOfMonths: 3,
-                        };
-                        cellProperties.validator = function(value, callback){
-                            if(!value){
-                                callback(true);
-                            } else {
-                                Handsontable.DateValidator.call(this, value, callback);
-                            }
-                        };
+                        cellProperties.validator = /^\d+(.\d+)?$/;
+                        cellProperties.renderer = moneyRenderer;
                         break;
 
                     case 6:
@@ -240,6 +255,17 @@ $(document).ready(function(){
                             firstDay: 1,
                             showWeekNumber: true,
                             numberOfMonths: 3,
+                            disableDayFn: function(date){
+                                var today = new Date();
+                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()+1); // date.getDay() === 0 || date.getDay() === 6 ||
+                            }
+                        };
+                        cellProperties.validator = function(value, callback){
+                            if(!value){
+                                callback(true);
+                            } else {
+                                Handsontable.DateValidator.call(this, value, callback);
+                            }
                         };
                         break;
 
@@ -253,7 +279,7 @@ $(document).ready(function(){
                             numberOfMonths: 3,
                             disableDayFn: function(date){
                                 var today = new Date();
-                                return date.getDay() === 0 || date.getDay() === 6 || date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()); // date.getDay() === 0 || date.getDay() === 6 ||
                             }
                         };
                         cellProperties.validator = function(value, callback){
@@ -266,6 +292,28 @@ $(document).ready(function(){
                         break;
 
                     case 8:
+                        cellProperties.type = "date";
+                        cellProperties.dateFormat = "MM/DD/YYYY";
+                        cellProperties.correctFormat = true;
+                        cellProperties.datePickerConfig = {
+                            firstDay: 1,
+                            showWeekNumber: true,
+                            numberOfMonths: 3,
+                            disableDayFn: function(date){
+                                var today = new Date();
+                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                            }
+                        };
+                        cellProperties.validator = function(value, callback){
+                            if(!value){
+                                callback(true);
+                            } else {
+                                Handsontable.DateValidator.call(this, value, callback);
+                            }
+                        };
+                        break;
+
+                    case 9:
                         cellProperties.type = 'checkbox';
                         cellProperties.checkedTemplate = 'True';
                         cellProperties.uncheckedTemplate = 'False';
@@ -286,7 +334,7 @@ $(document).ready(function(){
                         };
                         break;
 
-                    case 9:
+                    case 10:
                         cellProperties.validator = function(value, callback){
                             if((value == "" || value == null || value == undefined) && this.instance.getDataAtCell(this.row, this.col - 1) == "True"){
                                 callback(false);
@@ -309,11 +357,11 @@ $(document).ready(function(){
                         value=" ";
                     }
 
-                    if(prop == 4 && value == ""){
+                    if(prop == 5 && value == ""){
                         value='0.00';
                     }
 
-                    if(prop == 6 && value == ""){
+                    if(prop == 7 && value == ""){
                         value="01/01/1900";
                     }
                 }
@@ -351,6 +399,24 @@ $(document).ready(function(){
                             }
                             this.render();
                         }
+                    }
+                }
+            },
+            afterValidate: function(valid, value, row, prop, source){
+                if(!valid){
+                    return valid;
+                }
+
+
+                if (prop == '6' && source == 'edit'){
+                    if(Date.parse(value) <= (Date.parse(this.getDataAtCell(row, 6)) || new Date(Date.now()).setHours(0,0,0,0))){
+                        return false;
+                    }
+                }
+
+                if((prop == '7' || prop == '8') && source == 'edit'){
+                    if (new Date(Date.now()).setHours(0,0,0,0) > Date.parse(value)){
+                        return false;
                     }
                 }
             }

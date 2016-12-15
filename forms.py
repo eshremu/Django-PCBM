@@ -4,7 +4,7 @@ from django.utils.safestring import mark_safe
 from django.contrib.auth.models import User, Group
 from django.contrib.admin.widgets import FilteredSelectMultiple
 
-from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, ConfigLine, PricingObject,\
+from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, LinePricing, PricingObject,\
     DistroList, SecurityPermission, HeaderTimeTracker, ApprovalList
 
 import datetime
@@ -24,19 +24,39 @@ class HeaderForm(forms.ModelForm):
         bReadOnly = kwargs.pop('readonly', False)
         sBrowser = kwargs.pop('browser', None)
 
+        if kwargs['instance'] and kwargs['instance'].inquiry_site_template:
+            if kwargs['instance'].inquiry_site_template == -1:
+                kwargs.update(initial={'inquiry_site_template': '(Pending)'})
+            elif kwargs['instance'].inquiry_site_template < -1:
+                kwargs.update(initial={'inquiry_site_template': str(kwargs['instance'].inquiry_site_template)[1:] + ' (Pending Update)'})
+            # end if
+        # end if
+
         super().__init__(*args, **kwargs)
 
-        self.fields['configuration_status'].widget.attrs['readonly'] = 'True'
+        self.fields['configuration_status'].widget.attrs['readonly'] = True
         self.fields['configuration_status'].widget.attrs['disabled'] = 'True'
         self.fields['configuration_status'].widget.attrs['style'] = 'border:none;'
         self.fields['configuration_status'].widget.attrs['style'] += '-webkit-appearance:none;'
 
+        self.fields['readiness_complete'].widget.attrs['readonly'] = True
+        self.fields['readiness_complete'].widget.attrs['style'] = 'border:none;'
+        self.fields['readiness_complete'].widget.attrs['style'] += '-webkit-appearance:none;'
+
         self.fields['react_request'].widget.attrs['size'] = 25
         self.fields['model_description'].widget.attrs['size'] = 45
 
-        if (hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name != 'In Process') or bReadOnly:
+        if self.instance.inquiry_site_template and self.instance.inquiry_site_template < 0:
+            self.fields['inquiry_site_template'] = forms.CharField()
+            self.fields['inquiry_site_template'].widget.attrs['readonly'] = True
+            self.fields['inquiry_site_template'].widget.attrs['style'] = 'border:none;'
+        # end if
+
+        if bReadOnly or (hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name != 'In Process'):
             for field in self.fields.keys():
-                self.fields[field].widget.attrs['readonly'] = 'True'
+                # if not bReadOnly and hasattr(self.instance, 'configuration_status') and self.instance.configuration_status.name == 'In Process/Pending' and field == 'projected_cutover':
+                #     continue
+                self.fields[field].widget.attrs['readonly'] = True
                 self.fields[field].widget.attrs['style'] = 'border:none;'
                 if self.initial:
                     if self.initial[field] and isinstance(self.initial[field], str):
@@ -44,7 +64,7 @@ class HeaderForm(forms.ModelForm):
 
                 if isinstance(self.fields[field].widget, (forms.widgets.Select, forms.widgets.CheckboxInput)):
                     self.fields[field].widget.attrs['disabled'] = 'True'
-                    if isinstance(self.fields[field].widget, (forms.widgets.Select)):
+                    if isinstance(self.fields[field].widget, forms.widgets.Select):
                         self.fields[field].widget.attrs['style'] += '-webkit-appearance:none;'
             # end for
         else:
@@ -177,6 +197,21 @@ class HeaderForm(forms.ModelForm):
             # end if
         # end if
 
+        self.data._mutable = True
+        if data['configuration_status'].name == 'In Process':
+            if data['bom_request_type'].name == 'Preliminary':
+                self.data['readiness_complete'] = 25
+            else:
+                self.data['readiness_complete'] = 50
+
+                if hasattr(self.instance, 'configuration') and self.instance.configuration.ready_for_forecast:
+                    self.data['readiness_complete'] = 70
+        elif data['configuration_status'].name == 'In Process/Pending':
+            self.data['readiness_complete'] = 90
+        else:
+            self.data['readiness_complete'] = 100
+        self.data._mutable = False
+
         return data
     # end def
 # end def
@@ -190,8 +225,9 @@ class ConfigForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(ConfigForm, self).__init__(*args, **kwargs)
-        self.fields['net_value'].widget.attrs['readonly'] = 'True'
-        self.fields['zpru_total'].widget.attrs['readonly'] = 'True'
+        self.fields['net_value'].widget.attrs['readonly'] = True
+        self.fields['zpru_total'].widget.attrs['readonly'] = True
+        self.fields['PSM_on_hold'].widget.attrs['readonly'] = True
     # end def
 
     def clean(self):
@@ -333,7 +369,7 @@ class SecurityForm(forms.ModelForm):
 
 
 class UserForm(forms.Form):
-    signum = forms.CharField(min_length=7, label='User SIGNUM')
+    signum = forms.CharField(min_length=6, label='User SIGNUM')
     first_name = forms.CharField(label='First Name')
     last_name = forms.CharField(label='Last Name')
     email = forms.EmailField(label='Ericsson Email')
@@ -343,7 +379,7 @@ class UserForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['signum'].widget.attrs['readonly'] = 'True'
+        self.fields['signum'].widget.attrs['readonly'] = True
         self.fields['signum'].widget.attrs['style'] = 'border: none;'
         self.fields['assigned_group'].label_from_instance = lambda inst: "%s" % (inst.name.replace('BOM_', '')
                                                                                  .replace('_', ' - ', 1)
@@ -358,7 +394,7 @@ class UserForm(forms.Form):
 
 
 class UserAddForm(forms.Form):
-    signum = forms.CharField(min_length=7, required=True, label='User SIGNUM')
+    signum = forms.CharField(min_length=6, required=True, label='User SIGNUM')
 
     def clean_signum(self):
         submitted_signum = self.cleaned_data['signum']
@@ -383,7 +419,7 @@ class CustomerApprovalLevelForm(forms.Form):
         self.readonly = kwargs.pop('readonly', False)
         super().__init__(*args, **kwargs)
 
-        self.fields['customer'].widget.attrs['readonly'] = str(self.readonly)
+        self.fields['customer'].widget.attrs['readonly'] = self.readonly
 
         if self.readonly:
             self.fields['customer'].widget.attrs['disabled'] = 'disabled'

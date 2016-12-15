@@ -1,0 +1,263 @@
+<!DOCTYPE HTML>
+{% load staticfiles %}
+<html>
+	<head>
+		<title>{{pagetitle}}</title>
+
+		<!-- JQuery Javascript -->
+        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-2.1.4.min.js' %}"></script>
+        <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-migrate-1.2.1.min.js' %}"></script>
+		<!-- Bootstrap CSS -->
+        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap.min.css' %}">
+		<!-- Bootstrap Optional theme -->
+        <link rel="stylesheet" href="{% static 'BoMConfig/bootstrap-3.3.6-dist/css/bootstrap-theme.min.css' %}">
+        <link rel="stylesheet" href="{% static 'BoMConfig/css/jquery-ui.min.css' %}">
+		<!-- Bootstrap JavaScript -->
+        <script type="text/javascript" src="{% static 'BoMConfig/bootstrap-3.3.6-dist/js/bootstrap.min.js' %}"></script>
+
+		<!-- App specific stylesheet-->
+		<link rel="stylesheet" type="text/css" href="{% static 'BoMConfig/style.css' %}"/>
+        <link rel="shortcut icon" type="image/png" href="{% static 'BoMConfig/favicon.ico' %}"/>
+        <script type="text/javascript">
+            var closeButton = false;
+			function getcookie(name){
+				var cookieValue = null;
+				if (document.cookie && document.cookie != '') {
+					var cookies = document.cookie.split(';');
+					for (var i = 0; i < cookies.length; i++) {
+						var cookie = jQuery.trim(cookies[i]);
+						// Does this cookie string begin with the name we want?
+						if (cookie.substring(0, name.length + 1) == (name + '=')) {
+							cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+							break;
+						}
+					}
+				}
+				return cookieValue;
+			}
+
+			function definebodysize(){
+                if($('#main-header').height() != null){
+                    var headerHeight = $("#main-header").height() + parseInt($("#main-header").css('margin-top')) +
+                                    parseInt($("#main-header").css('margin-bottom')) + parseInt($("#main-header").css('border-top-width')) +
+                                    parseInt($("#main-header").css('border-bottom-width')) + parseInt($("#main-header").css('padding-top')) +
+                                    parseInt($("#main-header").css('padding-bottom'));
+                } else {
+                    var headerHeight = 0;
+                }
+
+                if($('#main-footer').height() != null) {
+                    var footerHeight = $("#main-footer").height() + parseInt($("#main-footer").css('margin-top')) +
+                            parseInt($("#main-footer").css('margin-bottom')) + parseInt($("#main-footer").css('border-top-width')) +
+                            parseInt($("#main-footer").css('border-bottom-width')) + parseInt($("#main-footer").css('padding-top')) +
+                            parseInt($("#main-footer").css('padding-bottom'));
+                } else {
+                    var footerHeight = 0;
+                }
+
+				var availableHeight = $(window).height() - headerHeight - footerHeight;
+				var divMargin = $("#main-body").css("margin-top");
+				var divPad = $("#main-body").css("padding-top");
+				availableHeight -= parseInt(divMargin);
+				availableHeight -= parseInt(divPad);
+				divMargin = $("#main-body").css("margin-bottom");
+				divPad = $("#main-body").css("padding-bottom");
+				availableHeight -= parseInt(divMargin);
+				availableHeight -= parseInt(divPad);
+
+				$("#main-body").css("height", availableHeight - 5);
+			}
+
+			$(document).ready(function(){
+				$(window).load(function(){
+					definebodysize()
+				});
+				$(window).resize(function(){
+					definebodysize()
+				});
+
+                $(window).on('beforeunload',(function(event){
+                    if(event.srcElement.activeElement != document.getElementById("support_mail_to")) {
+                        $('#myModal').modal('show');
+                    }
+                }));
+			});
+		</script>
+	</head>
+
+	<body>
+		{% if header_template %}
+			{% include header_template %}
+			{% block header %}{% endblock %}
+		{% else %}
+			{% block defaultheader %}
+			<div id="main-header">
+
+				<div class="logo">
+					<a href="http://www.ericsson.com/"><img src="{% static 'BoMConfig/logo.png' %}"/></a>
+				</div>
+				<div class="title">
+					<a href="{% url 'bomconfig:index' %}"><img src="{% static 'BoMConfig/title.png' %}"/></a>
+				</div>
+				<div class="row">
+					<div id="welcome" class="col-md-4 col-lg-4">
+
+						{% if userId %}
+							<p>Welcome, {{userId|default:_('User')}}</p>
+						{% else %}
+							<form action="{% url 'bomconfig:index' %}" method="post">
+								{% csrf_token %}
+								<input type="text" name="loginId" placeholder="SIGNUM"/>
+								<input class="btn" type="submit" value="Login" />
+							</form>
+						{% endif %}
+						<div class="nav-menu">
+							<ul class="nav nav-pills pull-right">
+								<li class="dropdown">
+									<a class="dropdown-toggle" href="#" data-toggle="dropdown"> Home </a>
+									<ul class="dropdown-menu">
+										<li><a href="#">First</a></li>
+										<li><a href="#">Second</a></li>
+									</ul>
+								</li>
+								<li><a href="#"> Support </a></li>
+							</ul>
+						</div>
+					</div>
+					<div id="main-menu" class="col-lg-7 col-md-8">
+						<div class="nav-menu container">
+							<ul class="nav nav-pills">
+								{% for menuitem in menulisting %}
+									<li><a href="{{menuitem.destination}}">{{menuitem.title}}</a></li>
+								{% endfor %}
+							</ul>
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- div id="main-header" -->
+			{% endblock %}
+		{% endif %}
+
+		<div id="main-body">
+            {% if header_read_authorized or config_read_authorized or toc_read_authorized or revision_read_authorized or inquiry_read_authorized or sitetemplate_read_authorized %}
+            <div id="action_buttons" style="margin: 5px 0;">
+                {% if header_read_authorized %}<button class="btn" type="button" name="action" value="header" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configheader' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Header</button>{% endif %}
+                {% if config_read_authorized %}<button class="btn" type="button" name="action" value="config" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:config' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Configuration</button>{% endif %}
+                {% if toc_read_authorized %}<button class="btn" type="button" name="action" value="toc" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configtoc' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Table of Contents</button>{% endif %}
+                {% if revision_read_authorized %}<button class="btn" type="button" name="action" value="revision" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configrevision' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Revisions</button>{% endif %}
+                {% if inquiry_read_authorized %}<button class="btn" type="button" name="action" value="inquiry" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configinquiry' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Inquiry</button>{% endif %}
+                {% if sitetemplate_read_authorized %}<button class="btn" type="button" name="action" value="sitetemp" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:configsite' %}{% if frame_readonly %}?id={{ header.id }}&readonly=1{% endif %}'>Site Template</button>{% endif %}
+            </div>
+            {% endif %}
+
+            <h1 style="color: #ff0000">DOWN FOR MAINTENANCE</h1>
+            <p>The PCBM tool is currently offline for maintenance.</p>
+
+            <style>
+                #action_buttons button:hover {
+                    background-color: #cccccc;
+                }
+            </style>
+        </div>
+
+        {% if show_footer %}
+            {% if footer_template %}
+                {% include footer_template %}
+                {% block footer %}{% endblock %}
+            {% else %}
+                {% block defaultfooter %}
+                <div id="main-footer" class="hidden-xs container-fluid">
+                    <div class="row">
+                        <div class="col-lg-3 col-md-3 col-sm-3">
+                            <h4>Customer Support</h4>
+                            <p>Employee Service<p>
+                            <p>My Support & Error Reporting<p>
+                            <p>Online Support 24/7<p>
+                        </div>
+                        <div class="col-lg-3 col-md-3 col-sm-3">
+                            <h4>HR Support - HR Direct</h4>
+                            <p/>
+                            <p/>
+                            <p>Contact us with external phone</p>
+                        </div>
+                        <div class="col-lg-3 col-md-3 col-sm-3">
+                            <h4>Security Support</h4>
+                            <p>Emergency: +46 8 24 10 10</p>
+                            <p>Security Incidents</p>
+                            <p>Violations Reporting</p>
+                        </div>
+                        <div class="col-lg-3 col-md-3 col-sm-3">
+                            <h4>Other Sites</h4>
+                            <p><a href="http://www.ericsson.com">Ericsson.com</a></p>
+                            <p><a href="http://www.ericsson.com">Extranet</a></p>
+                            <p><a href="http://www.ericsson.com">The Networked Society Blog</a></p>
+                        </div>
+                    </div>
+                </div>
+                <!-- div id="main-footer" -->
+                {% endblock %}
+            {% endif %}
+        {% endif %}
+		<div class="modal fade" id="myModal" role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+            <!-- Modal content-->
+                <div class="modal-content" style="background: none; box-shadow: none; border: none">
+                    <div class="modal-body">
+                        <p align="middle"><img src="{% static 'BoMConfig/ajax-loader.gif' %}" align="middle"/></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="messageModal" role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+            <!-- Modal content-->
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4></h4>
+                    </div>
+                    <div class="modal-body">
+                    </div>
+                    <div class="modal_footer" style="text-align: right;padding: 10px;">
+                        <button class="modal_submit btn btn-primary">OK</button>
+                        <button class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            $(function() {
+                function reposition() {
+                    var modal = $(this),
+                            dialog = modal.find('.modal-dialog');
+                    modal.css('display', 'block');
+                    dialog.css("margin-top", Math.max(0, ($(window).height() - dialog.height()) / 2));
+                    dialog.css("margin-left", Math.max(0, ($(window).width() - dialog.width()) / 2));
+
+                }
+                $('.modal').on('show.bs.modal', reposition);
+                $(window).on('resize', function() {
+                    $('.modal:visible').each(reposition);
+                });
+            });
+
+            function messageToModal(title, message, callback){
+                var params = [];
+                for(var i = 3; i < arguments.length; i++){
+                    params.push(arguments[i]);
+                }
+                $('#messageModal .modal-header h4').text(title);
+                $('#messageModal .modal-body').html(message);
+                $('.modal_submit').off('click');
+                $('.modal_submit').click(function(){
+                    $('#messageModal').modal('hide');
+                    if(callback != undefined) {
+                        callback.apply(this, params);
+                    }
+                });
+                $('#messageModal').modal('show');
+            }
+        </script>
+    </body>
+</html>
