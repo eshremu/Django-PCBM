@@ -581,7 +581,8 @@ class Header(models.Model):
         if not self.configuration:
             return False
 
-        if not self.pick_list and not self.configuration.net_value:
+        if not self.pick_list and not (self.configuration.net_value or
+                                           self.configuration.override_net_value):
             return False
 
         if not self.configuration.total_value:
