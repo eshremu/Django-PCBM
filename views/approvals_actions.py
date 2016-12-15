@@ -791,14 +791,12 @@ def CreateDocument(oRequest):
             'signum': oRequest.user.username,
             'email': oRequest.user.email,
             'full_name': oRequest.user.get_full_name()
-        }
+        },
+        'react_req': oHeader.react_request
     }
 
     if StrToBool(oRequest.POST.get('update'), False):
         export_dict.update({'existing_doc': oHeader.inquiry_site_template})
-
-    if StrToBool(oRequest.POST.get('pdf'), False):
-        export_dict.update({'react_req': oHeader.react_request})
 
     # If updating existing document
     if StrToBool(oRequest.POST.get('update'), False):
