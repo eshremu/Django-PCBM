@@ -234,19 +234,19 @@ def ConfigPricing(oRequest):
                 'header__configuration_designation__iexact':sConfig,
             }
 
-            if iProgValue is not None:
-                dLineFilters.update({'config__header__program__id': iProgValue})
-                dConfigFilters.update({'header__program__id': iProgValue})
-            else:
-                dLineFilters.pop('config__header__program__id', None)
-                dConfigFilters.pop('header__program__id', None)
+            # if iProgValue is not None:
+            dLineFilters.update({'config__header__program__id': iProgValue})
+            dConfigFilters.update({'header__program__id': iProgValue})
+            # else:
+            #     dLineFilters.pop('config__header__program__id', None)
+            #     dConfigFilters.pop('header__program__id', None)
 
-            if iBaseValue is not None:
-                dLineFilters.update({'config__header__baseline__id': iBaseValue})
-                dConfigFilters.update({'header__baseline__id': iBaseValue})
-            else:
-                dLineFilters.pop('config__header__baseline__id', None)
-                dConfigFilters.pop('header__baseline__id', None)
+            # if iBaseValue is not None:
+            dLineFilters.update({'config__header__baseline__id': iBaseValue})
+            dConfigFilters.update({'header__baseline__id': iBaseValue})
+            # else:
+            #     dLineFilters.pop('config__header__baseline__id', None)
+            #     dConfigFilters.pop('header__baseline__id', None)
 
             if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
                 if oRequest.POST['config'] == oRequest.POST['initial']:
