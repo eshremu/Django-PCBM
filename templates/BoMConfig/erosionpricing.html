@@ -76,7 +76,8 @@
         var hot, clean_form;
         var data = {{ data|safe }};
         var container = document.getElementById('datatable');
-        var isChecked = false;
+        var isModChecked = false;
+        var isAllChecked = false;
         var ajax_url = '{% url 'bomconfig:erosionajax' %}';
     </script>
 {% endblock %}
