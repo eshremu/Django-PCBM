@@ -182,7 +182,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                     oDiscontinued.configuration_designation = oHeader.model_replaced_link.configuration_designation
                                     oDiscontinued.model_replaced = oHeader.model_replaced_link.configuration_designation
                                     oDiscontinued.model_replaced_link = oHeader.model_replaced_link
-                                    oDiscontinued.inquiry_site_template = oHeader.inquiry_site_template if oHeader.inquiry_site_template > 0 else None
+                                    oDiscontinued.inquiry_site_template = oHeader.inquiry_site_template if oHeader.inquiry_site_template and oHeader.inquiry_site_template > 0 else None
                                     try:
                                         oDiscontinued.save()
                                         bDiscontinuationAlreadyCreated = True
@@ -377,9 +377,9 @@ def AddConfig(oRequest):
         bCanWriteConfigAttr = bool(SecurityPermission.objects.filter(title='Config_Entry_Attributes_Write').filter(user__in=oRequest.user.groups.all())) \
             and (not bPending or (bApprovalPermission and sNeededLevel == 'cpm'))
         bCanWriteConfigPrice = bool(SecurityPermission.objects.filter(title='Config_Entry_PriceLinks_Write').filter(user__in=oRequest.user.groups.all())) \
-            and (not bPending or (bApprovalPermission and sNeededLevel is None))
+            and (not bPending or (bApprovalPermission and sNeededLevel in ('blm', 'cust1', 'cust2', 'cust_whse', 'evar', 'brd')))
         bCanWriteConfigCust = bool(SecurityPermission.objects.filter(title='Config_Entry_CustomerData_Write').filter(user__in=oRequest.user.groups.all())) \
-            and (not bPending or (bApprovalPermission and sNeededLevel == 'cust1'))
+            and (not bPending or (bApprovalPermission and sNeededLevel in ('cust1', 'cust2', 'cust_whse', 'evar', 'brd')))
         bCanWriteConfigBaseline = bool(SecurityPermission.objects.filter(title='Config_Entry_Baseline_Write').filter(user__in=oRequest.user.groups.all())) \
             and (not bPending or (bApprovalPermission and sNeededLevel in ('blm', 'csr')))
 
