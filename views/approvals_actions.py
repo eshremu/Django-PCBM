@@ -678,8 +678,16 @@ def ChangePart(oRequest):
 def CreateDocument(oRequest):
     oHeader = Header.objects.get(id=oRequest.POST.get('id'))
 
-    if not oHeader.valid_from_date or oHeader.valid_from_date < timezone.datetime.now().date():
-        oHeader.valid_from_date = timezone.datetime.now().date()
+    if oHeader.bom_request_type.name != 'Discontinue':
+        if not oHeader.valid_from_date or oHeader.valid_from_date < timezone.datetime.now().date():
+            oHeader.valid_from_date = timezone.datetime.now().date()
+    else:
+        if not oHeader.valid_to_date or oHeader.valid_to_date < timezone.datetime.now().date():
+            oHeader.valid_to_date = timezone.datetime.now().date() + timezone.timedelta(1)
+
+    if oHeader.valid_from_date and oHeader.valid_to_date and oHeader.valid_from_date > oHeader.valid_to_date and oHeader.bom_request_type.name != 'Discontinue':
+        while oHeader.valid_from_date > oHeader.valid_to_date:
+            oHeader.valid_to_date = oHeader.valid_to_date + timezone.timedelta(365)
 
     if not StrToBool(oRequest.POST.get('type')):
         # Create Inquiry
@@ -697,7 +705,7 @@ def CreateDocument(oRequest):
             "ship_to_party": str(oHeader.ship_to_party or ''),
             "bill_to_party": str(oHeader.bill_to_party or ''),
             "configuration_designation": oHeader.configuration_designation,
-            "valid_from_date": max(oHeader.valid_from_date, timezone.datetime.now().date()).strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
+            "valid_from_date": oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
             'po_date': oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
             "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else '',
             "payment_terms": oHeader.payment_terms.split()[0] if oHeader.payment_terms else '',
@@ -726,6 +734,7 @@ def CreateDocument(oRequest):
                     'higher_level_item': oLine.higher_level_item or '',
                     'material_group_5': oLine.material_group_5 or '', # TODO: Need to determine index/row of value (this will have to link to a table)
                     'purchase_order_item_num': oLine.purchase_order_item_num or '',
+                    "valid_from_date": oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
                 }
                 for oLine in sorted(oHeader.configuration.configline_set.exclude(line_number__contains='.'), key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
             ]
@@ -776,6 +785,17 @@ def CreateDocument(oRequest):
             ]
         }
     # end if
+
+    if oHeader.bom_request_type.name == 'Discontinue':
+        if oHeader.model_replaced_link and \
+                oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id):
+            if oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id).first().inquiry_site_template is not None and \
+                oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id).first().inquiry_site_template > 0:
+                data['configuration_designation'] = 'Replaced by {}'.format(oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id).first().inquiry_site_template)
+            else:
+                return HttpResponse(status=409, reason="Invalid replacement")
+        else:
+            data['configuration_designation'] = 'Obsolete'
 
     export_dict = {
         "data": data,

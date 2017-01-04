@@ -616,6 +616,21 @@ class Header(models.Model):
     @property
     def latestdocrequest(self):
         return self.documentrequest_set.all().order_by('-new_req').first()
+
+    @property
+    def discontinue_can_proceed(self):
+        if self.bom_request_type.name == 'Discontinue':
+            if self.model_replaced_link and \
+                    self.model_replaced_link.replaced_by_model.exclude(id=self.id):
+                if self.model_replaced_link.replaced_by_model.exclude(id=self.id).first().inquiry_site_template is not None and \
+                                self.model_replaced_link.replaced_by_model.exclude(id=self.id).first().inquiry_site_template > 0:
+                    return True
+                else:
+                    return False
+            else:
+                return True
+        else:
+            return False
 # end class
 
 

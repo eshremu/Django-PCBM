@@ -52,11 +52,13 @@
                                     <td style="padding: 0 5px 5px 0;">
                                         <button class="btn btn-primary doc_button"
                                                 data-id="{{ record.id }}" data-update="0" data-type="0" data-pdf_allowed="{% if record.pdf_allowed %}1{% else %}0{% endif %}"
-                                        {% if  not record.inquiry_eligible or record.inquiry_site_template <= -1 %}
+                                        {% if  not record.inquiry_eligible or record.inquiry_site_template <= -1 or record.bom_request_type.name == 'Discontinue' and not record.discontinue_can_proceed %}
                                                 disabled title=
-                                                {% if record.contains_fap_parts %}
+                                            {% if record.inquiry_site_template <= -1 %}
+                                                "Document creation in work"
+                                            {% elif record.contains_fap_parts %}
                                                 "Configuration contains a DPP. Manual SAP document required."
-                                                {% elif not record.inquiry_eligible %}
+                                            {% elif not record.inquiry_eligible %}
                                                 "Configuration is missing needed data or contains incorrect data. Please check:
     Net value and unit price
     Item category
@@ -66,9 +68,9 @@
     Payment terms
     Valid-from & valid-to date
     Plant"
-                                                {% else %}
-                                                "Document creation in work"
-                                                {% endif %}
+                                            {% elif record.bom_request_type.name == 'Discontinue' and not record.discontinue_can_proceed %}
+                                                "Replacing record does not have a valid SAP document"
+                                            {% endif %}
                                         {% else %}title="Create new Inquiry"
                                         {% endif %}>Create Inquiry</button>
                                     </td>
@@ -78,11 +80,13 @@
                                     <td style="padding: 0 5px 5px 0;">
                                         <button class="btn btn-warning doc_button"
                                                 data-id="{{ record.id }}" data-update="1" data-type="0" data-pdf_allowed="{% if record.pdf_allowed %}1{% else %}0{% endif %}"
-                                        {% if not record.inquiry_eligible or record.inquiry_site_template <= -1 %}
+                                        {% if not record.inquiry_eligible or record.inquiry_site_template <= -1 or record.bom_request_type.name == 'Discontinue' and not record.discontinue_can_proceed%}
                                                 disabled title=
-                                                {% if record.contains_fap_parts %}
+                                            {% if record.inquiry_site_template <= -1 %}
+                                                "Document creation in work"
+                                            {% elif record.contains_fap_parts %}
                                                 "Configuration contains a DPP. Manual SAP document required."
-                                                {% elif not record.inquiry_eligible %}
+                                            {% elif not record.inquiry_eligible %}
                                                 "Configuration is missing needed data or contains incorrect data. Please check:
     Net value and unit price
     Item category
@@ -92,9 +96,9 @@
     Payment terms
     Valid-from & valid-to date
     Plant"
-                                                {% else %}
-                                                "Document creation in work"
-                                                {% endif %}
+                                            {% elif record.bom_request_type.name == 'Discontinue' and not record.discontinue_can_proceed %}
+                                                "Replacing record does not have a valid SAP document"
+                                            {% endif %}
                                         {% else %}title="Update existing Inquiry"
                                         {% endif %}>Update Inquiry</button>
                                     </td>
@@ -106,11 +110,13 @@
                                     <td style="padding: 0 0 5px 0;">
                                         <button class="btn btn-primary doc_button"
                                                 data-id="{{ record.id }}" data-update="0" data-type="1"
-                                        {% if not record.site_template_eligible or record.inquiry_site_template <= -1 %}
+                                        {% if not record.site_template_eligible or record.inquiry_site_template <= -1 or record.bom_request_type.name == 'Discontinue' and not record.discontinue_can_proceed%}
                                             disabled title=
-                                            {% if record.contains_fap_parts %}
+                                            {% if record.inquiry_site_template <= -1 %}
+                                                "Document creation in work"
+                                            {% elif record.contains_fap_parts %}
                                                 "Configuration contains a DPP. Manual SAP document required."
-                                            {% elif not record.site_template_eligible %}
+                                            {% elif not record.inquiry_eligible %}
                                                 "Configuration is missing needed data or contains incorrect data. Please check:
     Item category
     Higher-level item
@@ -119,8 +125,8 @@
     Payment terms
     Valid-from & valid-to date
     Plant"
-                                            {% elif record.inquiry_site_template <= -1 %}
-                                                "Document creation in work"
+                                            {% elif record.bom_request_type.name == 'Discontinue' and not record.discontinue_can_proceed %}
+                                                "Replacing record does not have a valid SAP document"
                                             {% endif %}
                                         {% else %}title="Create new Site Template"
                                         {% endif %}>Create ST</button>
@@ -131,11 +137,13 @@
                                     <td style="padding: 0 0 5px 0;">
                                         <button class="btn btn-warning doc_button"
                                                 data-id="{{ record.id }}" data-update="1" data-type="1"
-                                        {% if not record.site_template_eligible or record.inquiry_site_template <= -1 %}
+                                        {% if not record.site_template_eligible or record.inquiry_site_template <= -1 or record.bom_request_type.name == 'Discontinue' and not record.discontinue_can_proceed%}
                                             disabled title=
-                                            {% if record.contains_fap_parts %}
+                                            {% if record.inquiry_site_template <= -1 %}
+                                                "Document creation in work"
+                                            {% elif record.contains_fap_parts %}
                                                 "Configuration contains a DPP. Manual SAP document required."
-                                            {% elif not record.site_template_eligible %}
+                                            {% elif not record.inquiry_eligible %}
                                                 "Configuration is missing needed data or contains incorrect data. Please check:
     Item category
     Higher-level item
@@ -144,8 +152,8 @@
     Payment terms
     Valid-from & valid-to date
     Plant"
-                                            {% elif record.inquiry_site_template <= -1 %}
-                                                "Document creation in work"
+                                            {% elif record.bom_request_type.name == 'Discontinue' and not record.discontinue_can_proceed %}
+                                                "Replacing record does not have a valid SAP document"
                                             {% endif %}
                                         {% else %}title="Update existing Site Template"
                                         {% endif %}>Update ST</button>

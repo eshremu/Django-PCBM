@@ -207,16 +207,25 @@ $(document).ready(function(){
                     function(){
                         data['user'] = $('#sap_username').val();
                         data['pass'] = $('#sap_password').val();
-                        $.ajax({
-                            url: doc_url,
-                            type: "POST",
-                            data: data,
-                            headers:{
-                                'X-CSRFToken': getcookie('csrftoken')
-                            },
-                            success: function(){
-                                window.location.reload(true);
-                            }
+                        $('#messageModal').one('hidden.bs.modal', function () {
+                            $.ajax({
+                                url: doc_url,
+                                type: "POST",
+                                data: data,
+                                headers: {
+                                    'X-CSRFToken': getcookie('csrftoken')
+                                },
+                                success: function () {
+                                    window.location.reload(true);
+                                },
+                                error: function (xhr, status, error) {
+                                    if (xhr.status == 409 && error == "Invalid replacement"){
+                                        messageToModal("Replacement document missing / in-work", "The record replacing this record has no SAP document number or the document is currently being created. Please allow the document to finish before proceeding.");
+                                    } else {
+                                        messageToModal("Unknown error", "An error occurred while attempting to process you request.  If this continues, please request support via the Support button");
+                                    }
+                                }
+                            });
                         });
                     }
                 );
