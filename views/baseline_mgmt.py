@@ -54,7 +54,7 @@ def BaselineMgmt(oRequest):
                                                                  or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y)) else 0 if x == y else 1)),
                                 reverse=True)
 
-            dTableData = {'baseline': oBaseline.title, 'revisions':[]}
+            dTableData = {'baseline': oBaseline, 'revisions':[]}
 
             for sRev in aRevisions:
                 aHeads = Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version=sRev).order_by('configuration_status', 'pick_list', 'configuration_designation')
@@ -80,7 +80,7 @@ def BaselineMgmt(oRequest):
             #                                                      or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y)) else 0 if x == y else 1)),
             #                     reverse=True)
             aRevisions = [oBaseline.current_inprocess_version or None, oBaseline.current_active_version or None]
-            dTableData = {'baseline': oBaseline.title, 'revisions': []}
+            dTableData = {'baseline': oBaseline, 'revisions': []}
 
             for sRev in aRevisions:
                 if not sRev:
@@ -110,7 +110,16 @@ def BaselineMgmt(oRequest):
     aTitles = ['', '', 'Configuration','Status','BoM Request Type','Program','Customer Number','Model','Model Description','Customer Price','Created Year',
                'Inquiry/Site Template Number','Model Replacing','Comments','Release Date','ZUST','P-Code','Plant']
 
-    return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html', dContext={'form': form, 'tables': aTable, 'downloadable': bDownloadable, 'column_titles': aTitles, 'cust_list': REF_CUSTOMER.objects.all()})
+    dContext = {
+        'form': form,
+        'tables': aTable,
+        'downloadable': bDownloadable,
+        'column_titles': aTitles,
+        'cust_list': REF_CUSTOMER.objects.all(),
+        'safe_cust_list': " ".join([cust.name.replace(" ","-_").replace("&","_") for cust in REF_CUSTOMER.objects.all()])
+    }
+
+    return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html', dContext=dContext)
 # end def
 
 

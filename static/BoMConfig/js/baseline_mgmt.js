@@ -40,6 +40,19 @@ $(document).ready(function() {
     });
 });
 
+function cust_filter(customer){
+    if(customer !== 'All') {
+        $('tbody tr').not('.' + customer).css('display','none');
+        $('tbody tr.' + customer).css('display','');
+        $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
+    } else {
+        $('tbody tr').css('display', '');
+        $('#cu_filter').html('Customer <span class="caret"></span>');
+    }
+    
+    table.draw();
+}
+
 function BuildTable(){
     var searchText;
     if (table !== undefined){

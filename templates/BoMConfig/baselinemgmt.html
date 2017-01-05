@@ -21,7 +21,20 @@
                 {% endfor %}
 			{% endfor %}
 			<input class="btn" type="submit" value="Search" />
-		</form>
+            {% if not downloadable %}
+            <ul class="btn" style="border: none; padding: 0 0 0 20px;">
+                <li class="dropdown" style="list-style-type: none;">
+                    <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
+                    <ul class="dropdown-menu">
+                        <li><a href="#" onclick="cust_filter('All');">All</a></li>
+                        {% for customer in cust_list %}
+                        <li><a href="#" onclick="cust_filter('{{ customer.name|replacewhitespace:"-_"|replace:"& _" }}');">{{ customer }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            </ul>
+            {% endif %}
+        </form>
 	</div>
 {#         style="overflow-x: auto"#}
     <div class="table-wrapper">
@@ -43,22 +56,24 @@
             {% for table in tables %}
                 {% if table.revisions %}
                 {% for revision in table.revisions %}
-                    <tr class="first_row">
+                    <tr class="first_row {{ table.baseline.customer|replacewhitespace:"-_"|replace:"& _"|default:safe_cust_list }}">
                         <td class="baseline_name">
-                            {% if not downloadable and table.baseline != 'No Associated Baseline' %}
-                            <a onclick="$('#id_baseline_title').val('{{ table.baseline }}'); $('#headersubform form').submit();" style="cursor: pointer">
-                                {{ table.baseline }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}
+                            {% if not downloadable and table.baseline.title != 'No Associated Baseline' %}
+                            <a onclick="$('#id_baseline_title').val('{{ table.baseline.title }}'); $('#headersubform form').submit();" style="cursor: pointer">
+                                {{ table.baseline.title }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}
                             </a>
                             {% else %}
-                            {{ table.baseline }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}
+                            {{ table.baseline.title }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}
                             {% endif %}
                         </td>
                         <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                         <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                     </tr>
                     {% for header in revision.configs %}
-                    <tr style="{% if header.configuration_status.name == 'In Process' or header.configuration_status.name == 'In Process/Pending' %}color: #22BB33;{% elif header.configuration_status.name == 'On Hold' %}color: #E82828;{% elif header.configuration_status.name != 'Active' %}color: #999999;{% endif %}">
-                        <td class="body_dummy1" style="visibility: hidden;">{{ table.baseline }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
+                    <tr style="{% if header.configuration_status.name == 'In Process' or header.configuration_status.name == 'In Process/Pending' %}color: #22BB33;{% elif header.configuration_status.name == 'On Hold' %}color: #E82828;{% elif header.configuration_status.name != 'Active' %}color: #999999;{% endif %}"
+                        class="{{ header.customer_unit|replacewhitespace:"-_"|replace:"& _" }}"
+                    >
+                        <td class="body_dummy1" style="visibility: hidden;">{{ table.baseline.title }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
                         <td class="body_dummy2"></td>
                         {% with header.configuration.get_first_line as firstline %}
                         <td><a onclick="window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes')" style="cursor: pointer">{{ header.configuration_designation|default:'None' }}</a></td>
@@ -107,8 +122,8 @@
                     </tr>
                     {% endfor %}
                 {% endfor %}
-                <tr>
-                    <td style="visibility: hidden; min-height: 18px;">{{ table.baseline }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
+                <tr class="{{ table.baseline.customer|replacewhitespace:"-_"|replace:"& _"|default:safe_cust_list }}">
+                    <td style="visibility: hidden; min-height: 18px;">{{ table.baseline.title }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
                     <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                     <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                 </tr>
@@ -127,7 +142,7 @@
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinedownload' %}">
             {% csrf_token %}
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
-            <input name="baseline" type="hidden" value="{{ tables.0.baseline }}"/>
+            <input name="baseline" type="hidden" value="{{ tables.0.baseline.title }}"/>
             <input name="version" type="hidden" value=""/>
             <button style="display: inline" id="download" class="btn" type="button" onclick="downloadModal()">Download</button>
         </form>
@@ -135,7 +150,7 @@
         {% if user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_BPMA_Architect" %}
         <form id="rollbackform" style="display: inline">
             {% csrf_token %}
-            <input name="baseline" type="hidden" value="{{ tables.0.baseline }}"/>
+            <input name="baseline" type="hidden" value="{{ tables.0.baseline.title }}"/>
             <button style="display: inline" id="rollback" class="btn" type="button" onclick="rollbackTest()">Rollback</button>
         </form>
         {% endif %}
@@ -156,7 +171,7 @@
 </div>
 <script>
     var revision_list = '{% for revision in tables.0.revisions %}<option value="{{ revision.revision.version }}">{{ revision.revision.version }}</option>{% endfor %}';
-    var cust_list = '<option value="">All</option>{% for cust in cust_list %}<option value="{{ cust.name }}">{{ cust.name }}</option>{% endfor %}';
+{#    var cust_list = '<option value="">All</option>{% for cust in cust_list %}<option value="{{ cust.name }}">{{ cust.name }}</option>{% endfor %}'; #}
     var rollback_url = "{% url 'bomconfig:baselinerollback' %}";
     var rollbacktest_url = "{% url 'bomconfig:baselinerollbacktest' %}";
 </script>
