@@ -8,6 +8,7 @@ from django.core.mail import send_mail, EmailMultiAlternatives
 from django.shortcuts import redirect
 from django.db import transaction
 from django.db.models import Q
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
     HeaderTimeTracker, REF_STATUS, ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, LinePricing,\
@@ -20,6 +21,7 @@ import copy
 import json
 
 
+@login_required
 def Approval(oRequest):
     if 'existing' in oRequest.session:
         try:
@@ -46,6 +48,7 @@ def Approval(oRequest):
 # end def
 
 
+@login_required
 def Action(oRequest, **kwargs):
     if 'existing' in oRequest.session:
         try:

@@ -3,6 +3,7 @@ from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import CustomerPartInfo, PartBase, REF_CUSTOMER
 from BoMConfig.views.landing import Default
@@ -20,6 +21,7 @@ def CustomerAuditLand(oRequest):
     return redirect('bomconfig:customeraudit')
 
 
+@login_required
 def CustomerAudit(oRequest):
     dContext = {
         'customer_list': REF_CUSTOMER.objects.all(),
@@ -181,6 +183,7 @@ def CustomerAuditTableValidate(oRequest):
 # end def
 
 
+@login_required
 def CustomerAuditUpload(oRequest):
 
     dContext = {'customer_list': REF_CUSTOMER.objects.all()}

@@ -3,17 +3,20 @@ from django.core.urlresolvers import reverse
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import DistroList, ApprovalList
 from BoMConfig.forms import DistroForm, UserForm, UserAddForm, CustomerApprovalLevelForm
 from BoMConfig.views.landing import Default
 
 
+@login_required
 def AdminLanding(oRequest):
     return Default(oRequest, 'BoMConfig/adminlanding.html')
 # end def
 
 
+@login_required
 def MailingAdmin(oRequest):
     dContext = {
         'list': DistroList.objects.all()
@@ -23,6 +26,7 @@ def MailingAdmin(oRequest):
 # end def
 
 
+@login_required
 def MailingChange(oRequest, id=''):
     oNew = None
     if oRequest.method == 'POST' and oRequest.POST:
@@ -44,6 +48,7 @@ def MailingChange(oRequest, id=''):
 # end def
 
 
+@login_required
 def UserAdmin(oRequest):
     dContext = {
         'users': set(
@@ -56,6 +61,7 @@ def UserAdmin(oRequest):
 # end def
 
 
+@login_required
 def UserAdd(oRequest):
     oForm = UserAddForm()
     if oRequest.method == 'POST' and oRequest.POST:
@@ -80,6 +86,7 @@ def UserAdd(oRequest):
 # end def
 
 
+@login_required
 def UserChange(oRequest, id=''):
     if get_user_model().objects.filter(pk=id):
         oUser = get_user_model().objects.get(pk=id)
@@ -148,6 +155,7 @@ def UserChange(oRequest, id=''):
 # end def
 
 
+@login_required
 def ApprovalAdmin(oRequest):
     dContext = {
         'list': ApprovalList.objects.all(),
@@ -158,6 +166,7 @@ def ApprovalAdmin(oRequest):
     return Default(oRequest, sTemplate, dContext)
 
 
+@login_required
 def ApprovalChange(oRequest, id=None):
     dInit = {}
     oApproveList = None

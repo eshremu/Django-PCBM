@@ -8,6 +8,7 @@ from django import forms
 from django.forms import fields
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
     PartBase, Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, SecurityPermission,\
@@ -66,6 +67,7 @@ def UpdateConfigRevisionData(oHeader):
 # end def
 
 
+@login_required
 def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
     # existing_instance is the existing header. Store the pk in the form to return for saving
     # Status message allows another view to redirect to here with an error message explaining the redirect
@@ -324,6 +326,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 # end def
 
 
+@login_required
 def AddConfig(oRequest):
     status_message = oRequest.session.get('status', None)
 
@@ -584,6 +587,7 @@ def AddConfig(oRequest):
 # end def
 
 
+@login_required
 def AddTOC(oRequest):
     status_message = oRequest.session.get('status', None)
 
@@ -714,6 +718,7 @@ def AddTOC(oRequest):
 # end def
 
 
+@login_required
 def AddRevision(oRequest):
     error_matrix = []
     valid = True
@@ -834,6 +839,7 @@ def AddRevision(oRequest):
 # end def
 
 
+@login_required
 def AddInquiry(oRequest, inquiry):
     status_message = oRequest.session.get('status', None)
 

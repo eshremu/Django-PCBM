@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Configuration, ConfigLine, PartBase, LinePricing, REF_CUSTOMER,\
     SecurityPermission, REF_SPUD, PricingObject, REF_TECHNOLOGY
@@ -10,6 +11,7 @@ import datetime
 import itertools
 
 
+@login_required
 def PartPricing(oRequest):
     bCanReadPricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Read').filter(user__in=oRequest.user.groups.all()))
     bCanWritePricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Write').filter(user__in=oRequest.user.groups.all()))
@@ -161,6 +163,7 @@ def PartPricing(oRequest):
     return Default(oRequest, sTemplate='BoMConfig/partpricing.html', dContext=dContext)
 
 
+@login_required
 def ConfigPricing(oRequest):
 
     bCanReadPricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Read').filter(user__in=oRequest.user.groups.all()))
@@ -325,6 +328,7 @@ def ConfigPricing(oRequest):
     return Default(oRequest, sTemplate, dContext)
 
 
+@login_required
 def OverviewPricing(oRequest):
     bCanReadPricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Read').filter(user__in=oRequest.user.groups.all()))
     bCanWritePricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Write').filter(user__in=oRequest.user.groups.all()))
@@ -475,6 +479,7 @@ def PricingOverviewLists():
     return aPricingLines, aComments
 
 
+@login_required
 def PriceErosion(oRequest):
     sTemplate = 'BoMConfig/erosionpricing.html'
     sStatusMessage = None

@@ -3,6 +3,7 @@ __author__ = 'epastag'
 from django.utils import timezone
 from django.contrib import messages
 from django.db import IntegrityError
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
     PartBase, Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, REF_REQUEST, ParseException,\
@@ -16,6 +17,7 @@ import os
 import traceback
 
 
+@login_required
 def Upload(oRequest):
     if 'existing' in oRequest.session:
         try:

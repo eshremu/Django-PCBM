@@ -2,6 +2,7 @@ __author__ = 'epastag'
 
 from django.http import JsonResponse, Http404, QueryDict
 from django.db import IntegrityError
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Baseline, SecurityPermission, Baseline_Revision, REF_CUSTOMER
 from BoMConfig.forms import SubmitForm
@@ -15,11 +16,13 @@ import json
 aHeaderList = None
 
 
+@login_required
 def BaselineLoad(oRequest):
     """This method is used as a landing page for Baseline Management while the useful view loads"""
     return Default(oRequest, sTemplate='BoMConfig/baselineload.html')
 
 
+@login_required
 def BaselineMgmt(oRequest):
     if 'existing' in oRequest.session:
         try:
@@ -165,6 +168,7 @@ def BaselineRollback(oRequest):
     return JsonResponse(dResult)
 
 
+@login_required
 def OverviewPricing(oRequest):
     bCanReadPricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Read').filter(user__in=oRequest.user.groups.all()))
     bCanWritePricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Write').filter(user__in=oRequest.user.groups.all()))
