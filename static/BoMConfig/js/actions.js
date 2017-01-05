@@ -99,6 +99,14 @@ function process(action){
     }
 }
 
+function credentialTest(event){
+    if($('input#sap_username').val() != '' && $('input#sap_password').val() != ''){
+        $('#messageModal button.modal_submit').removeAttr('disabled');
+    } else {
+        $('#messageModal button.modal_submit').attr('disabled','disabled');
+    }
+}
+
 $(document).ready(function(){
     $('#approval_submit').click(function(){
         if($('.inprocess:checked').length > 0) {
@@ -201,8 +209,8 @@ $(document).ready(function(){
             $('#messageModal').one('hidden.bs.modal', function () {
                 messageToModal('SAP Credentials',
                     '<p>Please enter your SAP username and password:</p>'+
-                    '<label for="sap_username">Username</label>&nbsp;&nbsp;<input type="text" id="sap_username" name="username"/><br/>'+
-                    '<label for="sap_password">Password</label>&nbsp;&nbsp;<input type="password" id="sap_password" name="password"/><br/>'+
+                    '<label for="sap_username">Username</label>&nbsp;&nbsp;<input type="text" id="sap_username" name="username" oninput="credentialTest()"/><br/>'+
+                    '<label for="sap_password">Password</label>&nbsp;&nbsp;<input type="password" id="sap_password" name="password" oninput="credentialTest()"/><br/>'+
                     '<input type="checkbox" id="toggle_pass" name="passwordtoggle"/><label for="toggle_pass">Show characters</label>',
                     function(){
                         data['user'] = $('#sap_username').val();
@@ -229,6 +237,7 @@ $(document).ready(function(){
                         });
                     }
                 );
+                $('#messageModal button.modal_submit').attr('disabled','disabled');
             });
         }, this);
     });
