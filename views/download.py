@@ -308,12 +308,13 @@ def DownloadBaseline(oRequest):
     oBaseline = oRequest.POST['baseline']
     sVersion = oRequest.POST['version']
     sCookie = oRequest.POST['file-cookie']
+    sCust = oRequest.POST['customer']
 
     if oBaseline:
         oBaseline = Baseline.objects.get(title__iexact=oBaseline)
         sFileName = str(Baseline_Revision.objects.get(baseline=oBaseline, version=sVersion)) + ".xlsx"
 
-        oFile = WriteBaselineToFile(oBaseline, sVersion)
+        oFile = WriteBaselineToFile(oBaseline, sVersion, sCust)
 
         response = HttpResponse(content_type='application/ms-excel')
         response['Content-Disposition'] = 'attachment;filename="{0}"'.format(sFileName)
@@ -336,11 +337,16 @@ def DownloadBaselineMaster(oRequest):
     sFileName = "BOM Master File - {}.xlsx".format(str(datetime.datetime.now().strftime('%d%b%Y')))
 
     aTable = []
-    aBaselines=[]
-    if sCustomer == "" or sCustomer is None:
-        aBaselines = Baseline.objects.all()
+
+    if not sCustomer:
+        aBaselines = Baseline.objects.exclude(title='No Associated Baseline')
     else:
         aBaselines = Baseline.objects.filter(customer__name=sCustomer)
+
+    oBaseline = Baseline.objects.filter(title='No Associated Baseline').first()
+    if oBaseline:
+        aBaselines = chain(aBaselines, [oBaseline])
+
     for oBaseline in aBaselines:
         aRevisions = [oBaseline.current_inprocess_version or None, oBaseline.current_active_version or None]
         dTableData = {'baseline': oBaseline, 'revisions': []}
@@ -348,8 +354,10 @@ def DownloadBaselineMaster(oRequest):
         for sRev in aRevisions:
             if not sRev:
                 continue
-            aHeads = Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version=sRev).order_by(
-                'configuration_status', 'pick_list', 'configuration_designation')
+            aHeads = Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version=sRev)
+            if sCustomer:
+                aHeads = aHeads.filter(customer_unit__name=sCustomer)
+            aHeads = aHeads.order_by('configuration_status', 'pick_list', 'configuration_designation')
             if aHeads:
                 dTableData['revisions'].append(
                     {'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev), 'configs': aHeads})
@@ -358,34 +366,6 @@ def DownloadBaselineMaster(oRequest):
 
         aTable.append(dTableData)
     # end for
-    if sCustomer == "" or sCustomer is None:
-        aTable.append(
-            {
-                'baseline': 'No Associated Baseline',
-                'revisions': [
-                    {
-                        'revision': '',
-                        'configs': Header.objects.filter(baseline__isnull=True).order_by('configuration_status',
-                                                                                         'pick_list',
-                                                                                         'configuration_designation')
-                    }
-                ]
-            }
-        )
-    else:
-        aTable.append(
-            {
-                'baseline': 'No Associated Baseline',
-                'revisions': [
-                    {
-                        'revision': '',
-                        'configs': Header.objects.filter(baseline__isnull=True, customer_unit__name=sCustomer).order_by('configuration_status',
-                                                                                         'pick_list',
-                                                                                         'configuration_designation')
-                    }
-                ]
-            }
-        )
 
     headerFont = Font(name='Arial', size=10, bold=True)
     ipFont = Font(name='Arial', size=10, color='009900')
@@ -481,9 +461,14 @@ def DownloadBaselineMaster(oRequest):
             aConfigs.extend(dRevision['configs'])
         # end for
 
-        for sName in aTitles:
+        for idx, sName in enumerate(aTitles):
+            if 'No Associated Baseline' in sName and idx > 0:
+                continue
+            elif 'No Associated Baseline' in sName:
+                sName = 'No Associated Baseline'
+
             oSheet['B' + str(iRow)] = sName
-            if not re.match('.+\d{6}C', sName) and sName != 'No Associated Baseline':
+            if not re.match('.+\d{6}C', sName) and 'No Associated Baseline' not in sName:
                 oSheet['B' + str(iRow)].font = ipFont
             else:
                 oSheet['B' + str(iRow)].font = activeTitleFont
@@ -609,7 +594,7 @@ def DownloadBaselineMaster(oRequest):
 # end def
 
 
-def WriteBaselineToFile(oBaseline, sVersion):
+def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     aColumnTitles = ['Line #', 'Product Number', 'Product Description', 'Order Qty', 'UoM', 'HW/SW Ind',
                      'Net Price',
                      'Traceability Req. (Serialization)', 'Customer Asset?', 'Customer Asset Tagging Requirement',
@@ -691,7 +676,7 @@ def WriteBaselineToFile(oBaseline, sVersion):
         if oBaseline.latest_revision:
             aHeaders = oBaseline.latest_revision \
                 .header_set.exclude(configuration_status__name__in=('Discontinued', 'Inactive', 'On Hold')).exclude(
-                program__name__in=('DTS',))
+                program__name__in=('DTS',) if oBaseline.title != 'No Associated Baseline' else [])
                 # .order_by('configuration_status', 'pick_list', 'configuration_designation')
         else:
             aHeaders = []
@@ -704,7 +689,7 @@ def WriteBaselineToFile(oBaseline, sVersion):
     else:
         aHeaders = oBaseline.baseline_revision_set.get(version=sVersion) \
             .header_set.exclude(configuration_status__name__in=('On Hold',)).exclude(  # 'Discontinued', 'Inactive',
-            program__name__in=('DTS',)) \
+            program__name__in=('DTS',) if oBaseline.title != 'No Associated Baseline' else [])
             # .order_by('configuration_status', 'pick_list', 'configuration_designation')
         aHeaders = list(aHeaders)
 
@@ -718,6 +703,10 @@ def WriteBaselineToFile(oBaseline, sVersion):
     )
 
     for oHeader in list(aHeaders):
+        if sCustomer:
+            if oHeader.customer_unit.name != sCustomer:
+                continue
+
         if str(oHeader.configuration_designation) in oFile.get_sheet_names():
             aHeaders.remove(oHeader)
             continue
@@ -1037,6 +1026,10 @@ def WriteBaselineToFile(oBaseline, sVersion):
 
     iCurrentRow = 2
     for oHeader in aHeaders:
+        if sCustomer:
+            if oHeader.customer_unit.name != sCustomer:
+                continue
+
         for iIndex in sorted(dTOCData.keys()):
             if dTOCData[iIndex][1] and dTOCData[iIndex][1] != 'inquiry_site_template':
                 if 'Customer Number' in dTOCData[iIndex][0] and oHeader.pick_list:

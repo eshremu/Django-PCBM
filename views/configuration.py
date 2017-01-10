@@ -301,7 +301,13 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             ))
 
         if not bFrameReadOnly and (not oExisting or (oExisting and type(oExisting) != str and oExisting.configuration_status.name == 'In Process')):
-            headerForm.fields['baseline_impacted'].widget = forms.widgets.Select(choices=(('','---------'),('New','Create New baseline')) + tuple((obj.title,obj.title) for obj in Baseline_Revision.objects.filter(baseline__customer=oExisting.customer_unit if oExisting else None).filter(completed_date=None)))
+            headerForm.fields['baseline_impacted'].widget = forms.widgets.Select(
+                choices=(('','---------'),('New','Create New baseline')) +
+                        tuple((obj.title,obj.title) for obj in
+                              Baseline_Revision.objects.filter(
+                                  baseline__customer=oExisting.customer_unit if oExisting else None)
+                              .filter(completed_date=None).exclude(baseline__title='No Associated Baseline'))
+            )
 
             oCursor = connections['REACT'].cursor()
             oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',[bytes(oExisting.customer_unit.name, 'ascii') if oExisting else None])

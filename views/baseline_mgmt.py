@@ -59,7 +59,11 @@ def BaselineMgmt(oRequest):
             for sRev in aRevisions:
                 aHeads = Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version=sRev).order_by('configuration_status', 'pick_list', 'configuration_designation')
                 if aHeads:
-                    dTableData['revisions'].append({'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev), 'configs': aHeads})
+                    dTableData['revisions'].append({
+                        'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev),
+                        'configs': aHeads, 'customer': ' '.join(set([oHead.customer_unit.name.replace(" ", "-_").replace("&", "_") for oHead in aHeads]))
+                    })
+
                     if not bDownloadable:
                         bDownloadable = True
                 # end if
@@ -71,7 +75,7 @@ def BaselineMgmt(oRequest):
         # end if
     else:
         form = SubmitForm()
-        aBaselines = Baseline.objects.all()
+        aBaselines = Baseline.objects.exclude(title='No Associated Baseline')
         for oBaseline in aBaselines:
             # aRevisions = sorted(list(set([oBaseRev.version for oBaseRev in oBaseline.baseline_revision_set.order_by('version') if oBaseRev.version in (oBaseRev.baseline.current_active_version, oBaseRev.baseline.current_inprocess_version)])),
             #                     key=cmp_to_key(lambda x,y:(-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
@@ -87,24 +91,32 @@ def BaselineMgmt(oRequest):
                     continue
                 aHeads = Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version=sRev).order_by('configuration_status', 'pick_list', 'configuration_designation')
                 if aHeads:
-                    dTableData['revisions'].append({'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev), 'configs': aHeads})
+                    dTableData['revisions'].append({
+                        'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev),
+                        'configs': aHeads,
+                        'customer': oBaseline.customer.name.replace(" ","-_").replace("&","_")})
                 # end if
             # end for
 
             aTable.append(dTableData)
         # end for
 
-        aTable.append(
-            {
-                'baseline':'No Associated Baseline',
-                'revisions':[
-                    {
-                        'revision':'',
-                        'configs': Header.objects.filter(baseline__isnull=True).order_by('configuration_status', 'pick_list', 'configuration_designation')
-                    }
-                ]
-            }
-        )
+        if Baseline.objects.filter(title='No Associated Baseline'):
+            oBaseline = Baseline.objects.get(title='No Associated Baseline')
+            aRevisions = [oBaseline.current_inprocess_version or None,
+                          oBaseline.current_active_version or None]
+            aTable.append(
+                {
+                    'baseline':oBaseline,
+                    'revisions':[
+                        {
+                            'revision':'',
+                            'configs': Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version__in=aRevisions).order_by('configuration_status', 'pick_list', 'configuration_designation'),
+                            'customer': " ".join([cust.name.replace(" ","-_").replace("&","_") for cust in REF_CUSTOMER.objects.all()])
+                        }
+                    ],
+                }
+            )
     # end if
 
     aTitles = ['', '', 'Configuration','Status','BoM Request Type','Program','Customer Number','Model','Model Description','Customer Price','Created Year',
@@ -116,7 +128,6 @@ def BaselineMgmt(oRequest):
         'downloadable': bDownloadable,
         'column_titles': aTitles,
         'cust_list': REF_CUSTOMER.objects.all(),
-        'safe_cust_list': " ".join([cust.name.replace(" ","-_").replace("&","_") for cust in REF_CUSTOMER.objects.all()])
     }
 
     return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html', dContext=dContext)

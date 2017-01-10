@@ -21,7 +21,7 @@
                 {% endfor %}
 			{% endfor %}
 			<input class="btn" type="submit" value="Search" />
-            {% if not downloadable %}
+            {% if not downloadable or downloadable and tables and tables.0.baseline.title == 'No Associated Baseline' %}
             <ul class="btn" style="border: none; padding: 0 0 0 20px;">
                 <li class="dropdown" style="list-style-type: none;">
                     <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
@@ -56,14 +56,14 @@
             {% for table in tables %}
                 {% if table.revisions %}
                 {% for revision in table.revisions %}
-                    <tr class="first_row {{ table.baseline.customer|replacewhitespace:"-_"|replace:"& _"|default:safe_cust_list }}">
+                    <tr class="first_row {{ revision.customer }}">
                         <td class="baseline_name">
-                            {% if not downloadable and table.baseline.title != 'No Associated Baseline' %}
+                            {% if not downloadable %}
                             <a onclick="$('#id_baseline_title').val('{{ table.baseline.title }}'); $('#headersubform form').submit();" style="cursor: pointer">
-                                {{ table.baseline.title }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}
+                                {{ table.baseline.title }}{% if revision.revision.version %}{% if downloadable or not downloadable and table.baseline.title != 'No Associated Baseline'  %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}{% endif %}
                             </a>
                             {% else %}
-                            {{ table.baseline.title }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}
+                            {{ table.baseline.title }}{% if revision.revision.version %}{% if downloadable or not downloadable and table.baseline.title != 'No Associated Baseline'  %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}{% endif %}
                             {% endif %}
                         </td>
                         <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
@@ -122,7 +122,7 @@
                     </tr>
                     {% endfor %}
                 {% endfor %}
-                <tr class="{{ table.baseline.customer|replacewhitespace:"-_"|replace:"& _"|default:safe_cust_list }}">
+                <tr class="{{ table.baseline.customer.name|replacewhitespace:"-_"|replace:"& _" }}">
                     <td style="visibility: hidden; min-height: 18px;">{{ table.baseline.title }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
                     <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                     <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
@@ -142,6 +142,7 @@
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinedownload' %}">
             {% csrf_token %}
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
+            <input id="master-cust-unit" name="customer" type="hidden" value="">
             <input name="baseline" type="hidden" value="{{ tables.0.baseline.title }}"/>
             <input name="version" type="hidden" value=""/>
             <button style="display: inline" id="download" class="btn" type="button" onclick="downloadModal()">Download</button>
@@ -171,7 +172,7 @@
 </div>
 <script>
     var revision_list = '{% for revision in tables.0.revisions %}<option value="{{ revision.revision.version }}">{{ revision.revision.version }}</option>{% endfor %}';
-{#    var cust_list = '<option value="">All</option>{% for cust in cust_list %}<option value="{{ cust.name }}">{{ cust.name }}</option>{% endfor %}'; #}
+    var cust_list = '<option value="">All</option>{% for cust in cust_list %}<option value="{{ cust.name }}">{{ cust.name }}</option>{% endfor %}';
     var rollback_url = "{% url 'bomconfig:baselinerollback' %}";
     var rollbacktest_url = "{% url 'bomconfig:baselinerollbacktest' %}";
 </script>

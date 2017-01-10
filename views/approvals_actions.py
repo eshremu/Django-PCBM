@@ -343,18 +343,18 @@ def AjaxApprove(oRequest):
                             oHeader.bom_request_type = REF_REQUEST.objects.get(name='New')
                         oHeader.save()
 
-                        if oHeader.configuration_status.name in ('Discontinued', 'Active') and oHeader.baseline_impacted:
-                            aBaselinesCompleted.append(oHeader.baseline_impacted)
+                        if oHeader.configuration_status.name in ('Discontinued', 'Active') and oHeader.baseline:
+                            aBaselinesCompleted.append(oHeader.baseline)
                         # end if
                     # end if
                 # end if
             # end for
 
             aBaselinesCompleted = list(set(aBaselinesCompleted))
-            aBaselinesToComplete = Baseline.objects.filter(title__in=aBaselinesCompleted)
-            for oBaseline in aBaselinesToComplete:
-                UpRev(oBaseline)
-                EmailDownload(oBaseline)
+            # aBaselinesToComplete = Baseline.objects.filter(title__in=aBaselinesCompleted)
+            for oBaseline in aBaselinesCompleted:
+                UpRev(oBaseline.baseline)
+                EmailDownload(oBaseline.baseline)
             # end for
         elif sAction == 'clone':
             oOldHeader = Header.objects.get(pk=aRecords[0])

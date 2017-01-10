@@ -257,7 +257,7 @@ class Baseline(models.Model):
     # version = models.CharField(max_length=50)
     current_active_version = models.CharField(max_length=50, default='', blank=True)
     current_inprocess_version = models.CharField(max_length=50, default='A')
-    customer = models.ForeignKey(REF_CUSTOMER, db_constraint=False)
+    customer = models.ForeignKey(REF_CUSTOMER, db_constraint=False, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if self.title.lower().endswith(' rev'):
@@ -368,7 +368,7 @@ class Header(models.Model):
     release_date = models.DateField(blank=True, null=True)
     change_notes = models.TextField(blank=True, null=True)
     change_comments = models.TextField(blank=True, null=True)
-    baseline = models.ForeignKey(Baseline_Revision, blank=True, null=True)
+    baseline = models.ForeignKey(Baseline_Revision)
 
     class Meta:
         unique_together = ['configuration_designation', 'baseline_version', 'baseline', 'program']
@@ -396,17 +396,27 @@ class Header(models.Model):
                 self.bom_version = '1'
         else: # Update existing Header
             if self.configuration_status.name == 'In Process':
-                if self.baseline:
-                    self.baseline_version = self.baseline.version
-                # end if
-
-                if self.baseline and not self.baseline_impacted:
-                    self.baseline = None
-                elif (not self.baseline and self.baseline_impacted) or (self.baseline and self.baseline.baseline.title != self.baseline_impacted):
+                if self.baseline and self.baseline_impacted:
+                    if self.baseline.baseline.title != self.baseline_impacted:
+                        sLastRev = Baseline.objects.get(title=self.baseline_impacted).current_inprocess_version
+                        self.baseline = Baseline_Revision.objects.get(baseline=Baseline.objects.get(title=self.baseline_impacted),version=sLastRev)
+                elif not self.baseline and self.baseline_impacted:
                     sLastRev = Baseline.objects.get(title=self.baseline_impacted).current_inprocess_version
-                    self.baseline = Baseline_Revision.objects.get(baseline=Baseline.objects.get(title=self.baseline_impacted),version=sLastRev)
-                    self.baseline_version = sLastRev
+                    self.baseline = Baseline_Revision.objects.get(baseline=Baseline.objects.get(title=self.baseline_impacted), version=sLastRev)
+                elif self.baseline and not self.baseline_impacted:
+                    if self.baseline.title != 'No Associated Baseline':
+                        self.baseline_impacted = self.baseline.title
+                elif not self.baseline and not self.baseline_impacted:
+                    sLastRev = Baseline.objects.get(title='No Associated Baseline').current_inprocess_version
+                    self.baseline = Baseline_Revision.objects.get(baseline=Baseline.objects.get(title='No Associated Baseline'), version=sLastRev)
                 # end if
+            else:
+                if self.baseline and self.baseline.title != 'No Associated Baseline':
+                    self.baseline_impacted = self.baseline.title
+            # end if
+
+            if self.baseline:
+                self.baseline_version = self.baseline.version
             # end if
         # end if
 

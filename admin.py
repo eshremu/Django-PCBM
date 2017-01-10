@@ -77,10 +77,13 @@ class RevisionAdmin(admin.ModelAdmin):
     search_fields = ('baseline__title', 'version')
 
     def render_change_form(self, request, context, *args, **kwargs):
-        orderQuery = sorted(Baseline_Revision.objects\
-            .filter(baseline__title=context['original'].baseline.title)\
-            .order_by('version'), key=lambda x: RevisionCompare(x.version))
-        orderQuery = orderQuery[:orderQuery.index(context['original'])]
+        if context['original'] is not None:
+            orderQuery = sorted(Baseline_Revision.objects\
+                .filter(baseline__title=context['original'].baseline.title)\
+                .order_by('version'), key=lambda x: RevisionCompare(x.version))
+            orderQuery = orderQuery[:orderQuery.index(context['original'])]
+        else:
+            orderQuery = []
         choices = [(
                        context['adminform'].form.fields['previous_revision'].prepare_value(obj),
                        context['adminform'].form.fields['previous_revision'].label_from_instance(obj)

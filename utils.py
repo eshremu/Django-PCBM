@@ -592,13 +592,13 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     oToDiscontinue = Q(bom_request_type__name='Discontinue')
     aDiscontinuedHeaders = [oHead for oHead in Baseline_Revision
         .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(oDiscontinued|oToDiscontinue)
-        .exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
+        .exclude(program__name__in=('DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
     aAddedHeaders = [oHead for oHead in Baseline_Revision
         .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='New')
-        .exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
+        .exclude(program__name__in=('DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
     aUpdatedHeaders = [oHead for oHead in Baseline_Revision
         .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='Update')
-        .exclude(oDiscontinued).exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
+        .exclude(oDiscontinued).exclude(program__name__in=('DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
 
     aPrevHeaders = []
     aPrevButNotCurrent = []

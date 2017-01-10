@@ -77,10 +77,18 @@ function BuildTable(){
 }
 
 function downloadModal(){
+    var sMessage = '<label style="padding-right:5px;">Revision:</label><select name="rev">' + revision_list + '</select>';
+    if($('#downloadform input[name="baseline"]').val() == 'No Associated Baseline') {
+        sMessage += '<label style="padding-right:5px;">Customer:</label><select name="cust">' + cust_list + '</select>';
+    }
+
     messageToModal('Download Baseline',
-            '<label style="padding-right:5px;">Revision:</label><select>' + revision_list + '</select>',
+            sMessage,
             function(){
-                $("#downloadform input[name='version']").val($('#messageModal .modal-body select').val());
+                $("#downloadform input[name='version']").val($('#messageModal .modal-body select[name="rev"]').val());
+                if($('#downloadform input[name="baseline"]').val() == 'No Associated Baseline') {
+                    $("#downloadform input[name='customer']").val($('#messageModal .modal-body select[name="cust"]').val());
+                }
                 $('#downloadform').submit();
             }
     );
