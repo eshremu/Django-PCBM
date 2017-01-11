@@ -490,8 +490,13 @@ class Header(models.Model):
 
     @property
     def latesttracker(self):
+        return self.get_all_trackers().first()
+    # end def
+
+    @property
+    def last_disapproved_tracker(self):
         if self.headertimetracker_set:
-            return self.headertimetracker_set.order_by('-submitted_for_approval')[0]
+            return self.headertimetracker_set.filter(disapproved_on__isnull=False).order_by('-submitted_for_approval').first()
 
         return None
     # end def
@@ -1048,11 +1053,7 @@ class HeaderTimeTracker(models.Model):
     @property
     def last_disapproval_comment(self):
         if self.disapproved_on:
-            levels = self.__class__.approvals()
-            levels.reverse()
-            for level in levels:
-                if getattr(self, level + '_denied_approval'):
-                    return getattr(self, level + '_comments')
+            return getattr(self, self.disapproved_level + '_comments')
         else:
             return None
 

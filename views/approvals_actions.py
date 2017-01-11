@@ -73,6 +73,11 @@ def Action(oRequest, **kwargs):
         'customer_list': ['All'] + [obj.name for obj in REF_CUSTOMER.objects.all()],
         'viewauthorized': bool(oRequest.user.groups.filter(name__in=['BOM_BPMA_Architect','BOM_PSM_Product_Supply_Manager', 'BOM_PSM_Baseline_Manager'])),
         'approval_seq': HeaderTimeTracker.approvals(),
+        'deaddate': timezone.datetime(1900, 1, 1),
+        'namelist': ['SCM #1', 'SCM #2', 'CSR',
+                     'Comm. Price Mgmt.', 'ACR', 'PSM Baseline Mgmt.',
+                     'Customer #1', 'Customer #2', 'Customer Warehouse',
+                     'Ericsson VAR', 'Baseline Release & Dist.'],
     }
     return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def
