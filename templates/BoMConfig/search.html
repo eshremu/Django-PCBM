@@ -81,7 +81,7 @@
         </table>
         <div>
         <button id="download" class="btn btn-primary" style="margin-right: 5px;" disabled>Download Records</button>
-        <button id="downloadcustom" class="btn btn-primary" disabled>Download Results</button>
+        <button id="downloadcustom" class="btn btn-primary" disabled>Download Search Results</button>
         </div>
     {% else %}
         <p>NO CONFIGURATIONS DEFINED</p>
@@ -154,7 +154,7 @@
 
                 if(idx==1){return;}
 
-                $td.append('<div style="display: inline;"><input id="'+idx+'" type="checkbox"></div>');
+                $td.append('<div style="display: inline;"><input id="'+idx+'" type="checkbox" checked ' + (idx==0?'disabled':'') + '></div>');
                 $td.append($('<label>').text($(elem).text()).attr('for', idx));
                 $td.css('width', '25%');
                 $td.css('padding-right', '10px');

@@ -339,7 +339,7 @@ def Search(oRequest, advanced=False):
                     results.write('</tr>')
                 # end for
                 results.write('</tbody></table><div><button id="download" class="btn btn-primary" style="margin-right: 5px" disabled>Download Records</button>'
-                              '<button id="downloadcustom" class="btn btn-primary" disabled>Download Results</button></div>')
+                              '<button id="downloadcustom" class="btn btn-primary" disabled>Download Search Results</button></div>')
             else:
                 results.write('NO CONFIGURATIONS MATCHING SEARCH')
             # end if
