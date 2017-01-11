@@ -27,6 +27,7 @@
                         <tr class="{% for cust in customer_list %}{{ cust|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
                             <th></th><th style="width:15px;"></th>
                             <th>Configuration Designation</th><th style="width:25px;"></th>
+                            <th>Program</th><th style="width:25px;"></th>
                             <th>Baseline</th><th style="width:25px;"></th>
                             <th>Person Responsible</th><th style="width:25px;"></th>
                             <th>BOM Request Type</th><th style="width:25px;"></th>
@@ -40,6 +41,8 @@
                             <td><input class="inprocess" type="checkbox" data-index="{{ record.id }}"/></td>
                             <td></td>
                             <td><a href="{% url 'bomconfig:search' %}?link={{ record.pk|searchscramble }}">{{ record.configuration_designation }}</a></td>
+                            <td></td>
+                            <td>{{ record.program|default:"------" }}</td>
                             <td></td>
                             <td>{{ record.baseline|default:"(Not baselined)" }}</td>
                             <td></td>

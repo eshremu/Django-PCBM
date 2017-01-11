@@ -32,6 +32,8 @@
                         <th style="height: 160px;vertical-align: bottom;"></th>
                         <th style="height: 160px;vertical-align: bottom;">Configuration</th>
                         <td style="width:25px;"></td>
+                        <th style="height: 160px;vertical-align: bottom;">Program</th>
+                        <td style="width:25px;"></td>
                         <th style="height: 160px;vertical-align: bottom;">Baseline</th>
                         {% for name in namelist %}
                         <th class="rotate"><div><span>{{ name }}</span></div></th>
@@ -46,9 +48,11 @@
                         <td><input class="pending" type="checkbox" data-index="{{ record.id }}"/><span>&nbsp;&nbsp;</span></td>
                         <td><a onclick="window.open('../search?link={{ record.pk|searchscramble }}&readonly=1', '{{ record.configuration_designation }}', 'left=100,top=100,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no')">{{ record.configuration_designation }}</a></td>
                         <td></td>
+                        <td>{{ record.program|default:"------" }}</td>
+                        <td></td>
                         <td>{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
                         {% else %}
-                        <td></td><td></td><td></td><td></td>
+                        <td></td><td></td><td></td><td></td><td></td><td></td>
                         {% endif %}
                         {% for level in approval_seq %}
                         <td class="approval"><div data-id="{{ tracker.id }}" data-level="{{ level }}">
