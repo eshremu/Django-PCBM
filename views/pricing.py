@@ -106,15 +106,6 @@ def PartPricing(oRequest):
                                         oLinePrice.save()
                             except Exception as ex:
                                 status_message = "ERROR: " + str(ex)
-                            # end try
-                        # Updating comments only will modify current PriceObject in-place
-                        elif oCurrentPriceObj and oCurrentPriceObj.comments != aRowToSave[10]:
-                            if oCurrentPriceObj.comments != aRowToSave[10]:
-                                oCurrentPriceObj.comments = aRowToSave[10]
-                            oCurrentPriceObj.save()
-                        # end if
-                    # end for
-                # end if
 
                         # Updating comments only will modify current PriceObject in-place
                         elif oCurrentPriceObj and (oCurrentPriceObj.comments != aRowToSave[11]):
