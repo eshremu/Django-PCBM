@@ -182,7 +182,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                     oDiscontinued.configuration_designation = oHeader.model_replaced_link.configuration_designation
                                     oDiscontinued.model_replaced = oHeader.model_replaced_link.configuration_designation
                                     oDiscontinued.model_replaced_link = oHeader.model_replaced_link
-                                    oDiscontinued.inquiry_site_template = oHeader.inquiry_site_template if oHeader.inquiry_site_template > 0 else None
+                                    oDiscontinued.inquiry_site_template = oHeader.inquiry_site_template if oHeader.inquiry_site_template and oHeader.inquiry_site_template > 0 else None
                                     try:
                                         oDiscontinued.save()
                                         bDiscontinuationAlreadyCreated = True
