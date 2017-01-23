@@ -244,7 +244,7 @@ def ConfigPricing(oRequest):
 
             if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
                 if oRequest.POST['config'] == oRequest.POST['initial']:
-                    net_total = 0
+                    # net_total = 0
                     for dLine in json.loads(oRequest.POST['data_form']):
                         # Change dLine to dict with str keys
                         if isinstance(dLine, list):
@@ -256,25 +256,25 @@ def ConfigPricing(oRequest):
 
                         oLineToEdit = ConfigLine.objects.filter(**dLineFilters)[0]
                         (oLinePrice, _) = LinePricing.objects.get_or_create(config_line=oLineToEdit)
-                        oLinePrice.override_price = dLine['7'] or None
+                        oLinePrice.override_price = float(dLine['7']) if dLine['7'] not in (None, '') else None
 
-                        if not oLineToEdit.config.header.pick_list and dLine['0'] == '10':
-                            net_total = float(dLine['6'])
-                        elif oLineToEdit.config.header.pick_list:
-                            net_total += float(dLine['6'])
+                        # if not oLineToEdit.config.header.pick_list and dLine['0'] == '10':
+                        #     net_total = float(dLine['6'])
+                        # elif oLineToEdit.config.header.pick_list:
+                        #     net_total += float(dLine['6'])
 
                         oLinePrice.save()
                     # end for
                     dLineFilters.pop('line_number', None)
 
                     oConfig = Configuration.objects.get(**dConfigFilters)
-                    oConfig.override_net_value = float(oRequest.POST['net_value'])
-                    oConfig.net_value = net_total
-                    try:
-                        ZUSTLine = oConfig.configline_set.get(line_number='10')
-                    except ConfigLine.DoesNotExist:
-                        ZUSTLine = None
-                    oConfig.total_value = (oConfig.override_net_value or oConfig.net_value) + (ZUSTLine.amount if ZUSTLine and (ZUSTLine.condition_type or '').upper()=='ZUST' else 0)
+                    # oConfig.override_net_value = float(oRequest.POST['net_value'])
+                    # oConfig.net_value = net_total
+                    # try:
+                    #     ZUSTLine = oConfig.configline_set.get(line_number='10')
+                    # except ConfigLine.DoesNotExist:
+                    #     ZUSTLine = None
+                    # oConfig.total_value = (oConfig.override_net_value or oConfig.net_value) + (ZUSTLine.amount if ZUSTLine and (ZUSTLine.condition_type or '').upper()=='ZUST' else 0)
                     oConfig.save()
 
                     status_message = 'Data saved.'

@@ -670,6 +670,9 @@ class Configuration(models.Model):
         # end if
         self.header.save(request=kwargs.pop('request', None))
 
+        if 'In Process' in self.header.configuration_status.name:
+            self.DeterminePrice()
+
         super().save(*args, **kwargs)
     # end def
 
@@ -698,6 +701,38 @@ class Configuration(models.Model):
     @property
     def version(self):
         return self.header.baseline_version or '(Not baselined)'
+
+    def DeterminePrice(self):
+        net_total = override_net_total = zust_amount = None
+        bContainsOverride = bool(self.configline_set.filter(linepricing__override_price__isnull=False).count())
+        for oCLine in sorted(self.configline_set.all(), key=lambda x: ([int(y) for y in x.line_number.split('.')]), reverse=True):
+            if str(oCLine.condition_type).upper() == 'ZUST':
+                zust_amount = oCLine.amount
+
+            if oCLine.linepricing:
+                bOverUpdate = False
+                if oCLine.linepricing.override_price is not None:
+                    if not self.header.pick_list and oCLine.line_number == '10':
+                        override_net_total = oCLine.linepricing.override_price
+                    else:
+                        if override_net_total is None:
+                            override_net_total = 0
+                        override_net_total += oCLine.linepricing.override_price
+                    bOverUpdate = True
+
+                if oCLine.linepricing.pricing_object:
+                    if net_total is None:
+                        net_total = 0
+                    net_total += (oCLine.order_qty or 0) * (oCLine.linepricing.pricing_object.unit_price or 0)
+                    if not bOverUpdate and bContainsOverride:
+                        if override_net_total is None:
+                            override_net_total = 0
+                        override_net_total += (oCLine.order_qty or 0) * (oCLine.linepricing.pricing_object.unit_price or 0)
+                bOverUpdate = False
+
+        self.override_net_value = override_net_total
+        self.net_value = net_total
+        self.total_value = (override_net_total or net_total or 0) + (zust_amount or 0)
 # end class
 
 
@@ -739,7 +774,6 @@ class ConfigLine(models.Model):
     plant = models.CharField(max_length=50, blank=True, null=True)
     sloc = models.CharField(max_length=50, blank=True, null=True)
     item_category = models.CharField(max_length=50, blank=True, null=True)
-    # spud = models.CharField(max_length=50, blank=True, null=True)
     spud = models.ForeignKey(REF_SPUD, blank=True, null=True, unique=False, db_constraint=False, db_index=False)
     internal_notes = models.TextField(blank=True, null=True)
     higher_level_item = models.CharField(max_length=50, blank=True, null=True)

@@ -69,4 +69,5 @@ urlpatterns = patterns(
     url(r'^customer_audit/audit/$', views.CustomerAudit, name='customeraudit'),
     url(r'^customer_audit/validate/$', views.CustomerAuditTableValidate, name='audit_validate'),
     url(r'^customer_audit/upload/$', views.CustomerAuditUpload, name='customerauditupload'),
+    url(r'^entry/validate/$', views.AjaxValidator, name='ajaxvalidator'),
 )

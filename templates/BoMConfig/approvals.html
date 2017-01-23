@@ -16,6 +16,10 @@
                 </ul>
             </li>
         </ul>
+        <div style="padding: 5px 5px 5px 25px; display: inline-block;">
+            <input style="transform: translate(0, 4px);" type="checkbox" name="my_approvals" id="my_approvals" onchange="approval_filter();">
+            <label style="transform: translate(0, 3px); padding-left: 5px;" for="my_approvals">Only show records I can approve</label>
+        </div>
 
         <h4>In Process/Pending</h4>
         {% if approval_wait %}
@@ -28,7 +32,7 @@
             {% endif %}
             <table id="pending_approval_records">
                 <thead>
-                    <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
+                    <tr> {# class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}" #}
                         <th style="height: 160px;vertical-align: bottom;"></th>
                         <th style="height: 160px;vertical-align: bottom;">Configuration</th>
                         <td style="width:25px;"></td>
@@ -43,7 +47,7 @@
                 <tbody>
                 {% for record in approval_wait %}
                     {% for tracker in record.get_all_trackers.all %}
-                    <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} config">
+                    <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.latesttracker.next_approval|default:'' }} config">
                         {% if tracker == record.get_all_trackers.first %}
                         <td><input class="pending" type="checkbox" data-index="{{ record.id }}"/><span>&nbsp;&nbsp;</span></td>
                         <td><a onclick="window.open('../search?link={{ record.pk|searchscramble }}&readonly=1', '{{ record.configuration_designation }}', 'left=100,top=100,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no')">{{ record.configuration_designation }}</a></td>
@@ -79,7 +83,7 @@
                     </tr>
 
                     {% endfor %}
-                    <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} config" style="height:10px;"></tr>
+                    <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.latesttracker.next_approval|default:'' }} config" style="height:10px;"></tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -217,14 +221,31 @@
 
         function cust_filter(customer){
             if(customer !== 'All') {
-                $('tr').css('display','');
-                $('tr').not('.' + customer).css('display','none');
-                $('tr:not(".' + customer + '") input').removeAttr('checked');
+                $('tbody tr').css('display','');
+                $('tbody tr').not('.' + customer).css('display','none');
+                $('tbody tr').not('.' + customer).find('input').removeAttr('checked');
+                if($('#my_approvals').prop('checked')) {
+                    $('tbody tr').filter('.' + customer).not('{{ available_levels }}').css('display', 'none');
+                    $('tbody tr').filter('.' + customer).not('{{ available_levels }}').find('input').removeAttr('checked');
+                }
                 $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
             } else {
-                $('tr').css('display','');
+                if ($('#my_approvals').prop('checked')){
+                    $('tbody tr').filter('{{ available_levels }}').css('display','');
+                    $('tbody tr').not('{{ available_levels }}').css('display','none');
+                } else {
+                    $('tbody tr').css('display','');
+                }
                 $('#cu_filter').html('Customer <span class="caret"></span>');
             }
+        }
+
+        function approval_filter(){
+            var cust = $('#cu_filter').text().slice(0,-1).replace('&','_').replace(' ','-_');
+            if (cust == 'Customer'){
+                cust = 'All';
+            }
+            cust_filter(cust);
         }
 
         function form_check($form){

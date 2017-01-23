@@ -225,14 +225,14 @@ class ConfigForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(ConfigForm, self).__init__(*args, **kwargs)
-        self.fields['net_value'].widget.attrs['readonly'] = True
+        self.fields['total_value'].widget.attrs['readonly'] = True
         self.fields['zpru_total'].widget.attrs['readonly'] = True
         self.fields['PSM_on_hold'].widget.attrs['readonly'] = True
     # end def
 
     def clean(self):
         data = super().clean()
-        if data['needs_zpru'] and data['net_value'] != data['zpru_total']:
+        if data['needs_zpru'] and data['total_value'] != data['zpru_total']:
             raise forms.ValidationError('Net / ZPRU total mismatch')
         # end if
     # end def

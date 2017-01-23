@@ -42,7 +42,13 @@ def Approval(oRequest):
                     'Customer #1','Customer #2','Customer Warehouse','Ericsson VAR','Baseline Release & Dist.'],
         'viewauthorized': SecurityPermission.objects.filter(title__iregex='^.*Approval.*$').filter(user__in=oRequest.user.groups.all()),
         'skip_authorized': SecurityPermission.objects.filter(title__iexact='BLM_Approval_Write').filter(user__in=oRequest.user.groups.all()),
-        'notify_users': {key: set(User.objects.filter(groups__securitypermission__title__in=value).exclude(groups__name__startswith='BOM_BPMA')) for key,value in HeaderTimeTracker.permission_map().items()}
+        'notify_users': {key: set(User.objects.filter(groups__securitypermission__title__in=value).exclude(groups__name__startswith='BOM_BPMA')) for key,value in HeaderTimeTracker.permission_map().items()},
+        'available_levels': ",.".join(
+            [''] + [sLevel for sLevel in HeaderTimeTracker.approvals() if
+                    bool(SecurityPermission.objects.filter(
+                        title__in=HeaderTimeTracker.permission_entry(sLevel)).filter(
+                        user__in=oRequest.user.groups.all()))]
+        )[1:],
     }
     return Default(oRequest, sTemplate='BoMConfig/approvals.html', dContext=dContext)
 # end def
@@ -476,6 +482,7 @@ def CloneHeader(oHeader):
             oNewPrice = copy.deepcopy(oConfigLine.linepricing)
             oNewPrice.pk = None
             oNewPrice.config_line = oNewLine
+            oNewPrice.pricing_object = PricingObject.getClosestMatch(oNewLine)
             oNewPrice.save()
         # end if
     # end for
@@ -740,7 +747,7 @@ def CreateDocument(oRequest):
                     'amount': str(oLine.amount) if oLine.amount is not None else '',
                     'contextId': oLine.contextId or '',
                     'higher_level_item': oLine.higher_level_item or '',
-                    'material_group_5': oLine.material_group_5 or '', # TODO: Need to determine index/row of value (this will have to link to a table)
+                    'material_group_5': oLine.material_group_5 or '', # TODO: Update REF_MATERIAL_GROUP to include key of SAP dropdown value
                     'purchase_order_item_num': oLine.purchase_order_item_num or '',
                     "valid_from_date": oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
                 }
@@ -783,7 +790,7 @@ def CreateDocument(oRequest):
                     'pcode': oLine.pcode[1:4] if oLine.pcode else '',
                     'higher_level_item': oLine.higher_level_item or '',
                     'contextId': oLine.contextId or '',
-                    'material_group_5': oLine.material_group_5 or '', # TODO: Need to determine index/row of value (this will have to link to a table)
+                    'material_group_5': oLine.material_group_5 or '', # TODO: Update REF_MATERIAL_GROUP to include key of SAP dropdown value
                     'customer_number': oLine.customer_number or '',
                 }
                 for oLine in sorted(
