@@ -1097,7 +1097,7 @@ def EmailDownload(oBaseline): #sBaselineTitle):
     oNewMessage.attach_alternative(sMessageHtml, 'text/html')
 
     oStream = BytesIO()
-    oFile = WriteBaselineToFile(oBaseline, sVersion)
+    oFile = WriteBaselineToFile(oBaseline, sVersion, oBaseline.customer.name if oBaseline.customer else None)
     oFile.save(oStream)
 
     oNewMessage.attach(sFileName, oStream.getvalue(), 'application/ms-excel')

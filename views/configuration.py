@@ -995,7 +995,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                         if oConfig.override_net_value:
                             dLine.update({'18': str(oConfig.override_net_value)})
                         else:
-                            dLine.update({'18': str(oConfig.net_value)})
+                            dLine.update({'18': str(oConfig.net_value or '')})
                         # end if
                     else:
                         dLine.update({'18': ''})
