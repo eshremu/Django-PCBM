@@ -729,7 +729,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
         elif not oHeader.product_area2 and 'None' not in oFile.get_sheet_names():
             oSheet = oFile.create_sheet(title="None")
             oSheet.sheet_properties.tabColor = '0062FF'
-        elif oHeader.pick_list and 'Pick Lists' not in oFile.get_sheet_names():
+        elif oHeader.pick_list and 'Pick Lists' not in oFile.get_sheet_names() and 'Optional Hardware' not in oFile.get_sheet_names():
             oSheet = oFile.create_sheet(title="Pick Lists")
             oSheet.sheet_properties.tabColor = '0062FF'
 
