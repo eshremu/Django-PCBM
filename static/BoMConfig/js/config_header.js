@@ -12,6 +12,7 @@ $(document).ready(function(){
     $('tr td:first-child').each(function(idx, elem){$(elem).width(max)});
     $('#id_valid_from_date').datepicker({dateFormat: "yy-mm-dd"});
     $('#id_valid_to_date').datepicker({dateFormat: "yy-mm-dd"});
+    $('#id_projected_cutover').datepicker({dateFormat: "yy-mm-dd"});
 
     $('#searchSubmit').click(function(){
         req_search();

@@ -506,10 +506,12 @@ function build_table() {
             }
 
             cellProperties.className = 'htCenter';
-            if (['Line #', 'Product Number', 'Product Description', 'Int Notes','P-Code - Fire Code, Desc', 'Vendor Article Number','Comments','Additional Reference (if required)'].indexOf(this.instance.getColHeader(col)) != -1){ //
+            if (['Line #', 'Product Number', 'SPUD', 'Int Notes','P-Code - Fire Code, Desc', 'Vendor Article Number','Comments','Additional Reference (if required)'].indexOf(this.instance.getColHeader(col)) != -1){ //
                 cellProperties.className = 'htLeft';
             } else if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
                 cellProperties.className = 'htRight';
+            } else if (this.instance.getColHeader(col).startsWith('Product Number')) {
+                cellProperties.className = 'htLeft';
             }
 
             if(this.instance.getColHeader(col) == 'Condition Type'){

@@ -10,6 +10,7 @@ menulisting = [
     {'title':"Admin","destination":"bomconfig:adminlanding"},
     {'title':"Tools","children":[
         {'title':'REACT', 'destination':'http://eusaamw0065/REACT_test/default.asp?timesin=1', 'target':'_blank'},
+        {'title': 'WFMS', 'destination': 'http://webopen2.bs.sw.ericsson.se/WFMS.Web/SubmitItem', 'target': '_blank'},
         ]
     },
 ]
@@ -20,5 +21,3 @@ supportcontact = "sherri.xi.parolini@ericsson.com"
 
 headerFile = "BoMConfig/header.html"
 footerFile = "BoMConfig/footer.html"
-
-# http://eusaamw0065/REACT_test/default.asp?timesin=1 -- REACT

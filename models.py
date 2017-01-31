@@ -382,10 +382,13 @@ class Header(models.Model):
         bMessage = kwargs.pop('alert', True)
         oRequest = kwargs.pop('request', None)
         if not self.pk:
-            oBase = Baseline.objects.filter(title__iexact=self.baseline_impacted)
+            if self.baseline_impacted:
+                oBase = Baseline.objects.filter(title__iexact=self.baseline_impacted).first()
+            else:
+                oBase = Baseline.objects.get(title__iexact='No Associated Baseline')
 
-            if oBase and not self.baseline:
-                self.baseline = Baseline_Revision.objects.get(baseline=oBase[0],version=oBase[0].current_inprocess_version)
+            if oBase and not hasattr(self, 'baseline'):
+                self.baseline = Baseline_Revision.objects.get(baseline=oBase,version=oBase.current_inprocess_version)
                 self.baseline_version = self.baseline.version
             # end if
 
@@ -582,7 +585,7 @@ class Header(models.Model):
             if '.' in oLine.line_number: continue
             if oLine.item_category not in ['', 'ZSBS', 'ZSBU', 'ZSBT',
                                            'ZSXS',
-                                           'ZSBM', 'ZF36', 'ZMX4', 'ZSW7',
+                                           'ZSBM', 'ZF36', 'ZMX0', 'ZSW7',
                                            None]:
                 return False
 

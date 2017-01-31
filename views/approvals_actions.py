@@ -453,6 +453,12 @@ def CloneHeader(oHeader):
             baseline=Baseline.objects.get(title=oNewHeader.baseline_impacted),
             version=Baseline.objects.get(title=oNewHeader.baseline_impacted).current_inprocess_version)
         oNewHeader.baseline_version = oNewHeader.baseline.version
+    else:
+        oNewHeader.baseline = Baseline_Revision.objects.get(
+            baseline=Baseline.objects.get(title='No Associated Baseline'),
+            version=Baseline.objects.get(title='No Associated Baseline').current_inprocess_version
+        )
+        oNewHeader.baseline_version = oNewHeader.baseline.version
     # end if
 
     iTry = 1
@@ -805,7 +811,7 @@ def CreateDocument(oRequest):
         if oHeader.model_replaced_link and \
                 oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id):
             if oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id).first().inquiry_site_template is not None and \
-                oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id).first().inquiry_site_template > 0:
+                            oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id).first().inquiry_site_template > 0:
                 data['configuration_designation'] = 'Replaced by {}'.format(oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id).first().inquiry_site_template)
             else:
                 return HttpResponse(status=409, reason="Invalid replacement")
