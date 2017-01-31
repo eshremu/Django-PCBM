@@ -198,18 +198,19 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                     else:
                                         oConfig = oHeader.configuration
 
-                                    (oPartBase,_) = PartBase.objects.get_or_create(**{'product_number':oHeader.configuration_designation})
-                                    oPartBase.unit_of_measure = 'PC'
-                                    oPartBase.save()
-                                    (oPart,_) = Part.objects.get_or_create(**{'base': oPartBase,'product_description':oHeader.model_description})
+                                    if not oHeader.pick_list:
+                                        (oPartBase,_) = PartBase.objects.get_or_create(**{'product_number':oHeader.configuration_designation})
+                                        oPartBase.unit_of_measure = 'PC'
+                                        oPartBase.save()
+                                        (oPart,_) = Part.objects.get_or_create(**{'base': oPartBase,'product_description':oHeader.model_description})
 
-                                    ConfigLine.objects.create(**{
-                                        'config': oConfig,
-                                        'part': oPart,
-                                        'line_number': '10',
-                                        'order_qty': 1,
-                                        'vendor_article_number': oHeader.configuration_designation,
-                                    })
+                                        ConfigLine.objects.create(**{
+                                            'config': oConfig,
+                                            'part': oPart,
+                                            'line_number': '10',
+                                            'order_qty': 1,
+                                            'vendor_article_number': oHeader.configuration_designation,
+                                        })
                                 else:
                                     if not oHeader.pick_list and oHeader.configuration.get_first_line().part.base.product_number != oHeader.configuration_designation:
                                         # Update line 10 Product number to match configuration designation
