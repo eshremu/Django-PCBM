@@ -2350,8 +2350,8 @@ def ValidateUnitPrice(dData, dResult, oHead):
                 dResult['error']['value'] = 'CPM override in effect.\n'
                 dResult['status'] = 'OK'
         else:
-            if oHead.configuration.configline_set.objects.filter(line_number=dData['line_number']):
-                if str(GrabValue(oHead.configuration.configline_set.objects.get(
+            if oHead.configuration.configline_set.filter(line_number=dData['line_number']):
+                if str(GrabValue(oHead.configuration.configline_set.get(
                         line_number=dData['line_number']), 'linepricing.override_price')) == dResult['value']:
                     dResult['error']['value'] = 'CPM override in effect.\n'
                     dResult['status'] = 'OK'
