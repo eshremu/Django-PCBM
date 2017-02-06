@@ -2108,15 +2108,15 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 customer=oHead.customer_unit,
                 active=True)
 
-            if StrToBool(dData['allowChain']):
-                dResult['propagate']['line'][25] = {'value': 'Y' if oMPNCustMap.customer_asset else 'N' if oMPNCustMap.customer_asset == False else '',
-                                                    'chain': True}
-                dResult['propagate']['line'][26] = {'value': 'Y' if oMPNCustMap.customer_asset_tagging else 'N' if oMPNCustMap.customer_asset_tagging == False else '',
-                                                    'chain': True}
-                dResult['propagate']['line'][27] = {'value': oMPNCustMap.customer_number,
-                                                    'chain': True}
-                dResult['propagate']['line'][28] = {'value': oMPNCustMap.second_customer_number,
-                                                    'chain': True}
+            # if StrToBool(dData['allowChain']):
+            dResult['propagate']['line'][25] = {'value': 'Y' if oMPNCustMap.customer_asset else 'N' if oMPNCustMap.customer_asset == False else '',
+                                                'chain': True}
+            dResult['propagate']['line'][26] = {'value': 'Y' if oMPNCustMap.customer_asset_tagging else 'N' if oMPNCustMap.customer_asset_tagging == False else '',
+                                                'chain': True}
+            dResult['propagate']['line'][27] = {'value': oMPNCustMap.customer_number,
+                                                'chain': True}
+            dResult['propagate']['line'][28] = {'value': oMPNCustMap.second_customer_number,
+                                                'chain': True}
         except CustomerPartInfo.DoesNotExist:
             pass
 # end def

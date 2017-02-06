@@ -506,7 +506,7 @@ function build_table() {
             }
 
             cellProperties.className = 'htCenter';
-            if (['Line #', 'Product Number', 'SPUD', 'Int Notes','P-Code - Fire Code, Desc', 'Vendor Article Number','Comments','Additional Reference (if required)'].indexOf(this.instance.getColHeader(col)) != -1){ //
+            if (['Line #', 'Product Description', 'SPUD', 'Int Notes','P-Code - Fire Code, Desc', 'Vendor Article Number','Comments','Additional Reference (if required)'].indexOf(this.instance.getColHeader(col)) != -1){ //
                 cellProperties.className = 'htLeft';
             } else if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
                 cellProperties.className = 'htRight';
@@ -606,6 +606,7 @@ function build_table() {
                                 data['other_lines'] = this.getDataAtCol(1);
                                 data['other_lines'].splice(-1 * this.countEmptyRows(true));
                                 data['context_id'] = this.getDataAtCell(changes[i][0], 6);
+                                data['writeable'] = cust_write_auth;
                                 break;
                             case 6:
                                 data['part_number'] = this.getDataAtCell(changes[i][0], 2);
@@ -648,6 +649,7 @@ function build_table() {
                             case 27:
                             case 28:
                                 data['part_number'] = this.getDataAtCell(changes[i][0], 2) ? this.getDataAtCell(changes[i][0], 2).replace(/^[.\s]+|[.\s]+$/g, '') : this.getDataAtCell(changes[i][0], 2);
+                                data['writeable'] = cust_write_auth;
                                 break;
                         }
 
