@@ -1085,7 +1085,7 @@ def EmailDownload(oBaseline): #sBaselineTitle):
                 oBaseline.latest_revision.completed_date.strftime('%m/%d/%Y'))
 
     sMessageHtml = ('Revision {} of {} has been released as of {}.  A copy of the baseline has been attached.<br/>'
-                    'Issues may be addressed with Katya Pridgen at '+
+                    'Issues may be addressed with Katya Pridgen at '
                     '<a href="mailto:Katya.Pridgen@Ericsson.com">Katya.Pridgen@ericsson.com</a>.<br/><br/>'
                     '<div style="color: red">***This is an automated message. Do not reply to this message.***</div>')\
         .format(oBaseline.current_active_version, oBaseline.title,

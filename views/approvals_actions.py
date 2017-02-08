@@ -481,7 +481,7 @@ def CloneHeader(oHeader):
         oNewLine.sec_customer_number = None
         oNewLine.customer_asset = None
         oNewLine.customer_asset_tagging = None
-        oNewLine.comments = None
+        # oNewLine.comments = None
         oNewLine.save()
 
         if hasattr(oConfigLine, 'linepricing'):
