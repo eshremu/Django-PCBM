@@ -11,10 +11,10 @@ var outputdata = [[]];
 var outputformat;
 var inputTable = new Handsontable(document.getElementById('input-table'),{
     data: data,
-    colHeaders: ['Ericsson Part','Customer Part','Customer Asset tagging Requirement', 'Customer Asset'],
-    rowHeaders: true,
+    colHeaders: ['Ericsson Part','Customer Part','Sec Customer Part','Customer Asset tagging Req.', 'Customer Asset'],
+    rowHeaders: false,
     minRows: 1,
-    minCols: 4,
+    minCols: 5,
     minSpareRows: 1,
     afterCreateRow: function(index, amount, auto){
         addOutputRow(index, amount, auto);
@@ -24,7 +24,7 @@ var inputTable = new Handsontable(document.getElementById('input-table'),{
             if(typeof changes[i][3] === 'string') {
                 changes[i][3] = $.trim(changes[i][3].toUpperCase());
             }
-            if(changes[i][1] == 2 || changes[i][1] == 3){
+            if(changes[i][1] == 3 || changes[i][1] == 4){
                 if([null, ''].indexOf(changes[i][3]) == -1){
                     if(['Y', 'E', 'C'].indexOf(changes[i][3]) != -1){
                         changes[i][3] = 'Y';
@@ -43,7 +43,7 @@ var inputTable = new Handsontable(document.getElementById('input-table'),{
                 if (altered_data.hasOwnProperty(changes[idx][0])) {
                     altered_data[changes[idx][0]][changes[idx][1]] = changes[idx][3];
                 } else {
-                    altered_data[changes[idx][0]] = new Array(4).fill(null);
+                    altered_data[changes[idx][0]] = new Array(5).fill(null);
                     altered_data[changes[idx][0]][changes[idx][1]] = changes[idx][3];
                 }
             }
@@ -87,10 +87,10 @@ var inputTable = new Handsontable(document.getElementById('input-table'),{
 });
 var outputTable = new Handsontable(document.getElementById('output-table'),{
     data: outputdata,
-    colHeaders: ['Ericsson Part','Customer Part','Customer Asset tagging Requirement', 'Customer Asset'],
-    rowHeaders: true,
+    colHeaders: ['Ericsson Part','Customer Part','Sec Customer Part','Customer Asset tagging Req.', 'Customer Asset'],
+    rowHeaders: false,
     minRows: 1,
-    minCols: 4,
+    minCols: 5,
     minSpareRows: 1,
     cells: function(row, col, prop){
         var cellProperties = {};
@@ -138,33 +138,41 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties){
             td.style.background = '#90E990';
             $(td).addClass('clean-cell');
         } else if (outputformat[row][col] == false){
-            if(value != '') {
+            // if(value != '') {
                 td.style.background = '#E99090';
                 $(td).addClass('invalid-cell');
-            } else {
-                td.style.background = '#DDDDDD';  // May be useless, but just in case
-            }
+            // } else {
+            //     td.style.background = '#DDDDDD';  // May be useless, but just in case
+            // }
         } else if (outputformat[row][col] == null){
             if ([null, ''].indexOf(value) != -1) {
                 if((col == 0 || col == 1) &&
-                        ([null, ''].indexOf(instance.getDataAtCell(row, 2)) == -1 ||
-                        [null, ''].indexOf(instance.getDataAtCell(row, 3)) == -1))
+                        ([null, ''].indexOf(instance.getDataAtCell(row, 3)) == -1 ||
+                        [null, ''].indexOf(instance.getDataAtCell(row, 4)) == -1))
                 {
                     td.style.background = '#E99090';
                     $(td).addClass('invalid-cell');
-                } else if ((col == 2 || col == 3) &&
+                } else if ((col == 3 || col == 4) &&
                         $('#override').prop('checked') &&
                         ([null, ''].indexOf(instance.getDataAtCell(row, 0)) == -1 &&
                         [null, ''].indexOf(instance.getDataAtCell(row, 1)) == -1)){
                     td.style.background = '#85ADD6';
                     $(td).addClass('changed-cell');
-                } else if ((col == 2 || col == 3) &&
+                } else if ((col == 3 || col == 4) &&
                         !$('#override').prop('checked') &&
                         ([null, ''].indexOf(instance.getDataAtCell(row, 0)) == -1 && outputformat[row][0] == null &&
                         [null, ''].indexOf(instance.getDataAtCell(row, 1)) == -1 && outputformat[row][1] == null)){
                     td.style.background = '#85ADD6';
                     $(td).addClass('changed-cell');
-                }else {
+                } else if (col == 2) {
+                    if ($('#override').prop('checked') && !instance.isEmptyRow(row)){
+                        td.style.background = '#85ADD6';
+                        $(td).addClass('changed-cell');
+                    } else {
+                        td.style.background = '#DDDDDD';
+                    }
+
+                } else {
                     td.style.background = '#DDDDDD';
                 }
             } else {
@@ -217,7 +225,9 @@ function submitForm(){
     $('#select-form').submit();
 }
 
-function duplicateCheck(list){
+function duplicateCheck(list, allowBlank){
+    allowBlank = allowBlank == undefined ? false : allowBlank;
+
     var duplicates = [];
 
     for(var i = 1; i < list.length; i++){
@@ -254,7 +264,9 @@ $(document).ready(function(){
 
     $('#save-button').click(function(){
         var bChangedData = false;
-        for(var i = 0; i < outputTable.countRows() - 1; i++){
+        var emptyRows = outputTable.countEmptyRows(true);
+
+        for(var i = 0; i < outputTable.countRows() - emptyRows; i++){
             for(var j = 0; j < outputTable.countCols(); j++){
                 if($(outputTable.getCell(i, j)).hasClass('changed-cell')){
                     bChangedData = true;
@@ -267,15 +279,22 @@ $(document).ready(function(){
             return;
         }
 
-        var pnum = outputTable.getDataAtCol(0).sort();
+        var pnum = outputTable.getDataAtCol(0).slice(0, -1 * emptyRows).sort();
         var message = duplicateCheck(pnum);
         if(message != null) {
             messageToModal('Duplicate data detected', message);
             return;
         }
 
-        var cnum = outputTable.getDataAtCol(1).sort();
+        var cnum = outputTable.getDataAtCol(1).slice(0, -1 * emptyRows).sort();
         message = duplicateCheck(cnum);
+        if(message != null) {
+            messageToModal('Duplicate data detected', message);
+            return;
+        }
+
+        var cnum2 = outputTable.getDataAtCol(2).slice(0, -1 * emptyRows).sort();
+        message = duplicateCheck(cnum2, true);
         if(message != null) {
             messageToModal('Duplicate data detected', message);
             return;

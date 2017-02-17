@@ -1,12 +1,15 @@
-__author__ = 'epastag'
+"""
+Views related to actions and function in the "Actions" and "Approvals" sections
+of the tool.
+"""
 
 from django.utils import timezone
 from django.http import HttpResponse, Http404, JsonResponse
 from django.core.urlresolvers import reverse
-from django.template import Template, Context, loader
-from django.core.mail import send_mail, EmailMultiAlternatives
+from django.template import loader
+from django.core.mail import EmailMultiAlternatives
 from django.shortcuts import redirect
-from django.db import transaction
+from django.db import transaction, connections
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 
@@ -19,10 +22,16 @@ from django.contrib.auth.models import User
 
 import copy
 import json
+import re
 
 
 @login_required
 def Approval(oRequest):
+    """
+    View for viewing and interacting with records pending approval
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -56,6 +65,12 @@ def Approval(oRequest):
 
 @login_required
 def Action(oRequest, **kwargs):
+    """
+
+    :param oRequest: Django request object
+    :param kwargs: Dictionary of keyword arguments passed to the function
+    :return: HTML response via Default function
+    """
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -343,10 +358,10 @@ def AjaxApprove(oRequest):
                         oLatestTracker.save()
 
                         # Alter configuration status
-                        if oHeader.bom_request_type.name in ('Discontinue','Legacy'):
+                        if oHeader.bom_request_type.name in ('Discontinue',):
                             oHeader.configuration_status = REF_STATUS.objects.get(name='Discontinued')
                             oHeader.release_date = oLatestTracker.completed_on
-                        elif oHeader.bom_request_type.name in ('New','Update', 'Replacement'):
+                        elif oHeader.bom_request_type.name in ('New', 'Update', 'Replacement', 'Legacy'):
                             oHeader.configuration_status = REF_STATUS.objects.get(name='Active')
                             oHeader.release_date = oLatestTracker.completed_on
                         elif oHeader.bom_request_type.name == 'Preliminary':
@@ -710,7 +725,16 @@ def CreateDocument(oRequest):
         while oHeader.valid_from_date > oHeader.valid_to_date:
             oHeader.valid_to_date = oHeader.valid_to_date + timezone.timedelta(365)
 
-    if not StrToBool(oRequest.POST.get('type')):
+    bCreateSiteTemplate = StrToBool(oRequest.POST.get('type'))
+
+    oCursor = connections['BCAMDB'].cursor()
+    oCursor.execute("SELECT [ICG],[{}] FROM [BCAMDB].[dbo].[REF_ITEM_CAT_GROUP]".format(
+                    ("ZTPL" if bCreateSiteTemplate else "ZDOT")))
+    dItemCatMap = dict(oCursor.fetchall())
+
+    oPattern = re.compile(r'^.+\((?P<key>[A-Z0-9]{3})\)$|^$', re.I)
+
+    if not bCreateSiteTemplate:
         # Create Inquiry
         data = {
             "inquiry_type": "ZDOT",
@@ -744,7 +768,7 @@ def CreateDocument(oRequest):
                     'order_qty': str(oLine.order_qty),
                     'plant': oLine.plant or '',
                     'sloc': oLine.sloc or '',
-                    'item_category': oLine.item_category or '',
+                    'item_category': dItemCatMap[oLine.item_category] if oLine.item_category in dItemCatMap else oLine.item_category or '',
                     'pcode': oLine.pcode[1:4] if oLine.pcode else '',
                     'unit_price': str(oHeader.configuration.override_net_value or oHeader.configuration.net_value or '') if not oHeader.pick_list and oLine.line_number=='10'
                         else '' if not oHeader.pick_list
@@ -753,7 +777,8 @@ def CreateDocument(oRequest):
                     'amount': str(oLine.amount) if oLine.amount is not None else '',
                     'contextId': oLine.contextId or '',
                     'higher_level_item': oLine.higher_level_item or '',
-                    'material_group_5': oLine.material_group_5 or '', # TODO: Update REF_MATERIAL_GROUP to include key of SAP dropdown value
+                    # 'material_group_5': oLine.material_group_5 or '', # TODO: Update REF_MATERIAL_GROUP to include key of SAP dropdown value
+                    'material_group_5': oPattern.match(oLine.material_group_5 or '').group('key') or '',
                     'purchase_order_item_num': oLine.purchase_order_item_num or '',
                     "valid_from_date": oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
                 }
@@ -792,11 +817,12 @@ def CreateDocument(oRequest):
                     'order_qty': str(oLine.order_qty),
                     'plant': oLine.plant or '',
                     'sloc': oLine.sloc or '',
-                    'item_category': oLine.item_category or '',
+                    'item_category': dItemCatMap[oLine.item_category] if oLine.item_category in dItemCatMap else oLine.item_category or '',
                     'pcode': oLine.pcode[1:4] if oLine.pcode else '',
                     'higher_level_item': oLine.higher_level_item or '',
                     'contextId': oLine.contextId or '',
-                    'material_group_5': oLine.material_group_5 or '', # TODO: Update REF_MATERIAL_GROUP to include key of SAP dropdown value
+                    # 'material_group_5': oLine.material_group_5 or '', # TODO: Update REF_MATERIAL_GROUP to include key of SAP dropdown value
+                    'material_group_5': oPattern.match(oLine.material_group_5 or '').group('key') or '',
                     'customer_number': oLine.customer_number or '',
                 }
                 for oLine in sorted(

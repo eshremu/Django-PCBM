@@ -490,6 +490,21 @@ def AddConfig(oRequest):
                                      'is_grandchild': bool(dConfigLine['2'].startswith('..')),
                                      'last_updated': oUpdateDate}
 
+                        try:
+                            oMPNCustMap = CustomerPartInfo.objects.get(
+                                part__product_number=oPart.base.product_number,
+                                customer=oHeader.customer_unit,
+                                active=True)
+
+                            dLineData.update({
+                                'customer_asset': "Y" if oMPNCustMap.customer_asset else "N" if oMPNCustMap.customer_asset is False else None,
+                                'customer_asset_tagging': "Y" if oMPNCustMap.customer_asset_tagging else "N" if oMPNCustMap.customer_asset_tagging is False else None,
+                                'customer_number': oMPNCustMap.customer_number,
+                                'sec_customer_number': oMPNCustMap.second_customer_number,
+                            })
+                        except CustomerPartInfo.DoesNotExist:
+                            pass
+
                         if ConfigLine.objects.filter(config=oConfig).filter(line_number=dConfigLine['1']):
                             oConfigLine = ConfigLine.objects.get(**{'config': oConfig, 'line_number': dConfigLine['1']})
                             ConfigLine.objects.filter(pk=oConfigLine.pk).update(**dLineData)
@@ -591,6 +606,11 @@ def AddConfig(oRequest):
         'frame_readonly': bFrameReadOnly,
         'active_lock': bActive
     }
+
+    oCursor = connections['BCAMDB'].cursor()
+    oCursor.execute("SELECT [ICG] FROM [BCAMDB].[dbo].[REF_ITEM_CAT_GROUP]")
+    dContext.update({'item_cat_list': [obj for (obj,) in oCursor.fetchall()]})
+
     return Default(oRequest, sTemplate='BoMConfig/configuration.html', dContext=dContext)
 # end def
 
@@ -2053,7 +2073,8 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
 
     oCursor.execute(
         ('SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],'
-         '[Base Unit of Measure],[P Code],[MTyp],[ZMVKE Item Category] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s'),
+         "[Base Unit of Measure],[P Code],[MTyp],[ZMVKE Item Category] FROM  "
+         "dbo.BI_MM_ALL_DATA WHERE [Material]=%s AND [ZMVKE Item Category]<>'NORM'"),
         [bytes(dResult['value'].strip('.'), 'ascii')])
 
     tAllDataInfo = oCursor.fetchall()
@@ -2061,6 +2082,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
         if StrToBool(dData['allowChain']):
             dResult['propagate']['line'][3] = {'value': tAllDataInfo[0][0], 'chain': True}
             dResult['propagate']['line'][5] = {'value': tAllDataInfo[0][3], 'chain': False}
+            dResult['propagate']['line'][9] = {'value': tAllDataInfo[0][6], 'chain': True}
             dResult['propagate']['line'][10] = {'value': tAllDataInfo[0][4], 'chain': True}
             dResult['propagate']['line'][15] = {'value': tAllDataInfo[0][1], 'chain': True}
             dResult['propagate']['line'][16] = {'value': tAllDataInfo[0][2], 'chain': True}
@@ -2109,16 +2131,27 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 active=True)
 
             # if StrToBool(dData['allowChain']):
-            dResult['propagate']['line'][25] = {'value': 'Y' if oMPNCustMap.customer_asset else 'N' if oMPNCustMap.customer_asset == False else '',
+            dResult['propagate']['line'][25] = {'value': 'Y' if oMPNCustMap.customer_asset else 'N' if oMPNCustMap.customer_asset is False else '',
                                                 'chain': True}
-            dResult['propagate']['line'][26] = {'value': 'Y' if oMPNCustMap.customer_asset_tagging else 'N' if oMPNCustMap.customer_asset_tagging == False else '',
+            dResult['propagate']['line'][26] = {'value': 'Y' if oMPNCustMap.customer_asset_tagging else 'N' if oMPNCustMap.customer_asset_tagging is False else '',
                                                 'chain': True}
             dResult['propagate']['line'][27] = {'value': oMPNCustMap.customer_number,
                                                 'chain': True}
             dResult['propagate']['line'][28] = {'value': oMPNCustMap.second_customer_number,
                                                 'chain': True}
         except CustomerPartInfo.DoesNotExist:
-            pass
+            dResult['propagate']['line'][25] = {
+                'value': None,
+                'chain': True}
+            dResult['propagate']['line'][26] = {
+                'value': None,
+                'chain': True}
+            dResult['propagate']['line'][27] = {
+                'value': None,
+                'chain': True}
+            dResult['propagate']['line'][28] = {
+                'value': None,
+                'chain': True}
 # end def
 
 
@@ -2183,12 +2216,13 @@ def ValidatePlant(dData, dResult):
             return
 
         oCursor.execute(
-            'SELECT [Plant],[SLOC] FROM dbo.REF_PLANT_SLOC WHERE [Plant]=%s AND [SLOC]=%s',
-            [bytes(dData['value'], 'ascii'), bytes(dData['sloc'], 'ascii')])
+            'SELECT [Plnt] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [Material]=%s',
+            [bytes(dData['value'], 'ascii'),
+             bytes(dData['part_number'].strip('. '), 'ascii')])
         tResults = oCursor.fetchall()
         oCursor.close()
-        if (dData['value'], dData['sloc']) not in tResults:
-            dResult['error']['value'] = '! - Plant/SLOC combination not found.\n'
+        if (dData['value'],) not in tResults:
+            dResult['error']['value'] = '! - Plant not found for material.\n'
             dResult['status'] = '!'
             # end if
 # end def
@@ -2214,14 +2248,15 @@ def ValidateSLOC(dData, dResult):
 
     if dData['plant'] not in ('', None):
         oCursor.execute(
-            'SELECT [Plant],[SLOC] FROM dbo.REF_PLANT_SLOC WHERE [Plant]=%s AND [SLOC]=%s',
+            'SELECT [Plnt],[SLoc] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [SLoc]=%s AND [Material]=%s',
             [bytes(dData['plant'], 'ascii'),
-             bytes(dData['value'], 'ascii')])
+             bytes(dData['value'], 'ascii'),
+             bytes(dData['part_number'].strip('. '), 'ascii')])
         tResults = oCursor.fetchall()
         oCursor.close()
         if (dData['plant'], dData['value']) not in tResults:
             dResult['error'][
-                'value'] = '! - Plant/SLOC combination not found.\n'
+                'value'] = '! - Plant/SLOC combination not found for material.\n'
             dResult['status'] = '!'
             # end if
     else:
@@ -2469,7 +2504,9 @@ def ValidateCustomerAsset(dData, dResult, oHead, bCanWriteConfig):
                 dResult['status'] = '!'
                 return
         except CustomerPartInfo.DoesNotExist:
-            pass
+            if dData['value']:
+                dResult['propagate']['line'][25] = {'value': None,
+                                                    'chain': False}
 # end def
 
 
@@ -2502,9 +2539,12 @@ def ValidateAssetTagging(dData, dResult, oHead, bCanWriteConfig):
                 dResult['status'] = '!'
                 return
         except CustomerPartInfo.DoesNotExist:
-            dResult['error']['value'] = "! - No Customer Number found for line item.\n"
-            dResult['status'] = '!'
-            return
+            if dData['value']:
+                dResult['propagate']['line'][26] = {'value': None,
+                                                    'chain': False}
+                # dResult['error']['value'] = "! - No Customer Asset Tagging found for line item.\n"
+                # dResult['status'] = '!'
+                return
 # end def
 
 
@@ -2525,9 +2565,12 @@ def ValidateCustomerNumber(dData, dResult, oHead, bCanWriteConfig):
                 dResult['status'] = '!'
                 return
         except CustomerPartInfo.DoesNotExist:
-            dResult['error']['value'] = "! - No Customer Number found for line item.\n"
-            dResult['status'] = '!'
-            return
+            if dData['value']:
+                dResult['propagate']['line'][27] = {'value': None,
+                                                    'chain': False}
+                # dResult['error']['value'] = "! - No Customer Number found for line item.\n"
+                # dResult['status'] = '!'
+                return
 # end def
 
 
@@ -2543,13 +2586,16 @@ def ValidateSecCustomerNumber(dData, dResult, oHead, bCanWriteConfig):
                 customer=oHead.customer_unit,
                 active=True)
 
-            if oMPNCustMap.second_customer_number != dData['value']:
+            if oMPNCustMap.second_customer_number and oMPNCustMap.second_customer_number != dData['value']:
                 dResult['error']['value'] = "! - Second Customer Number does not match stored data.\n"
                 dResult['status'] = '!'
         except CustomerPartInfo.DoesNotExist:
-            dResult['error']['value'] = "! - No Second Customer Number found for line item.\n"
-            dResult['status'] = '!'
-            return
+            if dData['value']:
+                dResult['propagate']['line'][28] = {'value': None,
+                                                    'chain': False}
+                # dResult['error']['value'] = "! - No Second Customer Number found for line item.\n"
+                # dResult['status'] = '!'
+                return
 # end def
 
 

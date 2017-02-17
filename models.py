@@ -570,8 +570,13 @@ class Header(models.Model):
             if not oLine.plant:
                 return False
 
-            if not oLine.item_category:
-                return False
+            # if oLine.item_category not in ['0002', 'Z002', 'ZB02', 'ZDSH',
+            #                                'ZF25', 'ZORP', 'ZF26', 'ZGBA',
+            #                                'ZGBD', 'ZORM', 'ZSMZ', 'ZSXM',
+            #                                'VERP', 'ZERQ', '', None]:
+            #     return False
+            # if not oLine.item_category:
+            #     return False
 
         # No "FAP" parts
         return not self.contains_fap_parts
@@ -583,10 +588,12 @@ class Header(models.Model):
 
         for oLine in self.configuration.configline_set.all():
             if '.' in oLine.line_number: continue
-            if oLine.item_category not in ['', 'ZSBS', 'ZSBU', 'ZSBT',
-                                           'ZSXS',
+            if oLine.line_number != '10' and oLine.item_category not in ['ZSBS', 'ZSBU', 'ZSBT', 'ZSXS',
                                            'ZSBM', 'ZF36', 'ZMX0', 'ZSW7',
-                                           None]:
+                                           '0002', 'Z002', 'ZB02', 'ZDSH',
+                                           'ZF25', 'ZORP', 'ZF26', 'ZGBA',
+                                           'ZGBD', 'ZORM', 'ZSMZ', 'ZSXM',
+                                           'VERP', 'ZERQ', '', None]:
                 return False
 
             if oLine.higher_level_item in ('', None) and oLine.line_number != '10':
@@ -608,10 +615,12 @@ class Header(models.Model):
 
         for oLine in self.configuration.configline_set.all():
             if '.' in oLine.line_number: continue
-            if oLine.item_category not in ['', 'ZTBI', 'ZI36', 'ZTNI',
-                                           'ZSXI',
+            if oLine.line_number != '10' and oLine.item_category not in ['ZTBI', 'ZI36', 'ZTNI', 'ZSXI',
                                            'ZTFI', 'ZI25', 'ZAFP', 'ZSW7',
-                                           None]:
+                                           '0002', 'Z002', 'ZB02', 'ZDSH',
+                                           'ZF25', 'ZORP', 'ZF26', 'ZGBA',
+                                           'ZGBD', 'ZORM', 'ZSMZ', 'ZSXM',
+                                           'VERP', 'ZERQ', '', None]:
                 return False
 
             if oLine.higher_level_item not in ('', None):
@@ -649,6 +658,12 @@ class Header(models.Model):
                 return True
         else:
             return False
+
+    @property
+    def is_locked(self):
+        if self.headertimetracker_set.first().session is not None:
+            return True
+        return False
 # end class
 
 

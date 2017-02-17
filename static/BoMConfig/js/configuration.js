@@ -276,9 +276,8 @@ function determineColumns(readonly, hidden_cols){
 
     if(CustVis === true && cust_read_auth) {
         //readonly.push(24); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
-        if (!cust_write_auth) {
-            readonly.push(24, 25, 26, 27, 28);
-        } else if (cust_write_auth && configuration_status != 'In Process') {
+        readonly.push(25, 26, 27, 28);
+        if (!cust_write_auth || (cust_write_auth && configuration_status != 'In Process')) {
             readonly.push(24);
         }
 
@@ -460,7 +459,6 @@ function build_table() {
         afterGetColHeader: function(col, th){
             if(hidden_cols.indexOf(parseInt(col)) != -1) {
                 th.className += 'hidden_col';
-                console.log($(th).index(), col);
             }
         },
         cells: function(row, col, prop){
@@ -534,6 +532,11 @@ function build_table() {
                 cellProperties.source = [''].concat(spud_list);
             }
 
+            if(this.instance.getColHeader(col) == 'Item Cat'){
+                cellProperties.type = 'dropdown';
+                cellProperties.source = [''].concat(item_cat_list);
+            }
+
             return cellProperties;
         },
         afterValidate: function(isValid, value, row, prop, source){
@@ -554,7 +557,7 @@ function build_table() {
                 $("#nextForm").removeAttr('disabled').css('color','');
             }
 
-            if(!frame_readonly) {
+            if(!frame_readonly && !active_lock) {
                 /*
                  Trigger validation for each change in "changes" and store request in XHR tracker
                  edits caused by user inputs will have source=='edit' but changes caused by validation will have source=='validation'
@@ -613,9 +616,11 @@ function build_table() {
                                 break;
                             case 7:
                                 data['sloc'] = this.getDataAtCell(changes[i][0], 8);
+                                data['part_number'] = this.getDataAtCell(changes[i][0], 2);
                                 break;
                             case 8:
                                 data['plant'] = this.getDataAtCell(changes[i][0], 7);
+                                data['part_number'] = this.getDataAtCell(changes[i][0], 2);
                                 break;
                             case 11:
                                 data['pcode'] = this.getDataAtCell(changes[i][0], 10);
@@ -699,7 +704,6 @@ function build_table() {
                                     }
                                 },
                                 error: function (xhr, status, error) {
-                                    console.log(status, error);
                                     if (tableThis.getCellMeta(inputData.row, inputData.col)['comment'] != undefined) {
                                         tableThis.getCellMeta(inputData.row, inputData.col)['comment']['value'] = '? - An error occurred while validating.\n';
                                     } else {
@@ -821,11 +825,11 @@ function UpdateValidation(row){
                 }
             }
 
-            if(fCurrentTotal) {
-                $('#id_total_value').val(fCurrentTotal.toString());
+            if(fCurrentTotal != undefined) {
+                $('#id_total_value').val(fCurrentTotal.toFixed(2).toString());
             }
-            if(fZpruTotal) {
-                $('#id_zpru_total').val(fZpruTotal.toString());
+            if(fZpruTotal != undefined) {
+                $('#id_zpru_total').val(fZpruTotal.toFixed(2).toString());
             }
 
             // Update page form and status

@@ -1,5 +1,7 @@
+"""
+Classes used in Django-admin level administration
+"""
 from django.contrib import admin
-from django import forms
 
 from BoMConfig.models import *
 from BoMConfig.forms import LinePricingForm, DistroForm, SecurityForm
@@ -7,8 +9,6 @@ from BoMConfig.utils import RevisionCompare
 from django.contrib.sessions.models import Session
 
 # Register your models here.
-
-
 class PartBaseAdmin(admin.ModelAdmin):
     ordering = ('product_number',)
     search_fields = ('product_number',)
@@ -77,9 +77,13 @@ class RevisionAdmin(admin.ModelAdmin):
     search_fields = ('baseline__title', 'version')
 
     def render_change_form(self, request, context, *args, **kwargs):
+        """
+        This function is used to limit and order the possible previous revisions
+        that are provided when changing a Baseline_Revision object
+        """
         if context['original'] is not None:
-            orderQuery = sorted(Baseline_Revision.objects\
-                .filter(baseline__title=context['original'].baseline.title)\
+            orderQuery = sorted(Baseline_Revision.objects
+                .filter(baseline__title=context['original'].baseline.title)
                 .order_by('version'), key=lambda x: RevisionCompare(x.version))
             orderQuery = orderQuery[:orderQuery.index(context['original'])]
         else:
