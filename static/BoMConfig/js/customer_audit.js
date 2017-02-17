@@ -138,12 +138,8 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties){
             td.style.background = '#90E990';
             $(td).addClass('clean-cell');
         } else if (outputformat[row][col] == false){
-            // if(value != '') {
                 td.style.background = '#E99090';
                 $(td).addClass('invalid-cell');
-            // } else {
-            //     td.style.background = '#DDDDDD';  // May be useless, but just in case
-            // }
         } else if (outputformat[row][col] == null){
             if ([null, ''].indexOf(value) != -1) {
                 if((col == 0 || col == 1) &&
@@ -232,7 +228,9 @@ function duplicateCheck(list, allowBlank){
 
     for(var i = 1; i < list.length; i++){
         if (list[i] == list[i-1]){
-            duplicates.push(list[i]);
+            if (!allowBlank || ['', null].indexOf(list[i]) == -1) {
+                duplicates.push(list[i]);
+            }
         }
     }
 
