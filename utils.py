@@ -594,7 +594,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
         .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(oDiscontinued|oToDiscontinue)
         .exclude(program__name__in=('DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
     aAddedHeaders = [oHead for oHead in Baseline_Revision
-        .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='New')
+        .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name__in=('New', 'Legacy'))
         .exclude(program__name__in=('DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
     aUpdatedHeaders = [oHead for oHead in Baseline_Revision
         .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='Update')

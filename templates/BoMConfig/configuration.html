@@ -126,7 +126,7 @@
         var hot;
         var header_html;
         var data = {{ data_array|safe }};
-        var config_id = data[0][2];
+        var config_id = data.length == 0 ? '' : data[0][2];
         var readonly_columns = [];
         var hidden_cols = [];
         var clean_form, clean_sub;

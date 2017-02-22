@@ -2064,6 +2064,8 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
             dResult['value'] = '.' + dResult['value'].strip('.')
         elif dData['line_number'].count('.') == 2:
             dResult['value'] = '..' + dResult['value'].strip('.')
+        dResult['propagate']['line'][1] = {'value': dData['line_number'],
+                                           'chain': True}
     # end if
 
     if StrToBool(dData['allowChain']):

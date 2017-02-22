@@ -127,13 +127,21 @@ $(document).ready(function(){
     });
 
     $('#id_configuration_designation').keyup(function(){
+        if(!attached && $('#id_configuration_designation').val() == $('#id_model').val()){
+            attached = true;
+        }
+
         if(attached) {
             $('#id_model').val($(this).val());
         }
     });
 
     $('#id_model').keyup(function(){
-        attached = false;
+        if ($('#id_configuration_designation').val() == $('#id_model').val()){
+            attached = true;
+        } else {
+            attached = false;
+        }
     });
 
     $('#id_product_area1').change(function(){

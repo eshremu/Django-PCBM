@@ -434,7 +434,7 @@ function build_table() {
         manualColumnResize: true,
         copyPaste: true,
         wordWrap: true,
-        contextMenu: configuration_status == 'In Process' ? {
+        contextMenu: configuration_status == 'In Process' && !frame_readonly ? {
             items: {
                 'undo': {},
                 'redo': {},
@@ -579,6 +579,11 @@ function build_table() {
                         }
                     }
 
+                    var lineEstimates;
+                    if (source == 'paste') {
+                        lineEstimates = estimateLineNumbers(changes, this.getDataAtCol(1));
+                    }
+
                     for (var i = 0; i < changes.length; i++) {
                         if (changes[i][1] == 0 || (changes[i][2] == changes[i][3] && !(changes[i][1] == 4 || changes[i][1] == 26 || changes[i][1] == 22 || changes[i][1] == 23))) {
                             continue;
@@ -604,7 +609,7 @@ function build_table() {
                                 break;
                             case 2:
                                 data['quantity'] = this.getDataAtCell(changes[i][0], 4);
-                                data['line_number'] = this.getDataAtCell(changes[i][0], 1);
+                                data['line_number'] = lineEstimates == undefined ? this.getDataAtCell(changes[i][0], 1) : lineEstimates[changes[i][0]];
                                 data['row_index'] = changes[i][0];
                                 data['other_lines'] = this.getDataAtCol(1);
                                 data['other_lines'].splice(-1 * this.countEmptyRows(true));
@@ -771,6 +776,68 @@ function build_table() {
         $('[name="data_form"]').remove();
         clean_sub = $('#configform').serialize();
     }
+}
+
+function estimateLineNumbers(changes, current_line_numbers) {
+    for (var i=0; i < changes.length; i++){
+        // If this change is for a part number and the corresponding line does not already have a line number
+        // insert the part into the array at the corresponding index.  This will help determine the estimated order of new line numbers
+        if (changes[i][1] == 2 && ['', null].indexOf(current_line_numbers[changes[i][0]]) != -1) {
+            current_line_numbers[changes[i][0]] = changes[i][3];
+        }
+    }
+
+    // Now step through each element in current_line_numbers.  if the element is already a line number (based on regexp matching)
+    // update the last line number trackers, otherwise use the last line number trackers to create a new line number, assign it,
+    // then update last trackers
+    var parent = 0, child = 1, grand = 1;
+    var usedNumbers = [];
+
+    for (i = 0; i < current_line_numbers.length; i++){
+        if (current_line_numbers[i] == null){
+            continue;
+        }
+
+        if (/^\d+(?:\.\d+){0,2}$/.test(current_line_numbers[i])){ // This is a line number
+            var matchobj = current_line_numbers[i].match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?$/);
+            parent = Math.max(matchobj[1] == undefined ? 0 : matchobj[1], parent);
+            child = matchobj[2] == undefined ? 1 : parseInt(matchobj[2]);
+            grand = matchobj[3] == undefined ? 1 : parseInt(matchobj[3]);
+            usedNumbers.push(current_line_numbers[i]);
+        } else { // This is not a line number and needs to have one assigned
+            var decimalCount = (current_line_numbers[i].match(/\./g)||[]).length;
+            var prefix;
+            if (decimalCount == 2) { // grandchild
+                prefix = parent.toString() + "." + child.toString();
+                while (usedNumbers.indexOf(prefix + "." + grand.toString()) != -1 ) {
+                    grand += 1;
+                }
+                current_line_numbers[i] = prefix + "." + grand.toString();
+                usedNumbers.push(prefix);
+                usedNumbers.push(current_line_numbers[i]);
+            } else if (decimalCount == 1) { // child
+                prefix = parent.toString();
+                while (usedNumbers.indexOf(prefix + "." + child.toString()) != -1 ) {
+                    child += 1;
+                }
+                current_line_numbers[i] = prefix + "." + child.toString();
+                usedNumbers.push(prefix);
+                usedNumbers.push(current_line_numbers[i]);
+            } else { // parent
+                while (usedNumbers.indexOf(parent.toString()) != -1 ) {
+                    if (parent % 10 != 0){
+                        parent = Math.floor(parent/10) * 10;
+                    } else {
+                        parent += 10;
+                    }
+                }
+                current_line_numbers[i] = parent.toString();
+                usedNumbers.push(parent.toString());
+            }
+        }
+    }
+
+    return current_line_numbers;
 }
 
 function UpdateValidation(row){

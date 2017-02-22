@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Configuration, ConfigLine, PartBase, LinePricing, REF_CUSTOMER,\
-    SecurityPermission, REF_SPUD, PricingObject, REF_TECHNOLOGY
+    SecurityPermission, REF_SPUD, PricingObject, REF_TECHNOLOGY, HeaderTimeTracker
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue, StrToBool
 
@@ -95,8 +95,9 @@ def PartPricing(oRequest):
                                     'config__header__customer_unit': REF_CUSTOMER.objects.get(name=aRowToSave[1]),}
 
                                 for oConfigLine in ConfigLine.objects.filter(**dFilterArgs):
-                                    if oConfigLine.config.header.configuration_status.name != 'In Process' and\
-                                                    oConfigLine.config.header.latesttracker.next_approval != 'cpm':
+                                    if oConfigLine.config.header.configuration_status.name != 'In Process' and \
+                                            HeaderTimeTracker.approvals().index(oConfigLine.config.header.latesttracker.next_approval) > \
+                                            HeaderTimeTracker.approvals().index('cpm'):
                                         continue
 
                                     if not hasattr(oConfigLine, 'linepricing'):
@@ -106,6 +107,7 @@ def PartPricing(oRequest):
                                     if PricingObject.getClosestMatch(oConfigLine) == oNewPriceObj:
                                         oLinePrice.pricing_object = oNewPriceObj
                                         oLinePrice.save()
+                                        oConfigLine.config.save()
                             except Exception as ex:
                                 status_message = "ERROR: " + str(ex)
 

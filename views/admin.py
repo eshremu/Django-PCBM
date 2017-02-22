@@ -70,7 +70,7 @@ def MailingChange(oRequest, iRecordId=''):
     # If this request was a creation of a new DistroList, redirect to this view
     # with the new DistroList's id provided
     if not iRecordId and oNew:
-        return redirect(reverse('bomconfig:mailchange', kwargs={'id': oNew.id}))
+        return redirect(reverse('bomconfig:mailchange', kwargs={'iRecordId': oNew.id}))
     else:
         return Default(oRequest, sTemplate, dContext)
 # end def
@@ -121,7 +121,7 @@ def UserAdd(oRequest):
                 newUser = get_user_model().objects.get(username=oForm.cleaned_data['signum'])
 
             # Redirect to UserChange view
-            return redirect(reverse('bomconfig:userchange', kwargs={'id': newUser.pk}))
+            return redirect(reverse('bomconfig:userchange', kwargs={'iUserId': newUser.pk}))
 
     dContext={
         'form': oForm,
