@@ -1,7 +1,8 @@
 from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Configuration, ConfigLine, PartBase, LinePricing, REF_CUSTOMER,\
-    SecurityPermission, REF_SPUD, PricingObject, REF_TECHNOLOGY
+    SecurityPermission, REF_SPUD, PricingObject, REF_TECHNOLOGY, HeaderTimeTracker
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue, StrToBool
 
@@ -10,6 +11,7 @@ import datetime
 import itertools
 
 
+@login_required
 def PartPricing(oRequest):
     bCanReadPricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Read').filter(user__in=oRequest.user.groups.all()))
     bCanWritePricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Write').filter(user__in=oRequest.user.groups.all()))
@@ -93,8 +95,9 @@ def PartPricing(oRequest):
                                     'config__header__customer_unit': REF_CUSTOMER.objects.get(name=aRowToSave[1]),}
 
                                 for oConfigLine in ConfigLine.objects.filter(**dFilterArgs):
-                                    if oConfigLine.config.header.configuration_status.name != 'In Process' and\
-                                                    oConfigLine.config.header.latesttracker.next_approval != 'cpm':
+                                    if oConfigLine.config.header.configuration_status.name != 'In Process' and \
+                                            HeaderTimeTracker.approvals().index(oConfigLine.config.header.latesttracker.next_approval) > \
+                                            HeaderTimeTracker.approvals().index('cpm'):
                                         continue
 
                                     if not hasattr(oConfigLine, 'linepricing'):
@@ -104,6 +107,7 @@ def PartPricing(oRequest):
                                     if PricingObject.getClosestMatch(oConfigLine) == oNewPriceObj:
                                         oLinePrice.pricing_object = oNewPriceObj
                                         oLinePrice.save()
+                                        oConfigLine.config.save()
                             except Exception as ex:
                                 status_message = "ERROR: " + str(ex)
 
@@ -116,8 +120,8 @@ def PartPricing(oRequest):
                     # end for
                 # end if
 
-                aPriceObjs = PricingObject.objects.filter(part=oPart, is_current_active=True).order_by('customer',
-                                                                                                       'sold_to', 'spud')
+                aPriceObjs = PricingObject.objects.filter(part=oPart, is_current_active=True).order_by('customer__name',
+                                                                                                       'sold_to', 'spud__name')
                 for oPriceObj in aPriceObjs:
                     dContext['partlines'].append([
                         oPriceObj.part.product_number,
@@ -161,6 +165,7 @@ def PartPricing(oRequest):
     return Default(oRequest, sTemplate='BoMConfig/partpricing.html', dContext=dContext)
 
 
+@login_required
 def ConfigPricing(oRequest):
 
     bCanReadPricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Read').filter(user__in=oRequest.user.groups.all()))
@@ -241,7 +246,7 @@ def ConfigPricing(oRequest):
 
             if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
                 if oRequest.POST['config'] == oRequest.POST['initial']:
-                    net_total = 0
+                    # net_total = 0
                     for dLine in json.loads(oRequest.POST['data_form']):
                         # Change dLine to dict with str keys
                         if isinstance(dLine, list):
@@ -253,25 +258,25 @@ def ConfigPricing(oRequest):
 
                         oLineToEdit = ConfigLine.objects.filter(**dLineFilters)[0]
                         (oLinePrice, _) = LinePricing.objects.get_or_create(config_line=oLineToEdit)
-                        oLinePrice.override_price = dLine['7'] or None
+                        oLinePrice.override_price = float(dLine['7']) if dLine['7'] not in (None, '') else None
 
-                        if not oLineToEdit.config.header.pick_list and dLine['0'] == '10':
-                            net_total = float(dLine['6'])
-                        elif oLineToEdit.config.header.pick_list:
-                            net_total += float(dLine['6'])
+                        # if not oLineToEdit.config.header.pick_list and dLine['0'] == '10':
+                        #     net_total = float(dLine['6'])
+                        # elif oLineToEdit.config.header.pick_list:
+                        #     net_total += float(dLine['6'])
 
                         oLinePrice.save()
                     # end for
                     dLineFilters.pop('line_number', None)
 
                     oConfig = Configuration.objects.get(**dConfigFilters)
-                    oConfig.override_net_value = float(oRequest.POST['net_value'])
-                    oConfig.net_value = net_total
-                    try:
-                        ZUSTLine = oConfig.configline_set.get(line_number='10')
-                    except ConfigLine.DoesNotExist:
-                        ZUSTLine = None
-                    oConfig.total_value = (oConfig.override_net_value or oConfig.net_value) + (ZUSTLine.amount if ZUSTLine and (ZUSTLine.condition_type or '').upper()=='ZUST' else 0)
+                    # oConfig.override_net_value = float(oRequest.POST['net_value'])
+                    # oConfig.net_value = net_total
+                    # try:
+                    #     ZUSTLine = oConfig.configline_set.get(line_number='10')
+                    # except ConfigLine.DoesNotExist:
+                    #     ZUSTLine = None
+                    # oConfig.total_value = (oConfig.override_net_value or oConfig.net_value) + (ZUSTLine.amount if ZUSTLine and (ZUSTLine.condition_type or '').upper()=='ZUST' else 0)
                     oConfig.save()
 
                     status_message = 'Data saved.'
@@ -325,6 +330,7 @@ def ConfigPricing(oRequest):
     return Default(oRequest, sTemplate, dContext)
 
 
+@login_required
 def OverviewPricing(oRequest):
     bCanReadPricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Read').filter(user__in=oRequest.user.groups.all()))
     bCanWritePricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Write').filter(user__in=oRequest.user.groups.all()))
@@ -346,55 +352,6 @@ def OverviewPricing(oRequest):
     status_message = None
 
     sTemplate='BoMConfig/overviewpricing.html'
-
-    # aPricingObjectList = PricingObject.objects.filter(is_current_active=True).order_by('part__product_number', 'customer', 'sold_to', 'spud')
-    #
-    # aPricingLines = []
-    # aComments = []
-    #
-    # if aPricingObjectList:
-    #     for oPriceObj in aPricingObjectList:
-    #         aCommentRow = []
-    #         aObj = [
-    #             oPriceObj.part.product_number,
-    #             oPriceObj.customer.name,
-    #             oPriceObj.sold_to or '(None)',
-    #             oPriceObj.spud.name if oPriceObj.spud else '(None)',
-    #             oPriceObj.technology.name if oPriceObj.technology else '(None)',
-    #             oPriceObj.unit_price,
-    #         ]
-    #
-    #         aCommentRow.append("Valid: {}\nCut-over: {}".format((oPriceObj.valid_from_date.strftime('%m/%d/%Y') if oPriceObj.valid_from_date else "N/A") +
-    #                                                             " - " + (oPriceObj.valid_to_date.strftime('%m/%d/%Y') if oPriceObj.valid_to_date else "Present"),
-    #                                                             (oPriceObj.cutover_date.strftime('%m/%d/%Y') if oPriceObj.cutover_date else "N/A")) +
-    #                            ("\nPrice Erosion (%): {}".format(oPriceObj.erosion_rate) if oPriceObj.price_erosion else ""))
-    #
-    #         # oChainPriceObj = oPriceObj
-    #         # while oChainPriceObj.previous_pricing_object:
-    #         #     oChainPriceObj = oChainPriceObj.previous_pricing_object
-    #
-    #         for i in range(1,5):
-    #
-    #             oChainPriceObj = PricingObject.objects.filter(part__product_number=oPriceObj.part.product_number,
-    #                                                           customer__name=oPriceObj.customer.name,
-    #                                                           sold_to=oPriceObj.sold_to,
-    #                                                           spud=oPriceObj.spud,
-    #                                                           technology=oPriceObj.technology,
-    #                                                           valid_to_date__year=datetime.datetime.now().year - i
-    #                                                           ).order_by('valid_to_date', 'valid_from_date').first()
-    #             if oChainPriceObj:
-    #                 aObj.append(oChainPriceObj.unit_price)
-    #                 aCommentRow.append("Valid: {}\nCut-over: {}".format((oChainPriceObj.valid_from_date.strftime('%m/%d/%Y') if oChainPriceObj.valid_from_date else "N/A") +
-    #                                                                     " - " + (oChainPriceObj.valid_to_date.strftime('%m/%d/%Y') if oChainPriceObj.valid_to_date else "Present"),
-    #                                                                     (oChainPriceObj.cutover_date.strftime('%m/%d/%Y') if oChainPriceObj.cutover_date else "N/A")) +
-    #                                    ("\nPrice Erosion (%): {}".format(oChainPriceObj.erosion_rate) if oChainPriceObj.price_erosion else ""))
-    #             else:
-    #                 aObj.append('')
-    #                 aCommentRow.append('')
-    #
-    #         aPricingLines.append(aObj)
-    #         aComments.append(aCommentRow)
-    # # end if
     aPricingLines, aComments = PricingOverviewLists()
 
     dContext = {
@@ -414,7 +371,7 @@ def OverviewPricing(oRequest):
 
 def PricingOverviewLists():
     aPricingObjectList = PricingObject.objects.filter(is_current_active=True).order_by('part__product_number',
-                                                                                       'customer', 'sold_to', 'spud')
+                                                                                       'customer__name', 'sold_to', 'spud__name')
 
     aPricingLines = []
     aComments = []
@@ -475,6 +432,7 @@ def PricingOverviewLists():
     return aPricingLines, aComments
 
 
+@login_required
 def PriceErosion(oRequest):
     sTemplate = 'BoMConfig/erosionpricing.html'
     sStatusMessage = None
@@ -544,7 +502,7 @@ def PriceErosion(oRequest):
         # end if
     # end if
 
-    aRecords = PricingObject.objects.filter(price_erosion=True, is_current_active=True).order_by('part__product_number', 'customer', 'sold_to', 'spud')
+    aRecords = PricingObject.objects.filter(price_erosion=True, is_current_active=True).order_by('part__product_number', 'customer__name', 'sold_to', 'spud__name')
 
     dContext = {
         'data': [['False',
@@ -556,10 +514,10 @@ def PriceErosion(oRequest):
                   oPO.unit_price,
                   oPO.erosion_rate,
                   '', '', '',] for oPO in aRecords],
-        'cu_list': list(set(str(val) for val in aRecords.values_list('customer__name',flat=True))),
-        'soldto_list': list(set(str(val) for val in aRecords.values_list('sold_to',flat=True))),
-        'spud_list': list(set(str(val) for val in aRecords.values_list('spud__name',flat=True))),
-        'tech_list': list(set(str(val) for val in aRecords.values_list('technology__name',flat=True))),
+        'cu_list': sorted(list(set(str(val) for val in aRecords.values_list('customer__name',flat=True)))),
+        'soldto_list': sorted(list(set(str(val) for val in aRecords.values_list('sold_to',flat=True)))),
+        'spud_list': sorted(list(set(str(val) for val in aRecords.values_list('spud__name',flat=True)))),
+        'tech_list': sorted(list(set(str(val) for val in aRecords.values_list('technology__name',flat=True)))),
         'pricing_read_authorized': bCanReadPricing,
         'pricing_write_authorized': bCanWritePricing,
         'status_message': sStatusMessage

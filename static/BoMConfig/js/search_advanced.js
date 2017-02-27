@@ -83,7 +83,7 @@ $(document).ready(function(){
             
             if(idx==1){return;}
 
-            $td.append('<div style="display: inline;"><input id="'+idx+'" type="checkbox"></div>');
+            $td.append('<div style="display: inline;"><input id="'+idx+'" type="checkbox" checked ' + (idx==0?'disabled':'') + '></div>');
             $td.append($('<label>').text($(elem).text()).attr('for', idx));
             $td.css('width', '25%');
             $td.css('padding-right', '10px');

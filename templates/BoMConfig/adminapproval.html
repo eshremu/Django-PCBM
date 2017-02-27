@@ -13,7 +13,7 @@
             <tbody>
         {% for item in list %}
                 <tr>
-                    <td><a href="{% url 'bomconfig:approvalchange' id=item.id %}">{{ item }}</a></td>
+                    <td><a href="{% url 'bomconfig:approvalchange' iObjId=item.id %}">{{ item }}</a></td>
                 </tr>
         {% endfor %}
             </tbody>

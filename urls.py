@@ -1,3 +1,7 @@
+"""
+URL routing definitions for tool
+"""
+
 from django.conf.urls import url, patterns
 from django.contrib.auth import views as auth_views
 from BoMConfig import views
@@ -56,17 +60,18 @@ urlpatterns = patterns(
     url(r'^approval_list/$', views.AjaxApprovalForm, name='approve_list'),
     url(r'^password_change/$', auth_views.password_change, {'post_change_redirect': 'bomconfig:index'}, name='change_password'),
     url(r'^admin/mailing/$', views.MailingAdmin, name='mailadmin'),
-    url(r'^admin/mailing/change/(?P<id>\d+)/$', views.MailingChange, name='mailchange'),
+    url(r'^admin/mailing/change/(?P<iRecordId>\d+)/$', views.MailingChange, name='mailchange'),
     url(r'^admin/mailing/add/$', views.MailingChange, name='mailadd'),
     url(r'^admin/user/$', views.UserAdmin, name='useradmin'),
     url(r'^admin/user/add/$', views.UserAdd, name='useradd'),
-    url(r'^admin/user/changeuser/(?P<id>\d+)/$', views.UserChange, name='userchange'),
+    url(r'^admin/user/changeuser/(?P<iUserId>\d+)/$', views.UserChange, name='userchange'),
     url(r'^admin/$', views.AdminLanding, name='adminlanding'),
     url(r'^admin/approval/$', views.ApprovalAdmin, name='approvaladmin'),
     url(r'^admin/approval/add/$', views.ApprovalChange, name='approvaladd'),
-    url(r'^admin/approval/change/(?P<id>\d+)/$', views.ApprovalChange, name='approvalchange'),
+    url(r'^admin/approval/change/(?P<iObjId>\d+)/$', views.ApprovalChange, name='approvalchange'),
     url(r'^customer_audit/$', views.CustomerAuditLand, name='customerauditland'),
     url(r'^customer_audit/audit/$', views.CustomerAudit, name='customeraudit'),
     url(r'^customer_audit/validate/$', views.CustomerAuditTableValidate, name='audit_validate'),
     url(r'^customer_audit/upload/$', views.CustomerAuditUpload, name='customerauditupload'),
+    url(r'^entry/validate/$', views.AjaxValidator, name='ajaxvalidator'),
 )

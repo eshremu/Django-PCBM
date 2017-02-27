@@ -1,13 +1,17 @@
-__author__ = 'epastag'
+"""
+Views related to actions and function in the "Actions" and "Approvals" sections
+of the tool.
+"""
 
 from django.utils import timezone
 from django.http import HttpResponse, Http404, JsonResponse
 from django.core.urlresolvers import reverse
-from django.template import Template, Context, loader
-from django.core.mail import send_mail, EmailMultiAlternatives
+from django.template import loader
+from django.core.mail import EmailMultiAlternatives
 from django.shortcuts import redirect
-from django.db import transaction
+from django.db import transaction, connections
 from django.db.models import Q
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, REF_REQUEST, SecurityPermission,\
     HeaderTimeTracker, REF_STATUS, ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, LinePricing,\
@@ -18,9 +22,16 @@ from django.contrib.auth.models import User
 
 import copy
 import json
+import re
 
 
+@login_required
 def Approval(oRequest):
+    """
+    View for viewing and interacting with records pending approval
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -40,13 +51,26 @@ def Approval(oRequest):
                     'Customer #1','Customer #2','Customer Warehouse','Ericsson VAR','Baseline Release & Dist.'],
         'viewauthorized': SecurityPermission.objects.filter(title__iregex='^.*Approval.*$').filter(user__in=oRequest.user.groups.all()),
         'skip_authorized': SecurityPermission.objects.filter(title__iexact='BLM_Approval_Write').filter(user__in=oRequest.user.groups.all()),
-        'notify_users': {key: set(User.objects.filter(groups__securitypermission__title__in=value).exclude(groups__name__startswith='BOM_BPMA')) for key,value in HeaderTimeTracker.permission_map().items()}
+        'notify_users': {key: User.objects.filter(groups__securitypermission__title__in=value).exclude(groups__name__startswith='BOM_BPMA').distinct().order_by('last_name') for key, value in HeaderTimeTracker.permission_map().items()},
+        'available_levels': ",.".join(
+            [''] + [sLevel for sLevel in HeaderTimeTracker.approvals() if
+                    bool(SecurityPermission.objects.filter(
+                        title__in=HeaderTimeTracker.permission_entry(sLevel)).filter(
+                        user__in=oRequest.user.groups.all()))]
+        )[1:],
     }
     return Default(oRequest, sTemplate='BoMConfig/approvals.html', dContext=dContext)
 # end def
 
 
+@login_required
 def Action(oRequest, **kwargs):
+    """
+
+    :param oRequest: Django request object
+    :param kwargs: Dictionary of keyword arguments passed to the function
+    :return: HTML response via Default function
+    """
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -70,6 +94,11 @@ def Action(oRequest, **kwargs):
         'customer_list': ['All'] + [obj.name for obj in REF_CUSTOMER.objects.all()],
         'viewauthorized': bool(oRequest.user.groups.filter(name__in=['BOM_BPMA_Architect','BOM_PSM_Product_Supply_Manager', 'BOM_PSM_Baseline_Manager'])),
         'approval_seq': HeaderTimeTracker.approvals(),
+        'deaddate': timezone.datetime(1900, 1, 1),
+        'namelist': ['SCM #1', 'SCM #2', 'CSR',
+                     'Comm. Price Mgmt.', 'ACR', 'PSM Baseline Mgmt.',
+                     'Customer #1', 'Customer #2', 'Customer Warehouse',
+                     'Ericsson VAR', 'Baseline Release & Dist.'],
     }
     return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def
@@ -329,10 +358,10 @@ def AjaxApprove(oRequest):
                         oLatestTracker.save()
 
                         # Alter configuration status
-                        if oHeader.bom_request_type.name in ('Discontinue','Legacy'):
+                        if oHeader.bom_request_type.name in ('Discontinue',):
                             oHeader.configuration_status = REF_STATUS.objects.get(name='Discontinued')
                             oHeader.release_date = oLatestTracker.completed_on
-                        elif oHeader.bom_request_type.name in ('New','Update', 'Replacement'):
+                        elif oHeader.bom_request_type.name in ('New', 'Update', 'Replacement', 'Legacy'):
                             oHeader.configuration_status = REF_STATUS.objects.get(name='Active')
                             oHeader.release_date = oLatestTracker.completed_on
                         elif oHeader.bom_request_type.name == 'Preliminary':
@@ -340,18 +369,18 @@ def AjaxApprove(oRequest):
                             oHeader.bom_request_type = REF_REQUEST.objects.get(name='New')
                         oHeader.save()
 
-                        if oHeader.configuration_status.name in ('Discontinued', 'Active') and oHeader.baseline_impacted:
-                            aBaselinesCompleted.append(oHeader.baseline_impacted)
+                        if oHeader.configuration_status.name in ('Discontinued', 'Active') and oHeader.baseline:
+                            aBaselinesCompleted.append(oHeader.baseline)
                         # end if
                     # end if
                 # end if
             # end for
 
             aBaselinesCompleted = list(set(aBaselinesCompleted))
-            aBaselinesToComplete = Baseline.objects.filter(title__in=aBaselinesCompleted)
-            for oBaseline in aBaselinesToComplete:
-                UpRev(oBaseline)
-                EmailDownload(oBaseline)
+            # aBaselinesToComplete = Baseline.objects.filter(title__in=aBaselinesCompleted)
+            for oBaseline in aBaselinesCompleted:
+                UpRev(oBaseline.baseline)
+                EmailDownload(oBaseline.baseline)
             # end for
         elif sAction == 'clone':
             oOldHeader = Header.objects.get(pk=aRecords[0])
@@ -439,6 +468,12 @@ def CloneHeader(oHeader):
             baseline=Baseline.objects.get(title=oNewHeader.baseline_impacted),
             version=Baseline.objects.get(title=oNewHeader.baseline_impacted).current_inprocess_version)
         oNewHeader.baseline_version = oNewHeader.baseline.version
+    else:
+        oNewHeader.baseline = Baseline_Revision.objects.get(
+            baseline=Baseline.objects.get(title='No Associated Baseline'),
+            version=Baseline.objects.get(title='No Associated Baseline').current_inprocess_version
+        )
+        oNewHeader.baseline_version = oNewHeader.baseline.version
     # end if
 
     iTry = 1
@@ -461,13 +496,14 @@ def CloneHeader(oHeader):
         oNewLine.sec_customer_number = None
         oNewLine.customer_asset = None
         oNewLine.customer_asset_tagging = None
-        oNewLine.comments = None
+        # oNewLine.comments = None
         oNewLine.save()
 
         if hasattr(oConfigLine, 'linepricing'):
             oNewPrice = copy.deepcopy(oConfigLine.linepricing)
             oNewPrice.pk = None
             oNewPrice.config_line = oNewLine
+            oNewPrice.pricing_object = PricingObject.getClosestMatch(oNewLine)
             oNewPrice.save()
         # end if
     # end for
@@ -495,7 +531,7 @@ def AjaxApprovalForm(oRequest):
 
             for key, value in dPermissionLevels.items():
                 if key in aApprovalLevels:
-                    dContext['email'].update({key: list(set(User.objects.filter(groups__securitypermission__in=SecurityPermission.objects.filter(title__in=value)).exclude(groups__name__contains='BPMA')))})
+                    dContext['email'].update({key: list(User.objects.filter(groups__securitypermission__in=SecurityPermission.objects.filter(title__in=value)).exclude(groups__name__contains='BPMA').order_by('last_name').distinct())})
 
             dForm[record] = [oHeader.configuration_designation + "  " + oHeader.baseline_version, loader.render_to_string('BoMConfig/approvalform.html', dContext)]
 
@@ -678,10 +714,27 @@ def ChangePart(oRequest):
 def CreateDocument(oRequest):
     oHeader = Header.objects.get(id=oRequest.POST.get('id'))
 
-    if not oHeader.valid_from_date or oHeader.valid_from_date < timezone.datetime.now().date():
-        oHeader.valid_from_date = timezone.datetime.now().date()
+    if oHeader.bom_request_type.name != 'Discontinue':
+        if not oHeader.valid_from_date or oHeader.valid_from_date < timezone.datetime.now().date():
+            oHeader.valid_from_date = timezone.datetime.now().date()
+    else:
+        if not oHeader.valid_to_date or oHeader.valid_to_date < timezone.datetime.now().date():
+            oHeader.valid_to_date = timezone.datetime.now().date() + timezone.timedelta(1)
 
-    if not StrToBool(oRequest.POST.get('type')):
+    if oHeader.valid_from_date and oHeader.valid_to_date and oHeader.valid_from_date > oHeader.valid_to_date and oHeader.bom_request_type.name != 'Discontinue':
+        while oHeader.valid_from_date > oHeader.valid_to_date:
+            oHeader.valid_to_date = oHeader.valid_to_date + timezone.timedelta(365)
+
+    bCreateSiteTemplate = StrToBool(oRequest.POST.get('type'))
+
+    oCursor = connections['BCAMDB'].cursor()
+    oCursor.execute("SELECT [ICG],[{}] FROM [BCAMDB].[dbo].[REF_ITEM_CAT_GROUP]".format(
+                    ("ZTPL" if bCreateSiteTemplate else "ZDOT")))
+    dItemCatMap = dict(oCursor.fetchall())
+
+    oPattern = re.compile(r'^.+\((?P<key>[A-Z0-9]{3})\)$|^$', re.I)
+
+    if not bCreateSiteTemplate:
         # Create Inquiry
         data = {
             "inquiry_type": "ZDOT",
@@ -697,7 +750,7 @@ def CreateDocument(oRequest):
             "ship_to_party": str(oHeader.ship_to_party or ''),
             "bill_to_party": str(oHeader.bill_to_party or ''),
             "configuration_designation": oHeader.configuration_designation,
-            "valid_from_date": max(oHeader.valid_from_date, timezone.datetime.now().date()).strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
+            "valid_from_date": oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
             'po_date': oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
             "valid_to_date": oHeader.valid_to_date.strftime('%Y-%m-%d') if oHeader.valid_to_date else '',
             "payment_terms": oHeader.payment_terms.split()[0] if oHeader.payment_terms else '',
@@ -715,7 +768,7 @@ def CreateDocument(oRequest):
                     'order_qty': str(oLine.order_qty),
                     'plant': oLine.plant or '',
                     'sloc': oLine.sloc or '',
-                    'item_category': oLine.item_category or '',
+                    'item_category': dItemCatMap[oLine.item_category] if oLine.item_category in dItemCatMap else oLine.item_category or '',
                     'pcode': oLine.pcode[1:4] if oLine.pcode else '',
                     'unit_price': str(oHeader.configuration.override_net_value or oHeader.configuration.net_value or '') if not oHeader.pick_list and oLine.line_number=='10'
                         else '' if not oHeader.pick_list
@@ -724,8 +777,10 @@ def CreateDocument(oRequest):
                     'amount': str(oLine.amount) if oLine.amount is not None else '',
                     'contextId': oLine.contextId or '',
                     'higher_level_item': oLine.higher_level_item or '',
-                    'material_group_5': oLine.material_group_5 or '', # TODO: Need to determine index/row of value (this will have to link to a table)
+                    # 'material_group_5': oLine.material_group_5 or '', # TODO: Update REF_MATERIAL_GROUP to include key of SAP dropdown value
+                    'material_group_5': oPattern.match(oLine.material_group_5 or '').group('key') or '',
                     'purchase_order_item_num': oLine.purchase_order_item_num or '',
+                    "valid_from_date": oHeader.valid_from_date.strftime('%Y-%m-%d') if oHeader.valid_from_date else '',
                 }
                 for oLine in sorted(oHeader.configuration.configline_set.exclude(line_number__contains='.'), key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
             ]
@@ -762,11 +817,12 @@ def CreateDocument(oRequest):
                     'order_qty': str(oLine.order_qty),
                     'plant': oLine.plant or '',
                     'sloc': oLine.sloc or '',
-                    'item_category': oLine.item_category or '',
+                    'item_category': dItemCatMap[oLine.item_category] if oLine.item_category in dItemCatMap else oLine.item_category or '',
                     'pcode': oLine.pcode[1:4] if oLine.pcode else '',
                     'higher_level_item': oLine.higher_level_item or '',
                     'contextId': oLine.contextId or '',
-                    'material_group_5': oLine.material_group_5 or '', # TODO: Need to determine index/row of value (this will have to link to a table)
+                    # 'material_group_5': oLine.material_group_5 or '', # TODO: Update REF_MATERIAL_GROUP to include key of SAP dropdown value
+                    'material_group_5': oPattern.match(oLine.material_group_5 or '').group('key') or '',
                     'customer_number': oLine.customer_number or '',
                 }
                 for oLine in sorted(
@@ -776,6 +832,17 @@ def CreateDocument(oRequest):
             ]
         }
     # end if
+
+    if oHeader.bom_request_type.name == 'Discontinue':
+        if oHeader.model_replaced_link and \
+                oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id):
+            if oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id).first().inquiry_site_template is not None and \
+                            oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id).first().inquiry_site_template > 0:
+                data['configuration_designation'] = 'Replaced by {}'.format(oHeader.model_replaced_link.replaced_by_model.exclude(id=oHeader.id).first().inquiry_site_template)
+            else:
+                return HttpResponse(status=409, reason="Invalid replacement")
+        else:
+            data['configuration_designation'] = 'Obsolete'
 
     export_dict = {
         "data": data,

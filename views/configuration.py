@@ -8,6 +8,7 @@ from django import forms
 from django.forms import fields
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
     PartBase, Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, SecurityPermission,\
@@ -16,10 +17,11 @@ from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException
 from BoMConfig.views.approvals_actions import CloneHeader
-from BoMConfig.utils import GrabValue, HeaderComparison, RevisionCompare, DetectBrowser
+from BoMConfig.utils import GrabValue, HeaderComparison, RevisionCompare, DetectBrowser, StrToBool
 
 import copy
 # import datetime
+from collections import OrderedDict
 from itertools import chain
 import json
 import re
@@ -66,6 +68,7 @@ def UpdateConfigRevisionData(oHeader):
 # end def
 
 
+@login_required
 def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
     # existing_instance is the existing header. Store the pk in the form to return for saving
     # Status message allows another view to redirect to here with an error message explaining the redirect
@@ -196,18 +199,19 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                     else:
                                         oConfig = oHeader.configuration
 
-                                    (oPartBase,_) = PartBase.objects.get_or_create(**{'product_number':oHeader.configuration_designation})
-                                    oPartBase.unit_of_measure = 'PC'
-                                    oPartBase.save()
-                                    (oPart,_) = Part.objects.get_or_create(**{'base': oPartBase,'product_description':oHeader.model_description})
+                                    if not oHeader.pick_list:
+                                        (oPartBase,_) = PartBase.objects.get_or_create(**{'product_number':oHeader.configuration_designation})
+                                        oPartBase.unit_of_measure = 'PC'
+                                        oPartBase.save()
+                                        (oPart,_) = Part.objects.get_or_create(**{'base': oPartBase,'product_description':oHeader.model_description})
 
-                                    ConfigLine.objects.create(**{
-                                        'config': oConfig,
-                                        'part': oPart,
-                                        'line_number': '10',
-                                        'order_qty': 1,
-                                        'vendor_article_number': oHeader.configuration_designation,
-                                    })
+                                        ConfigLine.objects.create(**{
+                                            'config': oConfig,
+                                            'part': oPart,
+                                            'line_number': '10',
+                                            'order_qty': 1,
+                                            'vendor_article_number': oHeader.configuration_designation,
+                                        })
                                 else:
                                     if not oHeader.pick_list and oHeader.configuration.get_first_line().part.base.product_number != oHeader.configuration_designation:
                                         # Update line 10 Product number to match configuration designation
@@ -294,12 +298,18 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
         # Make 'Person Responsible' field a dropdown of PSM users
         if not oExisting:
             headerForm.fields['person_responsible'] = fields.ChoiceField(choices=[('', '---------')] + list(
-                [(user.first_name + ' ' + user.last_name, user.first_name + ' ' + user.last_name) for user in User.objects.all() if\
+                [(user.first_name + ' ' + user.last_name, user.first_name + ' ' + user.last_name) for user in User.objects.all().order_by('last_name') if\
                         user.groups.filter(name__in=['BOM_PSM_Baseline_Manager','BOM_PSM_Product_Supply_Manager'])]
             ))
 
         if not bFrameReadOnly and (not oExisting or (oExisting and type(oExisting) != str and oExisting.configuration_status.name == 'In Process')):
-            headerForm.fields['baseline_impacted'].widget = forms.widgets.Select(choices=(('','---------'),('New','Create New baseline')) + tuple((obj.title,obj.title) for obj in Baseline_Revision.objects.filter(baseline__customer=oExisting.customer_unit if oExisting else None).filter(completed_date=None)))
+            headerForm.fields['baseline_impacted'].widget = forms.widgets.Select(
+                choices=(('','---------'),('New','Create New baseline')) +
+                        tuple((obj.title,obj.title) for obj in
+                              Baseline_Revision.objects.filter(
+                                  baseline__customer=oExisting.customer_unit if oExisting else None)
+                              .filter(completed_date=None).exclude(baseline__title='No Associated Baseline').order_by('baseline__title'))
+            )
 
             oCursor = connections['REACT'].cursor()
             oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',[bytes(oExisting.customer_unit.name, 'ascii') if oExisting else None])
@@ -324,6 +334,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 # end def
 
 
+@login_required
 def AddConfig(oRequest):
     status_message = oRequest.session.get('status', None)
 
@@ -377,9 +388,9 @@ def AddConfig(oRequest):
         bCanWriteConfigAttr = bool(SecurityPermission.objects.filter(title='Config_Entry_Attributes_Write').filter(user__in=oRequest.user.groups.all())) \
             and (not bPending or (bApprovalPermission and sNeededLevel == 'cpm'))
         bCanWriteConfigPrice = bool(SecurityPermission.objects.filter(title='Config_Entry_PriceLinks_Write').filter(user__in=oRequest.user.groups.all())) \
-            and (not bPending or (bApprovalPermission and sNeededLevel is None))
+            and (not bPending or (bApprovalPermission and sNeededLevel in ('blm', 'cust1', 'cust2', 'cust_whse', 'evar', 'brd')))
         bCanWriteConfigCust = bool(SecurityPermission.objects.filter(title='Config_Entry_CustomerData_Write').filter(user__in=oRequest.user.groups.all())) \
-            and (not bPending or (bApprovalPermission and sNeededLevel == 'cust1'))
+            and (not bPending or (bApprovalPermission and sNeededLevel in ('cust1', 'cust2', 'cust_whse', 'evar', 'brd')))
         bCanWriteConfigBaseline = bool(SecurityPermission.objects.filter(title='Config_Entry_Baseline_Write').filter(user__in=oRequest.user.groups.all())) \
             and (not bPending or (bApprovalPermission and sNeededLevel in ('blm', 'csr')))
 
@@ -404,7 +415,6 @@ def AddConfig(oRequest):
                 if not hasattr(oHeader, 'configuration'):
                     oConfig.header = oHeader
                 # end if
-                oConfig.save(request=oRequest)
 
                 if oHeader.configuration_status.name in ('In Process', 'In Process/Pending'):
                     oForm = json.loads(oRequest.POST['data_form'])
@@ -481,6 +491,21 @@ def AddConfig(oRequest):
                                      'is_grandchild': bool(dConfigLine['2'].startswith('..')),
                                      'last_updated': oUpdateDate}
 
+                        try:
+                            oMPNCustMap = CustomerPartInfo.objects.get(
+                                part__product_number=oPart.base.product_number,
+                                customer=oHeader.customer_unit,
+                                active=True)
+
+                            dLineData.update({
+                                'customer_asset': "Y" if oMPNCustMap.customer_asset else "N" if oMPNCustMap.customer_asset is False else None,
+                                'customer_asset_tagging': "Y" if oMPNCustMap.customer_asset_tagging else "N" if oMPNCustMap.customer_asset_tagging is False else None,
+                                'customer_number': oMPNCustMap.customer_number,
+                                'sec_customer_number': oMPNCustMap.second_customer_number,
+                            })
+                        except CustomerPartInfo.DoesNotExist:
+                            pass
+
                         if ConfigLine.objects.filter(config=oConfig).filter(line_number=dConfigLine['1']):
                             oConfigLine = ConfigLine.objects.get(**{'config': oConfig, 'line_number': dConfigLine['1']})
                             ConfigLine.objects.filter(pk=oConfigLine.pk).update(**dLineData)
@@ -502,6 +527,7 @@ def AddConfig(oRequest):
                             oOldLine.delete()
                     status_message = oRequest.session['status'] = 'Form data saved'
                 # end if
+                oConfig.save(request=oRequest)
             #end if
             if oRequest.POST['formaction'] == 'prev':
                 if not bFrameReadOnly:
@@ -576,14 +602,21 @@ def AddConfig(oRequest):
         'material_group_list': [obj.name for obj in REF_MATERIAL_GROUP.objects.all()],
         'product_pkg_list': [obj.name for obj in REF_PRODUCT_PKG.objects.all()],
         'spud_list': [obj.name for obj in REF_SPUD.objects.all()],
+
         'base_template': 'BoMConfig/frame_template.html' if bFrameReadOnly else 'BoMConfig/template.html',
         'frame_readonly': bFrameReadOnly,
         'active_lock': bActive
     }
+
+    oCursor = connections['BCAMDB'].cursor()
+    oCursor.execute("SELECT [ICG] FROM [BCAMDB].[dbo].[REF_ITEM_CAT_GROUP]")
+    dContext.update({'item_cat_list': [obj for (obj,) in oCursor.fetchall()]})
+
     return Default(oRequest, sTemplate='BoMConfig/configuration.html', dContext=dContext)
 # end def
 
 
+@login_required
 def AddTOC(oRequest):
     status_message = oRequest.session.get('status', None)
 
@@ -714,6 +747,7 @@ def AddTOC(oRequest):
 # end def
 
 
+@login_required
 def AddRevision(oRequest):
     error_matrix = []
     valid = True
@@ -834,6 +868,7 @@ def AddRevision(oRequest):
 # end def
 
 
+@login_required
 def AddInquiry(oRequest, inquiry):
     status_message = oRequest.session.get('status', None)
 
@@ -947,19 +982,19 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                     '1': Line.line_number,
                     '2': ('..' if Line.is_grandchild else '.' if Line.is_child else '') + Line.part.base.product_number,
                     '3': Line.part.product_description,
-                    '4': Line.order_qty,
+                    '4': str(Line.order_qty or ''),
                     '5': Line.part.base.unit_of_measure,
                     '6': Line.contextId,
                     '7': Line.plant,
-                    '8': ('0' * (4 - len(str(Line.sloc)))) + Line.sloc if Line.sloc else Line.sloc,
+                    '8': Line.sloc,
                     '9': Line.item_category,
                     '10': Line.pcode,
                     '11': Line.commodity_type,
                     '12': Line.package_type,
-                    '13': str(Line.spud),
+                    '13': str(Line.spud or ''),
                     '14': Line.REcode,
                     '15': Line.mu_flag,
-                    '16': ('0' * (2 - len(Line.x_plant))) + Line.x_plant if Line.x_plant else '',
+                    '16': str(Line.x_plant).zfill(2) if Line.x_plant else '',
                     '17': Line.internal_notes,
 
                     '19': Line.higher_level_item,
@@ -980,18 +1015,18 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                 if not oHeader.pick_list:
                     if str(Line.line_number) == '10':
                         if oConfig.override_net_value:
-                            dLine.update({'18': '!' + str(oConfig.override_net_value)})
+                            dLine.update({'18': str(oConfig.override_net_value)})
                         else:
-                            dLine.update({'18': oConfig.net_value})
+                            dLine.update({'18': str(oConfig.net_value or '')})
                         # end if
                     else:
                         dLine.update({'18': ''})
                     # end if
                 else:
                     if GrabValue(Line, 'linepricing.override_price'):
-                        dLine.update({'18': "!" + str(Line.linepricing.override_price)})
+                        dLine.update({'18': str(Line.linepricing.override_price)})
                     elif GrabValue(Line, 'linepricing.pricing_object.unit_price'):
-                        dLine.update({'18': Line.linepricing.pricing_object.unit_price})
+                        dLine.update({'18': str(Line.linepricing.pricing_object.unit_price)})
                     else:
                         dLine.update({'18': ''})
                     # end if
@@ -1192,7 +1227,14 @@ def Validator(oRequest):
         # end for
 
         aLineNumbers = []
-        error_matrix = [['']*32 for _ in range(len(form_data))]
+        # error_matrix = [['']*32 for _ in range(len(form_data))]
+        error_matrix = []
+        for _ in range(len(form_data)):
+            dummy = []
+            for _ in range(32):
+                dummy.append({'value':''})
+            error_matrix.append(dummy)
+
         for index in range(len(form_data)):
 
             # Check entered data formats
@@ -1690,10 +1732,10 @@ def ListFill(oRequest):
         oParent = cParentClass.objects.get(pk=iParentID)
         if oRequest.POST['child'] != 'baseline_impacted':
             cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
-            result = {obj.id:obj.name for obj in cChildClass.objects.filter(parent=oParent)}
+            result = OrderedDict([('i' + str(obj.id), obj.name) for obj in cChildClass.objects.filter(parent=oParent).order_by('name')])
         else:
             cChildClass = Baseline
-            result = {obj.title:obj.title for obj in cChildClass.objects.filter(customer=oParent)}
+            result = OrderedDict([('i' + obj.title, obj.title) for obj in cChildClass.objects.filter(customer=oParent).order_by('title')])
 
         return JsonResponse(result)
     else:
@@ -1711,10 +1753,10 @@ def ListREACTFill(oRequest):
         oParent = cParentClass.objects.get(pk=iParentID)
 
         oCursor = connections['REACT'].cursor()
-        oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',
+        oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s ORDER BY [Customer]',
                         [bytes(oParent.name, 'ascii')])
         tResults = oCursor.fetchall()
-        result = {obj: obj for obj in chain.from_iterable(tResults)}
+        result = OrderedDict([(obj, obj) for obj in chain.from_iterable(tResults)])
         return JsonResponse(result)
     else:
         raise Http404
@@ -1746,3 +1788,826 @@ def Clone(oRequest):
         dResult['errors'].append(str(ex))
 
     return JsonResponse(dResult)
+
+# end def
+
+
+def AjaxValidator(oRequest):
+    if oRequest.method == "POST" and oRequest.POST:
+        dData = oRequest.POST
+        if 'existing' in oRequest.session:
+            oHead = Header.objects.get(pk=oRequest.session['existing'])
+        else:
+            oHead = Header.objects.get(pk=oRequest.GET.get('id'))
+        bCanWriteConfig = oRequest.POST.get('writeable', False)
+
+        dResult = {
+            'row': int(dData['row']),
+            'col': int(dData['col']),
+            'value': dData['value'],
+            'status': 'OK',
+            'error': {
+                'value': None
+            },
+            'propagate':{
+                'line':{
+
+                }
+            }
+        }
+
+        if int(dData['col']) == 1:
+            validate_func = ValidateLineNumber
+            args = [dData, dResult]
+        elif int(dData['col']) == 2:
+            validate_func = ValidatePartNumber
+            args = [dData, dResult, oHead, bCanWriteConfig]
+        elif int(dData['col']) == 3:
+            validate_func = ValidateDescription
+            args = [dData, dResult]
+        elif int(dData['col']) == 4:
+            validate_func = ValidateQuantity
+            args = [dData, dResult]
+        elif int(dData['col']) == 5:
+            validate_func = lambda x, y: y
+            args = [dData, dResult]
+            pass  # UOM
+        elif int(dData['col']) == 6:
+            validate_func = ValidateContextID
+            args = [dData, dResult]
+        elif int(dData['col']) == 7:
+            validate_func = ValidatePlant
+            args = [dData, dResult]
+        elif int(dData['col']) == 8:
+            validate_func = ValidateSLOC
+            args = [dData, dResult]
+        elif int(dData['col']) == 9:
+            validate_func = ValidateItemCategory
+            args = [dData, dResult]
+        elif int(dData['col']) == 10:
+            validate_func = ValidatePCode
+            args = [dData, dResult]
+        elif int(dData['col']) == 11:
+            validate_func = ValidateCommodityType
+            args = [dData, dResult]
+        elif int(dData['col']) == 12:
+            validate_func = ValidatePackageType
+            args = [dData, dResult]
+        elif int(dData['col']) == 13:
+            validate_func = ValidateSPUD
+            args = [dData, dResult]
+        elif int(dData['col']) == 14:
+            validate_func = ValidateRECode
+            args = [dData, dResult]
+        elif int(dData['col']) == 15:
+            validate_func = ValidateMUFlag
+            args = [dData, dResult]
+        elif int(dData['col']) == 16:
+            validate_func = ValidateXPlant
+            args = [dData, dResult]
+        elif int(dData['col']) == 17:
+            validate_func = lambda x, y: y
+            args = [dData, dResult]
+            pass  # Internal Notes
+        elif int(dData['col']) == 18:
+            validate_func = ValidateUnitPrice
+            args = [dData, dResult, oHead]
+        elif int(dData['col']) == 19:
+            validate_func = ValidateHigherLevel
+            args = [dData, dResult]
+        elif int(dData['col']) == 20:
+            validate_func = ValidateMaterialGroup
+            args = [dData, dResult]
+        elif int(dData['col']) == 21:
+            validate_func = ValidatePurchaseOrderItemNumber
+            args = [dData, dResult]
+        elif int(dData['col']) == 22:
+            validate_func = ValidateCondition
+            args = [dData, dResult, oHead]
+        elif int(dData['col']) == 23:
+            validate_func = ValidateAmount
+            args = [dData, dResult]
+        elif int(dData['col']) == 24:
+            validate_func = ValidateTraceability
+            args = [dData, dResult]
+        elif int(dData['col']) == 25:
+            validate_func = ValidateCustomerAsset
+            args = [dData, dResult, oHead, bCanWriteConfig]
+        elif int(dData['col']) == 26:
+            validate_func = ValidateAssetTagging
+            args = [dData, dResult, oHead, bCanWriteConfig]
+        elif int(dData['col']) == 27:
+            validate_func = ValidateCustomerNumber
+            args = [dData, dResult, oHead, bCanWriteConfig]
+        elif int(dData['col']) == 28:
+            validate_func = ValidateSecCustomerNumber
+            args = [dData, dResult, oHead, bCanWriteConfig]
+        elif int(dData['col']) == 29:
+            validate_func = ValidateVendorNumber
+            args = [dData, dResult]
+        elif int(dData['col']) == 30:
+            validate_func = lambda x, y: y
+            args = [dData, dResult]
+            pass  # Comments
+        elif int(dData['col']) == 31:
+            validate_func = lambda x, y: y
+            args = [dData, dResult]
+            pass  # Additional Ref
+        else:
+            validate_func = lambda x, y: y
+            args = [dData, dResult]
+
+        validate_func(*args)
+
+        return JsonResponse(dResult)
+    # end if
+# end def
+
+def ValidateLineNumber(dData, dResult):
+    if not re.match("^\d+(?:\.\d+){0,2}$|^$", dData['value']):
+        dResult['error']['value'] = 'X - Invalid character. Use 0-9 and "." only.\n'
+        dResult['status'] = 'X'
+        return
+
+    if dData['value'] not in (None, ''):
+        if dData['part_number'] not in (None, ''):
+            if dData['value'].count('.') == 2:
+                if StrToBool(dData['allowChain']):
+                    dResult['propagate']['line'][2] = {
+                        'value': '..' + dData['part_number'].strip('. '),
+                        'chain': False}
+            elif dData['value'].count('.') == 1:
+                if StrToBool(dData['allowChain']):
+                    dResult['propagate']['line'][2] = {
+                        'value': '.' + dData['part_number'].strip('. '),
+                        'chain': False}
+            # end if
+        # end if
+
+    if '.' in dData['value']:
+        if dData['value'].count('.') == 2:
+            if dData['value'][:dData['value'].rfind('.')] not in dData.getlist('other_lines[]'):
+                dResult['error']['value'] = 'X - Parent line item not found.\n'
+                dResult['status'] = 'X'
+                return
+        else:
+            if dData['value'][:dData['value'].find('.')] not in dData.getlist('other_lines[]'):
+                dResult['error']['value'] = 'X - Parent line item not found.\n'
+                dResult['status'] = 'X'
+                return
+        # end if
+
+    if dData['value'] in dData.getlist('other_lines[]'):
+        dResult['error']['value'] = 'X - Duplicate line number exists.\n'
+        dResult['status'] = 'X'
+        return
+# end def
+
+
+def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
+    try:
+        int(dData['value'].strip('. '))
+        dResult['value'] = dData['value'].upper().strip() + '/'
+    except ValueError:
+        dResult['value'] = dData['value'].upper().strip()
+
+    if StrToBool(dData['allowChain']):
+        dResult['propagate']['line'][4] = {'value': dData['quantity'], 'chain': True}
+
+    if len(dResult['value'].strip('.')) > 18:
+        dResult['error']['value'] = 'X - Product Number exceeds 18 characters.\n'
+        dResult['status'] = 'X'
+        return
+
+    if dData['line_number'] in ('', None):
+        bNewParent = not dResult['value'].startswith('.')
+        bNewChild = dResult['value'].startswith('.') and not dResult['value'].startswith('..')
+        bNewGrandchild = dResult['value'].startswith('..')
+        assert bNewParent ^ bNewChild ^ bNewGrandchild
+
+        iParent = 0
+        iChild = 0
+        iGrandchild = 0
+
+        # Find closest parent line item (which may be a child) or top-level line item
+        idx = int(dData['row_index']) - 1
+        while idx >= 0:
+            if idx < len(dData.getlist('other_lines[]')) and \
+                    len(dData.getlist('other_lines[]')[idx].split('.')) > 0 and \
+                    dData.getlist('other_lines[]')[idx].split('.')[0] != '':
+                iParent = int(dData.getlist('other_lines[]')[idx].split('.')[0])
+                if bNewParent:
+                    break
+
+                if len(dData.getlist('other_lines[]')[idx].split('.')) > 1:
+                    iChild = int(dData.getlist('other_lines[]')[idx].split('.')[1])
+                if bNewChild:
+                    break
+
+                if len(dData.getlist('other_lines[]')[idx].split('.')) > 2:
+                    iGrandchild = int(dData.getlist('other_lines[]')[idx].split('.')[2])
+                if bNewGrandchild:
+                    break
+            else:
+                idx -= 1
+
+        if bNewParent:
+            # Check if next highest top-level line number (10 multiple) is available
+            if str(iParent + 10) not in dData.getlist('other_lines[]'):
+                iParent += 10
+            # Try to fit new parent between most previous and next
+            # if that doesn't work, add a new 10-based parent
+            else:
+                bMidAvailable = False
+                for iStep in range(1, 10):
+                    if iParent + iStep > 10 and str(iParent + iStep) not in dData.getlist('other_lines[]'):
+                        bMidAvailable = True
+                        iParent += iStep
+                        break
+
+                if not bMidAvailable:
+                    while str(iParent) in dData.getlist('other_lines[]'):
+                        iParent += 10
+
+            sNewLineNumber = str(iParent)
+        elif bNewChild:
+            if iParent == 0:
+                iParent = 10
+
+            if iChild == 0:
+                iChild = 1
+
+            while ".".join([str(iParent), str(iChild)]) in dData.getlist('other_lines[]'):
+                iChild += 1
+
+            sNewLineNumber = ".".join([str(iParent), str(iChild)])
+        elif bNewGrandchild:
+            if iParent == 0:
+                iParent = 10
+
+            if iChild == 0:
+                iChild = 1
+
+            if iGrandchild == 0:
+                iGrandchild = 1
+
+            while ".".join([str(iParent), str(iChild), str(iGrandchild)]) in dData.getlist('other_lines[]'):
+                iGrandchild += 1
+
+            sNewLineNumber = ".".join([str(iParent), str(iChild), str(iGrandchild)])
+
+        if StrToBool(dData['allowChain']):
+            dResult['propagate']['line'][1] = {'value': sNewLineNumber, 'chain': True}
+    else:
+        if dData['line_number'].count('.') == 0:
+            dResult['value'] = dResult['value'].strip('.')
+        elif dData['line_number'].count('.') == 1:
+            dResult['value'] = '.' + dResult['value'].strip('.')
+        elif dData['line_number'].count('.') == 2:
+            dResult['value'] = '..' + dResult['value'].strip('.')
+        dResult['propagate']['line'][1] = {'value': dData['line_number'],
+                                           'chain': True}
+    # end if
+
+    if StrToBool(dData['allowChain']):
+        dResult['propagate']['line'][29] = {'value': dData['value'].upper().strip('./'), 'chain': False}
+
+    oCursor = connections['BCAMDB'].cursor()
+
+    oCursor.execute(
+        ('SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],'
+         "[Base Unit of Measure],[P Code],[MTyp],[ZMVKE Item Category] FROM  "
+         "dbo.BI_MM_ALL_DATA WHERE [Material]=%s AND [ZMVKE Item Category]<>'NORM'"),
+        [bytes(dResult['value'].strip('.'), 'ascii')])
+
+    tAllDataInfo = oCursor.fetchall()
+    if tAllDataInfo:
+        if StrToBool(dData['allowChain']):
+            dResult['propagate']['line'][3] = {'value': tAllDataInfo[0][0], 'chain': True}
+            dResult['propagate']['line'][5] = {'value': tAllDataInfo[0][3], 'chain': False}
+            dResult['propagate']['line'][9] = {'value': tAllDataInfo[0][6], 'chain': True}
+            dResult['propagate']['line'][10] = {'value': tAllDataInfo[0][4], 'chain': True}
+            dResult['propagate']['line'][15] = {'value': tAllDataInfo[0][1], 'chain': True}
+            dResult['propagate']['line'][16] = {'value': tAllDataInfo[0][2], 'chain': True}
+
+            if tAllDataInfo[0][6] == 'ZF26':
+                dResult['propagate']['line'][12] = {'value': 'Fixed Product Package (FPP)',
+                                                    'chain': False}
+            elif tAllDataInfo[0][5] == 'ZASO':
+                dResult['propagate']['line'][12] = {'value': 'Assembled Sales Object (ASO)',
+                                                    'chain': False}
+            elif tAllDataInfo[0][5] == 'ZAVA':
+                dResult['propagate']['line'][12] = {'value': 'Material Variant (MV)',
+                                                    'chain': False}
+            elif tAllDataInfo[0][5] == 'ZEDY':
+                dResult['propagate']['line'][12] = {'value': 'Dynamic Product Package (DPP)',
+                                                    'chain': False}
+
+            dResult['propagate']['line'][6] = {'value': dData['context_id'],
+                                               'chain': True}
+
+    else:
+        oCursor.close()
+        dResult['error']['value'] = '! - Product Number not found.\n'
+        dResult['status'] = '!'
+        return
+
+    oCursor.execute('SELECT DISTINCT [PRIM RE Code],[PRIM Traceability] FROM dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
+                            [bytes(dResult['value'].strip('.'), 'ascii')])
+    tPrimData = oCursor.fetchall()
+    oCursor.close()
+
+    if tPrimData:
+        if StrToBool(dData['allowChain']):
+            dResult['propagate']['line'][14] = {'value': tPrimData[0][0],
+                                               'chain': True}
+            dResult['propagate']['line'][24] = {'value': 'Y' if tPrimData[0][1]=='Z001' else 'N' if tPrimData[0][1]=='Z002' else '',
+                                               'chain': True}
+
+    if oHead.configuration_status.name == 'In Process' or \
+            (bCanWriteConfig and
+                     oHead.configuration_status.name == 'In Process/Pending'):
+        try:
+            oMPNCustMap = CustomerPartInfo.objects.get(
+                part__product_number=dResult['value'].strip('.'),
+                customer=oHead.customer_unit,
+                active=True)
+
+            # if StrToBool(dData['allowChain']):
+            dResult['propagate']['line'][25] = {'value': 'Y' if oMPNCustMap.customer_asset else 'N' if oMPNCustMap.customer_asset is False else '',
+                                                'chain': True}
+            dResult['propagate']['line'][26] = {'value': 'Y' if oMPNCustMap.customer_asset_tagging else 'N' if oMPNCustMap.customer_asset_tagging is False else '',
+                                                'chain': True}
+            dResult['propagate']['line'][27] = {'value': oMPNCustMap.customer_number,
+                                                'chain': True}
+            dResult['propagate']['line'][28] = {'value': oMPNCustMap.second_customer_number,
+                                                'chain': True}
+        except CustomerPartInfo.DoesNotExist:
+            dResult['propagate']['line'][25] = {
+                'value': None,
+                'chain': True}
+            dResult['propagate']['line'][26] = {
+                'value': None,
+                'chain': True}
+            dResult['propagate']['line'][27] = {
+                'value': None,
+                'chain': True}
+            dResult['propagate']['line'][28] = {
+                'value': None,
+                'chain': True}
+# end def
+
+
+def ValidateDescription(dData, dResult):
+    dResult['value'] = dData['value'].upper().strip()
+
+    if len(dData['value'].strip()) > 40:
+        dResult['error']['value'] = 'X - Product Description exceeds 40 characters.\n'
+        dResult['status'] = 'X'
+        return
+# end def
+
+
+def ValidateQuantity(dData, dResult):
+    if not re.match("^\d+(?:.\d+)?$", dData['value']):
+        dResult['error']['value'] = 'X - Invalid Order Qty.\n'
+        dResult['status'] = 'X'
+        return
+
+    try:
+        dResult['value'] = str(float(int(dData['value'])))
+    except ValueError:
+        pass
+# end def
+
+
+def ValidateContextID(dData, dResult):
+    oCursor = connections['BCAMDB'].cursor()
+    oCursor.execute(
+        ('SELECT DISTINCT [MTyp] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s'),
+        [bytes(dData['part_number'].strip('.'), 'ascii')])
+
+    tMTypInfo = oCursor.fetchall()
+    oCursor.close()
+
+    if tMTypInfo:
+        if tMTypInfo[0][0] == 'ZASO' and dData['value'] in (None, ''):
+            dResult['error']['value'] = 'X - ContextID must be populated for ASO parts.\n'
+            dResult['status'] = 'X'
+            return
+
+# end def
+
+
+def ValidatePlant(dData, dResult):
+    if not re.match("^\d{4}$|^$", dData['value']):
+        dResult['error']['value'] = 'X - Invalid Plant.\n'
+        dResult['status'] = 'X'
+        return
+
+    if dData['value'] != '':
+        oCursor = connections['BCAMDB'].cursor()
+
+        oCursor.execute('SELECT DISTINCT [Plant] FROM dbo.REF_PLANTS WHERE [Plant]=%s',
+                        [bytes(dData['value'], 'ascii')])
+        tPlants = oCursor.fetchall()
+
+        if not tPlants:
+            oCursor.close()
+            dResult['error']['value'] = "! - Plant not found in database.\n"
+            dResult['status'] = "!"
+            return
+
+        oCursor.execute(
+            'SELECT [Plnt] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [Material]=%s',
+            [bytes(dData['value'], 'ascii'),
+             bytes(dData['part_number'].strip('. '), 'ascii')])
+        tResults = oCursor.fetchall()
+        oCursor.close()
+        if (dData['value'],) not in tResults:
+            dResult['error']['value'] = '! - Plant not found for material.\n'
+            dResult['status'] = '!'
+            # end if
+# end def
+
+
+def ValidateSLOC(dData, dResult):
+    if not re.match("^\w{3,4}$|^$", dData['value']):
+        dResult['error']['value'] = 'X - Invalid SLOC.\n'
+        dResult['status'] = 'X'
+        return
+
+    oCursor = connections['BCAMDB'].cursor()
+
+    oCursor.execute('SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC WHERE [SLOC]=%s',
+                    [bytes(dData['value'], 'ascii')])
+    tSLOCs = oCursor.fetchall()
+
+    if not tSLOCs:
+        oCursor.close()
+        dResult['error']['value'] = "! - SLOC not found in database.\n"
+        dResult['status'] = "!"
+        return
+
+    if dData['plant'] not in ('', None):
+        oCursor.execute(
+            'SELECT [Plnt],[SLoc] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [SLoc]=%s AND [Material]=%s',
+            [bytes(dData['plant'], 'ascii'),
+             bytes(dData['value'], 'ascii'),
+             bytes(dData['part_number'].strip('. '), 'ascii')])
+        tResults = oCursor.fetchall()
+        oCursor.close()
+        if (dData['plant'], dData['value']) not in tResults:
+            dResult['error'][
+                'value'] = '! - Plant/SLOC combination not found for material.\n'
+            dResult['status'] = '!'
+            # end if
+    else:
+        oCursor.close()
+# end def
+
+
+def ValidateItemCategory(dData, dResult):
+    pass
+# end def
+
+
+def ValidatePCode(dData, dResult):
+    dResult['value'] = dData['value'].upper()
+    if not re.match(
+            "^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$|^\([A-Z]\d{2}-\d{4}\).*$|^$",
+            dData['value'], re.I):
+        dResult['error']['value'] = 'X - Invalid P-Code.\n'
+        dResult['status'] = 'X'
+        return
+
+    if re.match(r'^\(\d{2,3}-\d{4}\).*$|^\([A-Z]\d{2}-\d{4}\).*$', dResult['value'], re.I):
+        sPCode  = re.match(r'^\((?P<pcode>.{2,3})-\d{4}\).*$', dResult['value'], re.I).group('pcode')
+    else:
+        sPCode = dResult['value']
+
+    oCursor = connections['BCAMDB'].cursor()
+
+    oCursor.execute(
+        'SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM dbo.REF_PCODE_FCODE WHERE [PCODE]=%s',
+        [bytes(sPCode, 'ascii')])
+    tPCode = oCursor.fetchall()
+    oCursor.close()
+
+    if tPCode:
+        dResult['value'] = str(tPCode[0][2]).upper()
+        if StrToBool(dData['allowChain']):
+            dResult['propagate']['line'][11] = {'value': tPCode[0][3],
+                                                'chain': True}
+    else:
+        dResult['error']['value'] = 'X - Invalid P-Code.\n'
+        dResult['status'] = 'X'
+        return
+    # end if
+
+# end def
+
+
+def ValidateCommodityType(dData, dResult):
+    dResult['value'] = dData['value'].upper()
+    if not re.match(
+            "^H(ARD)?W(ARE)?$|^S(OFT)?W(ARE)?$|^CS$|^$",
+            dData['value'], re.I):
+        dResult['error']['value'] = 'X - Invalid HW/SW Ind.\n'
+        dResult['status'] = 'X'
+        return
+
+    if dData['pcode'] in ('(752-2487) LTE RBS SW', '(872-2491) RBS HWAC', '752', '872'):
+        dResult['value'] = 'SW'
+# end def
+
+
+def ValidatePackageType(dData, dResult):
+    pass
+# end def
+
+
+def ValidateSPUD(dData, dResult):
+    pass
+# end def
+
+
+def ValidateRECode(dData, dResult):
+    dResult['value'] = dData['value'].upper().strip()
+
+    oCursor = connections['BCAMDB'].cursor()
+    oCursor.execute(
+            'SELECT DISTINCT [Title],[Description] FROM dbo.REF_PRODUCT_STATUS_CODES WHERE [Status Code]=%s',
+            [bytes(dResult['value'], 'ascii')])
+    tRECode = oCursor.fetchall()
+    oCursor.close()
+    if tRECode:
+        if tRECode[0][0] not in dData['int_notes']:
+                sNote = dData['int_notes'] + '; ' + tRECode[0][0]
+        else:
+            sNote = tRECode[0][0]
+
+        if StrToBool(dData['allowChain']):
+            dResult['propagate']['line'][17] = {'value': sNote,
+                                                'chain': False}
+        dResult['error']['value'] = tRECode[0][1] + '\n'
+        dResult['status'] = 'OK'
+    # end if
+# end def
+
+
+def ValidateMUFlag(dData, dResult):
+    dResult['value'] = dData['value'].upper().strip()
+# end def
+
+
+def ValidateXPlant(dData, dResult):
+    dResult['value'] = dData['value'].upper().strip()
+
+    oCursor = connections['BCAMDB'].cursor()
+
+    oCursor.execute(
+        'SELECT [Description] FROM dbo.[REF_X-PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
+        [bytes(dResult['value'], 'ascii')])
+    tXPlant = oCursor.fetchall()
+    oCursor.close()
+
+    if tXPlant:
+        dResult['error']['value'] = tXPlant[0][0] + '\n'
+        dResult['status'] = 'OK'
+    # end if
+# end def
+
+
+def ValidateUnitPrice(dData, dResult, oHead):
+    dResult['value'] = dData['value'].upper().strip()
+
+    if dResult['value'] not in ('', None):
+        if dData['line_number'] == '10' and not oHead.pick_list:
+            if str(oHead.configuration.override_net_value) == dResult['value']:
+                dResult['error']['value'] = 'CPM override in effect.\n'
+                dResult['status'] = 'OK'
+        else:
+            if oHead.configuration.configline_set.filter(line_number=dData['line_number']):
+                if str(GrabValue(oHead.configuration.configline_set.get(
+                        line_number=dData['line_number']), 'linepricing.override_price')) == dResult['value']:
+                    dResult['error']['value'] = 'CPM override in effect.\n'
+                    dResult['status'] = 'OK'
+    if StrToBool(dData['allowChain']):
+        dResult['propagate']['total_value'] = str(oHead.configuration.total_value)
+# end def
+
+
+def ValidateHigherLevel(dData, dResult):
+    if dData['value'] not in dData.getlist('other_lines'):
+        dResult['error']['value'] = '! - Item number not found.\n'
+        dResult['status'] = '!'
+        return
+# end def
+
+
+def ValidateMaterialGroup(dData, dResult):
+    pass
+# end def
+
+
+def ValidatePurchaseOrderItemNumber(dData, dResult):
+    pass
+# end def
+
+
+def ValidateCondition(dData, dResult, oHead):
+    dResult['value'] = dData['value'].upper().strip()
+
+    if dResult['value'] == 'ZUST' and 'ZUST' in dData.getlist('other_conds[]'):
+        dResult['error']['value'] = 'X - Multiple ZUST conditions.\n'
+        dResult['status'] = 'X'
+        return
+
+    if dResult['value'] == 'ZUST' and dData['line_number'] != '10' and not oHead.pick_list:
+        dResult['error']['value'] = 'X - ZUST only allowed on line 10.\n'
+        dResult['status'] = 'X'
+        return
+
+    if StrToBool(dData['allowChain']):
+        if dResult['value'] in ('ZPRU', 'ZPR1') or 'ZPRU' in dData.getlist('other_conds[]') or \
+                        'ZPR1' in dData.getlist('other_conds'):
+            dResult['propagate']['needs_zpru'] = 'True'
+        else:
+            dResult['propagate']['needs_zpru'] = 'False'
+
+    if dData['amount'] in ('', None) and dResult['value'] not in ('', None):
+        dResult['error']['value'] = 'X - Condition provided without Amount.\n'
+        dResult['status'] = 'X'
+        return
+    else:
+        if bool(dData['previous_value'] in ('', None)) ^ bool(dResult['value'] in ('', None)):
+            if StrToBool(dData['allowChain']):
+                dResult['propagate']['line'][23] = {'value': dData['amount'],
+                                                    'chain': True}
+    # end if
+# end def
+
+def ValidateAmount(dData, dResult):
+    dResult['value'] = dData['value'].replace('$', '').replace(',','')
+
+    if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$", dData['value'].replace('$', '').replace(',','')):
+        dResult['error']['value'] = 'X - Invalid Amount.\n'
+        dResult['status'] = 'X'
+        return
+
+    if dData['condition'] in ('', None) and dResult['value'] not in ('', None):
+        dResult['error']['value'] = 'X - Amount provided without Condition.\n'
+        dResult['status'] = 'X'
+        return
+    else:
+        if bool(dData['previous_value'] in ('', None)) ^ bool(dResult['value'] in ('', None)):
+            if StrToBool(dData['allowChain']):
+                dResult['propagate']['line'][22] = {'value': dData['condition'],
+                                                    'chain': True}
+    # end if
+# end def
+
+
+def ValidateTraceability(dData, dResult):
+    dResult['value'] = dData['value'].upper().strip()
+
+    if not re.match("^Y$|^N$|^$", dData['value'].strip(), re.I):
+        dResult['error']['value'] = 'X - Invalid Traceability Req.\n'
+        dResult['status'] = 'X'
+        return
+# end def
+
+
+def ValidateCustomerAsset(dData, dResult, oHead, bCanWriteConfig):
+    dResult['value'] = dData['value'].upper().strip()
+
+    if not re.match("^Y$|^N$|^$", dData['value'].strip(), re.I):
+        dResult['error']['value'] = 'X - Invalid Customer Asset.\n'
+        dResult['status'] = 'X'
+        return
+
+    if dData['tagging'] != '':
+        if StrToBool(dData['allowChain']):
+            dResult['propagate']['line'][26] = {'value': dData['tagging'], 'chain': True}
+
+    if oHead.configuration_status.name == 'In Process' or \
+            (bCanWriteConfig and
+                     oHead.configuration_status.name == 'In Process/Pending'):
+        try:
+            oMPNCustMap = CustomerPartInfo.objects.get(
+                part__product_number=dData['part_number'].strip('. '),
+                customer=oHead.customer_unit,
+                active=True)
+
+            if (oMPNCustMap.customer_asset is True and dData['value'] != 'Y') \
+                    or (oMPNCustMap.customer_asset is False and dData['value'] != 'N') \
+                    or (oMPNCustMap.customer_asset is None and dData['value'] not in ('', 'NONE', None)):
+                dResult['error']['value'] = "! - Customer Asset does not match stored data.\n"
+                dResult['status'] = '!'
+                return
+        except CustomerPartInfo.DoesNotExist:
+            if dData['value']:
+                dResult['propagate']['line'][25] = {'value': None,
+                                                    'chain': False}
+# end def
+
+
+def ValidateAssetTagging(dData, dResult, oHead, bCanWriteConfig):
+    dResult['value'] = dData['value'].upper().strip()
+
+    if not re.match("^Y$|^N$|^$", dData['value'].strip(), re.I):
+        dResult['error']['value'] = 'X - Invalid Customer Asset Tagging Req.\n'
+        dResult['status'] = 'X'
+        return
+
+    if dData['value'].upper().strip() == 'Y' and dData['asset'].upper().strip() == 'N':
+        dResult['error']['value'] = 'X - Cannot mark Customer Asset Tagging when part is not Customer Asset.\n'
+        dResult['status'] = 'X'
+        return
+
+    if oHead.configuration_status.name == 'In Process' or \
+            (bCanWriteConfig and
+                     oHead.configuration_status.name == 'In Process/Pending'):
+        try:
+            oMPNCustMap = CustomerPartInfo.objects.get(
+                part__product_number=dData['part_number'].strip('. '),
+                customer=oHead.customer_unit,
+                active=True)
+
+            if (oMPNCustMap.customer_asset_tagging is True and dData['value'] != 'Y') \
+                    or (oMPNCustMap.customer_asset_tagging is False and dData['value'] != 'N') \
+                    or (oMPNCustMap.customer_asset_tagging is None and dData['value'] not in ('', 'NONE', None)):
+                dResult['error']['value'] = "! - Customer Asset Tagging does not match stored data.\n"
+                dResult['status'] = '!'
+                return
+        except CustomerPartInfo.DoesNotExist:
+            if dData['value']:
+                dResult['propagate']['line'][26] = {'value': None,
+                                                    'chain': False}
+                # dResult['error']['value'] = "! - No Customer Asset Tagging found for line item.\n"
+                # dResult['status'] = '!'
+                return
+# end def
+
+
+def ValidateCustomerNumber(dData, dResult, oHead, bCanWriteConfig):
+    dResult['value'] = dData['value'].upper().strip()
+
+    if oHead.configuration_status.name == 'In Process' or \
+            (bCanWriteConfig and
+                     oHead.configuration_status.name == 'In Process/Pending'):
+        try:
+            oMPNCustMap = CustomerPartInfo.objects.get(
+                part__product_number=dData['part_number'].strip('. '),
+                customer=oHead.customer_unit,
+                active=True)
+
+            if oMPNCustMap.customer_number != dData['value']:
+                dResult['error']['value'] = "! - Customer Number does not match stored data.\n"
+                dResult['status'] = '!'
+                return
+        except CustomerPartInfo.DoesNotExist:
+            if dData['value']:
+                dResult['propagate']['line'][27] = {'value': None,
+                                                    'chain': False}
+                # dResult['error']['value'] = "! - No Customer Number found for line item.\n"
+                # dResult['status'] = '!'
+                return
+# end def
+
+
+def ValidateSecCustomerNumber(dData, dResult, oHead, bCanWriteConfig):
+    dResult['value'] = dData['value'].upper().strip()
+
+    if oHead.configuration_status.name == 'In Process' or \
+            (bCanWriteConfig and
+                     oHead.configuration_status.name == 'In Process/Pending'):
+        try:
+            oMPNCustMap = CustomerPartInfo.objects.get(
+                part__product_number=dData['part_number'].strip('. '),
+                customer=oHead.customer_unit,
+                active=True)
+
+            if oMPNCustMap.second_customer_number and oMPNCustMap.second_customer_number != dData['value']:
+                dResult['error']['value'] = "! - Second Customer Number does not match stored data.\n"
+                dResult['status'] = '!'
+        except CustomerPartInfo.DoesNotExist:
+            if dData['value']:
+                dResult['propagate']['line'][28] = {'value': None,
+                                                    'chain': False}
+                # dResult['error']['value'] = "! - No Second Customer Number found for line item.\n"
+                # dResult['status'] = '!'
+                return
+# end def
+
+
+def ValidateVendorNumber(dData, dResult):
+    dResult['value'] = dData['value'].upper().strip()
+
+    if dData['value'].upper().strip().startswith('.') or \
+            dData['value'].upper().strip().endswith('/'):
+        dResult['error']['value'] = '! - Vendor Article Number should not start with "." or end with "/".\n'
+        dResult['status'] = '!'
+        return
+# end def

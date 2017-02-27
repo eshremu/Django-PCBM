@@ -1,21 +1,57 @@
-__author__ = 'epastag'
+"""
+Utility functions that are used in various parts of the tool
+"""
 from django.utils import timezone
 from django.db.models import Q
-from BoMConfig.models import Header, Baseline, RevisionHistory, Baseline_Revision, REF_STATUS, LinePricing, \
-    REF_CUSTOMER, REF_REQUEST
+from BoMConfig.models import Header, Baseline, RevisionHistory,\
+    Baseline_Revision, REF_STATUS, LinePricing, REF_CUSTOMER, REF_REQUEST
 from copy import deepcopy
 import datetime
 from functools import cmp_to_key
 import re
 
-
-RevisionCompare = cmp_to_key(lambda x, y: (-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
-                                                                or list(x.strip('1234567890')) < (['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) +
-                                                                                                  list(y.strip('1234567890')))
-                                                                or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y)) else 0 if x == y else 1))
+"""
+Comparator to ensure Baseline revision values get sorted properly
+(A, ..., Z, AA, ..., ZZ, AAA, etc.)
+"""
+RevisionCompare = cmp_to_key(
+    lambda x, y: (
+        -1 if len(x.strip('1234567890')) < len(y.strip('1234567890')) or
+              list(x.strip('1234567890')) < (
+                  ['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) +
+                  list(y.strip('1234567890'))) or
+              (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y))
+            else 0 if x == y
+            else 1))
 
 
 def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=None):
+    """
+    Function to perform revision incrementation.  When a new baseline revision
+    is released, Header records in the currently active revision may need to be
+    copied forward into the revision being released (i.e.: the record is
+    currently active and not discontinued or replaced in the releasing revision)
+
+    This function performs the task of copying forward any necessary Headers,
+    giving the released version a completion date, and updating the baseline
+    tracking of in-process and active revisions.
+
+    This function can be provided a specific sExceptionHeader and sExceptionRev
+    to cause all records to move forward EXCEPT the Header identified by the
+    parameters.  This feature is currently only used during file upload.
+
+    This function can also be run on a single Header record to copy if into a
+    specific revision, as provided in sCopyToRevision.
+
+    :param oRecord: Header or Baseline object on which to operate
+    :param sExceptionHeader: string specifying the configuration_designation of
+                             a Header record to exclude
+    :param sExceptionRev: string specifying the baseline_version of a Header
+                          record to exclude
+    :param sCopyToRevision: string specifying the baseline revision into which a
+                            Header record will be copied
+    :return: None
+    """
     if not isinstance(oRecord,(Baseline, Header)):
         raise TypeError('UpRev can only be passed a Baseline or Header type object')
     # end if
@@ -23,29 +59,56 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
     if isinstance(oRecord,Header) and not sCopyToRevision:
         raise ValueError('Must provide sCopyToRevision when passing a Header to this function')
     # end if
+
     oNewInprocRev = None
     sNewInprocessRev = ''
     if isinstance(oRecord, Baseline):
         sCurrentActiveRev = oRecord.current_active_version
         try:
-            oCurrActiveRev = Baseline_Revision.objects.get(**{'baseline':oRecord, 'version': sCurrentActiveRev})
-            aHeaders = oCurrActiveRev.header_set.exclude(configuration_status__name='Discontinued')\
-                .exclude(configuration_status__name='Cancelled').exclude(configuration_status__name='Inactive')
+            # Get the Baseline_Revision object that corresponds to the
+            # Baseline's current_active_revision value
+            oCurrActiveRev = Baseline_Revision.objects.get(
+                **{'baseline': oRecord, 'version': sCurrentActiveRev})
+
+            # This function will not move forward Header records that are
+            # discontinued, cancelled, or inactive
+            aHeaders = oCurrActiveRev.header_set.exclude(
+                configuration_status__name='Discontinued').exclude(
+                configuration_status__name='Cancelled').exclude(
+                configuration_status__name='Inactive')
         except Baseline_Revision.DoesNotExist:
             aHeaders = []
 
         sCurrentInProcRev = oRecord.current_inprocess_version
-        oCurrInprocRev = Baseline_Revision.objects.get(**{'baseline':oRecord, 'version': sCurrentInProcRev})
+        oCurrInprocRev = Baseline_Revision.objects.get(
+            **{'baseline': oRecord, 'version': sCurrentInProcRev})
 
-        # Need to create a new in-process revision : new in-p = increm(curr in-p) or revision being uploaded
-        if sExceptionRev and RevisionCompare(sCurrentInProcRev) < RevisionCompare(sExceptionRev) < RevisionCompare(IncrementRevision(sCurrentInProcRev)):
+        # Need to determine a new in-process revision
+        # The new value will either be the next incremental step after
+        # current_inprocess_version or the revision being uploaded, which is
+        # provided in sExceptionRev
+
+        # If the exception revision fits between the current active version and
+        # the current inprocess version
+        # *** NOTE: This should only happen during upload ***
+        # In the legacy system, baselines could get odd revisions such as AA2,
+        # Z4, etc.  This tool does not continue that labeling system, but allows
+        # such values to exist or posterity of legacy data
+        if sExceptionRev and (
+                        RevisionCompare(sCurrentInProcRev) <
+                        RevisionCompare(sExceptionRev) <
+                    RevisionCompare(IncrementRevision(sCurrentInProcRev))):
             sNewInprocessRev = sExceptionRev
         else:
             sNewInprocessRev = IncrementRevision(sCurrentInProcRev)
-        (oNewInprocRev, _) = Baseline_Revision.objects.get_or_create(**{'baseline':oRecord, 'version': sNewInprocessRev})
+        (oNewInprocRev, _) = Baseline_Revision.objects.get_or_create(
+            **{'baseline': oRecord, 'version': sNewInprocessRev})
 
-        # Move in-process & in-process/pending records from current in-process rev to new in-process rev
-        aHeadersToMoveToInProc = oCurrInprocRev.header_set.filter(configuration_status__name__in=['In Process', 'In Process/Pending', 'On Hold'])
+        # Move in-process & in-process/pending records from current in-process
+        # rev to new in-process rev
+        aHeadersToMoveToInProc = oCurrInprocRev.header_set.filter(
+            configuration_status__name__in=['In Process', 'In Process/Pending',
+                                            'On Hold'])
 
         for oHeader in aHeadersToMoveToInProc:
             oHeader.baseline = oNewInprocRev
@@ -55,14 +118,33 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
     else:
         aHeaders = [oRecord]
         sCurrentInProcRev = sCopyToRevision
-        oCurrInprocRev = Baseline_Revision.objects.get(**{'baseline':oRecord.baseline.baseline, 'version': sCurrentInProcRev})
+        oCurrInprocRev = Baseline_Revision.objects.get(
+            **{'baseline': oRecord.baseline.baseline,
+               'version': sCurrentInProcRev})
     # end if
 
-    # Copy active records from current active rev to current in-proc rev
+    # Copy active records from current active rev to current in-proc rev (or
+    # revision specified by sCopyToRevision)
     for oHeader in aHeaders:
-        oNextHeader = Header.objects.filter(configuration_designation=oHeader.configuration_designation, program=oHeader.program, baseline_version=sCurrentInProcRev)
-        if not((oHeader.configuration_designation == sExceptionHeader and IncrementRevision(oHeader.baseline_version) == sExceptionRev) or oNextHeader):
+        # Check if the destination revision has a Header record that matches the
+        # current Header
+        oNextHeader = Header.objects.filter(
+            configuration_designation=oHeader.configuration_designation,
+            program=oHeader.program, baseline_version=sCurrentInProcRev)
 
+        # the current header is not the exception header and does not already
+        # exist in the destination revision
+        if not((oHeader.configuration_designation == sExceptionHeader and
+                            IncrementRevision(oHeader.baseline_version) ==
+                        sExceptionRev) or oNextHeader):
+
+            # Create an exact copy of the current header, place it in the
+            # destination revision, and link it back to this header.
+            # *** This section is very similar to the CloneHeader function in
+            # approvals_actions.py, with a few differences regarding baseline
+            # destinations and record links.  These differences could
+            # potentially be consolidated into a single function at some
+            # point.***
             oNewHeader = deepcopy(oHeader)
             oNewHeader.pk = None
             oNewHeader.baseline_version = sCurrentInProcRev
@@ -72,7 +154,8 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
             oNewHeader.baseline = oCurrInprocRev
             oNewHeader.model_replaced_link = oHeader
             if oNewHeader.bom_request_type.name == 'New':
-                oNewHeader.bom_request_type = REF_REQUEST.objects.get(name='Update')
+                oNewHeader.bom_request_type = REF_REQUEST.objects.get(
+                    name='Update')
                 oNewHeader.model_replaced = ''
             oNewHeader.save()
 
@@ -87,14 +170,15 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
                 oNewLine.config = oNewConfig
                 oNewLine.save()
 
-                oNewPrice = deepcopy(oConfigLine.linepricing) if hasattr(oConfigLine, 'linepricing') else LinePricing()
+                oNewPrice = deepcopy(oConfigLine.linepricing) if hasattr(
+                    oConfigLine, 'linepricing') else LinePricing()
                 oNewPrice.pk = None
                 oNewPrice.config_line = oNewLine
                 oNewPrice.save()
             # end for
         # end if
 
-        # 'Inactive' current active version of records
+        # Set current active version of records to 'Inactive' status
         oHeader.configuration_status = REF_STATUS.objects.get(name='Inactive')
         if oHeader.change_comments:
             oHeader.change_comments += '\n'
@@ -107,14 +191,16 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
     # end for
 
     if isinstance(oRecord, Baseline):
-        # Make current in-proc rev into curr active rev
+        # Give releasing revision a completion date
         oCurrInprocRev.completed_date = timezone.now()
         oCurrInprocRev.save()
 
-        if (oNewInprocRev):
+        if oNewInprocRev:
+            # Link new inprocess revision to releasing revision
             oNewInprocRev.previous_revision = oCurrInprocRev
             oNewInprocRev.save()
 
+        # Make current in-proc rev into curr active rev
         oRecord.current_active_version = sCurrentInProcRev
         oRecord.current_inprocess_version = sNewInprocessRev
         oRecord.save()
@@ -126,8 +212,20 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
 
 
 def IncrementRevision(sRevision):
+    """
+    Takes an alphnumeric string and increments the last (rightmost) character.
+    If character incremented was 'Z', it rolls back around to 'A' and the
+    character to the left is incremented.
+
+    Purpose is to maintain a revision chain of A, ..., Z, AA, ... BZ, CA, etc.
+
+    :param sRevision: string of revision value to increment
+    :return: str
+    """
     if not isinstance(sRevision, str):
-        raise TypeError("Function must be passed type 'str'. Unrecognized type: " + str(type(sRevision)))
+        raise TypeError(
+            "Function must be passed type 'str'. Unrecognized type: " +
+            str(type(sRevision)))
 
     if not sRevision.isalpha():
         sRevision = sRevision.rstrip('1234567890')
@@ -139,7 +237,11 @@ def IncrementRevision(sRevision):
 
 
 def char_to_num(sString):
-    """Converts Base 26 sString (Using A-Z) to Base 10 decimal."""
+    """
+    Converts Base 26 sString (Using A-Z) to Base 10 decimal.
+    :param sString:
+    :return:
+    """
     # if not sString:
     #     return 0
     #
@@ -151,7 +253,12 @@ def char_to_num(sString):
 
 
 def GetLetterCode(iColumn):
-    """Converts iColumn to its corresponding letter(s) value."""
+    """
+    Converts iColumn to its corresponding letter(s) value.
+    :param iColumn:
+    :return:
+    """
+
     if not 1 <= iColumn:
         raise ValueError("Invalid column number: " + str(iColumn))
     # end if
@@ -178,8 +285,15 @@ def GetLetterCode(iColumn):
 
 
 def DecrementRevision(sRevision):
+    """
+    Performs the opposite task of IncrementRevision
+    :param sRevision: string of revision to decrement
+    :return: str
+    """
     if not isinstance(sRevision, str):
-        raise TypeError("Function must be passed type 'str'. Unrecognized type: " + str(type(sRevision)))
+        raise TypeError(
+            "Function must be passed type 'str'. Unrecognized type: " +
+            str(type(sRevision)))
 
     if not sRevision.strip():
         raise Exception('Revision cannot be decremented any further')
@@ -195,17 +309,28 @@ def DecrementRevision(sRevision):
 
 def MassUploaderUpdate(oBaseline=None):
     """
-    After a mass upload, this function will go through the database and make changes to the data to ensure conformity:
+    After a mass upload, this function will go through the database and make
+    changes to the data to ensure conformity:
         - For each baseline:
-            -- Each header will be checked to make sure it is in the most recent revision if still active
-            -- Historical entries will be made in order to show progress from previous revisions
-                I.E.: If a configuration is Active on revision AD, and another configuration is active on AF, and the
-                baseline is on revision AF, then the AD config needs to be on AF, but we also need to create a copy on
-                revision AE, so that we can maintain a historical track of what configs were on which revisions, etc.
-            -- Historical entries will be corrected to show status as 'Inactive' so that only the most recent revision
-                is active, but historical data still exists
-            -- Revision History items will be generated/updated for each baseline revision from earliest to current
-        - If 'oBaseline' is provided, the above will only be done for the Baseline provided
+            -- Each header will be checked to make sure it is in the most recent
+                revision if still active
+            -- Historical entries will be made in order to show progress from
+               previous revisions
+                I.E.: If a configuration is Active on revision AD, and another
+                configuration is active on AF, and the baseline is on revision
+                AF, then the AD config needs to be on AF, but we also need to
+                create a copy on revision AE, so that we can maintain a
+                historical track of what configs were on which revisions, etc.
+            -- Historical entries will be corrected to show status as 'Inactive'
+                so that only the most recent revision is active, but historical
+                data still exists
+            -- Revision History items will be generated/updated for each
+                baseline revision from earliest to current
+        - If 'oBaseline' is provided, the above will only be done for the
+            Baseline provided
+
+    :param Baseline: Baseline object on which to perform update (optional)
+    :return None
     """
     if oBaseline:
         aBaselines = [oBaseline]
@@ -215,7 +340,9 @@ def MassUploaderUpdate(oBaseline=None):
 
     for oBase in aBaselines:
         # Get list of revisions that exist
-        aExistingRevs = sorted(list(set([oBaseRev.version for oBaseRev in oBase.baseline_revision_set.order_by('version')])),
+        aExistingRevs = sorted(list(set([oBaseRev.version for oBaseRev in
+                                         oBase.baseline_revision_set.order_by(
+                                             'version')])),
                                key=RevisionCompare)
 
         aPrevRevs = deepcopy(aExistingRevs)
@@ -230,7 +357,8 @@ def MassUploaderUpdate(oBaseline=None):
 
         dHeadersToMoveForward = {}
         for rev in aPrevRevs:
-            oPrevBaseRev = Baseline_Revision.objects.get(baseline=oBase, version=rev)
+            oPrevBaseRev = Baseline_Revision.objects.get(baseline=oBase,
+                                                         version=rev)
             for oHeader in oPrevBaseRev.header_set.all():
                 key = (oHeader.configuration_designation, oHeader.program)
                 if oHeader.configuration_status.name == 'Active':
@@ -241,7 +369,8 @@ def MassUploaderUpdate(oBaseline=None):
                     else:
                         dHeadersToMoveForward[key] = [[rev, '','']]
                     # end if
-                elif oHeader.configuration_status.name in ('Discontinued', 'Cancelled', 'Inactive'):
+                elif oHeader.configuration_status.name in (
+                        'Discontinued', 'Cancelled', 'Inactive'):
                     if key in dHeadersToMoveForward:
                         if dHeadersToMoveForward[key][-1][1] == '':
                             dHeadersToMoveForward[key][-1][1] = rev
@@ -265,7 +394,9 @@ def MassUploaderUpdate(oBaseline=None):
                 sFinalStatus = aMoveParams[2]
 
                 while iFrom < (iTo - 1):
-                    oHeader = Header.objects.get(configuration_designation=config_name, baseline_version=aExistingRevs[iFrom], program=prog)
+                    oHeader = Header.objects.get(
+                        configuration_designation=config_name,
+                        baseline_version=aExistingRevs[iFrom], program=prog)
 
                     try:
                         UpRev(oHeader, sCopyToRevision=aExistingRevs[iFrom + 1])
@@ -275,8 +406,11 @@ def MassUploaderUpdate(oBaseline=None):
                 # end while
 
                 if iFrom != len(aExistingRevs) - 1:
-                    oHeader = Header.objects.get(configuration_designation=config_name, baseline_version=aExistingRevs[iFrom], program=prog)
-                    oHeader.configuration_status = REF_STATUS.objects.get(name='Inactive')
+                    oHeader = Header.objects.get(
+                        configuration_designation=config_name,
+                        baseline_version=aExistingRevs[iFrom], program=prog)
+                    oHeader.configuration_status = REF_STATUS.objects.get(
+                        name='Inactive')
                     if oHeader.change_comments:
                         oHeader.change_comments += '\nBaseline revision increment'
                     else:
@@ -290,204 +424,95 @@ def MassUploaderUpdate(oBaseline=None):
         aExistingRevs = [None] + aExistingRevs
         aExistingRevs.append(oBase.current_inprocess_version)
         for index in range(len(aExistingRevs) - 1):
-            GenerateRevisionSummary(oBase, aExistingRevs[index], aExistingRevs[index + 1])
+            GenerateRevisionSummary(oBase, aExistingRevs[index],
+                                    aExistingRevs[index + 1])
         # end for
     # end for
-# end def
-
-
-def GenerateRevisionSummary_old(oBaseline, sPrevious, sCurrent):
-    """
-    Compares two revisions of a baseline and generates a summary of configurations dropped and added.  Also generates
-    a summary of changes made on configurations found in both revisions.
-    """
-
-    if sPrevious:
-        oPrevBaseline = Baseline_Revision.objects.get(**{'baseline': oBaseline, 'version': sPrevious})
-        aPrevHeaders = [(oHead.configuration_designation, oHead.program) for oHead in oPrevBaseline.header_set.all()]
-        aPrevDiscontinuedHeaders = [(oHead.configuration_designation, oHead.program) for oHead in oPrevBaseline.header_set\
-            .filter(configuration_status__name='Discontinued')]
-    else:
-        aPrevHeaders = []
-        aPrevDiscontinuedHeaders = []
-    # end if
-
-    oCurrBaseline = Baseline_Revision.objects.get(**{'baseline': oBaseline, 'version': sCurrent})
-    aCurrHeaders = [(oHead.configuration_designation, oHead.program) for oHead in oCurrBaseline.header_set.all()]
-    aDiscontinuedHeaders = [(oHead.configuration_designation, oHead.program) for oHead in oCurrBaseline.header_set\
-        .filter(configuration_status__name='Discontinued')]
-
-    aNew = set(aCurrHeaders).difference(set(aPrevHeaders))
-    aRemoved = set(set(set(aPrevHeaders).difference(set(aCurrHeaders))).difference(set(aDiscontinuedHeaders))).difference(set(aPrevDiscontinuedHeaders))
-    sNewSummary = 'Added:\n'
-    for (sNew,_) in aNew:
-        sNewSummary += '    - {}\n'.format(sNew)
-    # end for
-
-    sDiscontinuedSummary = 'Discontinued:\n'
-    for (sDiscontinue,_) in aDiscontinuedHeaders:
-        sDiscontinuedSummary += '    - {}\n'.format(sDiscontinue)
-    # end for
-
-    sRemoveSummary = 'Removed:\n'
-    for (sRemove,_) in aRemoved:
-        sRemoveSummary += '    - {}\n'.format(sRemove)
-    # end for
-
-    dUpdates = {}
-    for (sHeader, oProg) in set(set(aCurrHeaders).difference(set(aDiscontinuedHeaders))).intersection(set(aPrevHeaders)):
-        dUpdates[sHeader] = []
-        oCurrHead = oCurrBaseline.header_set.filter(configuration_designation=sHeader).filter(baseline_version=sCurrent).filter(program=oProg)[0]
-
-        if sPrevious:
-            oPrevHead = oPrevBaseline.header_set.filter(configuration_designation=sHeader).filter(baseline_version=sPrevious).filter(program=oProg)[0]
-
-            aPrevLines = oPrevHead.configuration.configline_set.all()
-            aPrevLines = sorted(aPrevLines, key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
-            aPrevLines = [oLine for oLine in aPrevLines if '.' not in oLine.line_number]
-            aPrevLineNumbers = [oLine.line_number for oLine in aPrevLines]
-        else:
-            aPrevLineNumbers = []
-
-        aCurrLines = oCurrHead.configuration.configline_set.all()
-        aCurrLines = sorted(aCurrLines, key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')])
-        aCurrLines = [oLine for oLine in aCurrLines if '.' not in oLine.line_number]
-        aCurrLineNumbers = [oLine.line_number for oLine in aCurrLines]
-
-        aRemovedLines = [sLine for sLine in aPrevLineNumbers if sLine not in aCurrLineNumbers]
-        aAddedLines = [sLine for sLine in aCurrLineNumbers if sLine not in aPrevLineNumbers]
-        aCarriedLines = [sLine for sLine in aPrevLineNumbers if sLine in aCurrLineNumbers]
-
-        for line in aRemovedLines:
-            [oPrevLine] = [oPrev for oPrev in aPrevLines if oPrev.line_number == line]
-            dUpdates[sHeader].append('Removed: Line {0}; Product {1}'.format(oPrevLine.line_number,
-                                                                             oPrevLine.part.base.product_number))
-        # end for
-
-        for line in aAddedLines:
-            [oNewLine] = [oNew for oNew in aCurrLines if oNew.line_number == line]
-            dUpdates[sHeader].append('Added: Line {0}; Product {1}'.format(oNewLine.line_number,
-                                                                             oNewLine.part.base.product_number))
-        # end for
-
-
-        for line in aCarriedLines:
-            [oPrevLine] = [oPrev for oPrev in aPrevLines if oPrev.line_number == line]
-            [oCurrLine] = [oCurr for oCurr in aCurrLines if oCurr.line_number == line]
-
-            if oCurrLine.part.base.product_number != oPrevLine.part.base.product_number:
-                dUpdates[sHeader].append('{0} - Replaced {1} with {2}'.format(oCurrLine.line_number,
-                                                                              oPrevLine.part.base.product_number,
-                                                                              oCurrLine.part.base.product_number))
-            # end if
-
-            if oCurrLine.order_qty != oPrevLine.order_qty:
-                dUpdates[sHeader].append('{0} - Changed order qty from {1} to {2}'.format(oCurrLine.line_number,
-                                                                              oPrevLine.order_qty, oCurrLine.order_qty))
-            # end if
-
-            # if oCurrLine.plant != oPrevLine.plant:
-            #     dUpdates[sHeader].append('{0} - Changed plant from {1} to {2}'.format(oCurrLine.line_number,
-            #                                                                   oPrevLine.plant,
-            #                                                                   oCurrLine.plant))
-            # # end if
-            #
-            # if oCurrLine.sloc != oPrevLine.sloc:
-            #     dUpdates[sHeader].append('{0} - Changed SLOC from {1} to {2}'.format(oCurrLine.line_number,
-            #                                                                   oPrevLine.sloc,
-            #                                                                   oCurrLine.sloc))
-            # # end if
-            #
-            # if oCurrLine.item_category != oPrevLine.item_category:
-            #     dUpdates[sHeader].append('{0} - Changed Item Cat. from {1} to {2}'.format(oCurrLine.line_number,
-            #                                                                   oPrevLine.item_category,
-            #                                                                   oCurrLine.item_category))
-            # # end if
-            #
-            # if oCurrLine.pcode != oPrevLine.pcode:
-            #     dUpdates[sHeader].append('{0} - Changed P-Code from {1} to {2}'.format(oCurrLine.line_number,
-            #                                                                   oPrevLine.pcode,
-            #                                                                   oCurrLine.pcode))
-            # # end if
-
-            if GrabValue(oCurrLine,'linepricing.pricing_object') and GrabValue(oPrevLine,'linepricing.pricing_object')\
-                    and oCurrLine.linepricing.pricing_object.unit_price != oPrevLine.linepricing.pricing_object.unit_price:
-                dUpdates[sHeader].append('{0} - Changed Unit Price from ${1} to ${2}'.format(oCurrLine.line_number,
-                                                                              oPrevLine.linepricing.pricing_object.unit_price,
-                                                                              oCurrLine.linepricing.pricing_object.unit_price))
-            # end if
-        # end for
-
-        if not dUpdates[sHeader]:
-            del dUpdates[sHeader]
-        # end if
-    # end for
-
-    sHistory = ''
-    if len(sNewSummary) > 7:
-        sHistory += sNewSummary
-    if len(sDiscontinuedSummary) > 14:
-        sHistory += sDiscontinuedSummary
-    if len(sRemoveSummary) > 9:
-        sHistory += sRemoveSummary
-
-    if dUpdates:
-        sHistory += 'Updated:\n'
-        for sConfig in dUpdates.keys():
-            sHistory += '    - {}\n'.format(sConfig)
-            for sUpdate in dUpdates[sConfig]:
-                sHistory += '        -- {}\n'.format(sUpdate)
-            # end for
-        # end for
-    # end if
-
-    (oNew, _) = RevisionHistory.objects.get_or_create(baseline=oBaseline, revision=sCurrent)
-    oNew.history = sHistory
-    oNew.save()
 # end def
 
 
 def GrabValue(oStartObj, sAttrChain, default=None):
+    """
+    Performs a safe, chained, attribute return similar to getattr().
+    :param oStartObj: Base object to begin attribute chain
+    :param sAttrChain: string of '.' separated attributes
+    :param default: any, the value to be returned if the attribute chain is
+                    invalid or results in None
+    :return: Any
+    """
     import functools
     try:
-        value = functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj)
+        value = functools.reduce(lambda x, y: getattr(x, y),
+                                 sAttrChain.split('.'), oStartObj)
         if value is None:
             return default
         else:
-            return functools.reduce(lambda x, y: getattr(x, y), sAttrChain.split('.'), oStartObj)
+            return value
     except AttributeError:
         return default
 # end def
 
 
 class RollbackError(Exception):
+    """
+    Custom class of exception used to detect errors in the baseline rollback
+    process that are not related to Python raised errors.
+    """
     pass
 
 
 def TestRollbackBaseline(oBaseline):
+    """
+    This function checks if a baseline revision can be rolled back (reverted to
+    a previous revision).  If the function returns anything other than an empty
+    list, it signifies that the baseline cannot be reverted.
+    :param oBaseline: Baseline object to revert
+    :return: list of Header objects
+    """
+
+    # Retrieve lastest released revision
     oCurrentActive = oBaseline.latest_revision
 
     if oCurrentActive is None:
         raise RollbackError('No previous revision exists')
 
+    # Determine release datetime (since Baseline_Revision completed_on field
+    # is date only, it does not provide the accuracy needed for reverting, but
+    # HeaderTimeTracker completed_on does.)
+    # Find the latest completed_on field
     try:
-        oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
-                            oHead.headertimetracker_set.all() if oTrack.completed_on])
+        oReleaseDate = max([oTrack.completed_on for oHead in
+                            oBaseline.latest_revision.header_set.all() for
+                            oTrack in oHead.headertimetracker_set.all() if
+                            oTrack.completed_on])
     except ValueError:
         raise RollbackError('No release date could be determined')
 
-    oCurrentInprocess = Baseline_Revision.objects.get(baseline=oBaseline, version=oBaseline.current_inprocess_version)
+    # Retrieve the current in-process revision
+    oCurrentInprocess = Baseline_Revision.objects.get(
+        baseline=oBaseline, version=oBaseline.current_inprocess_version)
 
     aRemainingHeaders = []
     aDuplicates = []
 
+    # For each header's time tracker set, find (if it exists) the tracker
+    # that has a created_on value outside 1 minute of difference from the
+    # determined release date. This means that the tracker (and header) was part
+    # of the previously in-process revision that was released. Add the header
+    # to the list of headers that will remain after rollback.
     for oHead in oCurrentActive.header_set.all():
         if any([oTrack for oTrack in oHead.headertimetracker_set.all() if
-                abs(oTrack.created_on - oReleaseDate) > datetime.timedelta(minutes=1)]):
+                abs(oTrack.created_on - oReleaseDate) > datetime.timedelta(
+                    minutes=1)]):
             aRemainingHeaders.append(oHead)
 
+    # For each header in the list of remaining headers, check if a header with
+    # the same name and program exist in the currently in-process revision and
+    # add those headers to the duplicate list
     for oHead in aRemainingHeaders:
-        if oCurrentInprocess.header_set.filter(configuration_designation=oHead.configuration_designation, program=oHead.program):
+        if oCurrentInprocess.header_set.filter(
+                configuration_designation=oHead.configuration_designation,
+                program=oHead.program):
             aDuplicates.append(oHead)
 
     return aDuplicates
@@ -501,38 +526,74 @@ def RollbackBaseline(oBaseline):
     deleted, headers that were a part of the release that triggered
     the UpRev will be returned to an "In Procees/Pending" state.
     Headers that were made inactive in the previous active revision
-    will returned to Active state.
+    will returned to Active state. Any records currently in-process or
+    in-process/pending will remain in-process but will be moved back to the
+    previous revision
+
+    :param oBaseline: Baseline to revert
+    :return: None
     """
 
+    # Create a sorted list of revisions for the Baseline provided
     aExistingRevs = sorted(
-        list(set([oBaseRev.version for oBaseRev in oBaseline.baseline_revision_set.order_by('version')])),
+        list(set([oBaseRev.version for oBaseRev in
+                  oBaseline.baseline_revision_set.order_by('version')])),
         key=RevisionCompare
     )
 
+    # Determine release datetime by finding the latest completed_on field each
+    # tracker for each header in the currently released baseline revision (since
+    # Baseline_Revision completed_on field is date only, it does not provide the
+    # accuracy needed for reverting, but HeaderTimeTracker completed_on does.)
     try:
-        oReleaseDate = max([oTrack.completed_on for oHead in oBaseline.latest_revision.header_set.all() for oTrack in
-                            oHead.headertimetracker_set.all() if oTrack.completed_on])
+        oReleaseDate = max([oTrack.completed_on for oHead in
+                            oBaseline.latest_revision.header_set.all() for
+                            oTrack in oHead.headertimetracker_set.all() if
+                            oTrack.completed_on])
     except ValueError:
         raise RollbackError('No release date could be determined')
 
+    # Retrieve the currently released and currently in-process
+    # Baseline_Revision's
     oCurrentActive = oBaseline.latest_revision
-    oCurrentInprocess = Baseline_Revision.objects.get(baseline=oBaseline, version=oBaseline.current_inprocess_version)
+    oCurrentInprocess = Baseline_Revision.objects.get(
+        baseline=oBaseline, version=oBaseline.current_inprocess_version)
     oPreviousActive = None
 
+    # Determine which revision (if any) was previous to the currently active
+    # revision
     iPrevIndex = aExistingRevs.index(oBaseline.current_active_version) - 1
     if iPrevIndex >= 0:
-        oPreviousActive = Baseline_Revision.objects.get(baseline=oBaseline, version=aExistingRevs[iPrevIndex])
+        oPreviousActive = Baseline_Revision.objects.get(
+            baseline=oBaseline, version=aExistingRevs[iPrevIndex])
 
-    # print('Determined release date to be:', str(oReleaseDate))
+    """
+    Each Header in the currently active revision (being reverted) can only have
+    one of two cases.  Either A)the header was copied forward from a previous
+    revision during release, or B)the header was (one of) the record(s) approved
+    and released that triggered the revision increase.
+
+    If A, the header can be deleted because nothing was actually done to the
+    record.
+
+    If B, the header will be returned to "In Process/Pending" status and the
+    latest tracker can have its completed_on field, and final approval fields,
+    emptied.
+
+    Which path the header takes is determined by whether ot not the latest
+    tracker's created_on date is within 1 minute of the release date.  This is
+    because a new tracker is created for each record copied forward from the
+    previous revision at the time of release.
+    """
     for oHead in oCurrentActive.header_set.all():
         if any([oTrack for oTrack in oHead.headertimetracker_set.all() if
-                abs(oTrack.created_on - oReleaseDate) < datetime.timedelta(minutes=1)]):
+                abs(oTrack.created_on - oReleaseDate) < datetime.timedelta(
+                    minutes=1)]):
             oHead.delete()
-            # print('Deleting:', str(oHead))
         else:
-            oHead.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
+            oHead.configuration_status = REF_STATUS.objects.get(
+                name='In Process/Pending')
             oHead.save()
-            # print('Changing to "In Process/Pending":', str(oHead))
 
             oLatestTracker = oHead.headertimetracker_set.last()
             if oLatestTracker and oLatestTracker.completed_on:
@@ -541,40 +602,47 @@ def RollbackBaseline(oBaseline):
                 oLatestTracker.brd_approved_on = None
                 oLatestTracker.brd_comment = None
                 oLatestTracker.save()
-                # print('Removing "Completed On" tracker info:', str(oLatestTracker))
             # end if
         # end if
     # end for
 
+    # Move all headers in the in-process record (which are still in-process or
+    # in-process/pending back to the active revision being reverted
     for oHead in oCurrentInprocess.header_set.all():
         oHead.baseline = oCurrentActive
         oHead.baseline_version = oBaseline.current_active_version
         oHead.save()
-        # print('Reverting from in-process revision:', str(oHead))
     # end for
 
+    # If there is a previously active revision available, return all inactive
+    # records to active status and remove any automated change notes
     if oPreviousActive:
         for oHead in oPreviousActive.header_set.all():
             if oHead.configuration_status.name in ('Inactive', 'Obsolete'):
-                oHead.configuration_status = REF_STATUS.objects.get(name='Active')
-                oHead.change_comments = oHead.change_comments.replace('\nBaseline revision increment', '')\
-                    .replace('Baseline revision increment', '')
+                oHead.configuration_status = REF_STATUS.objects.get(
+                    name='Active')
+                oHead.change_comments = oHead.change_comments.replace(
+                    '\nBaseline revision increment', '').replace(
+                    'Baseline revision increment', '')
                 oHead.save()
-                # print('Returning to "Active":', str(oHead))
             # end if
         # end for
     # end if
 
+    # Remove the completed_on date from the reverted revision, and delete the
+    # in-process revision, and all revision histories for the reverted revision
+    # and deleted revision
     oCurrentActive.completed_date = None
     oCurrentActive.save()
-    # print('Removing Baseline revision release date:', str(oCurrentActive))
     oCurrentInprocess.delete()
-    # print('Deleting Baseline revision:', str(oCurrentInprocess))
 
-    RevisionHistory.objects.filter(baseline=oBaseline, revision__in=aExistingRevs[aExistingRevs
-                                   .index(oBaseline.current_active_version):]).delete()
-    # print('Deleting revision history:', *aExistingRevs[aExistingRevs.index(oBaseline.current_active_version):])
+    RevisionHistory.objects.filter(
+        baseline=oBaseline,
+        revision__in=aExistingRevs[aExistingRevs.index(
+            oBaseline.current_active_version):]).delete()
 
+    # Adjust the baseline tracking values to properly reflect which revision is
+    # active and which is in-process
     oBaseline.current_inprocess_version = oBaseline.current_active_version
     if oPreviousActive:
         oBaseline.current_active_version = aExistingRevs[iPrevIndex]
@@ -582,36 +650,80 @@ def RollbackBaseline(oBaseline):
         oBaseline.current_active_version = ''
     # end if
     oBaseline.save()
-    # print('Reverting Baseline to current as {} and in-process as {}'.format(
-    #     aExistingRevs[iPrevIndex] if oPreviousActive else '(None)', oBaseline.current_active_version))
 # end def
 
 
 def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
+    """
+    Generates a summary of differences between two revisions of a baseline.
+    Changes are from the stand-point of the revision specified by sCurrent,
+    showing what changes occurred on sPrevious revision to make sCurrent
+    revision.
+    :param oBaseline: Baseline object
+    :param sPrevious: string specifying previous revision
+    :param sCurrent: string specifying current revision (
+    :return: None
+    """
     oDiscontinued = Q(configuration_status__name='Discontinued')
     oToDiscontinue = Q(bom_request_type__name='Discontinue')
-    aDiscontinuedHeaders = [oHead for oHead in Baseline_Revision
-        .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(oDiscontinued|oToDiscontinue)
-        .exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
-    aAddedHeaders = [oHead for oHead in Baseline_Revision
-        .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='New')
-        .exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
-    aUpdatedHeaders = [oHead for oHead in Baseline_Revision
-        .objects.get(baseline=oBaseline, version=sCurrent).header_set.filter(bom_request_type__name='Update')
-        .exclude(oDiscontinued).exclude(program__name__in=('DTS',)).exclude(configuration_status__name='On Hold').exclude(configuration_status__name='In Process')]
 
+    # Generate a list of Headers in the sCurrent revision of oBaseline that are
+    # Discontinued (and were not copied forward) or are marked to be
+    # discontinued. Ignore records in "On Hold" or "In Process" status. If
+    # working with any other baseline other than 'No Associated Baseline',
+    # ignore records that are in the DTS program
+    aDiscontinuedHeaders = [oHead for oHead in
+                            Baseline_Revision.objects.get(baseline=oBaseline,
+                                                          version=sCurrent).header_set.filter(
+                                oDiscontinued | oToDiscontinue).exclude(
+                                program__name__in=(
+                                'DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(
+                                configuration_status__name__in=('On Hold',
+                                                                'In Process'))]
+
+    # Generate a list of Headers in the sCurrent revision of oBaseline that are
+    # New or Legacy (added as active). Ignore records in "On Hold" or "In
+    # Process" status. If working with any other baseline other than 'No
+    # Associated Baseline', ignore records that are in the DTS program
+    aAddedHeaders = [oHead for oHead in
+                     Baseline_Revision.objects.get(baseline=oBaseline,
+                                                   version=sCurrent).header_set.filter(
+                         bom_request_type__name__in=('New', 'Legacy')).exclude(
+                         program__name__in=(
+                         'DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(
+                         configuration_status__name=('On Hold', 'In Process'))]
+
+    # Generate a list of Headers in the sCurrent revision of oBaseline that are
+    # updates. Ignore records in "On Hold" or "In Process" status. If
+    # working with any other baseline other than 'No Associated Baseline',
+    # ignore records that are in the DTS program
+    aUpdatedHeaders = [oHead for oHead in
+                       Baseline_Revision.objects.get(baseline=oBaseline,
+                                                     version=sCurrent).header_set.filter(
+                           bom_request_type__name='Update').exclude(
+                           oDiscontinued).exclude(program__name__in=(
+                       'DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(
+                           configuration_status__name=('On Hold', 'In Process'))]
+
+    # For each updated Header, determine if the previous revision contains the
+    # record the Header claims to update or not
     aPrevHeaders = []
     aPrevButNotCurrent = []
     aCurrButNotPrev = []
     for oHead in aUpdatedHeaders:
         try:
-            obj = Baseline_Revision.objects.get(baseline=oBaseline, version=sPrevious).header_set\
-                .get(configuration_designation=oHead.configuration_designation, program=oHead.program)
-            if not (obj.configuration_designation, obj.program) in aDiscontinuedHeaders:
-                aPrevHeaders.append(obj)
-            else:
-                aPrevButNotCurrent.append(obj)
-            # end if
+            Baseline_Revision.objects.get(baseline=oBaseline,
+                                          version=sPrevious).header_set.get(
+                configuration_designation=oHead.configuration_designation,
+                program=oHead.program)
+
+            # This check never fails because aDiscontinuedHeaders contains
+            # headers not tuples, and aPrevHeaders never gets used
+            # if not (obj.configuration_designation, obj.program) in aDiscontinuedHeaders:
+            #     aPrevHeaders.append(obj)
+            # else:
+            #     aPrevButNotCurrent.append(obj)
+            # # end if
         except (Header.DoesNotExist, Baseline_Revision.DoesNotExist):
             aCurrButNotPrev.append(oHead)
         # end try
@@ -619,100 +731,150 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     sNewSummary = 'Added:\n'
     sRemovedSummary = 'Discontinued:\n'
 
+    # Append the formatted string for each Header in aAddedHeaders
     for oHead in aAddedHeaders:
         if oHead.model_replaced:
             sNewSummary += '    {} replaces {}\n'.format(
-                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
-                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
-                 if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else ''),
+                oHead.configuration_designation + (
+                    ' ({})'.format(oHead.program.name) if oHead.program else ''
+                ) + (
+                    '  {}'.format(
+                        oHead.configuration.get_first_line().customer_number
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().customer_number else ''
+                ),
 
-                oHead.model_replaced_link.configuration_designation +
-                (" ({})".format(oHead.model_replaced_link.program.name) if
-                 oHead.model_replaced_link.program else '') +
-                ('  {}'.format(oHead.model_replaced_link.configuration.get_first_line().customer_number)
-                 if not oHead.model_replaced_link.pick_list and
-                    oHead.model_replaced_link.configuration.get_first_line().customer_number else '')
-                if oHead.model_replaced_link else oHead.model_replaced
+                oHead.model_replaced_link.configuration_designation + (
+                    " ({})".format(oHead.model_replaced_link.program.name) if
+                    oHead.model_replaced_link.program else ''
+                ) + (
+                    '  {}'.format(
+                        oHead.model_replaced_link.configuration.get_first_line()
+                            .customer_number
+                    ) if not oHead.model_replaced_link.pick_list and
+                         oHead.model_replaced_link.configuration
+                             .get_first_line().customer_number else ''
+                ) if oHead.model_replaced_link else oHead.model_replaced
             )
 
             sRemovedSummary += '    {} is replaced by {}\n'.format(
-                oHead.model_replaced_link.configuration_designation +
-                (" ({})".format(oHead.model_replaced_link.program.name) if
-                 oHead.model_replaced_link.program else '') +
-                ('  {}'.format(oHead.model_replaced_link.configuration.get_first_line().customer_number)
-                 if not oHead.model_replaced_link.pick_list and
-                    oHead.model_replaced_link.configuration.get_first_line().customer_number else '')
-                if oHead.model_replaced_link else oHead.model_replaced,
+                oHead.model_replaced_link.configuration_designation + (
+                    " ({})".format(
+                        oHead.model_replaced_link.program.name
+                    ) if oHead.model_replaced_link.program else '') +
+                (
+                    '  {}'.format(
+                        oHead.model_replaced_link.configuration.get_first_line()
+                            .customer_number
+                    ) if not oHead.model_replaced_link.pick_list and
+                         oHead.model_replaced_link.configuration
+                             .get_first_line().customer_number else ''
+                ) if oHead.model_replaced_link else oHead.model_replaced,
 
-                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
-                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
-                 if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
+                oHead.configuration_designation + (
+                    ' ({})'.format(oHead.program.name) if oHead.program else ''
+                ) + (
+                    '  {}'.format(
+                        oHead.configuration.get_first_line().customer_number
+                    ) if not oHead.pick_list and oHead.configuration
+                        .get_first_line().customer_number else '')
             )
         else:
-            # If a previous revision exists and a matching header exists in previous revision and the Header has a
-            # time tracker without a completed date or disapproved date, but is not In-Process, then the Header must
-            # have been carried forward from a previous revision, and therefore is not ACTUALLY New / Added
-            if Baseline_Revision.objects.filter(baseline=oBaseline, version=sPrevious) and \
-                    Baseline_Revision.objects.get(baseline=oBaseline, version=sPrevious).header_set \
-                    .filter(configuration_designation=oHead.configuration_designation, program=oHead.program) and \
-                    not oHead.configuration_status.name == 'In Process/Pending' and \
-                    oHead.headertimetracker_set.filter(completed_on=None, disapproved_on=None):
+            # If a previous revision exists and a matching header exists in
+            # previous revision and the Header has a time tracker without a
+            # completed date or disapproved date, but is not In-Process, then
+            # the Header must have been carried forward from a previous
+            # revision, and therefore is not ACTUALLY New / Added
+            if Baseline_Revision.objects.filter(baseline=oBaseline,
+                                                version=sPrevious) and Baseline_Revision.objects.get(
+                    baseline=oBaseline, version=sPrevious).header_set.filter(
+                    configuration_designation=oHead.configuration_designation,
+                    program=oHead.program) and not oHead.configuration_status.name \
+                    == 'In Process/Pending' and oHead.headertimetracker_set.filter(
+                    completed_on=None, disapproved_on=None):
                 continue
 
             sNewSummary += '    {} added\n'.format(
-                oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
-                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
-                 if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
+                oHead.configuration_designation + (
+                    ' ({})'.format(oHead.program.name) if oHead.program else ''
+                ) + (
+                    '  {}'.format(
+                        oHead.configuration.get_first_line().customer_number
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().customer_number
+                    else ''
+                )
             )
         # end if
     # end for
 
+    # Add a line for each Header that is an "Update" but has not previous record
+    # in the previous revision
     for oHead in aCurrButNotPrev:
         sNewSummary += '    {} added\n'.format(
-            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
-            ('  {}'.format(oHead.configuration.get_first_line().customer_number)
-             if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
+            oHead.configuration_designation + (
+                ' ({})'.format(oHead.program.name) if oHead.program else ''
+            ) + (
+                '  {}'.format(
+                    oHead.configuration.get_first_line().customer_number
+                ) if not oHead.pick_list and
+                     oHead.configuration.get_first_line().customer_number
+                else ''
+            )
         )
     # end for
 
+    # Add a line for each discontinued Header. Skip headers that have been
+    # replaced and that replacement is in aAddedHeaders, since we have already
+    # added a description of that transaction earlier
     for oHead in aDiscontinuedHeaders:
-        if (oHead.model_replaced_link and any([obj in oHead.model_replaced_link.replaced_by_model.all() for obj in aAddedHeaders
-                                               if hasattr(oHead.model_replaced_link, 'replaced_by_model')])) or\
-                any([obj in oHead.replaced_by_model.all() for obj in aAddedHeaders if hasattr(oHead, 'replaced_by_model')]):
+        if (oHead.model_replaced_link and any(
+                [obj in oHead.model_replaced_link.replaced_by_model.all() for
+                 obj in aAddedHeaders if hasattr(oHead.model_replaced_link,
+                                                 'replaced_by_model')]
+        )) or any(
+            [obj in oHead.replaced_by_model.all() for obj in aAddedHeaders if
+             hasattr(oHead, 'replaced_by_model')]):
             continue
 
         sRemovedSummary += '    {} discontinued\n'.format(
-            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
-                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
-                 if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
+            oHead.configuration_designation + (
+                ' ({})'.format(oHead.program.name) if oHead.program else ''
+            ) + (
+                '  {}'.format(
+                    oHead.configuration.get_first_line().customer_number
+                ) if not oHead.pick_list and
+                     oHead.configuration.get_first_line().customer_number
+                else ''
+            )
         )
     # end for
 
-    for oHead in aPrevButNotCurrent:
-        sRemovedSummary += '    {} removed\n'.format(
-            oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else '') +
-                ('  {}'.format(oHead.configuration.get_first_line().customer_number)
-                 if not oHead.pick_list and oHead.configuration.get_first_line().customer_number else '')
-        )
-    # end for
+    # This list never gets populated, so we don't need to do this
+    # for oHead in aPrevButNotCurrent:
+    #     sRemovedSummary += '    {} removed\n'.format(
+    #         oHead.configuration_designation + (
+    #             ' ({})'.format(oHead.program.name) if oHead.program else ''
+    #         ) + (
+    #             '  {}'.format(
+    #                 oHead.configuration.get_first_line().customer_number
+    #             ) if not oHead.pick_list and
+    #                  oHead.configuration.get_first_line().customer_number
+    #             else ''
+    #         )
+    #     )
+    # # end for
 
-    # if aDiscontinuedHeaders:
-    #     for oHead in aDiscontinuedHeaders:
-    #         sRemovedSummary += '\t{} is replaced by {}\n'.format(oHead.model_replaced, oHead.configuration_designation + (' ({})'.format(oHead.program.name) if oHead.program else ''))
-        # end for
-    # end if
-
+    # Calculate and add changes for updated headers
     sUpdateSummary = "Updated:\n"
     for oHead in aUpdatedHeaders:
-        # print(oHead)
-        sTemp = ''
-        # aPotentialMatches = []
         try:
             oPrev = oHead.model_replaced_link or Header.objects.get(
                 configuration_designation=oHead.configuration_designation,
                 program=oHead.program,
                 baseline_version=sPrevious
             )
+
             sTemp = HeaderComparison(oHead, oPrev)
         except Header.DoesNotExist:
             sTemp = ''
@@ -721,16 +883,23 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
         if sTemp:
             oHead.change_notes = sTemp
             oHead.save()
-            sUpdateSummary += '    {}:\n'.format(oHead.configuration_designation + \
-                                                 (' ({})'.format(oHead.program) if oHead.program else '') + \
-                              ('  {}'.format(oHead.configuration.get_first_line().customer_number) if not oHead.pick_list
-                                                     and oHead.configuration.get_first_line().customer_number else ''))
+            sUpdateSummary += '    {}:\n'.format(
+                oHead.configuration_designation + (
+                    ' ({})'.format(oHead.program) if oHead.program else ''
+                ) + (
+                    '  {}'.format(
+                        oHead.configuration.get_first_line().customer_number
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().customer_number
+                    else ''
+                )
+            )
+
             for sLine in sTemp.split('\n'):
                 sUpdateSummary += (' ' * 8) + sLine + '\n'
         # end if
     # end for
 
-    # print(sNewSummary, sRemovedSummary, sUpdateSummary, sep='\n')
     sHistory = ''
 
     if sNewSummary != 'Added:\n':
@@ -740,70 +909,95 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     if sUpdateSummary != "Updated:\n":
         sHistory += sUpdateSummary
 
-    # print(sHistory)
-    (oNew, _) = RevisionHistory.objects.get_or_create(baseline=oBaseline, revision=sCurrent)
+    # Save revision history
+    (oNew, _) = RevisionHistory.objects.get_or_create(baseline=oBaseline,
+                                                      revision=sCurrent)
     oNew.history = sHistory
     oNew.save()
 # end def
 
 
 def HeaderComparison(oHead, oPrev):
+    """
+    Performs a line-by-line comparison of two Headers (oHead, oPrev) and
+    determines how oHead differs from oPrev
+    :param oHead: Header object. Differences are focused on this record
+    :param oPrev: Header object. Starting point to determine changes
+    :return: string listing all changes found
+    """
     sTemp = ''
     aPotentialMatches = []
     """
-        Creating a dictionary for previous and current revision, keyed on (Part #, Line #), value of
-        [Qty, Price, (Grandparent Part #, Parent Part #), Matching line key].
-        This will be used to find a match between revisions, and track when a line has been moved rather than
-        removed or replaced.
-        """
+    Creating a dictionary for previous and current revision,
+        key: (Part #, Line #)
+        value: [Qty, Price, (Grandparent Part #, Parent Part #), Matching line key].
+    This will be used to find a match between revisions, and track when a line
+    has been moved rather than removed or replaced.
+    """
     dPrevious = {}
     dCurrent = {}
     oATT = REF_CUSTOMER.objects.get(name='AT&T')
 
+    # Build dictionary from oHead ConfigLine set
     for oConfigLine in oHead.configuration.configline_set.all():
-        dCurrent[(oConfigLine.part.base.product_number, oConfigLine.line_number)] = [
+        dCurrent[
+            (oConfigLine.part.base.product_number, oConfigLine.line_number)
+        ] = [
             oConfigLine.order_qty,
-            GrabValue(oConfigLine, 'linepricing.override_price') or GrabValue(oConfigLine,
-                                                                'linepricing.pricing_object.unit_price') or None,
+            GrabValue(
+                oConfigLine, 'linepricing.override_price'
+            ) or GrabValue(
+                oConfigLine, 'linepricing.pricing_object.unit_price'
+            ) or None,
             (
-                oHead.configuration.configline_set.get(line_number=oConfigLine.line_number[
-                                                                   :oConfigLine.line_number.find(
-                                                                       '.')]).part.base.product_number if oConfigLine.is_grandchild else None,
-                oHead.configuration.configline_set.get(line_number=oConfigLine.line_number[
-                                                                   :oConfigLine.line_number.rfind(
-                                                                       '.')]).part.base.product_number if oConfigLine.is_child else None
+                oHead.configuration.configline_set.get(
+                    line_number=oConfigLine.line_number[
+                                :oConfigLine.line_number.find('.')
+                                ]
+                ).part.base.product_number if oConfigLine.is_grandchild else None,
+                oHead.configuration.configline_set.get(
+                    line_number=oConfigLine.line_number[
+                                :oConfigLine.line_number.rfind('.')
+                                ]
+                ).part.base.product_number if oConfigLine.is_child else None
             ),
             None
         ]
 
+    # Build dictionary from oPrev ConfigLine set
     for oConfigLine in oPrev.configuration.configline_set.all():
-        dPrevious[(oConfigLine.part.base.product_number, oConfigLine.line_number)] = [
+        dPrevious[
+            (oConfigLine.part.base.product_number, oConfigLine.line_number)
+        ] = [
             oConfigLine.order_qty,
-            GrabValue(oConfigLine, 'linepricing.override_price') or GrabValue(oConfigLine,
-                                                                'linepricing.pricing_object.unit_price') or None,
+            GrabValue(
+                oConfigLine, 'linepricing.override_price'
+            ) or GrabValue(
+                oConfigLine,
+                'linepricing.pricing_object.unit_price'
+            ) or None,
             (
                 oHead.configuration.configline_set.get(
                     line_number=oConfigLine.line_number[
-                                :oConfigLine.line_number.find(
-                                    '.')]).part.base.product_number if oConfigLine.is_grandchild and
-                                                                       oHead.configuration.configline_set.filter(
-                                                                           line_number=oConfigLine.line_number[
-                                                                                       :oConfigLine.line_number.find(
-                                                                                           '.')]) else None,
+                                :oConfigLine.line_number.find('.')
+                                ]
+                ).part.base.product_number if oConfigLine.is_grandchild and
+                                              oHead.configuration.configline_set.filter(
+                                                  line_number=oConfigLine.line_number[
+                                                              :oConfigLine.line_number.find('.')]) else None,
                 oHead.configuration.configline_set.get(
                     line_number=oConfigLine.line_number[
-                                :oConfigLine.line_number.rfind(
-                                    '.')]).part.base.product_number if oConfigLine.is_child and
-                                                                       oHead.configuration.configline_set.filter(
-                                                                           line_number=oConfigLine.line_number[
-                                                                                       :oConfigLine.line_number.rfind(
-                                                                                           '.')]) else None
+                                :oConfigLine.line_number.rfind('.')
+                                ]
+                ).part.base.product_number if oConfigLine.is_child and
+                                              oHead.configuration.configline_set.filter(
+                                                  line_number=oConfigLine.line_number[
+                                                              :oConfigLine.line_number.rfind('.')]) else None
             ),
             None
         ]
 
-    # print(dPrevious, dCurrent, sep='\n')
-
+    # For each key in dPrevious
     for (sPart, sLine) in dPrevious.keys():
         if (sPart, sLine) in dCurrent.keys():
             dCurrent[(sPart, sLine)][3] = dPrevious[(sPart, sLine)][3] = (sPart, sLine)
@@ -847,19 +1041,20 @@ def HeaderComparison(oHead, oPrev):
                             ((oHead.customer_unit == oATT and not oHead.pick_list and sLine == '10') or
                              (oHead.customer_unit == oATT and oHead.pick_list) or
                              oHead.customer_unit != oATT):
-                        sTemp += '{} - {} line price changed from {} to {}\n'.format(dPrevious[(sPart, sLine)][3][1], sPart,
-                                                                                             dPrevious[(sPart, sLine)][
-                                                                                                 1],
-                                                                                             dCurrent[dPrevious[
-                                                                                                 (sPart, sLine)][3]][1])
+                        sTemp += '{} - {} line price changed from {} to {}\n'.format(
+                            dPrevious[(sPart, sLine)][3][1], sPart,
+                            dPrevious[(sPart, sLine)][1],
+                            dCurrent[dPrevious[(sPart, sLine)][3]][1])
 
             else:
                 """
-                If part is not in new version, but line number still is, the part may have been replaced.
-                However, the new version's matching line number may be a part in the previous version that has
-                not been reached in the key list, so we will add the potential match to a list of possible
-                matches.  After the the whole dictionary has been checked, entries without matches will be
-                checked against the list of potential matches.
+                If part is not in new version, but line number still is, the
+                part may have been replaced. However, the new version's matching
+                line number may be a part in the previous version that has not
+                been reached in the key list, so we will add the potential match
+                to a list of possible matches.  After the the whole dictionary
+                has been checked, entries without matches will be checked
+                against the list of potential matches.
                 """
                 if any(sLine == sLnum for (_, sLnum) in dCurrent.keys()):
                     for key in dCurrent.keys():
@@ -869,7 +1064,10 @@ def HeaderComparison(oHead, oPrev):
     # One more check of potential matches to make sure none were missed
     for key in dCurrent.keys():
         if key in [curr for (_, curr, _) in aPotentialMatches] and dCurrent[key][3]:
-            aPotentialMatches[list([curr for (_, curr, _) in aPotentialMatches]).index(key)][2] = False
+            aPotentialMatches[
+                list(
+                    [curr for (_, curr, _) in aPotentialMatches]
+                ).index(key)][2] = False
 
     for key in dPrevious.keys():
         if not dPrevious[key][3]:
@@ -879,15 +1077,18 @@ def HeaderComparison(oHead, oPrev):
                     dPrevious[key][3] = aEntry[1]
                     dCurrent[aEntry[1]][3] = key
                     # print(key[1], key[0], 'replaced by', dPrevious[key][3][0])
-                    sTemp += '{} - {} replaced by {}\n'.format(key[1], key[0], dPrevious[key][3][0])
+                    sTemp += '{} - {} replaced by {}\n'.format(key[1], key[0],
+                                                               dPrevious[key][3][0]
+                                                               )
                     break
 
     for key in dPrevious.keys():
         if not dPrevious[key][3]:
             # print(key[1], key[0], 'removed')
             sTemp += '{} - {} removed{}\n'.format(key[1], key[0],
-                                                  ' (line number remained)' if key in [prev for (prev, _, _) in
-                                                                                       aPotentialMatches] else '')
+                                                  ' (line number remained)' if key in [
+                                                      prev for (prev, _, _) in
+                                                      aPotentialMatches] else '')
 
     for key in dCurrent.keys():
         if not dCurrent[key][3]:
@@ -902,6 +1103,11 @@ def HeaderComparison(oHead, oPrev):
 
 
 def TitleShorten(sTitle):
+    """
+    Shortens a string by replacing certain words in the string
+    :param sTitle: string to be shortened
+    :return: str
+    """
     sTitle = re.sub('Optional', 'Opt', sTitle, flags=re.IGNORECASE)
     sTitle = re.sub('Hardware', 'HW', sTitle, flags=re.IGNORECASE)
     sTitle = re.sub('Pick List', 'PL', sTitle, flags=re.IGNORECASE)
@@ -910,10 +1116,15 @@ def TitleShorten(sTitle):
 
 
 def StrToBool(sValue, bDefault = None):
-    """Convert a string to a bool. If the string is empty and a default is
+    """
+    Convert a string to a bool. If the string is empty and a default is
     provided, it is returned; otherwise an exception is raised. If the string is
     not one that can be clearly interpreted as a Boolean value, raises an
-    exception."""
+    exception.
+    :param sValue:
+    :param bDefault:
+    :return: Boolean
+    """
 
     if sValue is None:
         return False
@@ -935,6 +1146,16 @@ def StrToBool(sValue, bDefault = None):
 
 
 def DetectBrowser(oRequest):
+    """
+    Inspects the HTTP request user agent data to determine if the request came
+    from Chrome, Firefox, or Internet Explorer. Returns the determined browser
+
+    TODO: This should be updated to handle other browsers, such as Opera or
+    Safari, but those browsers were not available to us at development
+
+    :param oRequest: Django HTTP request object
+    :return: str
+    """
     sUserAgent = oRequest.META['HTTP_USER_AGENT']
     oRegex = re.compile(r'(?:[^ (]|\([^)]*\))+')
     aTokens = oRegex.findall(sUserAgent)

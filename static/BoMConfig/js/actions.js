@@ -99,6 +99,14 @@ function process(action){
     }
 }
 
+function credentialTest(event){
+    if($('input#sap_username').val() != '' && $('input#sap_password').val() != ''){
+        $('#messageModal button.modal_submit').removeAttr('disabled');
+    } else {
+        $('#messageModal button.modal_submit').attr('disabled','disabled');
+    }
+}
+
 $(document).ready(function(){
     $('#approval_submit').click(function(){
         if($('.inprocess:checked').length > 0) {
@@ -201,25 +209,35 @@ $(document).ready(function(){
             $('#messageModal').one('hidden.bs.modal', function () {
                 messageToModal('SAP Credentials',
                     '<p>Please enter your SAP username and password:</p>'+
-                    '<label for="sap_username">Username</label>&nbsp;&nbsp;<input type="text" id="sap_username" name="username"/><br/>'+
-                    '<label for="sap_password">Password</label>&nbsp;&nbsp;<input type="password" id="sap_password" name="password"/><br/>'+
+                    '<label for="sap_username">Username</label>&nbsp;&nbsp;<input type="text" id="sap_username" name="username" oninput="credentialTest()"/><br/>'+
+                    '<label for="sap_password">Password</label>&nbsp;&nbsp;<input type="password" id="sap_password" name="password" oninput="credentialTest()"/><br/>'+
                     '<input type="checkbox" id="toggle_pass" name="passwordtoggle"/><label for="toggle_pass">Show characters</label>',
                     function(){
                         data['user'] = $('#sap_username').val();
                         data['pass'] = $('#sap_password').val();
-                        $.ajax({
-                            url: doc_url,
-                            type: "POST",
-                            data: data,
-                            headers:{
-                                'X-CSRFToken': getcookie('csrftoken')
-                            },
-                            success: function(){
-                                window.location.reload(true);
-                            }
+                        $('#messageModal').one('hidden.bs.modal', function () {
+                            $.ajax({
+                                url: doc_url,
+                                type: "POST",
+                                data: data,
+                                headers: {
+                                    'X-CSRFToken': getcookie('csrftoken')
+                                },
+                                success: function () {
+                                    window.location.reload(true);
+                                },
+                                error: function (xhr, status, error) {
+                                    if (xhr.status == 409 && error == "Invalid replacement"){
+                                        messageToModal("Replacement document missing / in-work", "The record replacing this record has no SAP document number or the document is currently being created. Please allow the document to finish before proceeding.");
+                                    } else {
+                                        messageToModal("Unknown error", "An error occurred while attempting to process you request.  If this continues, please request support via the Support button");
+                                    }
+                                }
+                            });
                         });
                     }
                 );
+                $('#messageModal button.modal_submit').attr('disabled','disabled');
             });
         }, this);
     });
@@ -257,6 +275,65 @@ $(document).ready(function(){
         $('.modal_submit.btn.btn-primary').removeAttr('disabled');
     });
 
+    $('.approval div').mouseenter(function(e) {
+        var hovertext ='';
+        if($(this).find('.glyphicon').length > 0){
+            xhr = $.ajax({
+                url: approval_url,
+                type: "POST",
+                data: {
+                    id: this.dataset.id,
+                    level: this.dataset.level
+                },
+                headers:{
+                    'X-CSRFToken': getcookie('csrftoken')
+                },
+                success: function(data) {
+                    hovertext = 'By: ' + data.person + "<br/>";
+
+                    if(data.type != 'S'){
+                        hovertext += "On: " + data.date + "<br/>";
+                        hovertext += 'Comments: ' + data.comments + "<br/>";
+                        if(data.type == 'A'){
+                            $('#hintBox').css('background-color', 'rgba(0,150,0,0.9)');
+                        } else {
+                            $('#hintBox').css('background-color', 'rgba(150,0,0,0.9)');
+                        }
+                    } else {
+                        $('#hintBox').css('background-color', 'rgba(0,0,0,0.9)');
+                    }
+                    xhr = undefined;
+                    $('#hintBox').html(hovertext).show();
+                    var y_location;
+                    if(e.clientY + 20 + $('#hintBox').outerHeight() > $(window).height()){
+                        y_location = e.pageY - 10 - $('#hintBox').outerHeight();
+                    } else {
+                        y_location = e.pageY + 20;
+                    }
+                    $('#hintBox').css('top', y_location).css('left', e.pageX-210);
+                },
+                error: function(){
+                    hovertext = '<span>Could not find</span>';
+                    $('#hintBox').css('background-color', 'rgba(0,0,0,0.9)');
+                }
+            });
+        }
+    }).mousemove(function(e){
+        var y_location;
+        if(e.clientY + 20 + $('#hintBox').outerHeight() > $(window).height()){
+            y_location = e.pageY - 10 - $('#hintBox').outerHeight();
+        } else {
+            y_location = e.pageY + 20;
+        }
+        $('#hintBox').css('top', y_location).css('left', e.pageX-210);
+    }).mouseleave(function() {
+        $('#hintBox').hide();
+        if (xhr !== undefined){
+            xhr.abort();
+            xhr = undefined;
+        }
+    });
+
     function processForms(){
         if (returnedFormData == null){
 
@@ -279,10 +356,6 @@ $(document).ready(function(){
                     } else {
                         location.reload(true);
                     }
-                    // returnedFormData = null;
-                    // iIndex = -1;
-                    // approvalFormData = {};
-                    // $('#myModal').modal('hide');
                 },
                 error: function(xhr, status, error){
                     $('#myModal').modal('hide');
