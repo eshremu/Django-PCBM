@@ -77,12 +77,6 @@ def BaselineMgmt(oRequest):
         form = SubmitForm()
         aBaselines = Baseline.objects.exclude(title='No Associated Baseline')
         for oBaseline in aBaselines:
-            # aRevisions = sorted(list(set([oBaseRev.version for oBaseRev in oBaseline.baseline_revision_set.order_by('version') if oBaseRev.version in (oBaseRev.baseline.current_active_version, oBaseRev.baseline.current_inprocess_version)])),
-            #                     key=cmp_to_key(lambda x,y:(-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
-            #                                                      or list(x.strip('1234567890')) < (['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) +
-            #                                                                                        list(y.strip('1234567890')))
-            #                                                      or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y)) else 0 if x == y else 1)),
-            #                     reverse=True)
             aRevisions = [oBaseline.current_inprocess_version or None, oBaseline.current_active_version or None]
             dTableData = {'baseline': oBaseline, 'revisions': []}
 

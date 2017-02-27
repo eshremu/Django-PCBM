@@ -356,10 +356,6 @@ $(document).ready(function(){
                     } else {
                         location.reload(true);
                     }
-                    // returnedFormData = null;
-                    // iIndex = -1;
-                    // approvalFormData = {};
-                    // $('#myModal').modal('hide');
                 },
                 error: function(xhr, status, error){
                     $('#myModal').modal('hide');

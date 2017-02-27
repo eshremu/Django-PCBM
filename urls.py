@@ -1,3 +1,7 @@
+"""
+URL routing definitions for tool
+"""
+
 from django.conf.urls import url, patterns
 from django.contrib.auth import views as auth_views
 from BoMConfig import views

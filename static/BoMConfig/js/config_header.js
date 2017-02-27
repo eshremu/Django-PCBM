@@ -223,7 +223,7 @@ function list_filler(parent, child, index){
                 $child.find('option:gt(' + index + ')').remove();
                 for (var key in data){
                     if(data.hasOwnProperty(key)){
-                        $child.append($('<option>',{value:key,text:data[key]}));
+                        $child.append($('<option>',{value:key.toString().slice(1),text:data[key]}));
                     }
                 }
             },

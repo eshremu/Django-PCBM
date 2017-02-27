@@ -51,7 +51,7 @@ def Approval(oRequest):
                     'Customer #1','Customer #2','Customer Warehouse','Ericsson VAR','Baseline Release & Dist.'],
         'viewauthorized': SecurityPermission.objects.filter(title__iregex='^.*Approval.*$').filter(user__in=oRequest.user.groups.all()),
         'skip_authorized': SecurityPermission.objects.filter(title__iexact='BLM_Approval_Write').filter(user__in=oRequest.user.groups.all()),
-        'notify_users': {key: set(User.objects.filter(groups__securitypermission__title__in=value).exclude(groups__name__startswith='BOM_BPMA')) for key,value in HeaderTimeTracker.permission_map().items()},
+        'notify_users': {key: User.objects.filter(groups__securitypermission__title__in=value).exclude(groups__name__startswith='BOM_BPMA').distinct().order_by('last_name') for key, value in HeaderTimeTracker.permission_map().items()},
         'available_levels': ",.".join(
             [''] + [sLevel for sLevel in HeaderTimeTracker.approvals() if
                     bool(SecurityPermission.objects.filter(
@@ -531,7 +531,7 @@ def AjaxApprovalForm(oRequest):
 
             for key, value in dPermissionLevels.items():
                 if key in aApprovalLevels:
-                    dContext['email'].update({key: list(set(User.objects.filter(groups__securitypermission__in=SecurityPermission.objects.filter(title__in=value)).exclude(groups__name__contains='BPMA')))})
+                    dContext['email'].update({key: list(User.objects.filter(groups__securitypermission__in=SecurityPermission.objects.filter(title__in=value)).exclude(groups__name__contains='BPMA').order_by('last_name').distinct())})
 
             dForm[record] = [oHeader.configuration_designation + "  " + oHeader.baseline_version, loader.render_to_string('BoMConfig/approvalform.html', dContext)]
 

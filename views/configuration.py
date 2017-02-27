@@ -21,6 +21,7 @@ from BoMConfig.utils import GrabValue, HeaderComparison, RevisionCompare, Detect
 
 import copy
 # import datetime
+from collections import OrderedDict
 from itertools import chain
 import json
 import re
@@ -297,7 +298,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
         # Make 'Person Responsible' field a dropdown of PSM users
         if not oExisting:
             headerForm.fields['person_responsible'] = fields.ChoiceField(choices=[('', '---------')] + list(
-                [(user.first_name + ' ' + user.last_name, user.first_name + ' ' + user.last_name) for user in User.objects.all() if\
+                [(user.first_name + ' ' + user.last_name, user.first_name + ' ' + user.last_name) for user in User.objects.all().order_by('last_name') if\
                         user.groups.filter(name__in=['BOM_PSM_Baseline_Manager','BOM_PSM_Product_Supply_Manager'])]
             ))
 
@@ -307,7 +308,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                         tuple((obj.title,obj.title) for obj in
                               Baseline_Revision.objects.filter(
                                   baseline__customer=oExisting.customer_unit if oExisting else None)
-                              .filter(completed_date=None).exclude(baseline__title='No Associated Baseline'))
+                              .filter(completed_date=None).exclude(baseline__title='No Associated Baseline').order_by('baseline__title'))
             )
 
             oCursor = connections['REACT'].cursor()
@@ -1731,10 +1732,10 @@ def ListFill(oRequest):
         oParent = cParentClass.objects.get(pk=iParentID)
         if oRequest.POST['child'] != 'baseline_impacted':
             cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
-            result = {obj.id:obj.name for obj in cChildClass.objects.filter(parent=oParent)}
+            result = OrderedDict([('i' + str(obj.id), obj.name) for obj in cChildClass.objects.filter(parent=oParent).order_by('name')])
         else:
             cChildClass = Baseline
-            result = {obj.title:obj.title for obj in cChildClass.objects.filter(customer=oParent)}
+            result = OrderedDict([('i' + obj.title, obj.title) for obj in cChildClass.objects.filter(customer=oParent).order_by('title')])
 
         return JsonResponse(result)
     else:
@@ -1752,10 +1753,10 @@ def ListREACTFill(oRequest):
         oParent = cParentClass.objects.get(pk=iParentID)
 
         oCursor = connections['REACT'].cursor()
-        oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s',
+        oCursor.execute('SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE [CustomerUnit]=%s ORDER BY [Customer]',
                         [bytes(oParent.name, 'ascii')])
         tResults = oCursor.fetchall()
-        result = {obj: obj for obj in chain.from_iterable(tResults)}
+        result = OrderedDict([(obj, obj) for obj in chain.from_iterable(tResults)])
         return JsonResponse(result)
     else:
         raise Http404
@@ -2267,7 +2268,7 @@ def ValidateSLOC(dData, dResult):
 
 
 def ValidateItemCategory(dData, dResult):
-    pass  # TODO: Still need validation for this
+    pass
 # end def
 
 

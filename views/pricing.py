@@ -120,8 +120,8 @@ def PartPricing(oRequest):
                     # end for
                 # end if
 
-                aPriceObjs = PricingObject.objects.filter(part=oPart, is_current_active=True).order_by('customer',
-                                                                                                       'sold_to', 'spud')
+                aPriceObjs = PricingObject.objects.filter(part=oPart, is_current_active=True).order_by('customer__name',
+                                                                                                       'sold_to', 'spud__name')
                 for oPriceObj in aPriceObjs:
                     dContext['partlines'].append([
                         oPriceObj.part.product_number,
@@ -352,55 +352,6 @@ def OverviewPricing(oRequest):
     status_message = None
 
     sTemplate='BoMConfig/overviewpricing.html'
-
-    # aPricingObjectList = PricingObject.objects.filter(is_current_active=True).order_by('part__product_number', 'customer', 'sold_to', 'spud')
-    #
-    # aPricingLines = []
-    # aComments = []
-    #
-    # if aPricingObjectList:
-    #     for oPriceObj in aPricingObjectList:
-    #         aCommentRow = []
-    #         aObj = [
-    #             oPriceObj.part.product_number,
-    #             oPriceObj.customer.name,
-    #             oPriceObj.sold_to or '(None)',
-    #             oPriceObj.spud.name if oPriceObj.spud else '(None)',
-    #             oPriceObj.technology.name if oPriceObj.technology else '(None)',
-    #             oPriceObj.unit_price,
-    #         ]
-    #
-    #         aCommentRow.append("Valid: {}\nCut-over: {}".format((oPriceObj.valid_from_date.strftime('%m/%d/%Y') if oPriceObj.valid_from_date else "N/A") +
-    #                                                             " - " + (oPriceObj.valid_to_date.strftime('%m/%d/%Y') if oPriceObj.valid_to_date else "Present"),
-    #                                                             (oPriceObj.cutover_date.strftime('%m/%d/%Y') if oPriceObj.cutover_date else "N/A")) +
-    #                            ("\nPrice Erosion (%): {}".format(oPriceObj.erosion_rate) if oPriceObj.price_erosion else ""))
-    #
-    #         # oChainPriceObj = oPriceObj
-    #         # while oChainPriceObj.previous_pricing_object:
-    #         #     oChainPriceObj = oChainPriceObj.previous_pricing_object
-    #
-    #         for i in range(1,5):
-    #
-    #             oChainPriceObj = PricingObject.objects.filter(part__product_number=oPriceObj.part.product_number,
-    #                                                           customer__name=oPriceObj.customer.name,
-    #                                                           sold_to=oPriceObj.sold_to,
-    #                                                           spud=oPriceObj.spud,
-    #                                                           technology=oPriceObj.technology,
-    #                                                           valid_to_date__year=datetime.datetime.now().year - i
-    #                                                           ).order_by('valid_to_date', 'valid_from_date').first()
-    #             if oChainPriceObj:
-    #                 aObj.append(oChainPriceObj.unit_price)
-    #                 aCommentRow.append("Valid: {}\nCut-over: {}".format((oChainPriceObj.valid_from_date.strftime('%m/%d/%Y') if oChainPriceObj.valid_from_date else "N/A") +
-    #                                                                     " - " + (oChainPriceObj.valid_to_date.strftime('%m/%d/%Y') if oChainPriceObj.valid_to_date else "Present"),
-    #                                                                     (oChainPriceObj.cutover_date.strftime('%m/%d/%Y') if oChainPriceObj.cutover_date else "N/A")) +
-    #                                    ("\nPrice Erosion (%): {}".format(oChainPriceObj.erosion_rate) if oChainPriceObj.price_erosion else ""))
-    #             else:
-    #                 aObj.append('')
-    #                 aCommentRow.append('')
-    #
-    #         aPricingLines.append(aObj)
-    #         aComments.append(aCommentRow)
-    # # end if
     aPricingLines, aComments = PricingOverviewLists()
 
     dContext = {
@@ -420,7 +371,7 @@ def OverviewPricing(oRequest):
 
 def PricingOverviewLists():
     aPricingObjectList = PricingObject.objects.filter(is_current_active=True).order_by('part__product_number',
-                                                                                       'customer', 'sold_to', 'spud')
+                                                                                       'customer__name', 'sold_to', 'spud__name')
 
     aPricingLines = []
     aComments = []
@@ -551,7 +502,7 @@ def PriceErosion(oRequest):
         # end if
     # end if
 
-    aRecords = PricingObject.objects.filter(price_erosion=True, is_current_active=True).order_by('part__product_number', 'customer', 'sold_to', 'spud')
+    aRecords = PricingObject.objects.filter(price_erosion=True, is_current_active=True).order_by('part__product_number', 'customer__name', 'sold_to', 'spud__name')
 
     dContext = {
         'data': [['False',
@@ -563,10 +514,10 @@ def PriceErosion(oRequest):
                   oPO.unit_price,
                   oPO.erosion_rate,
                   '', '', '',] for oPO in aRecords],
-        'cu_list': list(set(str(val) for val in aRecords.values_list('customer__name',flat=True))),
-        'soldto_list': list(set(str(val) for val in aRecords.values_list('sold_to',flat=True))),
-        'spud_list': list(set(str(val) for val in aRecords.values_list('spud__name',flat=True))),
-        'tech_list': list(set(str(val) for val in aRecords.values_list('technology__name',flat=True))),
+        'cu_list': sorted(list(set(str(val) for val in aRecords.values_list('customer__name',flat=True)))),
+        'soldto_list': sorted(list(set(str(val) for val in aRecords.values_list('sold_to',flat=True)))),
+        'spud_list': sorted(list(set(str(val) for val in aRecords.values_list('spud__name',flat=True)))),
+        'tech_list': sorted(list(set(str(val) for val in aRecords.values_list('technology__name',flat=True)))),
         'pricing_read_authorized': bCanReadPricing,
         'pricing_write_authorized': bCanWritePricing,
         'status_message': sStatusMessage

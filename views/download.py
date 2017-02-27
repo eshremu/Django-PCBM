@@ -865,10 +865,17 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             elif iCurrentRow % 2 == 0:
                 oSheet['F' + str(iCurrentRow)].fill = oOffRowColor
 
-            oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem,
-                                                       'linepricing.pricing_object.unit_price') if oHeader.pick_list else ''
+            if oHeader.pick_list:
+                if GrabValue(oLineItem, 'linepricing.override_price') is not None:
+                    oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.override_price')
+                else:
+                    oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.pricing_object.unit_price')
+            else:
+                oSheet['G' + str(iCurrentRow)] = ''
+
             oSheet['G' + str(iCurrentRow)].number_format = '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
             oSheet['G' + str(iCurrentRow)].border = oBorder
+
             if oLineItem == oFirstItem and not oHeader.pick_list:
                 oSheet['G' + str(iCurrentRow)].fill = oFirstRowColor
                 oSheet['G' + str(iCurrentRow)].font = Font(bold=True)
