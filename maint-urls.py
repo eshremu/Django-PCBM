@@ -1,3 +1,8 @@
+"""
+URLs for the tool in maintenance mode.  Every URL directs the user to the
+maintenance view.
+"""
+
 from django.conf.urls import url, patterns
 from django.contrib.auth import views as auth_views
 from BoMConfig import views
@@ -56,15 +61,15 @@ urlpatterns = patterns(
     url(r'^approval_list/$', views.Maintenance, name='approve_list'),
     url(r'^password_change/$', auth_views.password_change, {'post_change_redirect': 'bomconfig:index'}, name='change_password'),
     url(r'^admin/mailing/$', views.Maintenance, name='mailadmin'),
-    url(r'^admin/mailing/change/(?P<id>\d+)/$', views.Maintenance, name='mailchange'),
+    url(r'^admin/mailing/change/(?P<iRecordId>\d+)/$', views.Maintenance, name='mailchange'),
     url(r'^admin/mailing/add/$', views.Maintenance, name='mailadd'),
     url(r'^admin/user/$', views.Maintenance, name='useradmin'),
     url(r'^admin/user/add/$', views.Maintenance, name='useradd'),
-    url(r'^admin/user/changeuser/(?P<id>\d+)/$', views.Maintenance, name='userchange'),
+    url(r'^admin/user/changeuser/(?P<iUserId>\d+)/$', views.Maintenance, name='userchange'),
     url(r'^admin/$', views.Maintenance, name='adminlanding'),
     url(r'^admin/approval/$', views.Maintenance, name='approvaladmin'),
     url(r'^admin/approval/add/$', views.Maintenance, name='approvaladd'),
-    url(r'^admin/approval/change/(?P<id>\d+)/$', views.Maintenance, name='approvalchange'),
+    url(r'^admin/approval/change/(?P<iObjId>\d+)/$', views.Maintenance, name='approvalchange'),
     url(r'^customer_audit/$', views.Maintenance, name='customerauditland'),
     url(r'^customer_audit/audit/$', views.Maintenance, name='customeraudit'),
     url(r'^customer_audit/validate/$', views.Maintenance, name='audit_validate'),

@@ -9,8 +9,19 @@ $(document).ready(function(){
     });
 
     $(document).on('mouseup','input.modify',function(event){
-        isChecked = !isChecked;
+        isModChecked = !isModChecked;
         hot.render();
+    });
+
+    $(document).on('mouseup','input.erodeall',function(event){
+        isAllChecked = !isAllChecked;
+        var modified = hot.getData();
+
+        for(var i=0; i < modified.length; i++) {
+            modified[i][0] = isAllChecked?"True":"False";
+        }
+
+        hot.loadData(modified);
     });
 
     $('.filter').change(function(event){
@@ -27,6 +38,7 @@ $(document).ready(function(){
                 technology: $('#tech_filter').val()
             },
             success: function(returned_data){
+                isAllChecked = false;
                 hot.loadData(returned_data);
             },
             error: function(xhr, status, error){
@@ -146,14 +158,14 @@ function build_table() {
         rowHeaders: false,
         colHeaders: function(col){
             switch(col){
-                case 0: return 'Erode?';
+                case 0: return 'Erode?<br/><input type="checkbox" class="erodeall"' + (isAllChecked?'checked="checked"':'') + '>';
                 case 1: return 'Part Number';
                 case 2: return 'Customer';
                 case 3: return 'Sold-To';
                 case 4: return 'SPUD';
                 case 5: return 'Technology';
                 case 6: return 'Latest Unit Price ($)';
-                case 7: return 'Erosion Rate (%)<br/>Modify&nbsp;<input type="checkbox" class="modify" ' + (isChecked?'checked="checked"':'') + '>';
+                case 7: return 'Erosion Rate (%)<br/>Modify&nbsp;<input type="checkbox" class="modify" ' + (isModChecked?'checked="checked"':'') + '>';
                 case 8: return 'Projected Unit Price ($)';
                 case 9: return 'Valid-From';
                 case 10: return 'Valid-To';
@@ -165,7 +177,7 @@ function build_table() {
             if(col != 0 && col != 9 && col != 10) {
                 cellProperties.readOnly = true;
                 if (col == 7){
-                    cellProperties.readOnly = !isChecked;
+                    cellProperties.readOnly = !isModChecked;
                 }
                 cellProperties.className = 'htCenter';
             }

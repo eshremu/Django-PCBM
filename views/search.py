@@ -4,6 +4,7 @@ from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.core.urlresolvers import reverse
 from django.db.models import F, Q
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, REF_STATUS, REF_PROGRAM, REF_PRODUCT_AREA_1,\
     REF_PRODUCT_AREA_2, REF_TECHNOLOGY, REF_RADIO_BAND, REF_RADIO_FREQUENCY, Baseline
@@ -16,6 +17,7 @@ import re
 import functools
 
 
+@login_required
 def Search(oRequest, advanced=False):
     if 'existing' in oRequest.session:
         try:
@@ -337,7 +339,7 @@ def Search(oRequest, advanced=False):
                     results.write('</tr>')
                 # end for
                 results.write('</tbody></table><div><button id="download" class="btn btn-primary" style="margin-right: 5px" disabled>Download Records</button>'
-                              '<button id="downloadcustom" class="btn btn-primary" disabled>Download Results</button></div>')
+                              '<button id="downloadcustom" class="btn btn-primary" disabled>Download Search Results</button></div>')
             else:
                 results.write('NO CONFIGURATIONS MATCHING SEARCH')
             # end if
@@ -353,13 +355,13 @@ def Search(oRequest, advanced=False):
         'request_list': REF_REQUEST.objects.all(),
         'cust_list': REF_CUSTOMER.objects.all(),
         'status_list': REF_STATUS.objects.all(),
-        'prog_list': list(set(REF_PROGRAM.objects.all().values_list('name', flat=True))),
+        'prog_list': sorted(list(set(REF_PROGRAM.objects.all().values_list('name', flat=True)))),
         'tech_list': REF_TECHNOLOGY.objects.all(),
-        'baseline_list': Baseline.objects.all(),
-        'prod1_list': list(set(REF_PRODUCT_AREA_1.objects.all().values_list('name', flat=True))),
-        'prod2_list': list(set(REF_PRODUCT_AREA_2.objects.all().values_list('name', flat=True))),
-        'band_list': REF_RADIO_BAND.objects.all(),
-        'freq_list': list(set(REF_RADIO_FREQUENCY.objects.all().values_list('name', flat=True)))
+        'baseline_list': Baseline.objects.all().order_by('title'),
+        'prod1_list': sorted(list(set(REF_PRODUCT_AREA_1.objects.all().values_list('name', flat=True)))),
+        'prod2_list': sorted(list(set(REF_PRODUCT_AREA_2.objects.all().values_list('name', flat=True)))),
+        'band_list': REF_RADIO_BAND.objects.all().order_by('name'),
+        'freq_list': sorted(list(set(REF_RADIO_FREQUENCY.objects.all().values_list('name', flat=True))))
     }
     return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def

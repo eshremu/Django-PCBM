@@ -3,8 +3,9 @@ from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.core.mail import send_mail
 from django.contrib.auth import get_user_model
+from django.contrib.auth.decorators import login_required
 
-from BoMConfig.models import CustomerPartInfo, PartBase, REF_CUSTOMER
+from BoMConfig.models import CustomerPartInfo, PartBase, REF_CUSTOMER, ConfigLine
 from BoMConfig.views.landing import Default
 from BoMConfig.utils import StrToBool
 
@@ -20,6 +21,7 @@ def CustomerAuditLand(oRequest):
     return redirect('bomconfig:customeraudit')
 
 
+@login_required
 def CustomerAudit(oRequest):
     dContext = {
         'customer_list': REF_CUSTOMER.objects.all(),
@@ -43,17 +45,27 @@ def CustomerAudit(oRequest):
             dNewCustInfo = {
                 'customer': oCustomer,
                 'customer_number': aLine[1],
+                'second_customer_number': aLine[2] or None,
                 'part': oPart,
-                'customer_asset_tagging': True if aLine[2] == 'Y' else False if aLine[2] == 'N' else None,
-                'customer_asset': True if aLine[3] == 'Y' else False if aLine[3] == 'N' else None
+                'customer_asset_tagging': True if aLine[3] == 'Y' else False if aLine[3] == 'N' else None,
+                'customer_asset': True if aLine[4] == 'Y' else False if aLine[4] == 'N' else None
             }
 
-            # if bCreateNew:
             (oNewCustInfo, bCreated) = CustomerPartInfo.objects.get_or_create(**dNewCustInfo)
 
             oNewCustInfo.active = True
             oNewCustInfo.priority = True
             oNewCustInfo.save()
+
+            for oConfigLine in ConfigLine.objects.filter(
+                    config__header__configuration_status__name__startswith='In Process',
+                    config__header__customer_unit=oCustomer,
+                    part__base=oPart):
+                oConfigLine.customer_asset = "Y" if oNewCustInfo.customer_asset else "N" if oNewCustInfo.customer_asset is False else None
+                oConfigLine.customer_asset_tagging = "Y" if oNewCustInfo.customer_asset_tagging else "N" if oNewCustInfo.customer_asset_tagging is False else None
+                oConfigLine.customer_number = oNewCustInfo.customer_number
+                oConfigLine.sec_customer_number = oNewCustInfo.second_customer_number
+                oConfigLine.save()
         # end for
 
         dContext['data'] = json.dumps(aData)
@@ -74,8 +86,8 @@ def CustomerAuditTableValidate(oRequest):
     }
 
     for key in received_data.keys():
-        response_data['table_data'][key] = [None] * 4
-        response_data['table_info'][key] = [None] * 4
+        response_data['table_data'][key] = [None] * 5
+        response_data['table_info'][key] = [None] * 5
 
         part = None
         cust_info = None
@@ -105,6 +117,8 @@ def CustomerAuditTableValidate(oRequest):
             except (CustomerPartInfo.DoesNotExist, ValueError):
                 response_data['table_data'][key][1] = received_data[key][1]
                 response_data['table_info'][key][1] = None
+                response_data['table_data'][key][2] = received_data[key][2]
+                response_data['table_info'][key][2] = None
             # end try
         # end if
 
@@ -116,24 +130,27 @@ def CustomerAuditTableValidate(oRequest):
                 response_data['table_data'][key][1] = received_data[key][1] or cust_info.customer_number
                 response_data['table_info'][key][1] = True if cust_info.customer_number == received_data[key][1] or not received_data[key][1] else None
 
-                response_data['table_data'][key][2] = received_data[key][2] #or ('Y' if cust_info.customer_asset_tagging else 'N')
-                response_data['table_data'][key][3] = received_data[key][3] #or ('Y' if cust_info.customer_asset else 'N')
+                response_data['table_data'][key][2] = received_data[key][2] #or cust_info.second_customer_number
+                response_data['table_info'][key][2] = True if cust_info.second_customer_number == (received_data[key][2] or None) else None # or not received_data[key][2]
 
-                if cust_info.customer_asset_tagging is not None and received_data[key][2]:
-                    response_data['table_info'][key][2] = True if bool(
-                        cust_info.customer_asset_tagging == StrToBool(received_data[key][2], "")) else None
-                elif cust_info.customer_asset_tagging is not None and not received_data[key][2]:
-                    response_data['table_info'][key][2] = None
-                elif cust_info.customer_asset_tagging is None:
-                    response_data['table_info'][key][2] = None
+                response_data['table_data'][key][3] = received_data[key][3] #or ('Y' if cust_info.customer_asset_tagging else 'N')
+                response_data['table_data'][key][4] = received_data[key][4] #or ('Y' if cust_info.customer_asset else 'N')
 
-                if cust_info.customer_asset is not None and received_data[key][3]:
+                if cust_info.customer_asset_tagging is not None and received_data[key][3]:
                     response_data['table_info'][key][3] = True if bool(
-                        cust_info.customer_asset == StrToBool(received_data[key][3], "")) else None
-                elif cust_info.customer_asset is not None and not received_data[key][3]:
+                        cust_info.customer_asset_tagging == StrToBool(received_data[key][3], "")) else None
+                elif cust_info.customer_asset_tagging is not None and not received_data[key][3]:
                     response_data['table_info'][key][3] = None
+                elif cust_info.customer_asset_tagging is None:
+                    response_data['table_info'][key][3] = None
+
+                if cust_info.customer_asset is not None and received_data[key][4]:
+                    response_data['table_info'][key][4] = True if bool(
+                        cust_info.customer_asset == StrToBool(received_data[key][4], "")) else None
+                elif cust_info.customer_asset is not None and not received_data[key][4]:
+                    response_data['table_info'][key][4] = None
                 elif cust_info.customer_asset is None:
-                    response_data['table_info'][key][3] = None
+                    response_data['table_info'][key][4] = None
             else:
                 response_data['table_data'][key][0] = cust_info.part.product_number
                 response_data['table_info'][key][0] = bool(cust_info.part.product_number == received_data[key][0])
@@ -141,24 +158,15 @@ def CustomerAuditTableValidate(oRequest):
                 response_data['table_data'][key][1] = cust_info.customer_number
                 response_data['table_info'][key][1] = bool(cust_info.customer_number == received_data[key][1])
 
-                response_data['table_data'][key][2] = "Y" if cust_info.customer_asset_tagging else "N" if cust_info.customer_asset_tagging == False else ' '
-                response_data['table_data'][key][3] = "Y" if cust_info.customer_asset else "N" if cust_info.customer_asset == False else ' '
+                response_data['table_data'][key][2] = cust_info.second_customer_number
+                response_data['table_info'][key][2] = bool(cust_info.second_customer_number == (received_data[key][2] or None))
+
+                response_data['table_data'][key][3] = "Y" if cust_info.customer_asset_tagging else "N" if cust_info.customer_asset_tagging == False else ' '
+                response_data['table_data'][key][4] = "Y" if cust_info.customer_asset else "N" if cust_info.customer_asset == False else ' '
 
                 if cust_info.customer_asset_tagging is not None:
-                    if received_data[key][2]:
-                        response_data['table_info'][key][2] = bool(cust_info.customer_asset_tagging == StrToBool(received_data[key][2], ""))
-                    elif not received_data[key][2]:
-                        response_data['table_info'][key][2] = False
-                else:
-                    if not received_data[key][2]:
-                        response_data['table_info'][key][2] = True
-                    else:
-                        response_data['table_info'][key][2] = False
-
-                if cust_info.customer_asset is not None:
                     if received_data[key][3]:
-                        response_data['table_info'][key][3] = bool(
-                            cust_info.customer_asset == StrToBool(received_data[key][3], ""))
+                        response_data['table_info'][key][3] = bool(cust_info.customer_asset_tagging == StrToBool(received_data[key][3], ""))
                     elif not received_data[key][3]:
                         response_data['table_info'][key][3] = False
                 else:
@@ -166,21 +174,35 @@ def CustomerAuditTableValidate(oRequest):
                         response_data['table_info'][key][3] = True
                     else:
                         response_data['table_info'][key][3] = False
+
+                if cust_info.customer_asset is not None:
+                    if received_data[key][4]:
+                        response_data['table_info'][key][4] = bool(
+                            cust_info.customer_asset == StrToBool(received_data[key][4], ""))
+                    elif not received_data[key][4]:
+                        response_data['table_info'][key][4] = False
+                else:
+                    if not received_data[key][4]:
+                        response_data['table_info'][key][4] = True
+                    else:
+                        response_data['table_info'][key][4] = False
         else:
             response_data['table_data'][key][1] = received_data[key][1]
             response_data['table_data'][key][2] = received_data[key][2]
             response_data['table_data'][key][3] = received_data[key][3]
+            response_data['table_data'][key][4] = received_data[key][4]
             if response_data['table_data'][key][1] and response_data['table_info'][key][1] is None:
-                response_data['table_data'][key][2] = response_data['table_data'][key][2] #or 'N'
-                response_data['table_info'][key][2] = None
                 response_data['table_data'][key][3] = response_data['table_data'][key][3] #or 'N'
                 response_data['table_info'][key][3] = None
+                response_data['table_data'][key][4] = response_data['table_data'][key][4] #or 'N'
+                response_data['table_info'][key][4] = None
         # end if
 
     return JsonResponse(response_data)
 # end def
 
 
+@login_required
 def CustomerAuditUpload(oRequest):
 
     dContext = {'customer_list': REF_CUSTOMER.objects.all()}

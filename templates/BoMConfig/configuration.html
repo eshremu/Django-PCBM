@@ -2,9 +2,9 @@
 {% load staticfiles %}
 {% block subcontent %}
 {% if config_read_authorized %}
-    <script src="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.js' %}"></script>
+    <script src="{% static 'BoMConfig/handsontable-0.30.1/dist/handsontable.full.min.js' %}"></script>
     <script src="{% static 'BoMConfig/jQuery/jquery-ui.min.js' %}"></script>
-    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.20.1/dist/handsontable.full.min.css' %}"/>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.30.1/dist/handsontable.full.min.css' %}"/>
     <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/css/jquery-ui.min.css' %}"/>
     <style>
         .handsontable .currentRow {
@@ -20,6 +20,18 @@
             font-size: 11px;
             font-style: italic;
             color: #333;
+        }
+
+        .htCommentCell:after {
+            border-top-color: red;
+        }
+
+        .hidden_col > div > span {
+            display: none;
+        }
+
+        .hidden_col > div {
+            display: none;
         }
     </style>
     <form id="configform" method="POST" onsubmit="data_submit();">
@@ -101,583 +113,52 @@
             </script>
             {% endif %}
             {% if not active_lock and config_write_authorized and not frame_readonly %}
-            <input id="validate" class="btn" type="button" value="Validate" style="margin-left:500px;" title="Validate current input, prefill empty cells, and update totals."/>
+{#            <input id="validate" class="btn" type="button" value="Validate" style="margin-left:500px;" title="Validate current input, prefill empty cells, and update totals."/>#}
             <span style="padding-left: 25px;">Status: </span>
             <span id="status" style="padding-left: 10px;"></span>
             {% endif %}
         </div>
     </form>
 
-    <script>
-        $('button[value="config"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+    <script type="text/javascript">
         var SAPVis, AttrVis, PriceVis, CustVis, BaselineVis;
         SAPVis = AttrVis = PriceVis = CustVis = BaselineVis = true;
         var hot;
         var header_html;
         var data = {{ data_array|safe }};
-        var config_id = data[0][2];
-        var error_matrix = [];
+        var config_id = data.length == 0 ? '' : data[0][2];
+        var readonly_columns = [];
+        var hidden_cols = [];
         var clean_form, clean_sub;
         var form_save = false;
         var validating = false;
         var valid = true;
         var firstLoad = true;
-
-        function pasting() {
-            var text = window.clipboardData.getData('Text');
-            text = text.replace(/\s/g, " ");
-            console.log(text);
-        }
-
-        function cleanDataCheck(link){
-            var dirty_form = hot.getSourceData();
-            dirty_form = $.map(dirty_form, function(value, index){
-                var new_val = {};
-                for(var key in value){
-                    new_val[key]= value[key];
-                }
-                return new_val;
-            });
-            $('[name="data_form"]').remove();
-            var dirty_sub = $('#configform').serialize();
-            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(dirty_form)).appendTo('#configform');
-
-            if(JSON.stringify(dirty_form) !== JSON.stringify(clean_form)|| JSON.stringify(dirty_sub) !== JSON.stringify(clean_sub)) {
-                valid = false;
-            }
-
-            if (!valid && !form_save){
-                messageToModal('Unsaved changes detected',
-                        "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
-                        function(){
-                            if (link.target == "_blank"){
-                                window.open(link.dataset.href);
-                            } else {
-                                window.location.href = link.dataset.href;
-                            }
-                        }
-                );
-            } else {
-                if (link.target == "_blank"){
-                    window.open(link.dataset.href);
-                } else {
-                    window.location.href = link.dataset.href;
-                }
-            }
-        }
-
-        $(document).ready(function(){
-            $(window).load(function(){
-                form_resize();
-{#                {% if header.configuration_status == 'In Process' %}data_validate();{% endif %}#}
-                {% if not frame_readonly %}data_validate();{% endif %}
-                clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
-{#                if (typeof clean_form[0] == 'object'){#}
-{#                    for(var j=0; j < clean_form.length; j++) {#}
-{#                        for (var i = 0; i < 31; i++) {#}
-{#                            if (!clean_form[j].hasOwnProperty(i)) {#}
-{#                                //clean_form[j][i] = null;#}
-{#                            }#}
-{#                        }#}
-{#                    }#}
-{#                }#}
-                $('[name="data_form"]').remove();
-                clean_sub = $('#configform').serialize();
-            });
-
-            $(window).on('beforeunload',function(){
-                var dirty_form = hot.getSourceData();
-                $('[name="data_form"]').remove();
-                var dirty_sub = $('#configform').serialize();
-
-                if(JSON.stringify(dirty_form) !== JSON.stringify(clean_form)|| JSON.stringify(dirty_sub) !== JSON.stringify(clean_sub)) {
-                    valid = false;
-                }
-
-                if (closeButton && !valid && !form_save){
-                    return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";
-                }
-            });
-
-            $(window).resize(function(){
-                form_resize();
-            });
-
-            $('#saveForm').click(function(){
-                if(!validating) {
-                    $('#formaction').val('save');
-                    submit();
-                }
-            });
-
-            $('#saveexitForm').click(function(){
-                if(!validating) {
-                    $('#formaction').val('saveexit');
-                    submit();
-                }
-            });
-
-            $('#nextForm').click(function(){
-                if(!validating) {
-                    $('#formaction').val('next');
-                    submit();
-                }
-            });
-
-            $('#prevForm').click(function(){
-                if(!validating) {
-                    $('#formaction').val('prev');
-                    {% if header.configuration_status.name != 'In Process' %}
-                    $('#configform').submit();
-                    {% else %}
-                    data_validate(true);
-                    {% endif %}
-                }
-            });
-
-            $('#validate').click(function(){
-                data_validate();
-            });
-        });
-
-        function submit(){
-            {% if header.configuration_status.name != 'In Process' %}
-            $('#configform').submit();
-            {% else %}
-            data_validate(true);
-            {% endif %}
-        }
-
-        function floatFormat(number){
-            var array = String(number).split('.');
-            if (array.length > 1){
-                return String(number);
-            } else {
-                return String(number) + '.0';
-            }
-        }
-
-
-        function form_resize(){
-            var topbuttonheight = $('#action_buttons').outerHeight(true);
-            var bottombuttonheight = $('#formbuttons').outerHeight(true);
-            var subformheight = $("#headersubform").outerHeight(true);// + parseInt($('#headersubform').css('margin-top')) + parseInt($('#headersubform').css('margin-bottom'));
-            var crumbheight = $('#breadcrumbs').outerHeight(true);// + parseInt($('#breadcrumbs').css('margin-top')) + parseInt($('#breadcrumbs').css('margin-bottom'));
-            var bodyheight = $('#main-body').height();
-
-            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + crumbheight + subformheight);
-
-            $('#table-wrapper').css("height", tableheight);
-            build_table();
-        }
-
-        function determineColumns(cols, headers, readonly){
-{#            var header = "<th colspan='1'><div class='relative'></div></th><th colspan='4'><div class='relative'><span>BoM</span></div></th>";#}
-            cols.push({data: 0}, {data: 1}, {data: 2}, {data: 3}, {data: 4});
-            headers.push('Status', 'Line #', 'Product Number<br><span class="smallItalics">'+config_id+"</span>", "Product Description", 'Order Qty');
-            {% if config_bom_write_authorized %}
-            readonly.push(0);
-            {% else %}
-            readonly.push(0, 1, 2, 3, 4);
-            {% endif %}
-
-            var offset = 0;
-
-            if(SAPVis === true && {{ config_sap_read_authorized|lower }}){
-                cols.push({data: 5}, {data:6}, {data: 7}, {data: 8}, {data: 9}, {data: 10});
-                headers.push('UoM', 'Context ID','Plant', 'SLOC', 'Item Cat', 'P-Code - Fire Code, Desc');
-                {% if config_sap_write_authorized %}
-{#                readonly.push(5, 9);#}
-                readonly.push(5);
-                {% else %}
-                readonly.push(5, 6, 7, 8, 9, 10);
-                {% endif %}
-                offset += 6;
-{#                header += "<th colspan='5'><div class='relative'><span>SAP Doc</span></div></th>";#}
-                $('#viewsap').css('background-color', '#FFFF4D');
-            } else {
-                $('#viewsap').removeAttr('style');
-            }
-
-            if(AttrVis === true && {{ config_attr_read_authorized|lower }}){
-                cols.push({data: 11}, {data: 12}, {data: 13}, {data: 14}, {data: 15}, {data: 16}, {data: 17});
-                headers.push('HW/SW Ind', 'Prod Pkg Type', 'SPUD', 'RE-Code', 'MU-Flag', "X-Plant Mat'l Stat", 'Int Notes');
-                {% if config_attr_write_authorized and header.configuration_status.name == 'In Process' %}
-                readonly.push(8 + offset, 9 + offset, 10 + offset);
-                {% elif config_attr_write_authorized %}
-                readonly.push(5 + offset, 6 + offset, 8 + offset, 9 + offset, 10 + offset, 11 + offset);
-                {% else %}
-                readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset, 10 + offset, 11 + offset);
-                {% endif %}
-                offset += 7;
-                // readonly.push(9 + offset, 10 + offset, 11 + offset); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
-
-{#                header += "<th colspan='7'><div class='relative'><span>Attributes</span></div></th>";#}
-                $('#viewattr').css('background-color', '#FFFF4D');
-            } else {
-                $('#viewattr').removeAttr('style');
-            }
-
-            if(PriceVis === true && {{ config_price_read_authorized|lower }}) {
-                cols.push({data: 18}, {data: 19}, {data: 20}, {data: 21}, {data: 22}, {data: 23});
-                headers.push('Unit Price', "Higher Level Item", 'Material Group 5', 'Purchase Order Item No', 'Condition Type', 'Amount');
-                readonly.push(5 + offset);
-                {% if not config_price_write_authorized %}
-                readonly.push(6 + offset, 7 + offset, 8 + offset, 9 + offset, 10 + offset);
-                {% endif %}
-                offset += 6;
-{#                header += "<th colspan='6'><div class='relative'><span>Price Links</span></div></th>";#}
-                $('#viewprice').css('background-color', '#FFFF4D');
-            } else {
-                $('#viewprice').removeAttr('style');
-            }
-
-            if(CustVis === true && {{ config_cust_read_authorized|lower }}) {
-                cols.push({data: 24}, {data: 25}, {data: 26}, {data: 27}, {data: 28});
-                headers.push('Traceability Req. (Serialization)', 'Customer Asset?', 'Customer Asset tagging Requirement', 'Customer Number', 'Second Customer Number');
-                //readonly.push(5 + offset); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
-                {% if not config_cust_write_authorized %}
-                readonly.push(5 + offset, 6 + offset, 7 + offset, 8 + offset, 9 + offset);
-                {% elif config_cust_write_authorized and header.configuration_status != 'In Process' %}
-                readonly.push(5 + offset);
-                {% endif %}
-                offset += 5;
-{#                header += "<th colspan='5'><div class='relative'><span>Customer Data</span></div></th>";#}
-                $('#viewcust').css('background-color', '#FFFF4D');
-            } else {
-                $('#viewcust').removeAttr('style');
-            }
-
-            if(BaselineVis === true && {{ config_baseline_read_authorized|lower }}){
-                cols.push({data: 29}, {data: 30}, {data: 31});
-                headers.push('Vendor Article Number', 'Comments', 'Additional Reference (if required)');
-                {% if not config_baseline_write_authorized %}
-                readonly.push(5 + offset, 6 + offset, 7 + offset);
-                {% elif config_baseline_write_authorized and header.configuration_status != 'In Process' and header.latesttracker.next_approval == 'csr' %}
-                readonly.push(5 + offset, 6 + offset);
-                {% elif config_baseline_write_authorized and header.configuration_status != 'In Process' and header.latesttracker.next_approval == 'blm' %}
-                readonly.push(5 + offset, 7 + offset);
-                {% endif %}
-{#                header += "<th colspan='3'><div class='relative'><span>Baseline</span></div></th>";#}
-                $('#viewbase').css('background-color', '#FFFF4D');
-            } else {
-                $('#viewbase').removeAttr('style');
-            }
-
-{#            return header;#}
-        }
-
-        function readonlyRenderer(instance, td, row, col, prop, value, cellProperties) {
-            customRenderer(instance, td, row, col, prop, value, cellProperties);
-
-            td.style.background = '#DDDDDD';
-        }
-
-        function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
-            if (cellProperties.readOnly){
-                td.style.background = '#DDDDDD';
-            }
-
-            if (value != '' && value != undefined && value != null) {
-                var result;
-                var overridden = String(value).charAt(0) == "!";
-                var dummy = String(value).replace("$","").replace(',','').replace(' ','').replace("!","");
-                var decimal = dummy.indexOf('.');
-                var wholeDummy, fracDummy;
-
-                if (decimal != -1){
-                    wholeDummy = dummy.slice(0, decimal);
-                    fracDummy = dummy.slice(decimal + 1);
-                    if (fracDummy.length >= 2){
-                        fracDummy = fracDummy.slice(0,2);
-                    } else {
-                        fracDummy += '0';
-                    }
-                } else {
-                    wholeDummy = dummy;
-                    fracDummy = "00";
-                }
-                var negative = false;
-                if(wholeDummy.indexOf('-') != -1){
-                    negative = true;
-                    wholeDummy = wholeDummy.slice(wholeDummy.indexOf('-') + 1);
-                }
-                var start = wholeDummy.length % 3 == 0 ? 3 : wholeDummy.length % 3;
-
-                result = wholeDummy.slice(0,start);
-
-                for(var i = 0; i < wholeDummy.length - start; i++){
-                    if (i % 3 == 0){
-                        result += ',';
-                    }
-                    result += wholeDummy.charAt(i + start);
-                }
-
-                value = "$" + result + '.' + fracDummy;
-
-                if (negative){
-                    value = "(" + value + ")";
-                }
-
-                if (overridden){
-                    value = "!" + value;
-                }
-            }
-            customRenderer(instance, td, row, col, prop, value, cellProperties);
-        }
-
-        function customRenderer(instance, td, row, col, prop, value, cellProperties) {
-            if (row === 0 && col === 18 && typeof(value) == 'string' && value.charAt(0)==='!' && PriceVis){
-                value = value.slice(1);
-{#                cellProperties.comment = '! - CPM override in effect.\n';#}
-            }
-
-            if (/<[a-zA-Z][\s\S/]*>/.test(value) === false) {
-                Handsontable.renderers.TextRenderer.apply(this, arguments);
-            } else {
-                Handsontable.renderers.HtmlRenderer.apply(this, arguments);
-            }
-        }
-
-        function build_table() {
-            var determined_cols = [];
-            var headers = [];
-            var readonly_columns = [];
-            determineColumns(determined_cols, headers, readonly_columns);
-            var container = document.getElementById('datatable');
-            hot = new Handsontable(container, {
-                data: data,
-                minRows: 1,
-                minCols: 32,
-                maxCols: 32,
-                minSpareRows: {% if config_write_authorized and not frame_readonly %}5{% else %}0{% endif %},
-                rowHeaders: false,
-                colHeaders: headers,
-                fixedColumnsLeft: 3,
-                manualColumnFreeze: true,
-                currentRowClassName: 'currentRow',
-                columns: determined_cols,
-                colWidths: [50,50,150,342,72,50,74,50,50,62,264,81,103,50,68,63,117,65,74,119,116,162,105,62,160,118,246,124,176,151,250,250],
-                manualColumnResize: true,
-                copyPaste: true,
-                wordWrap: true,
-                {% if header.configuration_status.name == 'In Process' %}
-                    contextMenu: {
-                        items: {
-                            'undo': {},
-                            'redo': {},
-                            'row_above': {
-                                disabled: function () {
-                                    {% if not header.pick_list %}return this.getSelected()[0] === 0;{% endif %}
-                                }
-                            },
-                            'row_below': {},
-                            'remove_row': {
-                                disabled: function () {
-                                    {% if not header.pick_list %}return this.getSelected()[0] === 0;{% endif %}
-                                }
-                            }
-                        }
-                    },
-                {% endif %}
-                comments: true,
-                cells: function(row, col, prop){
-                    var cellProperties = {};
-
-                    if('{{ active_lock|lower }}'==='true' || {% if not header.pick_list %}(row === 0 && [1,2,4].indexOf(col)!== -1) || {% endif %}readonly_columns.indexOf(col) !== -1){
-                        cellProperties.readOnly = true;
-                        if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){//(col == 17 || col == 22) && PriceVis){
-                            cellProperties.renderer = moneyRenderer;
-                        } else {
-                            cellProperties.renderer = readonlyRenderer;
-                        }
-                    } else {
-                        if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
-                            cellProperties.renderer = moneyRenderer;
-                        } else {
-                            cellProperties.renderer = customRenderer;
-                        }
-                    }
-
-                    if (['Amount'].indexOf(this.instance.getColHeader(col)) != -1){
-                        cellProperties.validator = function(value, callback){
-                            if(/^(?:-)?(?:\$)?\d{1,3}(?:,\d{3})*(?:\.\d{2})?$|^(?:-)?\d+(?:\.\d{2})?$|^$|^null$|^undefined$/.test(value)){
-                                callback(true);
-                            } else {
-                                callback(false);
-                            }
-                        };
-                    }
-
-                    if(this.instance.getColHeader(col) == 'Order Qty'){
-                        cellProperties.validator = /^\d+(?:\.\d+)?$|^null$|^$/
-                    }
-
-                    cellProperties.className = 'htCenter';
-                    if (['Line #', 'Product Number', 'Product Description', 'Int Notes','P-Code - Fire Code, Desc', 'Vendor Article Number','Comments','Additional Reference (if required)'].indexOf(this.instance.getColHeader(col)) != -1){ //
-                        cellProperties.className = 'htLeft';
-                    } else if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
-                        cellProperties.className = 'htRight';
-                    } 
-
-                    if(error_matrix.length !== 0 && typeof(error_matrix[row]) !== "undefined"){
-                        cellProperties.comment = error_matrix[row][col];
-                    }
-
-                    if(this.instance.getColHeader(col) == 'Condition Type'){
-                        cellProperties.type = 'dropdown';
-                        cellProperties.source = [''].concat({{ condition_list|safe }});
-                    }
-
-                    if(this.instance.getColHeader(col) == 'Material Group 5'){
-                        cellProperties.type = 'dropdown';
-                        cellProperties.source = [''].concat({{ material_group_list|safe }});
-                    }
-
-                    if(this.instance.getColHeader(col) == 'Prod Pkg Type'){
-                        cellProperties.type = 'dropdown';
-                        cellProperties.source = [''].concat({{ product_pkg_list|safe }});
-                    }
-
-                    if(this.instance.getColHeader(col) == 'SPUD'){
-                        cellProperties.type = 'dropdown';
-                        cellProperties.source = [''].concat({{ spud_list|safe }});
-                    }
-
-                    return cellProperties;
-                },
-                afterValidate: function(isValid, value, row, prop, source){
-                    if (!isValid){
-                        $('#prevForm').attr('disabled', 'disabled').css('color','gray');
-                        $("#saveexitForm").attr('disabled', 'disabled').css('color','gray');
-                        $("#saveForm").attr('disabled', 'disabled').css('color','gray');
-                        $("#nextForm").attr('disabled', 'disabled').css('color','gray');
-                    }
-                },
-                afterChange: function(){
-                    if($('.htInvalid').length == 0){
-                        $('#prevForm').removeAttr('disabled').css('color','');
-                        $("#saveexitForm").removeAttr('disabled').css('color','');
-                        $("#saveForm").removeAttr('disabled').css('color','');
-                        $("#nextForm").removeAttr('disabled').css('color','');
-                    }
-                },
-                beforeValidate: function(value, row, prop, source){
-                    if(['Unit Price','Amount'].indexOf(this.getColHeader(prop)) != -1){
-                        value = value.replace(/$/g,'').replace(/,/g,'').replace(/\s/g,'');
-                        if (!isNaN(parseFloat(value))) {
-                            value = String(parseFloat(value).toFixed(2));
-                        }
-                    }
-                    if (['Product Number'].indexOf(this.getColHeader(prop)) != -1) {
-                        value = value.replace(/\s/g,'');
-                    }
-
-                    return value;
-                },
-                beforeChange: function(changes, source){
-                    for(var i = 0; i < changes.length; i++) {
-                        if (['Unit Price', 'Amount'].indexOf(this.getColHeader(changes[i][1])) != -1) {
-                            changes[i][3] = changes[i][3].replace(/$/g,'').replace(/,/g,'').replace(/\s/g,'');
-                            if (!isNaN(parseFloat(changes[i][3]))) {
-                                changes[i][3] = String(parseFloat(changes[i][3]).toFixed(2));
-                            }
-                        } else if (['Product Number'].indexOf(this.getColHeader(changes[i][1])) != -1) {
-                            changes[i][3] = changes[i][3].replace(/\s/g,'');
-                        }
-                    }
-                },
-            });
-            hot.getPlugin('comments').editor.editorStyle.zIndex = "10000";
-            if(firstLoad) {
-                clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
-                $('[name="data_form"]').remove();
-                clean_sub = $('#configform').serialize();
-            }
-        }
-
-        function load_table() {
-            hot.destroy();
-            build_table();
-        }
-
-        function data_submit(eventObj) {
-            $('[name="data_form"]').remove();
-            $('<input/>').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#configform');
-            form_save = true;
-        }
-
-        function data_validate(submit){
-            submit = typeof submit !== 'undefined' ? submit:false;
-
-            validating = true;
-            $('#validate').attr('disabled','disabled').attr('value','Validating...').css('color','gray');
-            $('#myModal').modal('show');
-
-            $.ajax({
-                type: "POST",
-                url: "{% url 'bomconfig:validator' %}",
-{#                async: false,#}
-                data: {
-                    entered_data: JSON.stringify(hot.getSourceData(), function(key, value){return value;}),
-                    writeable: {{ config_write_authorized|lower }}
-                },
-                headers:{
-                    'X-CSRFToken': getcookie('csrftoken')
-                },
-                success: function (return_data) {
-                    var returndata = JSON.parse(return_data);
-                    data = returndata.data;
-                    error_matrix = returndata.errors;
-                    load_table();
-                    $('#id_total_value').attr('value', floatFormat(returndata.nettotal));
-                    $('#id_zpru_total').attr('value', floatFormat(returndata.zprutotal));
-                    $('#id_needs_zpru').attr('value', returndata.zpru);
-
-                    if( returndata.zpru == true && returndata.nettotal != returndata.zprutotal){
-                        $('#id_total_value').css('border', '3px solid red');
-                        $('#id_zpru_total').css('border', '3px solid red');
-                    } else {
-                        $('#id_total_value').removeAttr('style');
-                        $('#id_zpru_total').removeAttr('style');
-                    }
-
-                    $('#status').html(returndata.status);
-                    if(returndata.status === 'ERROR'){
-                        $('#status').css('color','#DD0000');
-                    } else if (returndata.status === 'WARNING') {
-                        $('#status').css('color','#FF8800');
-                    } else {
-                        $('#status').css('color','#00AA00');
-                    }
-
-                    validating = false;
-                    valid = true;
-                    $('#validate').removeAttr('disabled').attr('value','Validate').css('color','');
-                    $('#myModal').modal('hide');
-                    if(firstLoad){
-                        clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
-                        $('[name="data_form"]').remove();
-                        clean_sub = $('#configform').serialize();
-                        firstLoad = false;
-                    }
-                    if(submit && returndata.status !== 'ERROR'){
-                        $('#configform').submit();
-                    } else if (submit){
-                        $('#statuses').html('Error(s) found. Save failed.');
-                        setTimeout(function(){$('#statuses').fadeOut('slow')}, 10000);
-                    }
-                },
-                error: function(){
-                    validating = false;
-                    $('#validate').removeAttr('disabled').attr('value','Validate').css('color','');
-                    $('#myModal').modal('hide');
-                    $('#statuses').html('Error during validation. Try again');
-                    setTimeout(function(){$('#statuses').fadeOut('slow')}, 10000);
-                }
-            });
-        }
+        var frame_readonly = {{ frame_readonly|lower }};
+        var configuration_status = '{{ header.configuration_status.name }}';
+        var next_approval = '{{ header.latesttracker.next_approval }}';
+        var bom_write_auth = {{ config_bom_write_authorized|lower }};
+        var sap_read_auth = {{ config_sap_read_authorized|lower }};
+        var sap_write_auth = {{ config_sap_write_authorized|lower }};
+        var attr_read_auth = {{ config_attr_read_authorized|lower }};
+        var attr_write_auth = {{ config_attr_write_authorized|lower }};
+        var price_read_auth = {{ config_price_read_authorized|lower }};
+        var price_write_auth = {{ config_price_write_authorized|lower }};
+        var cust_read_auth = {{ config_cust_read_authorized|lower }};
+        var cust_write_auth = {{ config_cust_write_authorized|lower }};
+        var baseline_read_auth = {{ config_baseline_read_authorized|lower }};
+        var baseline_write_auth = {{ config_baseline_write_authorized|lower }};
+        var overall_write_auth = {{ config_write_authorized|lower }};
+        var is_picklist = {{ header.pick_list|lower }};
+        var condition_list = {{ condition_list|safe }};
+        var material_group_list = {{ material_group_list|safe }};
+        var product_pkg_list = {{ product_pkg_list|safe }};
+        var spud_list = {{ spud_list|safe }};
+        var item_cat_list = {{ item_cat_list|safe }};
+        var active_lock = {{ active_lock|lower }};
+        var ajax_validate_url = "{% url 'bomconfig:ajaxvalidator' %}";
     </script>
+    <script type="text/javascript" src="{% static 'BoMConfig/js/configuration.js' %}"></script>
 {% else %}
 <div>
     <h4>You do not have sufficient permissions to view this asset.</h4>

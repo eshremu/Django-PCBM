@@ -12,6 +12,7 @@ $(document).ready(function(){
     $('tr td:first-child').each(function(idx, elem){$(elem).width(max)});
     $('#id_valid_from_date').datepicker({dateFormat: "yy-mm-dd"});
     $('#id_valid_to_date').datepicker({dateFormat: "yy-mm-dd"});
+    $('#id_projected_cutover').datepicker({dateFormat: "yy-mm-dd"});
 
     $('#searchSubmit').click(function(){
         req_search();
@@ -126,13 +127,21 @@ $(document).ready(function(){
     });
 
     $('#id_configuration_designation').keyup(function(){
+        if(!attached && $('#id_configuration_designation').val() == $('#id_model').val()){
+            attached = true;
+        }
+
         if(attached) {
             $('#id_model').val($(this).val());
         }
     });
 
     $('#id_model').keyup(function(){
-        attached = false;
+        if ($('#id_configuration_designation').val() == $('#id_model').val()){
+            attached = true;
+        } else {
+            attached = false;
+        }
     });
 
     $('#id_product_area1').change(function(){
@@ -214,7 +223,7 @@ function list_filler(parent, child, index){
                 $child.find('option:gt(' + index + ')').remove();
                 for (var key in data){
                     if(data.hasOwnProperty(key)){
-                        $child.append($('<option>',{value:key,text:data[key]}));
+                        $child.append($('<option>',{value:key.toString().slice(1),text:data[key]}));
                     }
                 }
             },

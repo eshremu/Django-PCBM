@@ -3,6 +3,7 @@
 {% load staticfiles %}
 {% block subcontent %}
         <script>$('button[value="inprocess"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');</script>
+        <div id="hintBox"></div>
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
                 <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
@@ -27,11 +28,15 @@
                         <tr class="{% for cust in customer_list %}{{ cust|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
                             <th></th><th style="width:15px;"></th>
                             <th>Configuration Designation</th><th style="width:25px;"></th>
+                            <th>Program</th><th style="width:25px;"></th>
                             <th>Baseline</th><th style="width:25px;"></th>
                             <th>Person Responsible</th><th style="width:25px;"></th>
                             <th>BOM Request Type</th><th style="width:25px;"></th>
                             <th>CU</th><th style="width:25px;"></th>
-                            <th>Customer</th>
+                            <th>Customer</th><th style="width:25px;"></th>
+                            {% for name in namelist %}
+                            <th class="rotate"><div><span>{{ name }}</span></div></th>
+                            {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
@@ -41,7 +46,9 @@
                             <td></td>
                             <td><a href="{% url 'bomconfig:search' %}?link={{ record.pk|searchscramble }}">{{ record.configuration_designation }}</a></td>
                             <td></td>
-                            <td>{{ record.baseline|default:"(Not baselined)" }}</td>
+                            <td>{{ record.program|default:"------" }}</td>
+                            <td></td>
+                            <td>{% if record.baseline.title != 'No Associated Baseline' %}{{ record.baseline|default:"(Not baselined)" }}{% else %}(Not baselined){% endif %}</td>
                             <td></td>
                             <td>{{ record.person_responsible }}</td>
                             <td></td>
@@ -50,11 +57,76 @@
                             <td>{{ record.customer_unit.name }}</td>
                             <td></td>
                             <td>{{ record.customer_name|default:"" }}</td>
+                            {% with record.last_disapproved_tracker as tracker %}
+                                {% if tracker %}
+                            <td></td>
+                                    {% for level in approval_seq|slice:"1:" %}
+                            <td class="approval"><div data-id="{{ tracker.id }}" data-level="{{ level }}">
+                            {% with level|add:'_approver' as approver%}
+                            {% with level|add:'_approved_on' as approvedate%}
+                            {% with level|add:'_denied_approval' as disapprovedate%}
+                            {% if tracker|getattr:disapprovedate %}
+                            <span class="glyphicon glyphicon-remove" style="color:#DD0000;"></span>
+                            {% elif tracker|getattr:approvedate|date:"Y-M-D" == deaddate|date:"Y-M-D" %}
+                            <span class="glyphicon glyphicon-minus"></span>
+                            {% elif tracker|getattr:approver %}
+                            <span class="glyphicon glyphicon-ok" style="color:#00AA00;"></span>
+                            {% else %}
+                            <span style="color:#FFFFFF">_</span>
+                            {% endif %}
+                            {% endwith %}
+                            {% endwith %}
+                            {% endwith %}
+                            </div></td>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endwith %}
                         </tr>
                     {% endfor %}
                     </tbody>
                 </table>
             </form>
+            <style>
+                td.approval{
+                    transform:
+                        translate(0px)
+                }
+                td.approval > div{
+                    border: 1px black solid;
+                    text-align: center;
+                }
+                th.rotate {
+                    height:20px;
+                    white-space: nowrap;
+                    vertical-align: bottom;
+                }
+                th.rotate > div {
+                    width:30px;
+                    transform:
+                        rotate(-65deg)
+                        translate(11px, 6px)
+                }
+                th.rotate > div > span {
+                    border-bottom: 1px solid black;
+                    padding: 3px 0px;
+                }
+
+                #hintBox {
+                    display: none;
+                    position: absolute;
+                    font-size: 10pt;
+                    width: 200px;
+                    background-color: rgba(0,0,0,0.9);
+                    color: rgba(255,255,255,1);
+                    border: 1px solid grey;
+                    padding: 8px;
+                    border-radius: 10px;
+                    z-index: 999;
+                }
+            </style>
+            <script>
+                var approval_url = "{% url 'bomconfig:approve_info' %}";
+            </script>
             {% else %}
                 <h5>NO IN-PROCESS RECORDS</h5>
             {% endif %}

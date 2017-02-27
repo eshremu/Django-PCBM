@@ -2,6 +2,7 @@ __author__ = 'epastag'
 
 from django.http import JsonResponse, Http404, QueryDict
 from django.db import IntegrityError
+from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Baseline, SecurityPermission, Baseline_Revision, REF_CUSTOMER
 from BoMConfig.forms import SubmitForm
@@ -15,11 +16,13 @@ import json
 aHeaderList = None
 
 
+@login_required
 def BaselineLoad(oRequest):
     """This method is used as a landing page for Baseline Management while the useful view loads"""
     return Default(oRequest, sTemplate='BoMConfig/baselineload.html')
 
 
+@login_required
 def BaselineMgmt(oRequest):
     if 'existing' in oRequest.session:
         try:
@@ -51,12 +54,16 @@ def BaselineMgmt(oRequest):
                                                                  or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y)) else 0 if x == y else 1)),
                                 reverse=True)
 
-            dTableData = {'baseline': oBaseline.title, 'revisions':[]}
+            dTableData = {'baseline': oBaseline, 'revisions':[]}
 
             for sRev in aRevisions:
                 aHeads = Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version=sRev).order_by('configuration_status', 'pick_list', 'configuration_designation')
                 if aHeads:
-                    dTableData['revisions'].append({'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev), 'configs': aHeads})
+                    dTableData['revisions'].append({
+                        'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev),
+                        'configs': aHeads, 'customer': ' '.join(set([oHead.customer_unit.name.replace(" ", "-_").replace("&", "_") for oHead in aHeads]))
+                    })
+
                     if not bDownloadable:
                         bDownloadable = True
                 # end if
@@ -68,46 +75,56 @@ def BaselineMgmt(oRequest):
         # end if
     else:
         form = SubmitForm()
-        aBaselines = Baseline.objects.all()
+        aBaselines = Baseline.objects.exclude(title='No Associated Baseline')
         for oBaseline in aBaselines:
-            # aRevisions = sorted(list(set([oBaseRev.version for oBaseRev in oBaseline.baseline_revision_set.order_by('version') if oBaseRev.version in (oBaseRev.baseline.current_active_version, oBaseRev.baseline.current_inprocess_version)])),
-            #                     key=cmp_to_key(lambda x,y:(-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
-            #                                                      or list(x.strip('1234567890')) < (['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) +
-            #                                                                                        list(y.strip('1234567890')))
-            #                                                      or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y)) else 0 if x == y else 1)),
-            #                     reverse=True)
             aRevisions = [oBaseline.current_inprocess_version or None, oBaseline.current_active_version or None]
-            dTableData = {'baseline': oBaseline.title, 'revisions': []}
+            dTableData = {'baseline': oBaseline, 'revisions': []}
 
             for sRev in aRevisions:
                 if not sRev:
                     continue
                 aHeads = Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version=sRev).order_by('configuration_status', 'pick_list', 'configuration_designation')
                 if aHeads:
-                    dTableData['revisions'].append({'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev), 'configs': aHeads})
+                    dTableData['revisions'].append({
+                        'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev),
+                        'configs': aHeads,
+                        'customer': oBaseline.customer.name.replace(" ","-_").replace("&","_")})
                 # end if
             # end for
 
             aTable.append(dTableData)
         # end for
 
-        aTable.append(
-            {
-                'baseline':'No Associated Baseline',
-                'revisions':[
-                    {
-                        'revision':'',
-                        'configs': Header.objects.filter(baseline__isnull=True).order_by('configuration_status', 'pick_list', 'configuration_designation')
-                    }
-                ]
-            }
-        )
+        if Baseline.objects.filter(title='No Associated Baseline'):
+            oBaseline = Baseline.objects.get(title='No Associated Baseline')
+            aRevisions = [oBaseline.current_inprocess_version or None,
+                          oBaseline.current_active_version or None]
+            aTable.append(
+                {
+                    'baseline':oBaseline,
+                    'revisions':[
+                        {
+                            'revision':'',
+                            'configs': Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version__in=aRevisions).order_by('configuration_status', 'pick_list', 'configuration_designation'),
+                            'customer': " ".join([cust.name.replace(" ","-_").replace("&","_") for cust in REF_CUSTOMER.objects.all()])
+                        }
+                    ],
+                }
+            )
     # end if
 
     aTitles = ['', '', 'Configuration','Status','BoM Request Type','Program','Customer Number','Model','Model Description','Customer Price','Created Year',
                'Inquiry/Site Template Number','Model Replacing','Comments','Release Date','ZUST','P-Code','Plant']
 
-    return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html', dContext={'form': form, 'tables': aTable, 'downloadable': bDownloadable, 'column_titles': aTitles, 'cust_list': REF_CUSTOMER.objects.all()})
+    dContext = {
+        'form': form,
+        'tables': aTable,
+        'downloadable': bDownloadable,
+        'column_titles': aTitles,
+        'cust_list': REF_CUSTOMER.objects.all(),
+    }
+
+    return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html', dContext=dContext)
 # end def
 
 
@@ -165,6 +182,7 @@ def BaselineRollback(oRequest):
     return JsonResponse(dResult)
 
 
+@login_required
 def OverviewPricing(oRequest):
     bCanReadPricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Read').filter(user__in=oRequest.user.groups.all()))
     bCanWritePricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Write').filter(user__in=oRequest.user.groups.all()))
