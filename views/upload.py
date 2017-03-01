@@ -1,4 +1,10 @@
-__author__ = 'epastag'
+"""
+Functions for uploading and parsing existing Configuration documents into the
+tool.
+
+******* NOTE: These functions are out-of-date and should not be used until they
+are brought back into compliance with current code base. *******
+"""
 
 from django.utils import timezone
 from django.contrib import messages
@@ -19,6 +25,14 @@ import traceback
 
 @login_required
 def Upload(oRequest):
+    """
+    View for displaying Upload page, and receiving upload files for processing
+    :param oRequest: Django HTTP request
+    :return: HTTP response via Default view
+    """
+
+    # Unlock any Header that was previously opened/locked and delete any header
+    # pointers and statuses
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -33,6 +47,7 @@ def Upload(oRequest):
         del oRequest.session['status']
     # end if
 
+    # If submitting a form and file
     if oRequest.method == 'POST' and oRequest.POST and oRequest.FILES:
         form = FileUploadForm(oRequest.POST, oRequest.FILES)
         if form.is_valid():
@@ -60,6 +75,7 @@ def Upload(oRequest):
             # end for
         # end if
     else:
+        # If form was submitted without a file
         if oRequest.method == 'POST' and not oRequest.FILES:
             messages.add_message(oRequest, messages.ERROR, 'No file specified.')
         # end if

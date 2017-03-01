@@ -1,13 +1,12 @@
-__author__ = 'epastag'
-
 from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.core.urlresolvers import reverse
 from django.db.models import F, Q
 from django.contrib.auth.decorators import login_required
 
-from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, REF_STATUS, REF_PROGRAM, REF_PRODUCT_AREA_1,\
-    REF_PRODUCT_AREA_2, REF_TECHNOLOGY, REF_RADIO_BAND, REF_RADIO_FREQUENCY, Baseline
+from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, \
+    REF_STATUS, REF_PROGRAM, REF_PRODUCT_AREA_1, REF_PRODUCT_AREA_2, \
+    REF_TECHNOLOGY, REF_RADIO_BAND, REF_RADIO_FREQUENCY, Baseline
 
 from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
 from BoMConfig.views.landing import Unlock, Default
