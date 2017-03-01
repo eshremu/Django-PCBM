@@ -691,7 +691,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                          bom_request_type__name__in=('New', 'Legacy')).exclude(
                          program__name__in=(
                          'DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(
-                         configuration_status__name=('On Hold', 'In Process'))]
+                         configuration_status__name__in=('On Hold', 'In Process'))]
 
     # Generate a list of Headers in the sCurrent revision of oBaseline that are
     # updates. Ignore records in "On Hold" or "In Process" status. If
@@ -703,7 +703,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                            bom_request_type__name='Update').exclude(
                            oDiscontinued).exclude(program__name__in=(
                        'DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(
-                           configuration_status__name=('On Hold', 'In Process'))]
+                           configuration_status__name__in=('On Hold', 'In Process'))]
 
     # For each updated Header, determine if the previous revision contains the
     # record the Header claims to update or not
@@ -997,54 +997,87 @@ def HeaderComparison(oHead, oPrev):
             None
         ]
 
-    # For each key in dPrevious
+    # For each key in dPrevious, check if the key is in dCurrent.
     for (sPart, sLine) in dPrevious.keys():
         if (sPart, sLine) in dCurrent.keys():
-            dCurrent[(sPart, sLine)][3] = dPrevious[(sPart, sLine)][3] = (sPart, sLine)
-            if dCurrent[(sPart, sLine)][0] != dPrevious[(sPart, sLine)][0] or dCurrent[(sPart, sLine)][1] != \
-                    dPrevious[(sPart, sLine)][1]:
-                # print('Qty/Price change for:', sLine, sPart)
-                if dCurrent[(sPart, sLine)][0] != dPrevious[(sPart, sLine)][0]:
-                    sTemp += '{} - {} quantity changed from {} to {}\n'.format(sLine, sPart,
-                                                                                       dPrevious[(sPart, sLine)][0],
-                                                                                       dCurrent[(sPart, sLine)][0])
+            # if it is, assign the key as a match key value in both dictionary
+            # entries. This allows us to track which entries in each dictionary
+            # have been matched.
+            dCurrent[(sPart, sLine)][3] = dPrevious[(sPart, sLine)][3] = (sPart,
+                                                                          sLine)
 
-                if dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1] and \
-                        ((oHead.customer_unit == oATT and not oHead.pick_list and sLine == '10') or
-                         (oHead.customer_unit == oATT and oHead.pick_list) or
-                         oHead.customer_unit != oATT):
-                    sTemp += '{} - {} line price changed from {} to {}\n'.format(sLine, sPart,
-                                                                                         dPrevious[(sPart, sLine)][1],
-                                                                                         dCurrent[(sPart, sLine)][1])
+            # Check if quantity or price changed from oPrev entry to oHead entry
+            if dCurrent[(sPart, sLine)][0] != dPrevious[(sPart, sLine)][0] or \
+                            dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
+                if dCurrent[(sPart, sLine)][0] != dPrevious[(sPart, sLine)][0]:
+                    sTemp += '{} - {} quantity changed from {} to {}\n'.format(
+                        sLine, sPart,  dPrevious[(sPart, sLine)][0],
+                        dCurrent[(sPart, sLine)][0]
+                    )
+
+                # The pricing change is only calculated in the following cases:
+                # 1. If record is for AT&T & is not a pick list, compare line 10
+                # (configuration unit price) only.
+                # 2. If record is for AT&T & is a pick list
+                # 3. If record is not for AT&T
+                if dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
+                    if oHead.customer_unit == oATT and not oHead.pick_list and \
+                                    sLine != '10':
+                        continue
+                    sTemp += '{} - {} line price changed from {} to {}\n'.format(
+                        sLine, sPart, dPrevious[(sPart, sLine)][1],
+                        dCurrent[(sPart, sLine)][1]
+                    )
 
         else:
-            if any(sPart == key[0] and dPrevious[(sPart, sLine)][2] == dCurrent[key][2] and not dCurrent[key][3] for key
-                   in dCurrent.keys()):
+            # if the key is not in dCurrent, we need to find potential matches
+            # to the Part number stored as part of the key.
+
+            # If any key in dCurrent has the Part number of the dPrevious key,
+            # the dPrevious and dCurrent entry have the same part ancestry (same
+            # parent and grandparent part), and the dCurrent entry has not been
+            # matched, we will consider this a match that has moved line numbers
+            if any(sPart == key[0] and dPrevious[
+                (sPart, sLine)][2] == dCurrent[key][2] and not dCurrent[key][3]
+                   for key in dCurrent.keys()):
+
+                # Find the first key in dCurrent that met the above condition,
+                # and assign it as a match to the current dPrevious key.  If the
+                # key was in the list of potential matches, remove it
                 for key in dCurrent.keys():
-                    if key[0] == sPart and dPrevious[(sPart, sLine)][2] == dCurrent[key][2] and not dCurrent[key][3]:
+                    if key[0] == sPart and dPrevious[(sPart, sLine)][2] == \
+                            dCurrent[key][2] and not dCurrent[key][3]:
                         dPrevious[(sPart, sLine)][3] = key
                         dCurrent[key][3] = (sPart, sLine)
                         if key in [curr for (_, curr, _) in aPotentialMatches]:
-                            aPotentialMatches[list([curr for (_, curr, _) in aPotentialMatches]).index(key)][2] = False
+                            aPotentialMatches[
+                                list(
+                                    [curr for (_, curr, _) in aPotentialMatches]
+                                ).index(key)][2] = False
                         break
 
-                if dCurrent[dPrevious[(sPart, sLine)][3]][0] != dPrevious[(sPart, sLine)][0] or \
-                                dCurrent[dPrevious[(sPart, sLine)][3]][1] != dPrevious[(sPart, sLine)][1]:
-                    # print('Qty/Price change for:', sLine, sPart)
-                    if dCurrent[dPrevious[(sPart, sLine)][3]][0] != dPrevious[(sPart, sLine)][0]:
-                        sTemp += '{} - {} quantity changed from {} to {}\n'.format(dPrevious[(sPart, sLine)][3][1], sPart,
-                                                                                           dPrevious[(sPart, sLine)][0],
-                                                                                           dCurrent[dPrevious[
-                                                                                               (sPart, sLine)][3]][0])
+                # Check the match for changes to quantity and price
+                if dCurrent[dPrevious[(sPart, sLine)][3]][0] != \
+                        dPrevious[(sPart, sLine)][0] or \
+                                dCurrent[dPrevious[(sPart, sLine)][3]][1] != \
+                                dPrevious[(sPart, sLine)][1]:
 
-                    if dCurrent[dPrevious[(sPart, sLine)][3]][1] != dPrevious[(sPart, sLine)][1] and \
-                            ((oHead.customer_unit == oATT and not oHead.pick_list and sLine == '10') or
-                             (oHead.customer_unit == oATT and oHead.pick_list) or
-                             oHead.customer_unit != oATT):
+                    if dCurrent[dPrevious[(sPart, sLine)][3]][0] != \
+                            dPrevious[(sPart, sLine)][0]:
+                        sTemp += '{} - {} quantity changed from {} to {}\n'.format(
+                            dPrevious[(sPart, sLine)][3][1],
+                            sPart, dPrevious[(sPart, sLine)][0],
+                            dCurrent[dPrevious[(sPart, sLine)][3]][0]
+                        )
+
+                    if dCurrent[dPrevious[(sPart, sLine)][3]][1] != dPrevious[(sPart, sLine)][1]:
+                        if oHead.customer_unit == oATT and not oHead.pick_list and sLine != '10':
+                            continue
                         sTemp += '{} - {} line price changed from {} to {}\n'.format(
                             dPrevious[(sPart, sLine)][3][1], sPart,
                             dPrevious[(sPart, sLine)][1],
-                            dCurrent[dPrevious[(sPart, sLine)][3]][1])
+                            dCurrent[dPrevious[(sPart, sLine)][3]][1]
+                        )
 
             else:
                 """
@@ -1061,41 +1094,47 @@ def HeaderComparison(oHead, oPrev):
                         if key[1] == sLine:
                             aPotentialMatches.append([(sPart, sLine), key, True])
 
-    # One more check of potential matches to make sure none were missed
+    # Now do a check of the potential matches list to make sure none were missed
+
+    # First double check that any key in dCurrent that has been matched is
+    # removed from the potential match list
     for key in dCurrent.keys():
         if key in [curr for (_, curr, _) in aPotentialMatches] and dCurrent[key][3]:
-            aPotentialMatches[
-                list(
-                    [curr for (_, curr, _) in aPotentialMatches]
-                ).index(key)][2] = False
+            aPotentialMatches[list(
+                [curr for (_, curr, _) in aPotentialMatches]
+            ).index(key)][2] = False
 
+    # Check all non-matched keys in dPrevious against the potential match list
     for key in dPrevious.keys():
         if not dPrevious[key][3]:
             for aEntry in aPotentialMatches:
+                # The dPrevious key and potential match entry share part number
+                # and the entry is still available, we will consider it a match
                 if key == aEntry[0] and aEntry[2]:
                     aEntry[2] = False
                     dPrevious[key][3] = aEntry[1]
                     dCurrent[aEntry[1]][3] = key
-                    # print(key[1], key[0], 'replaced by', dPrevious[key][3][0])
-                    sTemp += '{} - {} replaced by {}\n'.format(key[1], key[0],
-                                                               dPrevious[key][3][0]
-                                                               )
+                    sTemp += '{} - {} replaced by {}\n'.format(
+                        key[1], key[0], dPrevious[key][3][0]
+                    )
                     break
 
+    # At this point, any keys in dPrevious that have not been matched are
+    # considered to have been removed
     for key in dPrevious.keys():
         if not dPrevious[key][3]:
-            # print(key[1], key[0], 'removed')
-            sTemp += '{} - {} removed{}\n'.format(key[1], key[0],
-                                                  ' (line number remained)' if key in [
-                                                      prev for (prev, _, _) in
-                                                      aPotentialMatches] else '')
+            sTemp += '{} - {} removed{}\n'.format(
+                key[1], key[0],
+                ' (line number remained)' if key in [prev for (prev, _, _) in
+                                                     aPotentialMatches] else '')
 
+    # At this point any unmatched keys in dCurrent are considered to be new
+    # additions
     for key in dCurrent.keys():
         if not dCurrent[key][3]:
-            # print(key[1], key[0], 'added')
             sTemp += '{} - {} added\n'.format(key[1], key[0])
-            # print()
 
+    # Sort the changes by line number, and return the string
     aLines = sTemp.split('\n')[:-1]
     aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])
     return '\n'.join(aLines)
