@@ -565,7 +565,7 @@ function build_table() {
                  */
 
                 if (source != 'validation') {
-                    if (source == 'loadData') {
+                    if (source == 'loadData' && firstLoad) {
                         var sourceData = this.getSourceData();
                         changes = [];
 
