@@ -1508,7 +1508,7 @@ def Validator(oRequest):
                     form_data[index]['5'] = tPartData[0][3] if tPartData[0][3] not in (None, 'NONE', 'None') else ''
 
                     if tPartData[0][2]:
-                        oCursor.execute('SELECT [Description] FROM dbo.[REF_X-PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
+                        oCursor.execute('SELECT [Description] FROM dbo.[REF_X_PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
                             [bytes(tPartData[0][2], 'ascii')])
                         tXPlant = oCursor.fetchall()
                         if tXPlant:
@@ -2367,7 +2367,7 @@ def ValidateXPlant(dData, dResult):
     oCursor = connections['BCAMDB'].cursor()
 
     oCursor.execute(
-        'SELECT [Description] FROM dbo.[REF_X-PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
+        'SELECT [Description] FROM dbo.[REF_X_PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
         [bytes(dResult['value'], 'ascii')])
     tXPlant = oCursor.fetchall()
     oCursor.close()
