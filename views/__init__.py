@@ -1,4 +1,6 @@
-__author__ = 'epastag'
+"""
+Views module initialization
+"""
 
 from BoMConfig.views.landing import Index, Login, Logout, InitialLock, FinalUnlock
 from BoMConfig.views.configuration import AddHeader, AddConfig, AddTOC, AddRevision, AddInquiry, Validator, ListFill, ListREACTFill, ReactSearch, Clone, BuildDataArray, AjaxValidator

@@ -2342,7 +2342,7 @@ def ValidateRECode(dData, dResult):
     tRECode = oCursor.fetchall()
     oCursor.close()
     if tRECode:
-        if tRECode[0][0] not in dData['int_notes']:
+        if dData['int_notes'] and tRECode[0][0] not in dData['int_notes']:
                 sNote = dData['int_notes'] + '; ' + tRECode[0][0]
         else:
             sNote = tRECode[0][0]
@@ -2399,7 +2399,7 @@ def ValidateUnitPrice(dData, dResult, oHead):
 
 
 def ValidateHigherLevel(dData, dResult):
-    if dData['value'] not in dData.getlist('other_lines'):
+    if dData['value'] and dData['value'] not in dData.getlist('other_lines'):
         dResult['error']['value'] = '! - Item number not found.\n'
         dResult['status'] = '!'
         return
