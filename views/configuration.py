@@ -1373,7 +1373,7 @@ def Validator(aData, oHead, bCanWriteConfig):
         oCursor = connections['BCAMDB'].cursor()
 
         # Populate Read-only fields
-        P_Code = aData[index]['10'] if re.match("^\d{2,3}$", aData[index]['10'], re.IGNORECASE) else None
+        P_Code = aData[index]['10'] if aData[index]['10'] and re.match("^\d{2,3}$", aData[index]['10'], re.IGNORECASE) else None
         tPCode = None
         oCursor.execute("SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],[Base Unit of Measure]," +
                         "[P Code],[MTyp],[ZMVKE Item Category] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s AND [ZMVKE Item Category]<>'NORM'", [bytes(aData[index]['2'].strip('.'), 'ascii') if aData[index]['2'] else None])
@@ -1470,10 +1470,10 @@ def Validator(aData, oHead, bCanWriteConfig):
 
             oCursor.execute(
                 'SELECT [Plnt] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [Material]=%s',
-                [bytes(aData[index]['7'],'ascii'), bytes(aData[index]['2'],'ascii')]
+                [bytes(aData[index]['7'], 'ascii'), bytes(aData[index]['2'],'ascii')]
             )
             tPlants = oCursor.fetchall()
-            if (aData[index]['7']) not in tPlants:
+            if (aData[index]['7'],) not in tPlants:
                 error_matrix[index][7]['value'] += "! - Plant not found for material.\n"
         # end if
 

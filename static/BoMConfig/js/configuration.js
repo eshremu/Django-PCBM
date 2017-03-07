@@ -393,6 +393,10 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties) {
         value = value.slice(1);
     }
 
+    if (cellProperties.className != undefined && cellProperties.className.indexOf('hidden_cell') != -1) {
+        td.style['white-space'] = 'nowrap';
+    }
+
     if (/<[a-zA-Z][\s\S/]*>/.test(value) === false) {
         Handsontable.renderers.TextRenderer.apply(this, arguments);
     } else {
@@ -405,7 +409,7 @@ function build_table() {
     determineColumns(readonly_columns, hidden_cols);
     var container = document.getElementById('datatable');
     var colWidths = [50,50,150,342,72,50,74,50,50,62,264,81,103,50,68,63,117,65,74,
-            119,116,162,105,62,160,118,246,124,176,151,250,250]
+            119,116,162,105,62,160,118,246,124,176,151,250,250];
     hot = new Handsontable(container, {
         data: data,
         minRows: 1,
@@ -463,12 +467,29 @@ function build_table() {
             }
         },
         cells: function(row, col, prop){
-            var cellProperties = {};
+            var cellProperties = {
+                className: ''
+            };
 
             if(hidden_cols.indexOf(parseInt(col)) != -1){
+                if (this.instance.getPlugin('ManualColumnResize').manualColumnWidths.hasOwnProperty(parseInt(col)) &&
+                        this.instance.getPlugin('ManualColumnResize').manualColumnWidths[parseInt(col)] != undefined &&
+                        previous_widths[parseInt(col)] == undefined){
+                    previous_widths[parseInt(col)] = this.instance.getPlugin('ManualColumnResize').manualColumnWidths[parseInt(col)];
+                    this.instance.getPlugin('ManualColumnResize').manualColumnWidths[parseInt(col)] = 0;
+                }
                 cellProperties.width = 0;
+                cellProperties.className += 'hidden_cell' + ' ';
             } else {
+                if (previous_widths.hasOwnProperty(parseInt(col)) && previous_widths[parseInt(col)] != undefined){
+                    this.instance.getPlugin('ManualColumnResize').manualColumnWidths[parseInt(col)] = previous_widths[parseInt(col)];
+                    previous_widths[parseInt(col)] = undefined;
+                }
+
                 cellProperties.width = colWidths[parseInt(col)];
+                if (cellProperties.className != undefined && cellProperties.className.indexOf('hidden_cell') != -1){
+                    cellProperties.className = cellProperties.className.replace('hidden_cell', '');
+                }
             }
 
             if(active_lock || (!is_picklist  && (row === 0 && [1,2,4].indexOf(col)!== -1)) || readonly_columns.indexOf(col) !== -1){
@@ -504,13 +525,14 @@ function build_table() {
                 cellProperties.validator = /^\d+(?:\.\d+)?$|^$/
             }
 
-            cellProperties.className = 'htCenter';
             if (['Line #', 'Product Description', 'SPUD', 'Int Notes','P-Code - Fire Code, Desc', 'Vendor Article Number','Comments','Additional Reference (if required)'].indexOf(this.instance.getColHeader(col)) != -1){ //
-                cellProperties.className = 'htLeft';
+                cellProperties.className += 'htLeft';
             } else if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
-                cellProperties.className = 'htRight';
+                cellProperties.className += 'htRight';
             } else if (this.instance.getColHeader(col).startsWith('Product Number')) {
-                cellProperties.className = 'htLeft';
+                cellProperties.className += 'htLeft';
+            } else {
+                cellProperties.className += 'htCenter';
             }
 
             if(this.instance.getColHeader(col) == 'Condition Type'){
@@ -565,29 +587,14 @@ function build_table() {
                  so we do nothing on 'validation' changes because we want to avoid creating a feedback loop
                  */
 
-                if (source != 'validation') {
-                    if (source == 'loadData' && firstLoad) {
-                        return;
-                        var sourceData = this.getSourceData();
-                        changes = [];
-
-                        var iTotalRows = this.countRows() - this.countEmptyRows(true);
-                        for (var i = 0; i < iTotalRows; i++) {
-                            for (var col in sourceData[i]) {
-                                if ([2,7,8,11,18,19,22].indexOf(parseInt(col)) != -1 && sourceData[i].hasOwnProperty(col)) {
-                                    changes.push([i, parseInt(col), null, sourceData[i][col]]);
-                                }
-                            }
-                        }
-                    }
-
+                if (['loadData', 'validation'].indexOf(source) == -1) {
                     var lineEstimates;
                     if (source == 'paste') {
                         lineEstimates = estimateLineNumbers(changes, this.getDataAtCol(1));
                     }
 
                     for (var i = 0; i < changes.length; i++) {
-                        if (source != 'initLoad' && (changes[i][1] == 0 || (changes[i][2] == changes[i][3] && !(changes[i][1] == 4 || changes[i][1] == 26 || changes[i][1] == 22 || changes[i][1] == 23)))) {
+                        if (changes[i][1] == 0 || (changes[i][2] == changes[i][3] && !(changes[i][1] == 4 || changes[i][1] == 26 || changes[i][1] == 22 || changes[i][1] == 23))) {
                             continue;
                         }
 
@@ -596,7 +603,7 @@ function build_table() {
                                 row: parseInt(changes[i][0]),
                                 col: parseInt(changes[i][1]),
                                 value: changes[i][3],
-                                allowChain: source != 'initLoad'
+                                allowChain: source != 'loadData'
                             }
                         };
 
@@ -665,68 +672,6 @@ function build_table() {
                                 break;
                         }
 
-                        // (function (inputData) {
-                        //     $.ajax({
-                        //         url: ajax_validate_url,
-                        //         type: "POST",
-                        //         data: inputData,
-                        //         headers: {
-                        //             'X-CSRFToken': getcookie('csrftoken')
-                        //         },
-                        //         beforeSend: function (xhr, settings) {
-                        //             validationStorage.add(inputData.row, inputData.col, xhr, settings);
-                        //             tableThis.setDataAtCell(inputData.row, 0, 'INW');
-                        //             UpdateValidation();
-                        //         },
-                        //         success: function (returneddata) {
-                        //             validationStorage.finish(returneddata.row, returneddata.col);
-                        //             tableThis.setDataAtCell(returneddata.row, returneddata.col, returneddata.value, 'validation');
-                        //             if (tableThis.getCellMeta(returneddata.row, returneddata.col)['comment'] != undefined) {
-                        //                 tableThis.getCellMeta(returneddata.row, returneddata.col)['comment']['value'] = returneddata.error['value'];
-                        //             } else {
-                        //                 tableThis.setCellMeta(returneddata.row, returneddata.col, 'comment', returneddata.error);
-                        //             }
-                        //             tableThis.setCellMeta(returneddata.row, returneddata.col, 'cellStatus', returneddata.status);
-                        //
-                        //             tableThis.render();
-                        //
-                        //             for (var col in returneddata.propagate.line) {
-                        //                 if (returneddata.propagate.line.hasOwnProperty(col)) {
-                        //                     if (returneddata.propagate.line[col].chain) {
-                        //                         tableThis.setDataAtRowProp(returneddata.row, parseInt(col), returneddata.propagate.line[col].value, 'edit');
-                        //                     } else {
-                        //                         tableThis.setDataAtRowProp(returneddata.row, parseInt(col), returneddata.propagate.line[col].value, 'validation');
-                        //                     }
-                        //                 }
-                        //             }
-                        //
-                        //             for (var prop in returneddata.propagate) {
-                        //                 if (prop == 'line') {
-                        //                     continue;
-                        //                 }
-                        //
-                        //                 if (returneddata.propagate.hasOwnProperty(prop)) {
-                        //                     $(`[name="${prop}"]`).val(returneddata.propagate[prop]);
-                        //                 }
-                        //             }
-                        //         },
-                        //         error: function (xhr, status, error) {
-                        //             if (tableThis.getCellMeta(inputData.row, inputData.col)['comment'] != undefined) {
-                        //                 tableThis.getCellMeta(inputData.row, inputData.col)['comment']['value'] = '? - An error occurred while validating.\n';
-                        //             } else {
-                        //                 tableThis.setCellMeta(inputData.row, inputData.col, 'comment', {value: '? - An error occurred while validating.\n'});
-                        //             }
-                        //
-                        //             tableThis.setCellMeta(inputData.row, inputData.col, 'cellStatus', '?');
-                        //             // $('#statuses').html('Error(s) found. Save failed.');
-                        //             // setTimeout(function(){$('#statuses').fadeOut('slow')}, 10000);
-                        //         },
-                        //         complete: function (xhr, status) {
-                        //             validationStorage.finish(inputData.row, inputData.col);
-                        //             UpdateValidation(inputData.row);
-                        //         }
-                        //     });
-                        // })(data);
                         (function (inputData) {
                             var settings = {
                                 url: ajax_validate_url,
@@ -783,8 +728,6 @@ function build_table() {
     hot.getPlugin('comments').editor.editorStyle.zIndex = "1050";
 
     if(firstLoad && !(frame_readonly || active_lock)) {
-
-        var iTotalRows = hot.countRows() - hot.countEmptyRows(true);
         for (var row = 0; row < errors.length; row++) {
             for (var col=0; col < errors[row].length; col++){
                 if (hot.getCellMeta(row, col)['comment'] != undefined) {
@@ -794,17 +737,10 @@ function build_table() {
                 }
                 hot.setCellMeta(row, col, 'cellStatus', hot.getDataAtCell(row, col));
             }
-            // for (var col of [2,7,8,11,18,19,22]){
-            //     hot.setDataAtCell(row, col, hot.getDataAtCell(row, col), 'initLoad');
-            // }
-
-            // for (var col in sourceData[i]) {
-            //     if ([2,7,8,11,18,19,22].indexOf(parseInt(col)) != -1 && sourceData[i].hasOwnProperty(col)) {
-            //         changes.push([i, parseInt(col), null, sourceData[i][col]]);
-            //     }
-            // }
         }
+
         UpdateValidation();
+
         valid = true;
         clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
         for(var i = 0; i < clean_form.length; i++){

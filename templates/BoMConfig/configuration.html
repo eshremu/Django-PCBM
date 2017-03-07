@@ -33,6 +33,10 @@
         .hidden_col > div {
             display: none;
         }
+
+        .hidden_cell {
+            white-space: nowrap;
+        }
     </style>
     <form id="configform" method="POST" onsubmit="data_submit();">
         {% csrf_token %}
@@ -130,6 +134,7 @@
         var config_id = '{{ header.configuration_designation|default:'' }}';
         var readonly_columns = [];
         var hidden_cols = [];
+        var previous_widths = [];
         var clean_form, clean_sub;
         var form_save = false;
         var validating = false;
