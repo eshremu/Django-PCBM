@@ -576,9 +576,11 @@ def AddConfig(oRequest):
     # end if
 
     data = BuildDataArray(oHeader, config=True)
+    error_matrix = Validator(data, oHeader, bCanWriteConfig)
 
     dContext = {
         'data_array': data,
+        'errors': error_matrix,
         'form': configForm,
         'header': oHeader,
         'status_message': status_message,
@@ -1088,11 +1090,12 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
                     continue
             # end if
 
-            for key in copy.deepcopy(dLine):
-                if not dLine[key]:
-                    del dLine[key]
-                # end if
-            # end for
+            if not config:
+                for key in copy.deepcopy(dLine):
+                    if not dLine[key]:
+                        del dLine[key]
+                    # end if
+                # end for
             aData.append(dLine)
         # end for
         return aData
@@ -1184,509 +1187,359 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False, site=Fa
 # end def
 
 
-def Validator(oRequest):
-    if oRequest.method == "POST" and oRequest.POST:
-        form_data = json.loads(oRequest.POST['entered_data'])
-        if 'existing' in oRequest.session:
-            oHead = Header.objects.get(pk=oRequest.session['existing'])
+def Validator(aData, oHead, bCanWriteConfig):
+    Parent = 0
+    Child = 0
+    Grandchild = 0
+    parents = set()
+    children = set()
+
+    aLineNumbers = []
+    error_matrix = []
+    for _ in range(len(aData)):
+        dummy = []
+        for _ in range(32):
+            dummy.append({'value': ''})
+        error_matrix.append(dummy)
+
+    for index in range(len(aData)):
+
+        # Check entered data formats
+        # Product Number
+        if aData[index]['2'].strip('.').strip() in ('', None):
+            error_matrix[index][2]['value'] += 'X - No Product Number provided.\n'
+            aData[index]['2'] = ''
         else:
-            oHead = Header.objects.get(pk=oRequest.GET.get('id'))
-        bCanWriteConfig = oRequest.POST['writeable']
-        net_total = 0
-        override_total = 0
-        base_total = None
-        # first_line = None
-        zpru_total = 0
-        needs_zpru = False
-        status = 'GOOD'
-
-        Parent = 0
-        Child = 0
-        Grandchild = 0
-        parents = set()
-        children = set()
-
-        # Convert list of lists to list of dicts
-        if type(form_data[0]) == list:
-            for index in range(len(form_data)):
-                form_data[index] = {str(key): (value if value != '' else None) for key, value in enumerate(form_data[index])}
-            #end for)
-
-        # Clean empty rows out and remove previous row statuses
-        for index in range(len(form_data) - 1, -1, -1):
-            if '0' in form_data[index]:
-                del form_data[index]['0']
-
-            if all(x in (None, '', 'None') for x in list(form_data[index].values())) or len(form_data[index]) < 1:
-                del form_data[index]
-                continue
-            else:
-                for x in form_data[index]:
-                    form_data[index][str(x)] = str(form_data[index][str(x)]) if form_data[index][str(x)] not in (None, 'None') else ''
+            aData[index]['2'] = aData[index]['2'].upper()
+            if len(aData[index]['2'].strip('. ')) > 18:
+                error_matrix[index][2]['value'] += 'X - Product Number exceeds 18 characters.\n'
             # end if
-        # end for
-
-        aLineNumbers = []
-        # error_matrix = [['']*32 for _ in range(len(form_data))]
-        error_matrix = []
-        for _ in range(len(form_data)):
-            dummy = []
-            for _ in range(32):
-                dummy.append({'value':''})
-            error_matrix.append(dummy)
-
-        for index in range(len(form_data)):
-
-            # Check entered data formats
-            # Product Number
-            if '2' not in form_data[index] or form_data[index]['2'].strip('.').strip() in ('None', ''):
-                error_matrix[index][2] += 'X - No Product Number provided.\n'
-                form_data[index]['2'] = ''
-            else:
-                form_data[index]['2'] = form_data[index]['2'].upper()#.replace(' ','')
-                if len(form_data[index]['2'].strip('. ')) > 18:
-                    error_matrix[index][2] += 'X - Product Number exceeds 18 characters.\n'
-                # end if
-            # end if
-
-            if '29' not in form_data[index] or form_data[index]['29'] in ('None', '', None, 'null'):
-                form_data[index]['29'] = form_data[index]['2'].strip('./')
-            if '1' in form_data[index] and form_data[index]['1'] not in ('None', ''):
-                # if form_data[index]['2'].startswith(('.', '..')):
-                #     pass # error_matrix[index][1] += 'X - Line number provided when product number indicates relationship.\n'
-                if not re.match("^\d+(?:\.\d+){0,2}$|^$", form_data[index]['1'] or '') and form_data[index]['1'] not in ('None', None):
-                    error_matrix[index][1] += 'X - Invalid character. Use 0-9 and "." only.\n'
-                elif form_data[index]['1'] not in ('None', None):
-                    this = form_data[index]['1']
-                    if this.count('.') == 0 and this:
-                        Parent = int(this)
-                        Child = 0
-                        Grandchild = 0
-                        parents.add(str(Parent))
-                    elif this.count('.') == 1:
-                        Parent = int(this[:this.find('.')])
-                        if str(Parent) not in parents:
-                            error_matrix[index][1] += 'X - This parent ('+str(Parent)+') does not exist.\n'
-                        else:
-                            Child = int(this[this.rfind('.')+1:])
-                            children.add(str(Parent)+"."+str(Child))
-                            Grandchild = 0
-                    elif this.count('.') == 2:
-                        Parent = int(this[:this.find('.')])
-                        if str(Parent) not in parents:
-                            error_matrix[index][1] += 'X - This parent ('+str(Parent)+') does not exist.\n'
-                        else:
-                            Child = int(this[this.find('.')+1: this.rfind('.')])
-                            if str(Parent)+"."+str(Child) not in children:
-                                error_matrix[index][1] += 'X - This child ('+str(Parent)+'.'+str(Child)+') does not exist.\n'
-                            else:
-                                Grandchild = int(this[this.rfind('.')+1:])
-                    # end if
-                else:
-                    form_data[index]['1'] = ''
-                # end if
-
-                if '2' in form_data[index] and form_data[index]['2'] not in ('None', ''):
-                    if form_data[index]['1'].count('.') == 2 and not form_data[index]['2'].startswith('..'):
-                        form_data[index]['2'] = '..' + form_data[index]['2']
-                    elif form_data[index]['1'].count('.') == 1 and not form_data[index]['2'].startswith('.'):
-                        form_data[index]['2'] = '.' + form_data[index]['2']
-                    # end if
-                # end if
-            else:
-                if form_data[index]['2'].startswith('..'):
-                    Grandchild += 1
-                    form_data[index]['1'] = str(Parent) + "." + str(Child) + "." + str(Grandchild)
-                elif form_data[index]['2'].startswith('.'):
-                    Child += 1
-                    form_data[index]['1'] = str(Parent) + "." + str(Child)
-                else:
-                    if Parent % 10 == 0:
-                        Parent += 10
-                    else:
-                        Parent += 1
-                    Child = 0
-                    Grandchild = 0
-                    form_data[index]['1'] = str(Parent)
-                # end if
-            # end if
-
-            # Product Description
-            if '3' not in form_data[index] or form_data[index]['3'].strip() in ('None', ''):
-                form_data[index]['3'] = ''
-            else:
-                if len(form_data[index]['3']) > 40:
-                    error_matrix[index][3] += 'X - Product Description exceeds 40 characters.\n'
-
-            # Order Qty
-            if '4' not in form_data[index] or not re.match("^\d+(?:.\d+)?$", form_data[index]['4'] or ''):
-                error_matrix[index][4] += 'X - Invalid Order Qty.\n'
-                if '4' in form_data[index] and form_data[index]['4'] in ('None',''):
-                    form_data[index]['4'] = ''
-            # end if
-
-            # Plant
-            if '7' in form_data[index] and not re.match("^\d{4}$|^$", form_data[index]['7'] or ''):
-                error_matrix[index][7] += 'X - Invalid Plant.\n'
-            # end if
-
-            # SLOC
-            if '8' in form_data[index] and not re.match("^\w{4}$|^$", form_data[index]['8'] or ''):
-                error_matrix[index][8] += 'X - Invalid SLOC.\n'
-            # end if
-
-            # Item Cat
-            if '9' in form_data[index]:
-                if not re.match("^Z[A-Z0-9]{3}$|^$", form_data[index]['9'] or '', re.IGNORECASE):
-                    error_matrix[index][9] += 'X - Invalid Item Cat.\n'
-
-                if form_data[index]['9']:
-                    form_data[index]['9'] = form_data[index]['9'].upper()
-            # end if
-
-            # P-Code
-            if '10' in form_data[index]:
-                if not re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$|^\([A-Z]\d{2}-\d{4}\).*$|^$", form_data[index]['10'] or '', re.IGNORECASE):
-                    error_matrix[index][10] += 'X - Invalid P-Code.\n'
-
-                if form_data[index]['10']:
-                    form_data[index]['10'] = form_data[index]['10'].upper()
-            # end if
-
-            # HW/SW Ind
-            if '11' in form_data[index]:
-                if not re.match("^H(ARD)?W(ARE)?$|^S(OFT)?W(ARE)?$|^CS$|^$", form_data[index]['11'] or '', re.IGNORECASE):
-                    error_matrix[index][11] += 'X - Invalid HW/SW Ind.\n'
-
-                if form_data[index]['11']:
-                    form_data[index]['11'] = form_data[index]['11'].upper()
-            # end if
-
-            # Unit Price
-            if '18' in form_data[index]:
-                if form_data[index]['18'] != 'None':
-                    form_data[index]['18'] = form_data[index]['18'].replace('$', '').replace(',','')
-
-                if not re.match("^(?:!)?(?:-)?\d+(?:\.\d+)?$|^$", form_data[index]['18'] or ''):
-                    error_matrix[index][18] += 'X - Invalid Unit Price provided.\n'
-            # end if
-
-            # Higher Level Item
-            # if '19' not in form_data[index]:
-            #     if '.' not in form_data[index]['1'] and form_data[index]['1'] != '10' and not oHead.pick_list:
-            #         form_data[index]['19'] = '10'
-            #     elif '.' in form_data[index]['1']:
-            #         form_data[index]['19'] = form_data[index]['1'][:form_data[index]['1'].rfind('.')]
-            #     # end if
-            # # end if
-
-            # Condition Type & Amount Supplied Together
-            NoCondition = '22' not in form_data[index] or form_data[index]['22'] in ('', 'None')
-            NoAmount = '23' not in form_data[index] or form_data[index]['23'] in ('', 'None')
-            if (NoCondition and not NoAmount) or (NoAmount and not NoCondition):
-                if NoAmount and not NoCondition:
-                    error_matrix[index][23] += 'X - Condition Type provided without Amount.\n'
-                else:
-                    error_matrix[index][22] += 'X - Amount provided without Condition Type.\n'
-                # end if
-            # end if
-
-            # Amount
-            if '23' in form_data[index]:
-                if form_data[index]['23'] != 'None':
-                    form_data[index]['23'] = form_data[index]['23'].replace('$', '').replace(',','')
-
-                if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$", form_data[index]['23'] or ''):
-                    error_matrix[index][23] += 'X - Invalid Amount provided.\n'
-            # end if
-
-            if oHead.configuration_status.name == 'In Process' or (bCanWriteConfig and oHead.configuration_status.name == 'In Process/Pending'):
-                try:
-                    oMPNCustMap = CustomerPartInfo.objects.get(part__product_number=form_data[index]['2'].strip('. '),
-                                                               customer=oHead.customer_unit,
-                                                               active=True)
-                except CustomerPartInfo.DoesNotExist:
-                    oMPNCustMap = None
-                # end try
-
-                # Customer Asset
-                if '25' in form_data[index]:
-                    form_data[index]['25'] = form_data[index]['25'].strip() if form_data[index]['25'] else form_data[index]['25']
-                    if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['25'] or '', re.I):
-                        error_matrix[index][25] += "X - Invalid Customer Asset.\n"
-
-                    if form_data[index]['25'] not in ('None', None, ''):
-                        form_data[index]['25'] = form_data[index]['25'].upper()
-
-                    if oMPNCustMap:
-                        if (oMPNCustMap.customer_asset is True and form_data[index]['25'] not in ('Y', 'YES')) \
-                                or (oMPNCustMap.customer_asset is False and form_data[index]['25'] not in ('N', 'NO')) \
-                                or (oMPNCustMap.customer_asset is None and form_data[index]['25'] not in ('', 'NONE', None)):
-                            error_matrix[index][25] += "! - Customer Asset does not match stored data.\n"
-
-                    # if '23' not in form_data[index] or form_data[index]['23'] in ('None', ''):
-                    #     pass  # error_matrix[index][24] += "X - Customer assest set without Traceability Req.\n"
-                    # if '23' in form_data[index] and form_data[index]['23'] in ('N', 'NO') and form_data[index]['24'] in ('Y', 'YES'):
-                    #     pass  # error_matrix[index][24] += "X - Customer asset cannot be 'Y' when Traceability is 'N'.\n"
-                elif oMPNCustMap:
-                    form_data[index]['25'] = 'Y' if oMPNCustMap.customer_asset else 'N' if oMPNCustMap.customer_asset is False else ''
-                # end if
-
-                # Customer Asset tagging Req
-                if '26' in form_data[index]:
-                    form_data[index]['26'] = form_data[index]['26'].strip() if form_data[index]['26'] else form_data[index]['26']
-                    if not re.match("^Y(?:es)?$|^N(?:o)?$|^$", form_data[index]['26'] or '', re.I):
-                        error_matrix[index][26] += "X - Invalid Customer Asset tagging Req.\n"
-
-                    if form_data[index]['26'] not in ('None', None, ''):
-                        form_data[index]['26'] = form_data[index]['26'].upper()
-
-                    if oMPNCustMap:
-                        if (oMPNCustMap.customer_asset_tagging is True and form_data[index]['26'] not in ('Y', 'YES'))\
-                                or (oMPNCustMap.customer_asset_tagging is False and form_data[index]['26'] not in ('N', 'NO'))\
-                                or (oMPNCustMap.customer_asset_tagging is None and form_data[index]['26'] not in ('', 'NONE', None)):
-                            error_matrix[index][26] += "! - Customer Asset tagging Req. does not match stored data.\n"
-                    # end if
-
-                    # if '24' not in form_data[index] or form_data[index]['24'] in ('None', ''):
-                    #     pass  # error_matrix[index][25] += 'X - Cannot provide Customer Asset Tagging without Customer Asset.\n'
-                    # if '24' in form_data[index] and form_data[index]['24'] in ('N', 'NO') and form_data[index]['25'] in ('Y', 'YES'):
-                    #     error_matrix[index][25] += 'X - Cannot mark Customer Asset Tagging when part is not Customer Asset.\n'
-                elif oMPNCustMap:
-                    form_data[index]['26'] = 'Y' if oMPNCustMap.customer_asset_tagging else 'N' if oMPNCustMap.customer_asset_tagging is False else ''
-                # end if
-                if '25' in form_data[index] and form_data[index]['25'] in ('N', 'NO') and '26' in form_data[index] and form_data[index]['26'] in ('Y', 'YES'):
-                    error_matrix[index][26] += 'X - Cannot mark Customer Asset Tagging when part is not Customer Asset.\n'
-
-                # Customer Number
-                if '27' in form_data[index]:
-                    if form_data[index]['27'] not in ('None', None, ''):
-                        form_data[index]['27'] = form_data[index]['27'].upper()
-
-                    if oMPNCustMap:
-                        if oMPNCustMap.customer_number != form_data[index]['27']:
-                            error_matrix[index][27] += '! - Customer Number does not match stored data.\n'
-                    else:
-                        error_matrix[index][27] += '! - No Customer Number found for line item.\n'
-                elif oMPNCustMap:
-                    form_data[index]['27'] = oMPNCustMap.customer_number or ''
-                # end if
-
-                # Second Customer Number
-                if '28' in form_data[index]:
-                    if form_data[index]['28'] not in ('None', None, ''):
-                        form_data[index]['28'] = form_data[index]['28'].upper()
-
-                    if oMPNCustMap:
-                        if oMPNCustMap.second_customer_number and form_data[index]['28'] and oMPNCustMap.second_customer_number != form_data[index]['28']:
-                            error_matrix[index][28] += '! - Second Customer Number does not match stored data.\n'
-                    else:
-                        error_matrix[index][28] += '! - No Second Customer Number found for line item.\n'
-                elif oMPNCustMap:
-                    form_data[index]['28'] = oMPNCustMap.second_customer_number or ''
-                # end if
-            # end if
-
-            # Collect data from database(s)
-            oCursor = connections['BCAMDB'].cursor()
-
-            # Populate Read-only fields
-            P_Code = form_data[index]['10'] if '10' in form_data[index] and re.match("^\d{2,3}$", form_data[index]['10'], re.IGNORECASE) else None
-            tPCode = None
-            oCursor.execute('SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],[Base Unit of Measure],' +
-                            '[P Code] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s', [bytes(form_data[index]['2'].strip('.'), 'ascii') if form_data[index]['2'] else None])
-            tPartData = oCursor.fetchall()
-            if tPartData:
-                if oHead.configuration_status.name == 'In Process':
-                    if '3' not in form_data[index] or form_data[index]['3'] in ('None', None, ''):
-                        form_data[index]['3'] = tPartData[0][0] if tPartData[0][0] not in (None, 'NONE', 'None') else ''
-                    # if '15' not in form_data[index] or form_data[index]['15'] in ('None', None, ''):
-                    form_data[index]['15'] = tPartData[0][1] if tPartData[0][1] not in (None, 'NONE', 'None') else ''
-                    # if '16' not in form_data[index] or form_data[index]['16'] in ('None', None, ''):
-                    form_data[index]['16'] = tPartData[0][2] if tPartData[0][2] not in (None, 'NONE', 'None') else ''
-                    # if '5' not in form_data[index] or form_data[index]['5'] in ('None', None, ''):
-                    form_data[index]['5'] = tPartData[0][3] if tPartData[0][3] not in (None, 'NONE', 'None') else ''
-
-                    if tPartData[0][2]:
-                        oCursor.execute('SELECT [Description] FROM dbo.[REF_X-PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
-                            [bytes(tPartData[0][2], 'ascii')])
-                        tXPlant = oCursor.fetchall()
-                        if tXPlant:
-                            error_matrix[index][16] += tXPlant[0][0] + '\n'
-                        # end if
-                    # end if
-                # end if
-
-                P_Code = form_data[index]['10'] if '10' in form_data[index] and re.match("^\d{2,3}$", form_data[index]['10'], re.IGNORECASE) else tPartData[0][4]
-            else:
-                error_matrix[index][2] += '! - Product Number not found.'
-                # if Header.objects.get(pk=oRequest.session['existing']).pick_list or index != 0:
-                #     # form_data[index]['5'] = ''
-                #     # form_data[index]['9'] = ''
-                #     # form_data[index]['10'] = ''
-                #     # form_data[index]['14'] = ''
-                #     # form_data[index]['15'] = ''
-                #     error_matrix[index][2] += '! - Product Number not found.'
-                # else:
-                #     form_data[index]['5'] = 'PC'
-                # # end if
-            # end def
-
-            if P_Code:
-                oCursor.execute('SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM dbo.REF_PCODE_FCODE WHERE [PCODE]=%s', [bytes(P_Code, 'ascii')])
-                tPCode = oCursor.fetchall()
-            # end if
-
-            if tPCode:
-                # form_data[index]['9'] = '(' + tPCode[0][0] + " - " + tPCode[0][1] + "), " + tPCode[0][2]
-                if '10' not in form_data[index] or form_data[index]['10'] in (None, 'None', '') or re.match("^\d{2,3}$", form_data[index]['10'], re.IGNORECASE):
-                    form_data[index]['10'] = tPCode[0][2] if tPCode[0][2] else ''
-                if '11' not in form_data[index] or form_data[index]['11'] == 'None':
-                    form_data[index]['11'] = tPCode[0][3] if tPCode[0][3] else ''
-                # end if
-            # end if
-
-            oCursor.execute('SELECT DISTINCT [PRIM RE Code],[PRIM Traceability] FROM dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
-                            [bytes(form_data[index]['2'].strip('.'), 'ascii') if form_data[index]['2'] else None])
-            tPartData = oCursor.fetchall()
-            if tPartData:
-                # RE-Code
-                form_data[index]['14'] = tPartData[0][0] if tPartData[0][0] else ''
-
-                # Traceability Req
-                form_data[index]['24'] = 'Y' if tPartData[0][1]=='Z001' else 'N' if tPartData[0][1]=='Z002' else ''
-
-                oCursor.execute('SELECT DISTINCT [Title],[Description] FROM dbo.REF_PRODUCT_STATUS_CODES WHERE [Status Code]=%s',
-                            [bytes(tPartData[0][0] or '', 'ascii')])
-                tRECode = oCursor.fetchall()
-                if tRECode:
-                    if '17' in form_data[index] and form_data[index]['17']:
-                        if tRECode[0][0] not in form_data[index]['17']:
-                            form_data[index]['17'] = form_data[index]['17'] + '; ' + tRECode[0][0]
-                    else:
-                        form_data[index]['17'] = tRECode[0][0]
-                    error_matrix[index][14] += tRECode[0][1] + '\n'
-                # end if
-            else:
-                # RE-Code
-                form_data[index]['14'] = ''
-                # Traceability Req
-                form_data[index]['24'] = ''
-            # end if
-
-            if '7' in form_data[index] and form_data[index]['7'] not in ('None', ''):
-                oCursor.execute('SELECT [Plant] FROM dbo.REF_PLANTS')
-                tPlants = [element[0] for element in oCursor.fetchall()]
-                if form_data[index]['7'] not in tPlants:
-                    error_matrix[index][7] += "! - Plant not found in database.\n"
-            # end if
-
-            if '8' in form_data[index] and form_data[index]['8'] not in ('None', ''):
-                oCursor.execute('SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC')
-                tSLOC = [element[0] for element in oCursor.fetchall()]
-                if form_data[index]['8'] not in tSLOC:
-                    error_matrix[index][8] += "! - SLOC not found in database.\n"
-            # end if
-
-            if '7' in form_data[index] and form_data[index]['7'] not in ('None', '')\
-                    and '8' in form_data[index] and form_data[index]['8'] not in ('None', ''):
-                oCursor.execute('SELECT [Plant],[SLOC] FROM dbo.REF_PLANT_SLOC WHERE [Plant]=%s AND [SLOC]=%s', [bytes(form_data[index]['7'], 'ascii'), bytes(form_data[index]['8'], 'ascii')])
-                tResults = oCursor.fetchall()
-                if (form_data[index]['7'], form_data[index]['8']) not in tResults:
-                    error_matrix[index][7] += '! - Plant/SLOC combination not found.\n'
-                    error_matrix[index][8] += '! - Plant/SLOC combination not found.\n'
-                # end if
-            # end if
-
-            oCursor.close()
-
-            # Validate entries
-
-            # Accumulate running total
-            if '4' in form_data[index] and form_data[index]['4'] not in ('None', ''):
-                if '22' in form_data[index] and form_data[index]['22'] == 'ZPR1':
-                    needs_zpru = True
-                    zpru_total += (float(form_data[index]['23'] if '23' in form_data[index] and form_data[index]['23'] else 0) * float(form_data[index]['4']))
-                elif '22' in form_data[index] and form_data[index]['22'] == 'ZPRU':
-                    needs_zpru = True
-                elif '18' in form_data[index] and form_data[index]['18'] not in ('None', None, ''):
-                    if str(form_data[index]['18']).startswith('!'):
-                        error_matrix[index][18] = '! - CPM override in effect.\n'
-                    if not oHead.pick_list:
-                        if index == 0:
-                            # base_total = oHead.configuration.override_net_value or oHead.configuration.net_value
-                            base_total = float(form_data[index]['18'].replace('!','')) if form_data[index]['18'] not in (None, '', 'None') else 0
-
-                            if '22' in form_data[index] and form_data[index]['22'] == 'ZUST' and  '23' in form_data[index] and form_data[index]['23']:
-                                base_total += float(form_data[index]['23'].replace('$','').replace(',',''))
-                            # end if
-                        # end if
-                    else:
-                        if str(form_data[index]['18']).startswith('!'):
-                            override_total += float(form_data[index]['18'][1:].replace('$','').replace(',','')) +\
-                                              float(form_data[index]['23'].replace('$','').replace(',','')\
-                                                        if '23' in form_data[index] and form_data[index]['23']=='ZUST' else 0)
-
-                        else:
-                            net_total += (float(form_data[index]['4']) * (float(form_data[index]['18'].replace('$','')
-                                                                                .replace(',','')))) +\
-                                         float(form_data[index]['23'].replace('$','').replace(',','') if '23' in form_data[index] and form_data[index]['23']=='ZUST' else 0)
-                        # end if
-                    # end if
-                    # form_data[index]['17'] = form_data[index]['17'].replace('!','')
-                # end if
-            # end if
-
-            aLineNumbers.append(form_data[index]['1'])
-
-            # Update line status
-            if any("X - " in error for error in error_matrix[index]):
-                form_data[index]['0'] = '<span class="glyphicon glyphicon-remove-sign" style="color:#DD0000;"></span>'
-                status = 'ERROR'
-            elif any("! - " in error for error in error_matrix[index]):
-                form_data[index]['0'] = '<span class="glyphicon glyphicon-exclamation-sign" style="color:#FF8800;"></span>'
-                if status == 'GOOD':
-                    status = 'WARNING'
-                # end if
-            else:
-                form_data[index]['0'] = '<span class="glyphicon glyphicon-ok-sign" style="color:#00AA00;"></span>'
-            # end if
-
-        # end for
-
-        # Check for duplicate line numbers
-        dIndices = {}
-        aDuplicates = []
-        for index in range(len(form_data)):
-            try:
-                dIndices[form_data[index]['1']].append(index)
-            except KeyError:
-                dIndices[form_data[index]['1']] = [index]
-            # end try
-        # end for
-
-        for aIndices in dIndices.values():
-            if len(aIndices) > 1:
-                aDuplicates.extend(aIndices[1:])
-            # end if
-        # end for
-
-        for index in aDuplicates:
-            form_data[index]['0'] = '<span class="glyphicon glyphicon-remove-sign" style="color:#DD0000;"></span>'
-            error_matrix[index][1] = 'X - Duplicate line number.\n'
-            status = 'ERROR'
-        # end for
-
-        if not oHead.pick_list and override_total and not base_total:
-            form_data[0]['18'] = '!' + str(override_total)
         # end if
 
-        dReturned = {'data': form_data, 'nettotal': round(base_total or override_total or net_total, 2), 'zprutotal': round(zpru_total, 2), 'errors': error_matrix,
-                     'zpru': str(needs_zpru), 'status': status}
-        return HttpResponse(json.dumps(dReturned))
-    else:
-        return redirect(reverse('bomconfig:index'))
-    # end if
+        if aData[index]['29'] in ('', None):
+            aData[index]['29'] = aData[index]['2'].strip('./')
+
+        if aData[index]['1'] not in ('', None):
+            if not re.match("^\d+(?:\.\d+){0,2}$|^$", aData[index]['1'] or '') and aData[index]['1'] not in (None,):
+                error_matrix[index][1]['value'] += 'X - Invalid character. Use 0-9 and "." only.\n'
+            elif aData[index]['1'] not in ('', None):
+                this = aData[index]['1']
+                if this.count('.') == 0 and this:
+                    Parent = int(this)
+                    Child = 0
+                    Grandchild = 0
+                    parents.add(str(Parent))
+                elif this.count('.') == 1:
+                    Parent = int(this[:this.find('.')])
+                    if str(Parent) not in parents:
+                        error_matrix[index][1]['value'] += 'X - This parent (' + str(Parent) + ') does not exist.\n'
+                    else:
+                        Child = int(this[this.rfind('.') + 1:])
+                        children.add(str(Parent) + "." + str(Child))
+                        Grandchild = 0
+                elif this.count('.') == 2:
+                    Parent = int(this[:this.find('.')])
+                    if str(Parent) not in parents:
+                        error_matrix[index][1]['value'] += 'X - This parent (' + str(Parent) + ') does not exist.\n'
+                    else:
+                        Child = int(this[this.find('.') + 1: this.rfind('.')])
+                        if str(Parent)+"."+str(Child) not in children:
+                            error_matrix[index][1]['value'] += 'X - This child (' + str(Parent) + '.' + str(Child) + ') does not exist.\n'
+                        else:
+                            Grandchild = int(this[this.rfind('.') + 1:])
+                # end if
+            else:
+                aData[index]['1'] = ''
+            # end if
+
+            if aData[index]['2'] not in (None, ''):
+                if aData[index]['1'].count('.') == 2 and not aData[index]['2'].startswith('..'):
+                    aData[index]['2'] = '..' + aData[index]['2']
+                elif aData[index]['1'].count('.') == 1 and not aData[index]['2'].startswith('.'):
+                    aData[index]['2'] = '.' + aData[index]['2']
+                # end if
+            # end if
+        else:
+            if aData[index]['2'].startswith('..'):
+                Grandchild += 1
+                aData[index]['1'] = str(Parent) + "." + str(Child) + "." + str(Grandchild)
+            elif aData[index]['2'].startswith('.'):
+                Child += 1
+                aData[index]['1'] = str(Parent) + "." + str(Child)
+            else:
+                if Parent % 10 == 0:
+                    Parent += 10
+                else:
+                    Parent += 1
+                Child = 0
+                Grandchild = 0
+                aData[index]['1'] = str(Parent)
+            # end if
+        # end if
+
+        # Product Description
+        if aData[index]['3'].strip() in (None, ''):
+            aData[index]['3'] = ''
+        else:
+            if len(aData[index]['3']) > 40:
+                error_matrix[index][3]['value'] += 'X - Product Description exceeds 40 characters.\n'
+
+        # Order Qty
+        if not re.match("^\d+(?:.\d+)?$", aData[index]['4'] or ''):
+            error_matrix[index][4]['value'] += 'X - Invalid Order Qty.\n'
+            if aData[index]['4'] in ('None',''):
+                aData[index]['4'] = ''
+        # end if
+
+        # Plant
+        if not re.match("^\d{4}$|^$", aData[index]['7'] or ''):
+            error_matrix[index][7]['value'] += 'X - Invalid Plant.\n'
+        # end if
+
+        # SLOC
+        if not re.match("^\w{4}$|^$", aData[index]['8'] or ''):
+            error_matrix[index][8]['value'] += 'X - Invalid SLOC.\n'
+        # end if
+
+        # P-Code
+        if aData[index]['10']:
+            aData[index]['10'] = aData[index]['10'].upper()
+
+        if not re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$|^\([A-Z]\d{2}-\d{4}\).*$|^$", aData[index]['10'] or '', re.IGNORECASE):
+            error_matrix[index][10]['value'] += 'X - Invalid P-Code.\n'
+        # end if
+
+        # HW/SW Ind
+        if aData[index]['11']:
+            aData[index]['11'] = aData[index]['11'].upper()
+
+        if not re.match("^H(ARD)?W(ARE)?$|^S(OFT)?W(ARE)?$|^CS$|^$", aData[index]['11'] or '', re.IGNORECASE):
+            error_matrix[index][11]['value'] += 'X - Invalid HW/SW Ind.\n'
+        # end if
+
+        # Condition Type & Amount Supplied Together
+        NoCondition = aData[index]['22'] in ('', None)
+        NoAmount = aData[index]['23'] in ('', None)
+        if (NoCondition and not NoAmount) or (NoAmount and not NoCondition):
+            if NoAmount and not NoCondition:
+                error_matrix[index][23]['value'] += 'X - Condition Type provided without Amount.\n'
+            else:
+                error_matrix[index][22]['value'] += 'X - Amount provided without Condition Type.\n'
+            # end if
+        # end if
+
+        # Amount
+        if aData[index]['23']:
+            aData[index]['23'] = aData[index]['23'].replace('$', '').replace(',', '')
+
+        if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$", aData[index]['23'] or ''):
+            error_matrix[index][23]['value'] += 'X - Invalid Amount provided.\n'
+        # end if
+
+        if oHead.configuration_status.name == 'In Process' or (bCanWriteConfig and oHead.configuration_status.name == 'In Process/Pending'):
+            try:
+                oMPNCustMap = CustomerPartInfo.objects.get(part__product_number=aData[index]['2'].strip('. '),
+                                                           customer=oHead.customer_unit,
+                                                           active=True)
+            except CustomerPartInfo.DoesNotExist:
+                oMPNCustMap = None
+            # end try
+
+            # Customer Asset
+            if oMPNCustMap:
+                aData[index]['25'] = 'Y' if oMPNCustMap.customer_asset else 'N' if oMPNCustMap.customer_asset is False else ''
+            # end if
+
+            # Customer Asset tagging Req
+            if oMPNCustMap:
+                aData[index]['26'] = 'Y' if oMPNCustMap.customer_asset_tagging else 'N' if oMPNCustMap.customer_asset_tagging is False else ''
+            # end if
+
+            if aData[index]['25'] in ('N', 'NO') and aData[index]['26'] in ('Y', 'YES'):
+                error_matrix[index][26]['value'] += 'X - Cannot mark Customer Asset Tagging when part is not Customer Asset.\n'
+
+            # Customer Number
+            if oMPNCustMap:
+                aData[index]['27'] = oMPNCustMap.customer_number or ''
+            # end if
+
+            # Second Customer Number
+            if oMPNCustMap:
+                aData[index]['28'] = oMPNCustMap.second_customer_number or ''
+            # end if
+        # end if
+
+        # Collect data from database(s)
+        oCursor = connections['BCAMDB'].cursor()
+
+        # Populate Read-only fields
+        P_Code = aData[index]['10'] if re.match("^\d{2,3}$", aData[index]['10'], re.IGNORECASE) else None
+        tPCode = None
+        oCursor.execute("SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],[Base Unit of Measure]," +
+                        "[P Code],[MTyp],[ZMVKE Item Category] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s AND [ZMVKE Item Category]<>'NORM'", [bytes(aData[index]['2'].strip('.'), 'ascii') if aData[index]['2'] else None])
+        tPartData = oCursor.fetchall()
+        if tPartData:
+            if oHead.configuration_status.name == 'In Process':
+                if aData[index]['3'] in (None, ''):
+                    aData[index]['3'] = tPartData[0][0] if tPartData[0][0] not in (None, 'NONE', 'None') else ''
+
+                aData[index]['15'] = tPartData[0][1] if tPartData[0][1] not in (None, 'NONE', 'None') else ''
+
+                aData[index]['16'] = tPartData[0][2] if tPartData[0][2] not in (None, 'NONE', 'None') else ''
+
+                aData[index]['5'] = tPartData[0][3] if tPartData[0][3] not in (None, 'NONE', 'None') else ''
+
+                if not re.match("^Z[A-Z0-9]{3}$|^$", aData[index]['9'] or '', re.IGNORECASE):
+                    aData[index]['9'] = tPartData[0][6] if tPartData[0][6] not in (None, 'NONE', 'None') else ''
+
+                if tPartData[0][6] == 'ZF26':
+                    aData[index]['12'] = 'Fixed Product Package (FPP)'
+                elif tPartData[0][5] == 'ZASO':
+                    aData[index]['12'] = 'Assembled Sales Object (ASO)'
+                    if aData[index]['6'] in (None, ''):
+                        error_matrix[index][6] += 'X - ContextID must be populated for ASO parts.\n'
+                elif tPartData[0][5] == 'ZAVA':
+                    aData[index]['12'] = 'Material Variant (MV)'
+                elif tPartData[0][5] == 'ZEDY':
+                    aData[index]['12'] = 'Dynamic Product Package (DPP)'
+
+                if tPartData[0][2]:
+                    oCursor.execute('SELECT [Description] FROM dbo.[REF_X_PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
+                        [bytes(tPartData[0][2], 'ascii')])
+                    tXPlant = oCursor.fetchall()
+                    if tXPlant:
+                        if tXPlant[0][0] not in error_matrix[index][16]['value']:
+                            error_matrix[index][16]['value'] += tXPlant[0][0] + '\n'
+                    # end if
+                # end if
+            # end if
+
+            P_Code = aData[index]['10'] if re.match("^\d{2,3}$", aData[index]['10'], re.IGNORECASE) else tPartData[0][4]
+        else:
+            error_matrix[index][2]['value'] += '! - Product Number not found.'
+        # end def
+
+        if P_Code:
+            oCursor.execute('SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM dbo.REF_PCODE_FCODE WHERE [PCODE]=%s', [bytes(P_Code, 'ascii')])
+            tPCode = oCursor.fetchall()
+        # end if
+
+        if tPCode:
+            if aData[index]['10'] in (None, '') or re.match("^\d{2,3}$", aData[index]['10'], re.IGNORECASE):
+                aData[index]['10'] = tPCode[0][2] if tPCode[0][2] else ''
+            if aData[index]['11'] in ('None',):
+                aData[index]['11'] = tPCode[0][3] if tPCode[0][3] else ''
+            # end if
+        # end if
+
+        oCursor.execute('SELECT DISTINCT [PRIM RE Code],[PRIM Traceability] FROM dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
+                        [bytes(aData[index]['2'].strip('.'), 'ascii') if aData[index]['2'] else None])
+        tPartData = oCursor.fetchall()
+        if tPartData:
+            # RE-Code
+            aData[index]['14'] = tPartData[0][0] if tPartData[0][0] else ''
+
+            # Traceability Req
+            aData[index]['24'] = 'Y' if tPartData[0][1]=='Z001' else 'N' if tPartData[0][1]=='Z002' else ''
+
+            oCursor.execute('SELECT DISTINCT [Title],[Description] FROM dbo.REF_PRODUCT_STATUS_CODES WHERE [Status Code]=%s',
+                        [bytes(tPartData[0][0] or '', 'ascii')])
+            tRECode = oCursor.fetchall()
+            if tRECode:
+                if aData[index]['17']:
+                    if tRECode[0][0] not in aData[index]['17']:
+                        aData[index]['17'] = aData[index]['17'] + '; ' + tRECode[0][0]
+                else:
+                    aData[index]['17'] = tRECode[0][0]
+
+                if tRECode[0][1] not in error_matrix[index][14]['value']:
+                    error_matrix[index][14]['value'] += tRECode[0][1] + '\n'
+            # end if
+        else:
+            # RE-Code
+            aData[index]['14'] = ''
+            # Traceability Req
+            aData[index]['24'] = ''
+        # end if
+
+        if aData[index]['7'] not in ('', None):
+            oCursor.execute('SELECT [Plant] FROM dbo.REF_PLANTS WHERE [Plant]=%s', [bytes(aData[index]['7'], 'ascii')])
+            tPlants = oCursor.fetchall()
+            if not tPlants:
+                error_matrix[index][7]['value'] += "! - Plant not found in database.\n"
+
+            oCursor.execute(
+                'SELECT [Plnt] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [Material]=%s',
+                [bytes(aData[index]['7'],'ascii'), bytes(aData[index]['2'],'ascii')]
+            )
+            tPlants = oCursor.fetchall()
+            if (aData[index]['7']) not in tPlants:
+                error_matrix[index][7]['value'] += "! - Plant not found for material.\n"
+        # end if
+
+        if aData[index]['8'] not in (None, ''):
+            oCursor.execute('SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC WHERE [SLOC]=%s', [bytes(aData[index]['8'], 'ascii')])
+            tSLOC = oCursor.fetchall()
+            if not tSLOC:
+                error_matrix[index][8]['value'] += "! - SLOC not found in database.\n"
+
+            oCursor.execute('SELECT [Plnt],[SLoc] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [SLoc]=%s AND [Material]=%s',
+                            [bytes(aData[index]['7'], 'ascii'), bytes(aData[index]['8'], 'ascii'), bytes(aData[index]['2'], 'ascii')])
+            tResults = oCursor.fetchall()
+            if (aData[index]['7'], aData[index]['8']) not in tResults:
+                error_matrix[index][8]['value'] += '! - Plant/SLOC combination not found for material.\n'
+            # end if
+        # end if
+
+        oCursor.close()
+
+        # Item Cat
+        if aData[index]['9']:
+            aData[index]['9'] = aData[index]['9'].upper()
+
+        if not re.match("^Z[A-Z0-9]{3}$|^$", aData[index]['9'] or '', re.IGNORECASE):
+            error_matrix[index][9]['value'] += 'X - Invalid Item Cat.\n'
+        # end if
+
+        aLineNumbers.append(aData[index]['1'])
+
+        # Update line status
+        if any("X - " in error['value'] for error in error_matrix[index]):
+            aData[index]['0'] = 'X'
+        elif any("! - " in error['value'] for error in error_matrix[index]):
+            aData[index]['0'] = '!'
+        else:
+            aData[index]['0'] = 'OK'
+        # end if
+
+        for i in aData[index]:
+            if not aData[index][i]:
+                aData[index][i] = ''
+    # end for
+
+    # Check for duplicate line numbers
+    dIndices = {}
+    aDuplicates = []
+    for index in range(len(aData)):
+        try:
+            dIndices[aData[index]['1']].append(index)
+        except KeyError:
+            dIndices[aData[index]['1']] = [index]
+        # end try
+    # end for
+
+    for aIndices in dIndices.values():
+        if len(aIndices) > 1:
+            aDuplicates.extend(aIndices[1:])
+        # end if
+    # end for
+
+    for index in aDuplicates:
+        aData[index]['0'] = 'X'
+        error_matrix[index][1]['value'] = 'X - Duplicate line number.\n'
+    # end for
+    
+    return error_matrix
 # end def
 
 
@@ -2367,7 +2220,7 @@ def ValidateXPlant(dData, dResult):
     oCursor = connections['BCAMDB'].cursor()
 
     oCursor.execute(
-        'SELECT [Description] FROM dbo.[REF_X-PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
+        'SELECT [Description] FROM dbo.[REF_X_PLANT_STATUS_DESCRIPTIONS] WHERE [X-Plant Status Code]=%s',
         [bytes(dResult['value'], 'ascii')])
     tXPlant = oCursor.fetchall()
     oCursor.close()

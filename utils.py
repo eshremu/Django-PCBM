@@ -674,10 +674,12 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     # ignore records that are in the DTS program
     aDiscontinuedHeaders = [oHead for oHead in
                             Baseline_Revision.objects.get(baseline=oBaseline,
-                                                          version=sCurrent).header_set.filter(
+                                                          version=sCurrent
+                                                          ).header_set.filter(
                                 oDiscontinued | oToDiscontinue).exclude(
                                 program__name__in=(
-                                'DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(
+                                'DTS',) if oBaseline.title != 'No Associated Baseline'
+                                else []).exclude(
                                 configuration_status__name__in=('On Hold',
                                                                 'In Process'))]
 
@@ -687,11 +689,14 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     # Associated Baseline', ignore records that are in the DTS program
     aAddedHeaders = [oHead for oHead in
                      Baseline_Revision.objects.get(baseline=oBaseline,
-                                                   version=sCurrent).header_set.filter(
+                                                   version=sCurrent
+                                                   ).header_set.filter(
                          bom_request_type__name__in=('New', 'Legacy')).exclude(
                          program__name__in=(
-                         'DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(
-                         configuration_status__name__in=('On Hold', 'In Process'))]
+                         'DTS',) if oBaseline.title != 'No Associated Baseline'
+                         else []).exclude(
+                         configuration_status__name__in=('On Hold',
+                                                         'In Process'))]
 
     # Generate a list of Headers in the sCurrent revision of oBaseline that are
     # updates. Ignore records in "On Hold" or "In Process" status. If
@@ -699,11 +704,15 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     # ignore records that are in the DTS program
     aUpdatedHeaders = [oHead for oHead in
                        Baseline_Revision.objects.get(baseline=oBaseline,
-                                                     version=sCurrent).header_set.filter(
+                                                     version=sCurrent
+                                                     ).header_set.filter(
                            bom_request_type__name='Update').exclude(
-                           oDiscontinued).exclude(program__name__in=(
-                       'DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(
-                           configuration_status__name__in=('On Hold', 'In Process'))]
+                           oDiscontinued).exclude(
+                           program__name__in=('DTS',) if
+                           oBaseline.title != 'No Associated Baseline' else []
+                       ).exclude(
+                           configuration_status__name__in=('On Hold',
+                                                           'In Process'))]
 
     # For each updated Header, determine if the previous revision contains the
     # record the Header claims to update or not

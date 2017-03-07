@@ -126,7 +126,8 @@
         var hot;
         var header_html;
         var data = {{ data_array|safe }};
-        var config_id = data.length == 0 ? '' : data[0][2];
+        var errors = {{ errors|safe }};
+        var config_id = '{{ header.configuration_designation|default:'' }}';
         var readonly_columns = [];
         var hidden_cols = [];
         var clean_form, clean_sub;
@@ -158,6 +159,7 @@
         var active_lock = {{ active_lock|lower }};
         var ajax_validate_url = "{% url 'bomconfig:ajaxvalidator' %}";
     </script>
+    <script type="text/javascript" src="{% static 'BoMConfig/js/xhr_update.js' %}"></script>
     <script type="text/javascript" src="{% static 'BoMConfig/js/configuration.js' %}"></script>
 {% else %}
 <div>
