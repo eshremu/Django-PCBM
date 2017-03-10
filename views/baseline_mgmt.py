@@ -1,29 +1,40 @@
-__author__ = 'epastag'
+"""
+Views related to Baseline viewing and management.
+"""
 
-from django.http import JsonResponse, Http404, QueryDict
-from django.db import IntegrityError
+from django.http import JsonResponse, QueryDict
 from django.contrib.auth.decorators import login_required
 
-from BoMConfig.models import Header, Baseline, SecurityPermission, Baseline_Revision, REF_CUSTOMER
+from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER
 from BoMConfig.forms import SubmitForm
 from BoMConfig.views.landing import Unlock, Default
-from BoMConfig.utils import GrabValue, RollbackBaseline, TestRollbackBaseline, RollbackError
-
-from functools import cmp_to_key
-import json
-
-
-aHeaderList = None
+from BoMConfig.utils import RollbackBaseline, TestRollbackBaseline, \
+    RollbackError, RevisionCompare
 
 
 @login_required
 def BaselineLoad(oRequest):
-    """This method is used as a landing page for Baseline Management while the useful view loads"""
+    """
+    This method is used as a landing page for Baseline Management while the
+    useful view loads
+    :param oRequest: Django Request object
+    :return: HTTPResponse via Default function
+    """
     return Default(oRequest, sTemplate='BoMConfig/baselineload.html')
 
 
 @login_required
 def BaselineMgmt(oRequest):
+    """
+    View to display baselines.  Either displays current active and in-process
+    revisions for all baselines, or all revisions for one baseline, when
+    provided.
+    :param oRequest: Django request object
+    :return: HTTPResponse via Default function
+    """
+
+    # Unlock any Headers that may have been locked for editing and remove any
+    # old status messages
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -42,26 +53,50 @@ def BaselineMgmt(oRequest):
     dTableData = None
     aTable = []
 
+    # A POST was submitted, the user is searching for a baseline, so show single
+    # baseline details
     if oRequest.method == 'POST' and oRequest.POST:
         form = SubmitForm(oRequest.POST)
         if form.is_valid():
-            oBaseline = Baseline.objects.get(title__iexact=form.cleaned_data['baseline_title'])
+            oBaseline = Baseline.objects.get(
+                title__iexact=form.cleaned_data['baseline_title'])
 
-            # First get list of revisions going back to 'A'
-            aRevisions = sorted(list(set([oBaseRev.version for oBaseRev in oBaseline.baseline_revision_set.order_by('version')])),
-                                key=cmp_to_key(lambda x,y:(-1 if len(x.strip('1234567890')) < len(y.strip('1234567890'))
-                                                                 or list(x.strip('1234567890')) < (['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) + list(y.strip('1234567890')))
-                                                                 or (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y)) else 0 if x == y else 1)),
-                                reverse=True)
+            # First get list of baseline revisions for this baseline a sort them
+            # in reverse order
+            aRevisions = sorted(
+                list(
+                    set(
+                        [
+                            oBaseRev.version for oBaseRev in
+                            oBaseline.baseline_revision_set.order_by('version')
+                            ]
+                    )
+                ),
+                key=RevisionCompare,
+                reverse=True
+            )
 
-            dTableData = {'baseline': oBaseline, 'revisions':[]}
+            dTableData = {'baseline': oBaseline, 'revisions': []}
 
+            # Collect Headers for each Baseline_Revision
             for sRev in aRevisions:
-                aHeads = Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version=sRev).order_by('configuration_status', 'pick_list', 'configuration_designation')
+                aHeads = Header.objects.filter(
+                    baseline__baseline=oBaseline).filter(
+                    baseline_version=sRev).order_by('configuration_status',
+                                                    'pick_list',
+                                                    'configuration_designation')
                 if aHeads:
                     dTableData['revisions'].append({
-                        'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev),
-                        'configs': aHeads, 'customer': ' '.join(set([oHead.customer_unit.name.replace(" ", "-_").replace("&", "_") for oHead in aHeads]))
+                        'revision': Baseline_Revision.objects.get(
+                            baseline=oBaseline, version=sRev),
+                        'configs': aHeads,
+                        'customer': ' '.join(
+                            set(
+                                [oHead.customer_unit.name
+                                    .replace(" ", "-_").replace("&", "_") for
+                                 oHead in aHeads]
+                            )
+                        )
                     })
 
                     if not bDownloadable:
@@ -73,48 +108,71 @@ def BaselineMgmt(oRequest):
         if dTableData:
             aTable = [dTableData]
         # end if
+
+    # Otherwise, show current in-process and active revision details for all
+    # baselines
     else:
         form = SubmitForm()
         aBaselines = Baseline.objects.exclude(title='No Associated Baseline')
+
+        # For each baseline, get header data for active and in-process
+        # Baseline_Revision
         for oBaseline in aBaselines:
-            aRevisions = [oBaseline.current_inprocess_version or None, oBaseline.current_active_version or None]
+            aRevisions = [oBaseline.current_inprocess_version or None,
+                          oBaseline.current_active_version or None]
             dTableData = {'baseline': oBaseline, 'revisions': []}
 
             for sRev in aRevisions:
                 if not sRev:
                     continue
-                aHeads = Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version=sRev).order_by('configuration_status', 'pick_list', 'configuration_designation')
+                aHeads = Header.objects.filter(
+                    baseline__baseline=oBaseline).filter(
+                    baseline_version=sRev).order_by('configuration_status',
+                                                    'pick_list',
+                                                    'configuration_designation')
                 if aHeads:
                     dTableData['revisions'].append({
-                        'revision': Baseline_Revision.objects.get(baseline=oBaseline, version=sRev),
+                        'revision': Baseline_Revision.objects.get(
+                            baseline=oBaseline, version=sRev),
                         'configs': aHeads,
-                        'customer': oBaseline.customer.name.replace(" ","-_").replace("&","_")})
+                        'customer': oBaseline.customer.name
+                        .replace(" ", "-_").replace("&", "_")})
                 # end if
             # end for
 
             aTable.append(dTableData)
         # end for
 
+        # Add information for "No Associated Baseline" baseline
         if Baseline.objects.filter(title='No Associated Baseline'):
             oBaseline = Baseline.objects.get(title='No Associated Baseline')
             aRevisions = [oBaseline.current_inprocess_version or None,
                           oBaseline.current_active_version or None]
             aTable.append(
                 {
-                    'baseline':oBaseline,
-                    'revisions':[
+                    'baseline': oBaseline,
+                    'revisions': [
                         {
-                            'revision':'',
-                            'configs': Header.objects.filter(baseline__baseline=oBaseline).filter(baseline_version__in=aRevisions).order_by('configuration_status', 'pick_list', 'configuration_designation'),
-                            'customer': " ".join([cust.name.replace(" ","-_").replace("&","_") for cust in REF_CUSTOMER.objects.all()])
+                            'revision': '',
+                            'configs': Header.objects.filter(
+                                baseline__baseline=oBaseline).filter(
+                                baseline_version__in=aRevisions).order_by(
+                                'configuration_status', 'pick_list',
+                                'configuration_designation'),
+                            'customer': " ".join(
+                                [cust.name.replace(" ", "-_").replace("&", "_")
+                                 for cust in REF_CUSTOMER.objects.all()])
                         }
                     ],
                 }
             )
     # end if
 
-    aTitles = ['', '', 'Configuration','Status','BoM Request Type','Program','Customer Number','Model','Model Description','Customer Price','Created Year',
-               'Inquiry/Site Template Number','Model Replacing','Comments','Release Date','ZUST','P-Code','Plant']
+    aTitles = ['', '', 'Configuration', 'Status', 'BoM Request Type', 'Program',
+               'Customer Number', 'Model', 'Model Description',
+               'Customer Price', 'Created Year', 'Inquiry/Site Template Number',
+               'Model Replacing', 'Comments', 'Release Date', 'ZUST', 'P-Code',
+               'Plant']
 
     dContext = {
         'form': form,
@@ -124,11 +182,18 @@ def BaselineMgmt(oRequest):
         'cust_list': REF_CUSTOMER.objects.all(),
     }
 
-    return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html', dContext=dContext)
+    return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html',
+                   dContext=dContext)
 # end def
 
 
 def BaselineRollbackTest(oRequest):
+    """
+    View to initiate a test BaselineRollback to ensure that a baseline is
+    capable of being rolled back (to the previous revision)
+    :param oRequest: Django request object
+    :return: JSONResponse
+    """
     data = QueryDict(oRequest.POST.get('form'))
     oBaseline = Baseline.objects.get(title=data['baseline'])
 
@@ -137,33 +202,46 @@ def BaselineRollbackTest(oRequest):
         'errors': []
     }
 
+    # Attempt to run TestRollbackBaseline.  If it errors or fails, append the
+    # errors to the response.
     try:
         aDuplicates = TestRollbackBaseline(oBaseline)
         if not aDuplicates:
             dResult['status'] = 1
         else:
-            sTemp = '<p>The following configurations must be removed from the in-process revision</p>'
+            sTemp = ('<p>The following configurations must be removed from '
+                     'the in-process revision</p>')
             sTemp += '<ul>'
             for oHead in aDuplicates:
-                sTemp += '<li>{}{}</li>'.format(oHead.configuration_designation, " (" + oHead.program.name + ")" if oHead.program else '')
+                sTemp += '<li>{}{}</li>'.format(
+                    oHead.configuration_designation,
+                    " (" + oHead.program.name + ")" if oHead.program else ''
+                )
             sTemp += '</ul>'
             dResult['errors'].append(sTemp)
     except RollbackError as ex:
         if 'release date' in str(ex):
-            dResult['errors'].append("<p>Active revision was not released via the PCBM tool.</p>")
+            dResult['errors'].append("<p>Active revision was not released via "
+                                     "the PCBM tool.</p>")
         elif 'previous revision' in str(ex):
-            dResult['errors'].append("<p>No previous revision exists in the PCBM tool.</p>")
+            dResult['errors'].append("<p>No previous revision exists in the "
+                                     "PCBM tool.</p>")
 
     return JsonResponse(dResult)
 # end def
 
 
 def BaselineRollback(oRequest):
+    """
+    View to active the baseline rollback feature.
+    :param oRequest: Django request object
+    :return: JSONResponse
+    """
     data = QueryDict(oRequest.POST.get('form'))
-    # data = json.loads(oRequest.POST.get('form'))
 
     oBaseline = Baseline.objects.get(title=data['baseline'])
-    tOld = (oBaseline.current_active_version, oBaseline.current_inprocess_version)
+    tOld = (oBaseline.current_active_version,
+            oBaseline.current_inprocess_version)
 
     dResult = {
         'status': 0,
@@ -171,76 +249,17 @@ def BaselineRollback(oRequest):
         'errors': []
     }
 
+    # Attempt to run RollbackBaseline.  If it errors, append errors to response.
     try:
         RollbackBaseline(oBaseline)
-        tNew = (oBaseline.current_active_version, oBaseline.current_inprocess_version)
+        tNew = (oBaseline.current_active_version,
+                oBaseline.current_inprocess_version)
         dResult['status'] = 1
-        dResult['revision'] = 'from<br/><br/>{}<br/><br/>to<br/><br/>{}'.format(*('Active: {} / Inprocess: {}'.format(active, inproc) for (active, inproc) in (tOld, tNew)))
+        dResult['revision'] = 'from<br/><br/>{}<br/><br/>to<br/><br/>{}'.format(
+            *('Active: {} / Inprocess: {}'.format(active, inproc) for
+              (active, inproc) in (tOld, tNew)))
     except Exception as ex:
         dResult['errors'].append(str(ex))
 
     return JsonResponse(dResult)
 
-
-@login_required
-def OverviewPricing(oRequest):
-    bCanReadPricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Read').filter(user__in=oRequest.user.groups.all()))
-    bCanWritePricing = bool(SecurityPermission.objects.filter(title='Detailed_Price_Write').filter(user__in=oRequest.user.groups.all()))
-
-    if 'existing' in oRequest.session:
-        try:
-            Unlock(oRequest, oRequest.session['existing'])
-        except:
-            pass
-        # end try
-
-        del oRequest.session['existing']
-    # end if
-
-    if 'status' in oRequest.session:
-        del oRequest.session['status']
-    # end if
-
-    status_message = None
-    sConfig = oRequest.POST.get('config', None)
-
-    global aHeaderList
-    sTemplate='BoMConfig/overviewpricing.html'
-
-    aHeaderList = Header.objects.filter(configuration_status__name='Active').order_by('baseline', 'pick_list')
-    # aLine = ConfigLine.objects.filter(config__header__configuration_status='Active')
-    if aHeaderList:
-        aLine = aHeaderList[0].configuration.configline_set.all()
-        aLine = sorted(aLine, key=lambda x: ([int(y) for y in x.line_number.split('.')]))
-        aLine = sorted(aLine, key=lambda x: (x.config.header.baseline.title if x.config.header.baseline else '',
-                                             x.config.header.configuration_designation))
-    else:
-        aLine = []
-    # end if
-
-    aConfigLines = [{
-        '0': oLine.config.header.baseline.title if oLine.config.header.baseline else oLine.config.header.configuration_designation,
-        '1': oLine.line_number,
-        '2': oLine.config.header.configuration_designation,
-        '3': ('..' if oLine.is_grandchild else '.' if oLine.is_child else '') + oLine.part.base.product_number,
-        '4': oLine.part.base.product_number,
-        '5': oLine.order_qty if oLine.order_qty else 0,
-        '6': oLine.part.product_description,
-        '7': GrabValue(oLine.linepricing, 'pricing_object.unit_price') if oLine.linepricing.pricing_object and
-            (oLine.config.header.pick_list or str(oLine.line_number) != '10') else '0',
-        '8': str(float(oLine.order_qty or 0) * float(GrabValue(oLine.linepricing, 'pricing_object.unit_price') or 0)),
-        '9': oLine.linepricing.override_price or ''
-                    } for oLine in aLine]
-
-    dContext = {
-        'configlines': aConfigLines
-    }
-
-    dContext.update({
-        'status_message': status_message,
-        'pricing_read_authorized': bCanReadPricing,
-        'pricing_write_authorized': bCanWritePricing,
-    })
-
-    return Default(oRequest, sTemplate, dContext)
-# end def

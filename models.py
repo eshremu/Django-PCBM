@@ -1882,6 +1882,12 @@ class CustomerPartInfo(models.Model):
     # end def
 
     def __eq__(self, other):
+        """
+        Comparison function to determine if two CustomerPartInfo objects should
+        be considered equivalent
+        :param other: CustomerPartInfo object being compared
+        :return: Boolean
+        """
         if not isinstance(other, CustomerPartInfo):
             return False
 

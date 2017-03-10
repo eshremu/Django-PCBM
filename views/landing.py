@@ -29,7 +29,6 @@ def SetSession(oRequest):
 
 
 def Lock(oRequest, iHeaderPK):
-    # print('Calling lock')
     if Header.objects.filter(pk=iHeaderPK):
         if Header.objects.get(pk=iHeaderPK).configuration_status.name != 'In Process':
             return
@@ -55,14 +54,13 @@ def Lock(oRequest, iHeaderPK):
 
 
 def Unlock(oRequest, iHeaderPK):
-    # print('Calling unlock')
     if Header.objects.filter(pk=iHeaderPK):
         if HeaderLock.objects.filter(header=Header.objects.get(pk=iHeaderPK)).filter(session_key=Session.objects.get(session_key=oRequest.session.session_key)):
             HeaderLock.objects.filter(header=Header.objects.get(pk=iHeaderPK)).filter(
                 session_key=Session.objects.get(session_key=oRequest.session.session_key)
             ).update(**{'session_key': None})
         else:
-            pass #raise LockException('Already unlocked')
+            pass
     else:
         raise Header.DoesNotExist('No existing header')
 # end def
@@ -80,7 +78,6 @@ def Logout(oRequest):
 
 
 def FinalUnlock(oRequest):
-    # print('Calling final')
     if oRequest.method == 'POST':
         try:
             Unlock(oRequest, iHeaderPK=oRequest.session.get('existing', None))
@@ -91,12 +88,10 @@ def FinalUnlock(oRequest):
         # end try
 
         if oRequest.POST.get('close',None) == 'true':
-            # oRequest.session.set_expiry(3600)
             oRequest.session.set_expiry(0)
 
         response = HttpResponse()
         response['Content-Length'] = 0
-        # response['Connection'] = 'close'
         return response
     else:
         raise Http404()
@@ -104,7 +99,6 @@ def FinalUnlock(oRequest):
 
 
 def InitialLock(oRequest):
-    # print('Calling init lock')
     if oRequest.method == 'POST':
         try:
             SetSession(oRequest)
@@ -117,7 +111,6 @@ def InitialLock(oRequest):
 
         response = HttpResponse()
         response['Content-Length'] = 0
-        # response['Connection'] = 'close'
         return response
     else:
         raise Http404()

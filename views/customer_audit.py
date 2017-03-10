@@ -1,11 +1,10 @@
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
-from django.core.mail import send_mail
-from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 
-from BoMConfig.models import CustomerPartInfo, PartBase, REF_CUSTOMER, ConfigLine
+from BoMConfig.models import CustomerPartInfo, PartBase, REF_CUSTOMER, \
+    ConfigLine
 from BoMConfig.views.landing import Default
 from BoMConfig.utils import StrToBool
 

@@ -1,7 +1,7 @@
 from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.core.urlresolvers import reverse
-from django.db.models import F, Q
+from django.db.models import F
 from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, \

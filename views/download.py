@@ -1,26 +1,25 @@
 from django.http import HttpResponse, Http404
 from django.core.urlresolvers import reverse
-from django.core.mail import EmailMessage, EmailMultiAlternatives
-from django.contrib.staticfiles.templatetags.staticfiles import static
+from django.core.mail import EmailMultiAlternatives
 from django.contrib.staticfiles.finders import find
 from django.contrib.auth.models import User
 
-from BoMConfig.models import Header, ConfigLine, Baseline, Baseline_Revision, DistroList, REF_PROGRAM, PricingObject
+from BoMConfig.models import Header, ConfigLine, Baseline, Baseline_Revision, \
+    DistroList, REF_PROGRAM, PricingObject
 from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
-from BoMConfig.utils import GenerateRevisionSummary, GrabValue, HeaderComparison, RevisionCompare, TitleShorten
+from BoMConfig.utils import GenerateRevisionSummary, GrabValue, \
+    HeaderComparison, RevisionCompare, TitleShorten
 from BoMConfig.views.configuration import BuildDataArray
 from BoMConfig.views.pricing import PricingOverviewLists
 
 import datetime
-from io import StringIO, BytesIO
+from io import BytesIO
 from itertools import chain
 import openpyxl
 from openpyxl import utils
-from openpyxl.styles import Font, Color, colors, Border, Alignment, Side, borders, GradientFill
+from openpyxl.styles import Font, Color, colors, Border, Alignment, Side, \
+    borders, GradientFill
 from openpyxl.comments import Comment
-# from openpyxl.drawing import Image
-import os
-from functools import cmp_to_key
 from urllib.parse import unquote
 import zipfile
 import re
@@ -85,16 +84,18 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
     oFile.active = oFile.sheetnames.index('2) BOM Config Entry')
     oFile.active.sheet_view.showGridLines = False
 
-    # img = Image(static('config_img.png'))
-    # img.anchor(oFile.active['A1'])
-    # oFile.active.add_image(img)
-
     if oHeader.configuration:
-        oFile.active['D5'] = ('X' if oHeader.configuration.ready_for_forecast else None)
-        oFile.active['D8'] = ('X' if oHeader.configuration.PSM_on_hold else None)
-        oFile.active['N4'] = ('X' if oHeader.configuration.internal_external_linkage else None)
+        oFile.active['D5'] = ('X' if oHeader.configuration.ready_for_forecast
+                              else None)
+        oFile.active['D8'] = ('X' if oHeader.configuration.PSM_on_hold else
+                              None)
+        oFile.active['N4'] = ('X' if
+                              oHeader.configuration.internal_external_linkage
+                              else None)
         oFile.active['Q4'] = (
-        '$ ' + str(oHeader.configuration.zpru_total) if oHeader.configuration.zpru_total else '$ xx,xxx.xx')
+            '$ ' + str(oHeader.configuration.zpru_total) if
+            oHeader.configuration.zpru_total else '$ xx,xxx.xx'
+        )
 
         iRow = 13
         aConfigLines = ConfigLine.objects.filter(config=oHeader.configuration).order_by('line_number')

@@ -1,5 +1,5 @@
 from django.shortcuts import redirect
-from django.http import HttpResponse, QueryDict, JsonResponse, Http404
+from django.http import QueryDict, JsonResponse, Http404
 from django.core.urlresolvers import reverse
 from django.contrib.sessions.models import Session
 from django.db.models import Q
@@ -10,17 +10,18 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
 
-from BoMConfig.models import Header, Part, Configuration, ConfigLine,\
-    PartBase, Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, SecurityPermission,\
-    REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD,\
-    REF_REQUEST, PricingObject, CustomerPartInfo, HeaderTimeTracker
+from BoMConfig.models import Header, Part, Configuration, ConfigLine, PartBase,\
+    Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, \
+    SecurityPermission, REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, \
+    REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_REQUEST, PricingObject, \
+    CustomerPartInfo, HeaderTimeTracker
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
-from BoMConfig.views.landing import Lock, Default, LockException
+from BoMConfig.views.landing import Lock, Default, LockException, Unlock
 from BoMConfig.views.approvals_actions import CloneHeader
-from BoMConfig.utils import GrabValue, HeaderComparison, RevisionCompare, DetectBrowser, StrToBool
+from BoMConfig.utils import GrabValue, HeaderComparison, RevisionCompare, \
+    DetectBrowser, StrToBool
 
 import copy
-# import datetime
 from collections import OrderedDict
 from itertools import chain
 import json
@@ -33,13 +34,16 @@ def UpdateConfigRevisionData(oHeader):
         if oHeader.model_replaced_link:
             oPrev = oHeader.model_replaced_link
         elif oHeader.baseline and oHeader.baseline.previous_revision:
-            oPrev = oHeader.baseline.previous_revision.header_set.get(configuration_designation=oHeader.model_replaced or oHeader.configuration_designation,
-                                                                      program=oHeader.program)
+            oPrev = oHeader.baseline.previous_revision.header_set.get(
+                configuration_designation=oHeader.model_replaced or
+                oHeader.configuration_designation,
+                program=oHeader.program)
         else:
             if oHeader.baseline:
                 aExistingRevs = sorted(
                     list(set([oBaseRev.version for oBaseRev in
-                              oHeader.baseline.baseline.baseline_revision_set.order_by('version')])),
+                              oHeader.baseline.baseline
+                             .baseline_revision_set.order_by('version')])),
                     key=RevisionCompare)
             else:
                 aExistingRevs = [oHeader.baseline_version]
@@ -70,28 +74,46 @@ def UpdateConfigRevisionData(oHeader):
 
 @login_required
 def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
-    # existing_instance is the existing header. Store the pk in the form to return for saving
-    # Status message allows another view to redirect to here with an error message explaining the redirect
+    # "existing" is the existing header. Store the pk in the form to
+    # return for saving. Status message allows another view to redirect to here
+    # with an error message explaining the redirect.
 
     if sTemplate == 'BoMConfig/entrylanding.html':
+        if oRequest.session['existing']:
+            Unlock(oRequest, oRequest.session['existing'])
+            del oRequest.session['existing']
         return redirect(reverse('bomconfig:configheader'))
     else:
         bFrameReadOnly = oRequest.GET.get('readonly', None) == '1'
         iFrameID = oRequest.GET.get('id', None)
 
-        bCanReadHeader = bool(SecurityPermission.objects.filter(title='Config_Header_Read').filter(user__in=oRequest.user.groups.all()))
+        bCanReadHeader = bool(SecurityPermission.objects.filter(
+            title='Config_Header_Read').filter(
+            user__in=oRequest.user.groups.all())
+        )
         bCanWriteHeader = False
 
         bSuccess = False
 
         # Determine which pages to which the user is able to move forward
-        bCanReadConfig = bool(SecurityPermission.objects.filter(title='Config_Entry_BOM_Read').filter(user__in=oRequest.user.groups.all()))
-        bCanReadTOC = bool(SecurityPermission.objects.filter(title='Config_ToC_Read').filter(user__in=oRequest.user.groups.all()))
-        bCanReadRevision = bool(SecurityPermission.objects.filter(title='Config_Revision_Read').filter(user__in=oRequest.user.groups.all()))
-        bCanReadInquiry = bool(SecurityPermission.objects.filter(title='SAP_Inquiry_Creation_Read').filter(user__in=oRequest.user.groups.all()))
-        bCanReadSiteTemplate = bool(SecurityPermission.objects.filter(title='SAP_ST_Creation_Read').filter(user__in=oRequest.user.groups.all()))
+        bCanReadConfig = bool(SecurityPermission.objects.filter(
+            title='Config_Entry_BOM_Read').filter(
+            user__in=oRequest.user.groups.all()))
+        bCanReadTOC = bool(SecurityPermission.objects.filter(
+            title='Config_ToC_Read').filter(
+            user__in=oRequest.user.groups.all()))
+        bCanReadRevision = bool(SecurityPermission.objects.filter(
+            title='Config_Revision_Read').filter(
+            user__in=oRequest.user.groups.all()))
+        bCanReadInquiry = bool(SecurityPermission.objects.filter(
+            title='SAP_Inquiry_Creation_Read').filter(
+            user__in=oRequest.user.groups.all()))
+        bCanReadSiteTemplate = bool(SecurityPermission.objects.filter(
+            title='SAP_ST_Creation_Read').filter(
+            user__in=oRequest.user.groups.all()))
 
-        bCanMoveForward = bCanReadConfig or bCanReadTOC or bCanReadRevision or bCanReadInquiry or bCanReadSiteTemplate
+        bCanMoveForward = bCanReadConfig or bCanReadTOC or bCanReadRevision or \
+                          bCanReadInquiry or bCanReadSiteTemplate
 
         bDiscontinuationAlreadyCreated = False
 
@@ -124,11 +146,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 bCanWriteHeader = bool(SecurityPermission.objects.filter(title='Config_Header_Write').filter(user__in=oRequest.user.groups.all())) \
                                   and (not oExisting or
                                        (oExisting and
-                                        (oExisting.configuration_status.name == 'In Process' # or
-                                         # (oExisting.configuration_status.name == 'In Process/Pending' and
-                                         #  bool(oRequest.user.groups.filter(securitypermission__title__in=HeaderTimeTracker.permission_entry(oExisting.latesttracker.next_approval))) and
-                                         #  oExisting.latesttracker.next_approval in ['scm1', 'scm2']
-                                         #  )
+                                        (oExisting.configuration_status.name == 'In Process'
                                          )))
 
             if oRequest.method == 'POST' and oRequest.POST:
@@ -471,7 +489,7 @@ def AddConfig(oRequest):
                                      'REcode': dConfigLine['14'],
                                      'mu_flag': dConfigLine['15'],
                                      'x_plant': dConfigLine['16'],
-                                     'internal_notes': dConfigLine['17'],# 'unit_price': dConfigLine['17'],
+                                     'internal_notes': dConfigLine['17'],
                                      'higher_level_item': dConfigLine['19'],
                                      'material_group_5': dConfigLine['20'],
                                      'purchase_order_item_num': dConfigLine['21'],
@@ -1278,7 +1296,7 @@ def Validator(aData, oHead, bCanWriteConfig):
         # end if
 
         # Product Description
-        if aData[index]['3'].strip() in (None, ''):
+        if aData[index]['3'] is None or aData[index]['3'].strip() == '':
             aData[index]['3'] = ''
         else:
             if len(aData[index]['3']) > 40:
@@ -1329,10 +1347,10 @@ def Validator(aData, oHead, bCanWriteConfig):
         # end if
 
         # Amount
-        if aData[index]['23']:
+        if isinstance(aData[index]['23'], str):
             aData[index]['23'] = aData[index]['23'].replace('$', '').replace(',', '')
 
-        if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$", aData[index]['23'] or ''):
+        if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$", str(aData[index]['23']) if aData[index]['23'] is not None else ''):
             error_matrix[index][23]['value'] += 'X - Invalid Amount provided.\n'
         # end if
 
@@ -1397,7 +1415,7 @@ def Validator(aData, oHead, bCanWriteConfig):
                 elif tPartData[0][5] == 'ZASO':
                     aData[index]['12'] = 'Assembled Sales Object (ASO)'
                     if aData[index]['6'] in (None, ''):
-                        error_matrix[index][6] += 'X - ContextID must be populated for ASO parts.\n'
+                        error_matrix[index][6]['value'] += 'X - ContextID must be populated for ASO parts.\n'
                 elif tPartData[0][5] == 'ZAVA':
                     aData[index]['12'] = 'Material Variant (MV)'
                 elif tPartData[0][5] == 'ZEDY':
@@ -1414,9 +1432,11 @@ def Validator(aData, oHead, bCanWriteConfig):
                 # end if
             # end if
 
-            P_Code = aData[index]['10'] if re.match("^\d{2,3}$", aData[index]['10'], re.IGNORECASE) else tPartData[0][4]
+            P_Code = aData[index]['10'] if aData[index]['10'] is not None and re.match("^\d{2,3}$", aData[index]['10'], re.IGNORECASE) else tPartData[0][4]
         else:
             error_matrix[index][2]['value'] += '! - Product Number not found.'
+            aData[index]['15'] = ''
+            aData[index]['16'] = ''
         # end def
 
         if P_Code:
