@@ -630,7 +630,8 @@ class Header(models.Model):
                     # attached baseline, reattach to the correct baseline
                     if self.baseline.baseline.title != self.baseline_impacted:
                         sLastRev = Baseline.objects.get(
-                            title=self.baseline_impacted).current_inprocess_version
+                            title=self.baseline_impacted
+                        ).current_inprocess_version
                         self.baseline = Baseline_Revision.objects.get(
                             baseline=Baseline.objects.get(
                                 title=self.baseline_impacted),
@@ -656,14 +657,16 @@ class Header(models.Model):
                 # Baseline' baseline
                 elif not self.baseline and not self.baseline_impacted:
                     sLastRev = Baseline.objects.get(
-                        title='No Associated Baseline').current_inprocess_version
+                        title='No Associated Baseline'
+                    ).current_inprocess_version
                     self.baseline = Baseline_Revision.objects.get(
                         baseline=Baseline.objects.get(
                             title='No Associated Baseline'),
                         version=sLastRev)
                 # end if
             else:
-                if self.baseline and self.baseline.title != 'No Associated Baseline':
+                if self.baseline and self.baseline.title != \
+                        'No Associated Baseline':
                     self.baseline_impacted = self.baseline.title
             # end if
 
@@ -738,16 +741,17 @@ PCBM Link: https://rnamsupply.internal.ericsson.com/pcbm'''
     </head>
     <body>
         <p>Hello SCM user,</p>
-        <p>Log into the PSM Configuration & Baseline Management (PCBM) tool to review \
-the following Configuration for forecast readiness.  \
+        <p>Log into the PSM Configuration & Baseline Management (PCBM) tool to \
+review the following Configuration for forecast readiness.  \
 Attached is a copy for your convenience and discussion with Forecasting and \
-Commodity Planning.  This Configuration is currently at 70% Readiness Complete.</p>
+Commodity Planning.  This Configuration is currently at 70% Readiness Complete.
+        </p>
         <ul>
             <li>{0} - {1} - {2}</li>
         </ul>
-        <p>If there are questions, please contact the appropriate Configuration \
-Manager.  You can locate this information on the "Header" tab of the attached \
-Configuration file.</p>
+        <p>If there are questions, please contact the appropriate \
+Configuration Manager.  You can locate this information on the "Header" tab of \
+the attached Configuration file.</p>
         <p>PCBM Link:
             <a href="https://rnamsupply.internal.ericsson.com/pcbm">
                 https://rnamsupply.internal.ericsson.com/pcbm
@@ -829,7 +833,8 @@ Configuration file.</p>
         :return: QuerySet
         """
         if self.headertimetracker_set:
-            return self.headertimetracker_set.order_by('-submitted_for_approval')
+            return self.headertimetracker_set.order_by(
+                '-submitted_for_approval')
 
         return None
     # end def
@@ -845,7 +850,9 @@ Configuration file.</p>
         :return: DateTime object
         """
         if self.valid_from_date and self.valid_to_date:
-            return self.valid_from_date + timezone.timedelta(seconds=(self.valid_to_date - self.valid_from_date).total_seconds()/2)
+            return self.valid_from_date + timezone.timedelta(
+                seconds=(self.valid_to_date - self.valid_from_date
+                         ).total_seconds()/2)
         elif not self.valid_from_date and self.valid_to_date:
             return self.valid_to_date - timezone.timedelta(days=1)
         elif self.valid_from_date and not self.valid_to_date:
@@ -862,7 +869,8 @@ Configuration file.</p>
         :return: Boolean
         """
         for oLine in self.configuration.configline_set.all():
-            if '.' in oLine.line_number: continue
+            if '.' in oLine.line_number:
+                continue
             if oLine.part.product_number.upper().startswith('FAP'):
                 return True
         return False
@@ -897,7 +905,8 @@ Configuration file.</p>
 
         # Ensure every line item has a plant plant
         for oLine in self.configuration.configline_set.all():
-            if '.' in oLine.line_number: continue
+            if '.' in oLine.line_number:
+                continue
             if not oLine.plant:
                 return False
 
@@ -929,16 +938,19 @@ Configuration file.</p>
         # Ensure each parent line (line number contains no decimals) has a
         # correct item_category value and a higher_level_item number
         for oLine in self.configuration.configline_set.all():
-            if '.' in oLine.line_number: continue
-            if oLine.line_number != '10' and oLine.item_category not in ['ZSBS', 'ZSBU', 'ZSBT', 'ZSXS',
-                                           'ZSBM', 'ZF36', 'ZMX0', 'ZSW7',
-                                           '0002', 'Z002', 'ZB02', 'ZDSH',
-                                           'ZF25', 'ZORP', 'ZF26', 'ZGBA',
-                                           'ZGBD', 'ZORM', 'ZSMZ', 'ZSXM',
-                                           'VERP', 'ZERQ', '', None]:
+            if '.' in oLine.line_number:
+                continue
+            if oLine.line_number != '10' and oLine.item_category not in [
+                    'ZSBS', 'ZSBU', 'ZSBT', 'ZSXS',
+                    'ZSBM', 'ZF36', 'ZMX0', 'ZSW7',
+                    '0002', 'Z002', 'ZB02', 'ZDSH',
+                    'ZF25', 'ZORP', 'ZF26', 'ZGBA',
+                    'ZGBD', 'ZORM', 'ZSMZ', 'ZSXM',
+                    'VERP', 'ZERQ', '', None]:
                 return False
 
-            if oLine.higher_level_item in ('', None) and oLine.line_number != '10':
+            if oLine.higher_level_item in ('', None) and \
+                    oLine.line_number != '10':
                 return False
 
         return self._core_document_eligible()
@@ -955,7 +967,7 @@ Configuration file.</p>
 
         # Ensure any non-pick-list record has a netvalue and a total value
         if not self.pick_list and not (self.configuration.net_value or
-                                           self.configuration.override_net_value):
+                                       self.configuration.override_net_value):
             return False
 
         if not self.configuration.total_value:
@@ -964,13 +976,15 @@ Configuration file.</p>
         # Ensure each parent line (line number contains no decimals) has a
         # correct item_category value and no higher_level_item number
         for oLine in self.configuration.configline_set.all():
-            if '.' in oLine.line_number: continue
-            if oLine.line_number != '10' and oLine.item_category not in ['ZTBI', 'ZI36', 'ZTNI', 'ZSXI',
-                                           'ZTFI', 'ZI25', 'ZAFP', 'ZSW7',
-                                           '0002', 'Z002', 'ZB02', 'ZDSH',
-                                           'ZF25', 'ZORP', 'ZF26', 'ZGBA',
-                                           'ZGBD', 'ZORM', 'ZSMZ', 'ZSXM',
-                                           'VERP', 'ZERQ', '', None]:
+            if '.' in oLine.line_number:
+                continue
+            if oLine.line_number != '10' and oLine.item_category not in [
+                    'ZTBI', 'ZI36', 'ZTNI', 'ZSXI',
+                    'ZTFI', 'ZI25', 'ZAFP', 'ZSW7',
+                    '0002', 'Z002', 'ZB02', 'ZDSH',
+                    'ZF25', 'ZORP', 'ZF26', 'ZGBA',
+                    'ZGBD', 'ZORM', 'ZSMZ', 'ZSXM',
+                    'VERP', 'ZERQ', '', None]:
                 return False
 
             if oLine.higher_level_item not in ('', None):
@@ -988,7 +1002,8 @@ Configuration file.</p>
         :return: Boolean
         """
         if self.react_request:
-            sQuery = "SELECT [req_id] FROM dbo.ps_requests WHERE [req_id]=%s AND [modified_by] IS NULL"
+            sQuery = ("SELECT [req_id] FROM dbo.ps_requests WHERE "
+                      "[req_id]=%s AND [modified_by] IS NULL")
 
             oCursor = connections['REACT'].cursor()
             oCursor.execute(sQuery, [bytes(self.react_request, 'ascii')])
@@ -1017,9 +1032,12 @@ Configuration file.</p>
         """
         if self.bom_request_type.name == 'Discontinue':
             if self.model_replaced_link and \
-                    self.model_replaced_link.replaced_by_model.exclude(id=self.id):
-                if self.model_replaced_link.replaced_by_model.exclude(id=self.id).first().inquiry_site_template is not None and \
-                                self.model_replaced_link.replaced_by_model.exclude(id=self.id).first().inquiry_site_template > 0:
+                    self.model_replaced_link.replaced_by_model.exclude(
+                        id=self.id):
+                if self.model_replaced_link.replaced_by_model.exclude(
+                        id=self.id).first().inquiry_site_template is not None \
+                        and self.model_replaced_link.replaced_by_model.exclude(
+                            id=self.id).first().inquiry_site_template > 0:
                     return True
                 else:
                     return False
@@ -1075,11 +1093,16 @@ class Configuration(models.Model):
 
         # If record is being placed on hold or taken off hold, update associated
         # Header configuration_status value
-        if self.PSM_on_hold and self.header.configuration_status.name != 'On Hold':
-            self.header.old_configuration_status = self.header.configuration_status
-            self.header.configuration_status = REF_STATUS.objects.get(name='On Hold')
-        elif not self.PSM_on_hold and self.header.old_configuration_status is not None:
-            self.header.configuration_status = self.header.old_configuration_status
+        if self.PSM_on_hold and self.header.configuration_status.name != \
+                'On Hold':
+            self.header.old_configuration_status = \
+                self.header.configuration_status
+            self.header.configuration_status = REF_STATUS.objects.get(
+                name='On Hold')
+        elif not self.PSM_on_hold and self.header.old_configuration_status is \
+                not None:
+            self.header.configuration_status = \
+                self.header.old_configuration_status
             self.header.old_configuration_status = None
         # end if
 
@@ -1229,7 +1252,8 @@ class Part(models.Model):
     the same part number, instead of storing duplicate part numbers for each
     different description
     """
-    product_description = models.CharField(max_length=100, blank=True, null=True)
+    product_description = models.CharField(
+        max_length=100, blank=True, null=True)
     base = models.ForeignKey(PartBase, blank=True, null=True)
 
     class Meta:
@@ -1404,6 +1428,12 @@ class LinePricing(models.Model):
 
 
 class PricingObject(models.Model):
+    """
+    Class / model for storing unit pricing information for a Part.  Pricing
+    is per customer, and can also have SPUD, Technology, & Sold-to as
+    differentiating factors.  Objects contain a link to the previously entered
+    data object.
+    """
     unit_price = models.FloatField(blank=True, null=True, default=0.0)
     customer = models.ForeignKey(REF_CUSTOMER, to_field='id')
     sold_to = models.IntegerField(blank=True, null=True)
@@ -1447,8 +1477,8 @@ class PricingObject(models.Model):
         """
         if not isinstance(oConfigLine, ConfigLine):
             raise TypeError(
-                'getClosestMatch takes ConfigLine argument. Unrecognized type {}'.format(
-                    str(type(oConfigLine))))
+                ('getClosestMatch takes ConfigLine argument.'
+                 ' Unrecognized type {}').format(str(type(oConfigLine))))
 
         aPricingList = cls.objects.filter(
             customer=oConfigLine.config.header.customer_unit,
@@ -1472,7 +1502,8 @@ class PricingObject(models.Model):
 
         if not oPriceObj:
             oPriceObj = aPricingList.filter(sold_to=None, spud=oConfigLine.spud,
-                                            technology=oConfigLine.config.header.technology).first()
+                                            technology=oConfigLine.config.header
+                                            .technology).first()
 
         if not oPriceObj:
             oPriceObj = aPricingList.filter(
@@ -1485,7 +1516,8 @@ class PricingObject(models.Model):
 
         if not oPriceObj:
             oPriceObj = aPricingList.filter(sold_to=None, spud=None,
-                                            technology=oConfigLine.config.header.technology).first()
+                                            technology=oConfigLine.config.header
+                                            .technology).first()
 
         if not oPriceObj:
             oPriceObj = aPricingList.filter(sold_to=None, spud=None,
@@ -1501,7 +1533,9 @@ class HeaderLock(models.Model):
     Tracks the user, by session key, that is currently editing a BoM
     """
     header = models.OneToOneField(Header)
-    session_key = models.OneToOneField(Session, default=None, blank=True, null=True, db_constraint=True, unique=False)
+    session_key = models.OneToOneField(
+        Session, default=None, blank=True, null=True, db_constraint=True,
+        unique=False)
 
     def __str__(self):
         return str(self.header)
@@ -1522,7 +1556,8 @@ class SecurityPermission(models.Model):
 
     read = models.BooleanField(default=False)
     write = models.BooleanField(default=False)
-    user = models.ManyToManyField(Group, limit_choices_to={'name__startswith': 'BOM_'})
+    user = models.ManyToManyField(Group,
+                                  limit_choices_to={'name__startswith': 'BOM_'})
     title = models.CharField(max_length=50)
 
     def __str__(self):
@@ -1832,7 +1867,7 @@ class DistroList(models.Model):
 
     def __str__(self):
         return self.customer_unit.name
-#end def
+# end def
 
 
 class ApprovalList(models.Model):
@@ -1882,6 +1917,12 @@ class CustomerPartInfo(models.Model):
     # end def
 
     def __eq__(self, other):
+        """
+        Comparison function to determine if two CustomerPartInfo objects should
+        be considered equivalent
+        :param other: CustomerPartInfo object being compared
+        :return: Boolean
+        """
         if not isinstance(other, CustomerPartInfo):
             return False
 
