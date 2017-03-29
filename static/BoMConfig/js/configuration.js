@@ -120,7 +120,7 @@ function cleanDataCheck(link){
         valid = false;
     }
 
-    if (!valid && !form_save){
+    if (!valid && !form_save && !(frame_readonly || active_lock)){
         messageToModal('Unsaved changes detected',
                 "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
                 function(){
