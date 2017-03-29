@@ -99,7 +99,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 
     # This is the case when the user clicks the "BoM Entry" link
     if sTemplate == 'BoMConfig/entrylanding.html':
-        if oRequest.session['existing']:
+        if 'existing' in oRequest.session and oRequest.session['existing']:
             Unlock(oRequest, oRequest.session['existing'])
             del oRequest.session['existing']
         return redirect(reverse('bomconfig:configheader'))
@@ -944,7 +944,8 @@ def AddConfig(oRequest):
 
     # Build and validate data for display in configuration table
     data = BuildDataArray(oHeader, config=True)
-    error_matrix = Validator(data, oHeader, bCanWriteConfig)
+    if not (bFrameReadOnly or bActive):
+        error_matrix = Validator(data, oHeader, bCanWriteConfig)
 
     dContext = {
         'data_array': data,
