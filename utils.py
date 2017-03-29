@@ -17,15 +17,16 @@ Comparator to ensure Baseline revision values get sorted properly
 RevisionCompare = cmp_to_key(
     lambda x, y: (
         -1 if len(x.strip('1234567890')) < len(y.strip('1234567890')) or
-              list(x.strip('1234567890')) < (
+        list(x.strip('1234567890')) < (
                   ['']*(len(x.strip('1234567890'))-len(y.strip('1234567890'))) +
                   list(y.strip('1234567890'))) or
-              (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y))
-            else 0 if x == y
-            else 1))
+        (x.strip('1234567890') == y.strip('1234567890') and list(x) < list(y))
+        else 0 if x == y
+        else 1))
 
 
-def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=None):
+def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None,
+          sCopyToRevision=None):
     """
     Function to perform revision incrementation.  When a new baseline revision
     is released, Header records in the currently active revision may need to be
@@ -52,12 +53,14 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
                             Header record will be copied
     :return: None
     """
-    if not isinstance(oRecord,(Baseline, Header)):
-        raise TypeError('UpRev can only be passed a Baseline or Header type object')
+    if not isinstance(oRecord, (Baseline, Header)):
+        raise TypeError(
+            'UpRev can only be passed a Baseline or Header type object')
     # end if
 
-    if isinstance(oRecord,Header) and not sCopyToRevision:
-        raise ValueError('Must provide sCopyToRevision when passing a Header to this function')
+    if isinstance(oRecord, Header) and not sCopyToRevision:
+        raise ValueError(
+            'Must provide sCopyToRevision when passing a Header to this function')
     # end if
 
     oNewInprocRev = None
@@ -97,7 +100,7 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
         if sExceptionRev and (
                         RevisionCompare(sCurrentInProcRev) <
                         RevisionCompare(sExceptionRev) <
-                    RevisionCompare(IncrementRevision(sCurrentInProcRev))):
+                RevisionCompare(IncrementRevision(sCurrentInProcRev))):
             sNewInprocessRev = sExceptionRev
         else:
             sNewInprocessRev = IncrementRevision(sCurrentInProcRev)
@@ -135,8 +138,8 @@ def UpRev(oRecord, sExceptionHeader=None, sExceptionRev=None, sCopyToRevision=No
         # the current header is not the exception header and does not already
         # exist in the destination revision
         if not((oHeader.configuration_designation == sExceptionHeader and
-                            IncrementRevision(oHeader.baseline_version) ==
-                        sExceptionRev) or oNextHeader):
+                IncrementRevision(oHeader.baseline_version) ==
+                sExceptionRev) or oNextHeader):
 
             # Create an exact copy of the current header, place it in the
             # destination revision, and link it back to this header.
@@ -329,7 +332,7 @@ def MassUploaderUpdate(oBaseline=None):
         - If 'oBaseline' is provided, the above will only be done for the
             Baseline provided
 
-    :param Baseline: Baseline object on which to perform update (optional)
+    :param oBaseline: Baseline object on which to perform update (optional)
     :return None
     """
     if oBaseline:
@@ -364,17 +367,19 @@ def MassUploaderUpdate(oBaseline=None):
                 if oHeader.configuration_status.name == 'Active':
                     if key in dHeadersToMoveForward:
                         dHeadersToMoveForward[key][-1][1] = rev
-                        dHeadersToMoveForward[key][-1][2] = oHeader.configuration_status.name
-                        dHeadersToMoveForward[key].append([rev,'',''])
+                        dHeadersToMoveForward[key][-1][2] = \
+                            oHeader.configuration_status.name
+                        dHeadersToMoveForward[key].append([rev, '', ''])
                     else:
-                        dHeadersToMoveForward[key] = [[rev, '','']]
+                        dHeadersToMoveForward[key] = [[rev, '', '']]
                     # end if
                 elif oHeader.configuration_status.name in (
                         'Discontinued', 'Cancelled', 'Inactive'):
                     if key in dHeadersToMoveForward:
                         if dHeadersToMoveForward[key][-1][1] == '':
                             dHeadersToMoveForward[key][-1][1] = rev
-                            dHeadersToMoveForward[key][-1][2] = oHeader.configuration_status.name
+                            dHeadersToMoveForward[key][-1][2] = \
+                                oHeader.configuration_status.name
                         # end if
                     else:
                         pass
@@ -391,7 +396,6 @@ def MassUploaderUpdate(oBaseline=None):
                 else:
                     iTo = len(aExistingRevs)
                 # end if
-                sFinalStatus = aMoveParams[2]
 
                 while iFrom < (iTo - 1):
                     oHeader = Header.objects.get(
@@ -412,7 +416,8 @@ def MassUploaderUpdate(oBaseline=None):
                     oHeader.configuration_status = REF_STATUS.objects.get(
                         name='Inactive')
                     if oHeader.change_comments:
-                        oHeader.change_comments += '\nBaseline revision increment'
+                        oHeader.change_comments += \
+                            '\nBaseline revision increment'
                     else:
                         oHeader.change_comments = 'Baseline revision increment'
                     # end if
@@ -516,7 +521,7 @@ def TestRollbackBaseline(oBaseline):
             aDuplicates.append(oHead)
 
     return aDuplicates
-#end def
+# end def
 
 
 def RollbackBaseline(oBaseline):
@@ -674,10 +679,12 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     # ignore records that are in the DTS program
     aDiscontinuedHeaders = [oHead for oHead in
                             Baseline_Revision.objects.get(baseline=oBaseline,
-                                                          version=sCurrent).header_set.filter(
+                                                          version=sCurrent
+                                                          ).header_set.filter(
                                 oDiscontinued | oToDiscontinue).exclude(
                                 program__name__in=(
-                                'DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(
+                                    'DTS',) if oBaseline.title !=
+                                'No Associated Baseline' else []).exclude(
                                 configuration_status__name__in=('On Hold',
                                                                 'In Process'))]
 
@@ -687,11 +694,14 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     # Associated Baseline', ignore records that are in the DTS program
     aAddedHeaders = [oHead for oHead in
                      Baseline_Revision.objects.get(baseline=oBaseline,
-                                                   version=sCurrent).header_set.filter(
+                                                   version=sCurrent
+                                                   ).header_set.filter(
                          bom_request_type__name__in=('New', 'Legacy')).exclude(
                          program__name__in=(
-                         'DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(
-                         configuration_status__name__in=('On Hold', 'In Process'))]
+                            'DTS',) if oBaseline.title !=
+                         'No Associated Baseline' else []).exclude(
+                         configuration_status__name__in=('On Hold',
+                                                         'In Process'))]
 
     # Generate a list of Headers in the sCurrent revision of oBaseline that are
     # updates. Ignore records in "On Hold" or "In Process" status. If
@@ -699,16 +709,20 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     # ignore records that are in the DTS program
     aUpdatedHeaders = [oHead for oHead in
                        Baseline_Revision.objects.get(baseline=oBaseline,
-                                                     version=sCurrent).header_set.filter(
+                                                     version=sCurrent
+                                                     ).header_set.filter(
                            bom_request_type__name='Update').exclude(
-                           oDiscontinued).exclude(program__name__in=(
-                       'DTS',) if oBaseline.title != 'No Associated Baseline' else []).exclude(
-                           configuration_status__name__in=('On Hold', 'In Process'))]
+                           oDiscontinued).exclude(
+                           program__name__in=('DTS',) if
+                           oBaseline.title != 'No Associated Baseline' else []
+                       ).exclude(
+                           configuration_status__name__in=('On Hold',
+                                                           'In Process'))]
 
     # For each updated Header, determine if the previous revision contains the
     # record the Header claims to update or not
-    aPrevHeaders = []
-    aPrevButNotCurrent = []
+    # aPrevHeaders = []
+    # aPrevButNotCurrent = []
     aCurrButNotPrev = []
     for oHead in aUpdatedHeaders:
         try:
@@ -719,7 +733,8 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
 
             # This check never fails because aDiscontinuedHeaders contains
             # headers not tuples, and aPrevHeaders never gets used
-            # if not (obj.configuration_designation, obj.program) in aDiscontinuedHeaders:
+            # if not (obj.configuration_designation, obj.program) in \
+            #         aDiscontinuedHeaders:
             #     aPrevHeaders.append(obj)
             # else:
             #     aPrevButNotCurrent.append(obj)
@@ -741,7 +756,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                     '  {}'.format(
                         oHead.configuration.get_first_line().customer_number
                     ) if not oHead.pick_list and
-                         oHead.configuration.get_first_line().customer_number else ''
+                    oHead.configuration.get_first_line().customer_number else ''
                 ),
 
                 oHead.model_replaced_link.configuration_designation + (
@@ -750,10 +765,10 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                 ) + (
                     '  {}'.format(
                         oHead.model_replaced_link.configuration.get_first_line()
-                            .customer_number
+                        .customer_number
                     ) if not oHead.model_replaced_link.pick_list and
-                         oHead.model_replaced_link.configuration
-                             .get_first_line().customer_number else ''
+                    oHead.model_replaced_link.configuration.get_first_line()
+                    .customer_number else ''
                 ) if oHead.model_replaced_link else oHead.model_replaced
             )
 
@@ -765,10 +780,10 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                 (
                     '  {}'.format(
                         oHead.model_replaced_link.configuration.get_first_line()
-                            .customer_number
+                        .customer_number
                     ) if not oHead.model_replaced_link.pick_list and
-                         oHead.model_replaced_link.configuration
-                             .get_first_line().customer_number else ''
+                    oHead.model_replaced_link.configuration
+                    .get_first_line().customer_number else ''
                 ) if oHead.model_replaced_link else oHead.model_replaced,
 
                 oHead.configuration_designation + (
@@ -777,7 +792,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                     '  {}'.format(
                         oHead.configuration.get_first_line().customer_number
                     ) if not oHead.pick_list and oHead.configuration
-                        .get_first_line().customer_number else '')
+                    .get_first_line().customer_number else '')
             )
         else:
             # If a previous revision exists and a matching header exists in
@@ -786,11 +801,14 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
             # the Header must have been carried forward from a previous
             # revision, and therefore is not ACTUALLY New / Added
             if Baseline_Revision.objects.filter(baseline=oBaseline,
-                                                version=sPrevious) and Baseline_Revision.objects.get(
-                    baseline=oBaseline, version=sPrevious).header_set.filter(
-                    configuration_designation=oHead.configuration_designation,
-                    program=oHead.program) and not oHead.configuration_status.name \
-                    == 'In Process/Pending' and oHead.headertimetracker_set.filter(
+                                                version=sPrevious) and \
+                    Baseline_Revision.objects.get(
+                        baseline=oBaseline,
+                        version=sPrevious).header_set.filter(
+                        configuration_designation=oHead.configuration_designation,
+                        program=oHead.program
+                    ) and not oHead.configuration_status.name == \
+                    'In Process/Pending' and oHead.headertimetracker_set.filter(
                     completed_on=None, disapproved_on=None):
                 continue
 
@@ -801,7 +819,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                     '  {}'.format(
                         oHead.configuration.get_first_line().customer_number
                     ) if not oHead.pick_list and
-                         oHead.configuration.get_first_line().customer_number
+                    oHead.configuration.get_first_line().customer_number
                     else ''
                 )
             )
@@ -818,7 +836,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                 '  {}'.format(
                     oHead.configuration.get_first_line().customer_number
                 ) if not oHead.pick_list and
-                     oHead.configuration.get_first_line().customer_number
+                oHead.configuration.get_first_line().customer_number
                 else ''
             )
         )
@@ -844,7 +862,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                 '  {}'.format(
                     oHead.configuration.get_first_line().customer_number
                 ) if not oHead.pick_list and
-                     oHead.configuration.get_first_line().customer_number
+                oHead.configuration.get_first_line().customer_number
                 else ''
             )
         )
@@ -890,7 +908,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                     '  {}'.format(
                         oHead.configuration.get_first_line().customer_number
                     ) if not oHead.pick_list and
-                         oHead.configuration.get_first_line().customer_number
+                    oHead.configuration.get_first_line().customer_number
                     else ''
                 )
             )
@@ -930,7 +948,10 @@ def HeaderComparison(oHead, oPrev):
     """
     Creating a dictionary for previous and current revision,
         key: (Part #, Line #)
-        value: [Qty, Price, (Grandparent Part #, Parent Part #), Matching line key].
+        value: [Qty,
+                Price,
+                (Grandparent Part #, Parent Part #),
+                Matching line key].
     This will be used to find a match between revisions, and track when a line
     has been moved rather than removed or replaced.
     """
@@ -954,7 +975,8 @@ def HeaderComparison(oHead, oPrev):
                     line_number=oConfigLine.line_number[
                                 :oConfigLine.line_number.find('.')
                                 ]
-                ).part.base.product_number if oConfigLine.is_grandchild else None,
+                ).part.base.product_number if oConfigLine.is_grandchild else
+                None,
                 oHead.configuration.configline_set.get(
                     line_number=oConfigLine.line_number[
                                 :oConfigLine.line_number.rfind('.')
@@ -981,18 +1003,20 @@ def HeaderComparison(oHead, oPrev):
                     line_number=oConfigLine.line_number[
                                 :oConfigLine.line_number.find('.')
                                 ]
-                ).part.base.product_number if oConfigLine.is_grandchild and
-                                              oHead.configuration.configline_set.filter(
-                                                  line_number=oConfigLine.line_number[
-                                                              :oConfigLine.line_number.find('.')]) else None,
+                ).part.base.product_number if
+                oConfigLine.is_grandchild and
+                oHead.configuration.configline_set.filter(
+                    line_number=oConfigLine.line_number[
+                                :oConfigLine.line_number.find('.')]) else None,
                 oHead.configuration.configline_set.get(
                     line_number=oConfigLine.line_number[
                                 :oConfigLine.line_number.rfind('.')
                                 ]
-                ).part.base.product_number if oConfigLine.is_child and
-                                              oHead.configuration.configline_set.filter(
-                                                  line_number=oConfigLine.line_number[
-                                                              :oConfigLine.line_number.rfind('.')]) else None
+                ).part.base.product_number if
+                oConfigLine.is_child and
+                oHead.configuration.configline_set.filter(
+                    line_number=oConfigLine.line_number[
+                                :oConfigLine.line_number.rfind('.')]) else None
             ),
             None
         ]
@@ -1008,7 +1032,7 @@ def HeaderComparison(oHead, oPrev):
 
             # Check if quantity or price changed from oPrev entry to oHead entry
             if dCurrent[(sPart, sLine)][0] != dPrevious[(sPart, sLine)][0] or \
-                            dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
+                    dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
                 if dCurrent[(sPart, sLine)][0] != dPrevious[(sPart, sLine)][0]:
                     sTemp += '{} - {} quantity changed from {} to {}\n'.format(
                         sLine, sPart,  dPrevious[(sPart, sLine)][0],
@@ -1024,7 +1048,8 @@ def HeaderComparison(oHead, oPrev):
                     if oHead.customer_unit == oATT and not oHead.pick_list and \
                                     sLine != '10':
                         continue
-                    sTemp += '{} - {} line price changed from {} to {}\n'.format(
+                    sTemp += ('{} - {} line price changed from {} to {}\n'
+                              ).format(
                         sLine, sPart, dPrevious[(sPart, sLine)][1],
                         dCurrent[(sPart, sLine)][1]
                     )
@@ -1059,21 +1084,25 @@ def HeaderComparison(oHead, oPrev):
                 # Check the match for changes to quantity and price
                 if dCurrent[dPrevious[(sPart, sLine)][3]][0] != \
                         dPrevious[(sPart, sLine)][0] or \
-                                dCurrent[dPrevious[(sPart, sLine)][3]][1] != \
-                                dPrevious[(sPart, sLine)][1]:
+                        dCurrent[dPrevious[(sPart, sLine)][3]][1] != \
+                        dPrevious[(sPart, sLine)][1]:
 
                     if dCurrent[dPrevious[(sPart, sLine)][3]][0] != \
                             dPrevious[(sPart, sLine)][0]:
-                        sTemp += '{} - {} quantity changed from {} to {}\n'.format(
+                        sTemp += ('{} - {} quantity changed from {} to {}\n'
+                                  ).format(
                             dPrevious[(sPart, sLine)][3][1],
                             sPart, dPrevious[(sPart, sLine)][0],
                             dCurrent[dPrevious[(sPart, sLine)][3]][0]
                         )
 
-                    if dCurrent[dPrevious[(sPart, sLine)][3]][1] != dPrevious[(sPart, sLine)][1]:
-                        if oHead.customer_unit == oATT and not oHead.pick_list and sLine != '10':
+                    if dCurrent[dPrevious[(sPart, sLine)][3]][1] != \
+                            dPrevious[(sPart, sLine)][1]:
+                        if oHead.customer_unit == oATT and not oHead.pick_list \
+                                and sLine != '10':
                             continue
-                        sTemp += '{} - {} line price changed from {} to {}\n'.format(
+                        sTemp += ('{} - {} line price changed from {} to {}\n'
+                                  ).format(
                             dPrevious[(sPart, sLine)][3][1], sPart,
                             dPrevious[(sPart, sLine)][1],
                             dCurrent[dPrevious[(sPart, sLine)][3]][1]
@@ -1092,14 +1121,16 @@ def HeaderComparison(oHead, oPrev):
                 if any(sLine == sLnum for (_, sLnum) in dCurrent.keys()):
                     for key in dCurrent.keys():
                         if key[1] == sLine:
-                            aPotentialMatches.append([(sPart, sLine), key, True])
+                            aPotentialMatches.append([(sPart, sLine), key,
+                                                      True])
 
     # Now do a check of the potential matches list to make sure none were missed
 
     # First double check that any key in dCurrent that has been matched is
     # removed from the potential match list
     for key in dCurrent.keys():
-        if key in [curr for (_, curr, _) in aPotentialMatches] and dCurrent[key][3]:
+        if key in [curr for (_, curr, _) in aPotentialMatches] and \
+                dCurrent[key][3]:
             aPotentialMatches[list(
                 [curr for (_, curr, _) in aPotentialMatches]
             ).index(key)][2] = False
@@ -1154,7 +1185,7 @@ def TitleShorten(sTitle):
     return sTitle
 
 
-def StrToBool(sValue, bDefault = None):
+def StrToBool(sValue, bDefault=None):
     """
     Convert a string to a bool. If the string is empty and a default is
     provided, it is returned; otherwise an exception is raised. If the string is
@@ -1176,12 +1207,12 @@ def StrToBool(sValue, bDefault = None):
     elif not sUpper:
         if bDefault is None:
             ValueError("Empty string provided and no default to return.")
-        #end if
+        # end if
         return bDefault
     else:
         TypeError("Unrecognized Boolean string: " + sValue)
-    #end if
-#end def
+    # end if
+# end def
 
 
 def DetectBrowser(oRequest):
