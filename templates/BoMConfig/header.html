@@ -25,7 +25,7 @@
 			<div class="nav-menu">
 				<ul class="nav nav-pills pull-right">
 					<li><a style="cursor: pointer;" onclick="cleanDataCheck(this);" data-href="{% url 'bomconfig:index' %}"> Home </a></li>
-					<li><a id="support_mail_to" {% if user|has_group:"BOM_Tool_Administrator" %}href="http://eusaamw0067/servicedesk/customer/portal/2" target="_blank" {% else %}href="mailto:{{ supportcontact }}?subject={{ pagetitle|urlencode }}%20support%20request"{% endif %}>Support</a></li>
+					<li><a id="support_mail_to" {% if user|has_group:"BOM_PSM_Tool_Administrator" %}href="http://eusaamw0067/servicedesk/customer/portal/2" target="_blank" {% else %}href="mailto:{{ supportcontact }}?subject={{ pagetitle|urlencode }}%20support%20request"{% endif %}>Support</a></li>
 				</ul>
 			</div>
 		</div>
