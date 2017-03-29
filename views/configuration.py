@@ -946,6 +946,8 @@ def AddConfig(oRequest):
     data = BuildDataArray(oHeader, config=True)
     if not (bFrameReadOnly or bActive):
         error_matrix = Validator(data, oHeader, bCanWriteConfig)
+    else:
+        error_matrix = []
 
     dContext = {
         'data_array': data,
