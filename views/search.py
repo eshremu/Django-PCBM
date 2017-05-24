@@ -291,7 +291,7 @@ def Search(oRequest, advanced=False):
             if 'product2' in oRequest.POST and oRequest.POST['product2'] != '':
                 if oRequest.POST['product2'] != 'n/a':
                     aConfigLines = aConfigLines.filter(
-                        config__header__procuct_area2__name__iexact=oRequest
+                        config__header__product_area2__name__iexact=oRequest
                         .POST['product2']
                     )
                 sTableHeader += '<th style="width:175px;">Product Area 2</th>'
