@@ -569,7 +569,8 @@ def Search(oRequest, advanced=False):
         'prod1_list': sorted(list(set(
             REF_PRODUCT_AREA_1.objects.all().values_list('name', flat=True)))),
         'prod2_list': sorted(list(set(
-            REF_PRODUCT_AREA_2.objects.all().values_list('name', flat=True)))),
+            REF_PRODUCT_AREA_2.objects.all().values_list('name', flat=True))),
+            key=lambda x: str(x).upper()),
         'band_list': REF_RADIO_BAND.objects.all().order_by('name'),
         'freq_list': sorted(list(set(
             REF_RADIO_FREQUENCY.objects.all().values_list('name', flat=True))))

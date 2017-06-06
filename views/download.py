@@ -909,9 +909,9 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     aHeaders.sort(key=lambda inst: inst.baseline_version, reverse=True)
     aHeaders.sort(
         key=lambda inst: (
+            int(inst.pick_list),
             str(inst.product_area2.name).upper() if inst.product_area2 else
             'ZZZZ',
-            int(inst.pick_list),
             str(inst.configuration_designation)
         )
     )
