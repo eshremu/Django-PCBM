@@ -756,6 +756,8 @@ function build_table() {
 }
 
 function estimateLineNumbers(changes, current_line_numbers) {
+    var usedNumbers = current_line_numbers.filter(function(val){return val !== null;});
+
     for (var i=0; i < changes.length; i++){
         // If this change is for a part number and the corresponding line does not already have a line number
         // insert the part into the array at the corresponding index.  This will help determine the estimated order of new line numbers
@@ -767,8 +769,7 @@ function estimateLineNumbers(changes, current_line_numbers) {
     // Now step through each element in current_line_numbers.  if the element is already a line number (based on regexp matching)
     // update the last line number trackers, otherwise use the last line number trackers to create a new line number, assign it,
     // then update last trackers
-    var parent = 0, child = 1, grand = 1;
-    var usedNumbers = [];
+    var parent = 10, child = 1, grand = 1;
 
     for (i = 0; i < current_line_numbers.length; i++){
         if (current_line_numbers[i] == null){
