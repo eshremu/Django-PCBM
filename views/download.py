@@ -13,7 +13,7 @@ from BoMConfig.models import Header, ConfigLine, Baseline, Baseline_Revision, \
     DistroList, REF_PROGRAM, PricingObject
 from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
 from BoMConfig.utils import GenerateRevisionSummary, GrabValue, \
-    HeaderComparison, RevisionCompare, TitleShorten
+    HeaderComparison, RevisionCompare, TitleShorten, char_to_num
 from BoMConfig.views.configuration import BuildDataArray
 from BoMConfig.views.pricing import PricingOverviewLists
 
@@ -906,9 +906,10 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
         aHeaders = list(aHeaders)
 
     # Sort Headers by baseline version and Product Area 2 values
-    aHeaders.sort(key=lambda inst: inst.baseline_version, reverse=True)
+    # aHeaders.sort(key=lambda inst: inst.baseline_version, reverse=True)
     aHeaders.sort(
         key=lambda inst: (
+            -(char_to_num(inst.baseline_version)),
             int(inst.pick_list),
             str(inst.product_area2.name).upper() if inst.product_area2 else
             'ZZZZ',

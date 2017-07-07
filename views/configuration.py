@@ -2677,25 +2677,26 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
 
         # Find closest parent line item (which may be a child) or top-level
         # line item
+        other_lines = dData.getlist('other_lines[]')
         idx = int(dData['row_index']) - 1
         while idx >= 0:
-            if idx < len(dData.getlist('other_lines[]')) and\
-                    len(dData.getlist('other_lines[]')[idx].split('.')) > 0 and\
-                    dData.getlist('other_lines[]')[idx].split('.')[0] != '':
-                iParent = int(dData.getlist('other_lines[]')[idx].split('.')[0])
+            if idx < len(other_lines) and\
+                    len(other_lines[idx].split('.')) > 0 and\
+                    other_lines[idx].split('.')[0] != '':
+                iParent = int(other_lines[idx].split('.')[0])
                 if bNewParent:
                     break
 
-                if len(dData.getlist('other_lines[]')[idx].split('.')) > 1:
+                if len(other_lines[idx].split('.')) > 1:
                     iChild = int(
-                        dData.getlist('other_lines[]')[idx].split('.')[1]
+                        other_lines[idx].split('.')[1]
                     )
                 if bNewChild:
                     break
 
-                if len(dData.getlist('other_lines[]')[idx].split('.')) > 2:
+                if len(other_lines[idx].split('.')) > 2:
                     iGrandchild = int(
-                        dData.getlist('other_lines[]')[idx].split('.')[2]
+                        other_lines[idx].split('.')[2]
                     )
                 if bNewGrandchild:
                     break
@@ -2705,7 +2706,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
         if bNewParent:
             # Check if next highest top-level line number (10 multiple)
             # is available
-            if str(iParent + 10) not in dData.getlist('other_lines[]'):
+            if str(iParent + 10) not in other_lines:
                 iParent += 10
             # Try to fit new parent between most previous and next
             # if that doesn't work, add a new 10-based parent
@@ -2713,13 +2714,15 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 bMidAvailable = False
                 for iStep in range(1, 10):
                     if iParent + iStep > 10 and str(iParent + iStep) not in \
-                            dData.getlist('other_lines[]'):
+                            other_lines:
                         bMidAvailable = True
                         iParent += iStep
                         break
 
                 if not bMidAvailable:
-                    while str(iParent) in dData.getlist('other_lines[]'):
+                    if iParent == 0:
+                        iParent += 10
+                    while str(iParent) in other_lines:
                         iParent += 10
 
             sNewLineNumber = str(iParent)
@@ -2731,7 +2734,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 iChild = 1
 
             while ".".join([str(iParent), str(iChild)]) in \
-                    dData.getlist('other_lines[]'):
+                    other_lines:
                 iChild += 1
 
             sNewLineNumber = ".".join([str(iParent), str(iChild)])
@@ -2746,7 +2749,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 iGrandchild = 1
 
             while ".".join([str(iParent), str(iChild), str(iGrandchild)]) in \
-                    dData.getlist('other_lines[]'):
+                    other_lines:
                 iGrandchild += 1
 
             sNewLineNumber = ".".join([str(iParent),
@@ -2927,7 +2930,7 @@ def ValidateQuantity(dData, dResult):
         return
 
     try:
-        dResult['value'] = str(float(int(dData['value'])))
+        dResult['value'] = str(float(dData['value']))
     except ValueError:
         pass
 # end def

@@ -6,7 +6,7 @@ function XHRQueue(hash) {
     this._currentIndex = 0
     this._inWork = false;
 
-    this.parseParams = function(parameters) {
+    this.encodeParams = function(parameters) {
         var params = [];
         for (key in parameters) {
             if (parameters.hasOwnProperty(key)) {
@@ -24,14 +24,36 @@ function XHRQueue(hash) {
         }
 
         return params.join('&');
-    }
+    };
+
+    this.parseParams = function(query_string) {
+        var param = {};
+
+        var pairs = query_string.split("&");
+        pairs.forEach(function(pair, idx, pairs){
+            var key_val = pair.split('=');
+            var key = decodeURIComponent(key_val[0]);
+
+            if(key.endsWith("[]")){
+                if(param.hasOwnProperty(key.slice(0, -2))){
+                    param[key.slice(0, -2)].push(decodeURIComponent(key_val[1]));
+                } else {
+                    param[key.slice(0, -2)] = [decodeURIComponent(key_val[1])];
+                }
+            } else {
+                param[key] = decodeURIComponent(key_val[1]);
+            }
+        });
+
+        return JSON.parse(JSON.stringify(param));
+    };
 
     this.add = function(settings) {
 
         var storageObject = this;
 
         var xhr = new XMLHttpRequest();
-        xhr.dataSet = this.parseParams(settings['data']);
+        xhr.dataSet = this.encodeParams(settings['data']);
         xhr.isPost = settings['type'].toLowerCase() == 'post';
         xhr.location = settings['url'];
         xhr.type = settings['type'];
@@ -61,10 +83,13 @@ function XHRQueue(hash) {
 
                 for (var col in returneddata.propagate.line) {
                     if (returneddata.propagate.line.hasOwnProperty(col)) {
-                        if (returneddata.propagate.line[col].chain) {
-                            hot.setDataAtRowProp(returneddata.row, parseInt(col), returneddata.propagate.line[col].value, 'edit');
-                        } else {
-                            hot.setDataAtRowProp(returneddata.row, parseInt(col), returneddata.propagate.line[col].value, 'validation');
+                        // Determine if a newer validation request has been entered into the storage hash
+                        if(!(storageObject.storageHash.storage.hasOwnProperty(returneddata.row) && storageObject.storageHash.storage[returneddata.row].hasOwnProperty(col) && storageObject.storageHash.storage[returneddata.row][col].isInProcess)) {
+                            if (returneddata.propagate.line[col].chain) {
+                                hot.setDataAtRowProp(returneddata.row, parseInt(col), returneddata.propagate.line[col].value, 'edit');
+                            } else {
+                                hot.setDataAtRowProp(returneddata.row, parseInt(col), returneddata.propagate.line[col].value, 'validation');
+                            }
                         }
                     }
                 }
@@ -144,13 +169,13 @@ function XHRQueue(hash) {
         }
 
         this.enqueue(xhr);
-    }
+    };
 
     this.enqueue = function(xhr) {
         this._storage.push(xhr);
 
         this.start();
-    }
+    };
 
     this.start = function() {
         if (!this._inWork){
@@ -170,12 +195,12 @@ function XHRQueue(hash) {
             }
             this._inWork = true;
         }
-    }
+    };
 
     this.stop = function() {
         this._storage[this._currentIndex].abort();
         this._inWork = false;
-    }
+    };
 
     this.finish = function() {
         this._inWork = false;
@@ -185,5 +210,5 @@ function XHRQueue(hash) {
         if (this._currentIndex < this._storage.length){
             this.start();
         }
-    }
+    };
 }
