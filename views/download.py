@@ -925,24 +925,24 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 
         # Remove Headers that have already been written (this occurs when
         # writing the in-process version of a record that will be replaced)
-        if str(oHeader.configuration_designation) in oFile.get_sheet_names():
+        if str(oHeader.configuration_designation) in oFile.sheetnames:
             aHeaders.remove(oHeader)
             continue
 
         # Records are separated by Product Area 2 value, so each new Product
         # area 2 value encountered needs to be written as a new separation tab
         if oHeader.product_area2 and oHeader.product_area2.name not in \
-                oFile.get_sheet_names():
+                oFile.sheetnames:
             oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]:\'\?/]', '_',
                                                      oHeader.product_area2.name)
                                         )
             oSheet.sheet_properties.tabColor = '0062FF'
         elif not oHeader.product_area2 and 'None' not in \
-                oFile.get_sheet_names():
+                oFile.sheetnames:
             oSheet = oFile.create_sheet(title="None")
             oSheet.sheet_properties.tabColor = '0062FF'
-        elif oHeader.pick_list and 'Pick Lists' not in oFile.get_sheet_names() \
-                and 'Optional Hardware' not in oFile.get_sheet_names():
+        elif oHeader.pick_list and 'Pick Lists' not in oFile.sheetnames \
+                and 'Optional Hardware' not in oFile.sheetnames:
             oSheet = oFile.create_sheet(title="Pick Lists")
             oSheet.sheet_properties.tabColor = '0062FF'
 
@@ -1252,7 +1252,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 
     # Write Table of Contents tab.  This is last so that we only write ToC data
     # for Header objects still in the array after the previous section
-    oSheet = oFile.create_sheet(0, 'ToC')
+    oSheet = oFile.create_sheet('ToC', 0)
     dTOCData = {
         5: ['Customer Number', 'configuration.first_line.customer_number', 20],
         6: ['Second Customer Number',
