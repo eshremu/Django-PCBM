@@ -46,7 +46,8 @@ function ValidationXHRHash () {
     this.removeRow = function(row, amount){
         var keys = Object.keys(this.storage).sort();
 
-        for(key of keys){
+        for(let idx in keys){
+            var key = keys[idx];
             if(this.storage.hasOwnProperty(key)) {
                 if (key >= row && key < row + amount) {
                     delete this.storage[key];
@@ -61,7 +62,8 @@ function ValidationXHRHash () {
     this.addRow = function(row, amount){
         var keys = Object.keys(this.storage).sort().reverse();
 
-        for(key of keys){
+        for(let idx in keys){
+            var key = keys[idx];
             if(this.storage.hasOwnProperty(key)) {
                 if(key >= row){
                     this.storage[parseInt(key) + amount] = this.storage[key];
@@ -529,7 +531,7 @@ function build_table() {
                 cellProperties.className += 'htLeft';
             } else if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
                 cellProperties.className += 'htRight';
-            } else if (this.instance.getColHeader(col).startsWith('Product Number')) {
+            } else if (/^Product Number/.test(this.instance.getColHeader(col))) {
                 cellProperties.className += 'htLeft';
             } else {
                 cellProperties.className += 'htCenter';
