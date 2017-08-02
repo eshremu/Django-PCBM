@@ -20,8 +20,8 @@
         $('a.headtitle:contains("Pricing")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 
         function cleanDataCheck(link){
-            var dirty_form = hot != undefined ? JSON.stringify(hot.getSourceData()) : undefined;
-            if(clean_form != undefined && dirty_form != clean_form && !form_save){
+            var dirty_form = typeof(hot) != 'undefined' ? JSON.stringify(hot.getSourceData()) : undefined;
+            if(typeof(clean_form) != 'undefined' && dirty_form != clean_form && !form_save){
                 messageToModal('Unsaved changes detected',
                         "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.",
                         function(){
@@ -43,7 +43,7 @@
 
         $(document).ready(function(){
             $(window).on('beforeunload', function(){
-                if(hot != undefined) {
+                if(typeof(hot) != 'undefined') {
                     var dirty_form = JSON.stringify(hot.getSourceData());
                     if (closeButton && dirty_form != clean_form && !form_save) {
                         return "You have made changes to the form.  If you navigate away from this page without saving, all changes will be lost.";

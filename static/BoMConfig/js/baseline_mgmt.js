@@ -21,7 +21,10 @@ $(document).ready(function() {
 
             var searchlist = search_string.split(/\s+/);
             var searchset = new Set(searchlist);
-            searchlist = Array.from(searchset.values());
+            searchlist = [];
+            searchset.forEach(function(val){
+                searchlist.push(val);
+            });
             search_string = searchlist.join(' ');
 
             var width = $(el).find('>:nth-child(2)').css('width');

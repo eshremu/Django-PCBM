@@ -100,7 +100,7 @@ function XHRQueue(hash) {
                     }
 
                     if (returneddata.propagate.hasOwnProperty(prop)) {
-                        $(`[name="${prop}"]`).val(returneddata.propagate[prop]);
+                        $('[name="' + prop + '"]').val(returneddata.propagate[prop]);
                     }
                 }
             } else {

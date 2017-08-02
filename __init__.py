@@ -28,7 +28,7 @@ menulisting = [
 pagetitle = "Configuration & Baseline Mgmt"
 
 # Email address of user contacted when pressing "Support" button
-supportcontact = "sherri.xi.parolini@ericsson.com"
+supportcontact = "susan.colip@ericsson.com"
 
 # Specifies header and footer templates, if desired
 headerFile = "BoMConfig/header.html"
