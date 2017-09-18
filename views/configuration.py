@@ -944,11 +944,12 @@ def AddConfig(oRequest):
 
     # Build and validate data for display in configuration table
     data = BuildDataArray(oHeader, config=True)
-    error_matrix = Validator(data, oHeader, bCanWriteConfig,
-                             bFrameReadOnly or bActive)
+    # error_matrix = Validator(data, oHeader, bCanWriteConfig,
+    #                          bFrameReadOnly or bActive)
+    error_matrix = []
 
     dContext = {
-        'data_array': data,
+        'data_array': json.dumps(data),
         'errors': error_matrix,
         'form': configForm,
         'header': oHeader,
@@ -1486,7 +1487,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     return [{
                         '1': '10',
                         '2': oHeader.configuration_designation.upper(),
-                        '3': oHeader.model_description,
+                        '3': oHeader.model_description or '',
                         '4': '1',
                         '5': 'PC'
                     }]
@@ -1496,7 +1497,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                 return [{
                     '0': '10',
                     '1': oHeader.configuration_designation.upper(),
-                    '2': oHeader.model_description,
+                    '2': oHeader.model_description or '',
                     '3': '1'
                 }]
             # end if
@@ -1532,10 +1533,10 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     '10': Line.pcode,
                     '11': Line.commodity_type,
                     '12': Line.package_type,
-                    '13': str(Line.spud or ''),
+                    '13': str(Line.spud) if Line.spud else None,
                     '14': Line.REcode,
                     '15': Line.mu_flag,
-                    '16': str(Line.x_plant).zfill(2) if Line.x_plant else '',
+                    '16': str(Line.x_plant).zfill(2) if Line.x_plant else None,
                     '17': Line.internal_notes,
 
                     '19': Line.higher_level_item,
@@ -1560,7 +1561,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                                 {'18': str(oConfig.override_net_value)}
                             )
                         else:
-                            dLine.update({'18': str(oConfig.net_value or '')})
+                            dLine.update({'18': str(oConfig.net_value) if oConfig.net_value is not None else None})
                         # end if
                     else:
                         dLine.update({'18': ''})
@@ -1579,7 +1580,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                             }
                         )
                     else:
-                        dLine.update({'18': ''})
+                        dLine.update({'18': None})
                     # end if
                 # end if
             else:
@@ -1989,9 +1990,9 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     'X - Invalid Amount provided.\n'
         # end if
 
-        if oHead.configuration_status.name == 'In Process' or (
+        if (oHead.configuration_status.name == 'In Process' or (
                     bCanWriteConfig and oHead.configuration_status.name ==
-                    'In Process/Pending'):
+                    'In Process/Pending')) and not bFormatCheckOnly:
             try:
                 oMPNCustMap = CustomerPartInfo.objects.get(
                     part__product_number=aData[index]['2'].strip('. '),
@@ -2646,138 +2647,138 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
     on the configuration being validated
     :return: dictionary
     """
-    try:
-        int(dData['value'].strip('. '))
-        dResult['value'] = dData['value'].upper().strip() + '/'
-    except ValueError:
-        dResult['value'] = dData['value'].upper().strip()
-
-    if StrToBool(dData['allowChain']):
-        dResult['propagate']['line'][4] = {
-            'value': dData['quantity'],
-            'chain': True
-        }
-
-    if len(dResult['value'].strip('.')) > 18:
-        dResult['error']['value'] = \
-            'X - Product Number exceeds 18 characters.\n'
-        dResult['status'] = 'X'
-        return
-
-    if dData['line_number'] in ('', None):
-        bNewParent = not dResult['value'].startswith('.')
-        bNewChild = dResult['value'].startswith('.') and not \
-            dResult['value'].startswith('..')
-        bNewGrandchild = dResult['value'].startswith('..')
-        assert bNewParent ^ bNewChild ^ bNewGrandchild
-
-        iParent = 0
-        iChild = 0
-        iGrandchild = 0
-
-        # Find closest parent line item (which may be a child) or top-level
-        # line item
-        other_lines = dData.getlist('other_lines[]')
-        idx = int(dData['row_index']) - 1
-        while idx >= 0:
-            if idx < len(other_lines) and\
-                    len(other_lines[idx].split('.')) > 0 and\
-                    other_lines[idx].split('.')[0] != '':
-                iParent = int(other_lines[idx].split('.')[0])
-                if bNewParent:
-                    break
-
-                if len(other_lines[idx].split('.')) > 1:
-                    iChild = int(
-                        other_lines[idx].split('.')[1]
-                    )
-                if bNewChild:
-                    break
-
-                if len(other_lines[idx].split('.')) > 2:
-                    iGrandchild = int(
-                        other_lines[idx].split('.')[2]
-                    )
-                if bNewGrandchild:
-                    break
-            else:
-                idx -= 1
-
-        if bNewParent:
-            # Check if next highest top-level line number (10 multiple)
-            # is available
-            if str(iParent + 10) not in other_lines:
-                iParent += 10
-            # Try to fit new parent between most previous and next
-            # if that doesn't work, add a new 10-based parent
-            else:
-                bMidAvailable = False
-                for iStep in range(1, 10):
-                    if iParent + iStep > 10 and str(iParent + iStep) not in \
-                            other_lines:
-                        bMidAvailable = True
-                        iParent += iStep
-                        break
-
-                if not bMidAvailable:
-                    if iParent == 0:
-                        iParent += 10
-                    while str(iParent) in other_lines:
-                        iParent += 10
-
-            sNewLineNumber = str(iParent)
-        elif bNewChild:
-            if iParent == 0:
-                iParent = 10
-
-            if iChild == 0:
-                iChild = 1
-
-            while ".".join([str(iParent), str(iChild)]) in \
-                    other_lines:
-                iChild += 1
-
-            sNewLineNumber = ".".join([str(iParent), str(iChild)])
-        elif bNewGrandchild:
-            if iParent == 0:
-                iParent = 10
-
-            if iChild == 0:
-                iChild = 1
-
-            if iGrandchild == 0:
-                iGrandchild = 1
-
-            while ".".join([str(iParent), str(iChild), str(iGrandchild)]) in \
-                    other_lines:
-                iGrandchild += 1
-
-            sNewLineNumber = ".".join([str(iParent),
-                                       str(iChild), str(iGrandchild)])
-        else:
-            sNewLineNumber = ''
-
-        if StrToBool(dData['allowChain']):
-            dResult['propagate']['line'][1] = {
-                'value': sNewLineNumber,
-                'chain': True
-            }
-    else:
-        if dData['line_number'].count('.') == 0:
-            dResult['value'] = dResult['value'].strip('.')
-        elif dData['line_number'].count('.') == 1:
-            dResult['value'] = '.' + dResult['value'].strip('.')
-        elif dData['line_number'].count('.') == 2:
-            dResult['value'] = '..' + dResult['value'].strip('.')
-        dResult['propagate']['line'][1] = {'value': dData['line_number'],
-                                           'chain': True}
-    # end if
-
-    if StrToBool(dData['allowChain']):
-        dResult['propagate']['line'][29] = {
-            'value': dData['value'].upper().strip('./'),
-            'chain': False
-        }
+    # try:
+    #     int(dData['value'].strip('. '))
+    #     dResult['value'] = dData['value'].upper().strip() + '/'
+    # except ValueError:
+    #     dResult['value'] = dData['value'].upper().strip()
+    #
+    # if StrToBool(dData['allowChain']):
+    #     dResult['propagate']['line'][4] = {
+    #         'value': dData['quantity'],
+    #         'chain': True
+    #     }
+    #
+    # if len(dResult['value'].strip('.')) > 18:
+    #     dResult['error']['value'] = \
+    #         'X - Product Number exceeds 18 characters.\n'
+    #     dResult['status'] = 'X'
+    #     return
+    #
+    # if dData['line_number'] in ('', None):
+    #     bNewParent = not dResult['value'].startswith('.')
+    #     bNewChild = dResult['value'].startswith('.') and not \
+    #         dResult['value'].startswith('..')
+    #     bNewGrandchild = dResult['value'].startswith('..')
+    #     assert bNewParent ^ bNewChild ^ bNewGrandchild
+    #
+    #     iParent = 0
+    #     iChild = 0
+    #     iGrandchild = 0
+    #
+    #     # Find closest parent line item (which may be a child) or top-level
+    #     # line item
+    #     other_lines = dData.getlist('other_lines[]')
+    #     idx = int(dData['row_index']) - 1
+    #     while idx >= 0:
+    #         if idx < len(other_lines) and\
+    #                 len(other_lines[idx].split('.')) > 0 and\
+    #                 other_lines[idx].split('.')[0] != '':
+    #             iParent = int(other_lines[idx].split('.')[0])
+    #             if bNewParent:
+    #                 break
+    #
+    #             if len(other_lines[idx].split('.')) > 1:
+    #                 iChild = int(
+    #                     other_lines[idx].split('.')[1]
+    #                 )
+    #             if bNewChild:
+    #                 break
+    #
+    #             if len(other_lines[idx].split('.')) > 2:
+    #                 iGrandchild = int(
+    #                     other_lines[idx].split('.')[2]
+    #                 )
+    #             if bNewGrandchild:
+    #                 break
+    #         else:
+    #             idx -= 1
+    #
+    #     if bNewParent:
+    #         # Check if next highest top-level line number (10 multiple)
+    #         # is available
+    #         if str(iParent + 10) not in other_lines:
+    #             iParent += 10
+    #         # Try to fit new parent between most previous and next
+    #         # if that doesn't work, add a new 10-based parent
+    #         else:
+    #             bMidAvailable = False
+    #             for iStep in range(1, 10):
+    #                 if iParent + iStep > 10 and str(iParent + iStep) not in \
+    #                         other_lines:
+    #                     bMidAvailable = True
+    #                     iParent += iStep
+    #                     break
+    #
+    #             if not bMidAvailable:
+    #                 if iParent == 0:
+    #                     iParent += 10
+    #                 while str(iParent) in other_lines:
+    #                     iParent += 10
+    #
+    #         sNewLineNumber = str(iParent)
+    #     elif bNewChild:
+    #         if iParent == 0:
+    #             iParent = 10
+    #
+    #         if iChild == 0:
+    #             iChild = 1
+    #
+    #         while ".".join([str(iParent), str(iChild)]) in \
+    #                 other_lines:
+    #             iChild += 1
+    #
+    #         sNewLineNumber = ".".join([str(iParent), str(iChild)])
+    #     elif bNewGrandchild:
+    #         if iParent == 0:
+    #             iParent = 10
+    #
+    #         if iChild == 0:
+    #             iChild = 1
+    #
+    #         if iGrandchild == 0:
+    #             iGrandchild = 1
+    #
+    #         while ".".join([str(iParent), str(iChild), str(iGrandchild)]) in \
+    #                 other_lines:
+    #             iGrandchild += 1
+    #
+    #         sNewLineNumber = ".".join([str(iParent),
+    #                                    str(iChild), str(iGrandchild)])
+    #     else:
+    #         sNewLineNumber = ''
+    #
+    #     if StrToBool(dData['allowChain']):
+    #         dResult['propagate']['line'][1] = {
+    #             'value': sNewLineNumber,
+    #             'chain': True
+    #         }
+    # else:
+    #     if dData['line_number'].count('.') == 0:
+    #         dResult['value'] = dResult['value'].strip('.')
+    #     elif dData['line_number'].count('.') == 1:
+    #         dResult['value'] = '.' + dResult['value'].strip('.')
+    #     elif dData['line_number'].count('.') == 2:
+    #         dResult['value'] = '..' + dResult['value'].strip('.')
+    #     dResult['propagate']['line'][1] = {'value': dData['line_number'],
+    #                                        'chain': True}
+    # # end if
+    #
+    # if StrToBool(dData['allowChain']):
+    #     dResult['propagate']['line'][29] = {
+    #         'value': dData['value'].upper().strip('./'),
+    #         'chain': False
+    #     }
 
     oCursor = connections['BCAMDB'].cursor()
 
@@ -2969,10 +2970,10 @@ def ValidatePlant(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    if not re.match("^\d{4}$|^$", dData['value']):
-        dResult['error']['value'] = 'X - Invalid Plant.\n'
-        dResult['status'] = 'X'
-        return
+    # if not re.match("^\d{4}$|^$", dData['value']):
+    #     dResult['error']['value'] = 'X - Invalid Plant.\n'
+    #     dResult['status'] = 'X'
+    #     return
 
     if dData['value'] != '':
         oCursor = connections['BCAMDB'].cursor()
@@ -3009,10 +3010,10 @@ def ValidateSLOC(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    if not re.match("^\w{3,4}$|^$", dData['value']):
-        dResult['error']['value'] = 'X - Invalid SLOC.\n'
-        dResult['status'] = 'X'
-        return
+    # if not re.match("^\w{3,4}$|^$", dData['value']):
+    #     dResult['error']['value'] = 'X - Invalid SLOC.\n'
+    #     dResult['status'] = 'X'
+    #     return
 
     oCursor = connections['BCAMDB'].cursor()
 
@@ -3065,15 +3066,15 @@ def ValidatePCode(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper()
-    if not re.match(
-            "^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
-            "|^\([A-Z]\d{2}-\d{4}\).*$|^$",
-            dData['value'], re.I):
-        dResult['error']['value'] = 'X - Invalid P-Code.\n'
-        dResult['status'] = 'X'
-        return
-
+    # dResult['value'] = dData['value'].upper()
+    # if not re.match(
+    #         "^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
+    #         "|^\([A-Z]\d{2}-\d{4}\).*$|^$",
+    #         dData['value'], re.I):
+    #     dResult['error']['value'] = 'X - Invalid P-Code.\n'
+    #     dResult['status'] = 'X'
+    #     return
+    #
     if re.match(r'^\(\d{2,3}-\d{4}\).*$|^\([A-Z]\d{2}-\d{4}\).*$',
                 dResult['value'], re.I):
         sPCode = re.match(r'^\((?P<pcode>.{2,3})-\d{4}\).*$',
@@ -3154,7 +3155,7 @@ def ValidateRECode(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
+    # dResult['value'] = dData['value'].upper().strip()
 
     oCursor = connections['BCAMDB'].cursor()
     oCursor.execute(
@@ -3196,7 +3197,7 @@ def ValidateXPlant(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
+    # dResult['value'] = dData['value'].upper().strip()
 
     oCursor = connections['BCAMDB'].cursor()
 
@@ -3222,7 +3223,7 @@ def ValidateUnitPrice(dData, dResult, oHead):
     :param oHead: Header object being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
+    # dResult['value'] = dData['value'].upper().strip()
 
     if dResult['value'] not in ('', None):
         if dData['line_number'] == '10' and not oHead.pick_list:
