@@ -14,6 +14,26 @@
                 </ul>
             </li>
         </ul>
+        <ul class="btn" style="border: none; padding: 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Baseline <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for baseline in baselines %}
+                    <li><a href="#" onclick="baseline_filter('{{ baseline|replace:"& _"|replacewhitespace:"-_" }}');">{{ baseline }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+        <ul class="btn" style="border: none; padding: 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="request_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Request Type <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for request in requests %}
+                    <li><a href="#" onclick="request_filter('{{ request|replace:"& _"|replacewhitespace:"-_" }}');">{{ request }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
 
         <h4>In Process</h4>
             {% if in_process %}

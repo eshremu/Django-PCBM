@@ -16,6 +16,26 @@
                 </ul>
             </li>
         </ul>
+        <ul class="btn" style="border: none; padding: 5px 0 0 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Baseline <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for baseline in baselines %}
+                    <li><a href="#" onclick="baseline_filter('{{ baseline|replace:"& _"|replacewhitespace:"-_" }}');">{{ baseline }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+        <ul class="btn" style="border: none; padding: 5px 0 0 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="request_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Request Type <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for request in requests %}
+                    <li><a href="#" onclick="request_filter('{{ request|replace:"& _"|replacewhitespace:"-_" }}');">{{ request }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
         <div style="padding: 5px 5px 5px 25px; display: inline-block;">
             <input style="transform: translate(0, 4px);" type="checkbox" name="my_approvals" id="my_approvals" onchange="approval_filter();">
             <label style="transform: translate(0, 3px); padding-left: 5px;" for="my_approvals">Only show records I can approve</label>
@@ -35,10 +55,12 @@
                     <tr> {# class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}" #}
                         <th style="height: 160px;vertical-align: bottom;"></th>
                         <th style="height: 160px;vertical-align: bottom;">Configuration</th>
-                        <td style="width:25px;"></td>
+                        <th style="width:25px;"></th>
                         <th style="height: 160px;vertical-align: bottom;">Program</th>
-                        <td style="width:25px;"></td>
+                        <th style="width:25px;"></th>
                         <th style="height: 160px;vertical-align: bottom;">Baseline</th>
+                        <th style="width:25px;"></th>
+                        <th style="height: 160px;vertical-align: bottom;">BoM Request Type</th>
                         {% for name in namelist %}
                         <th class="rotate"><div><span>{{ name }}</span></div></th>
                         {% endfor %}
@@ -55,8 +77,13 @@
                         <td>{{ record.program|default:"------" }}</td>
                         <td></td>
                         <td>{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
+                        <td></td>
+                        <td>{{ record.bom_request_type }}</td>
                         {% else %}
-                        <td></td><td></td><td></td><td></td><td></td><td></td>
+                        <td></td><td></td><td></td><td></td><td></td>
+                        <td style="visibility: hidden">{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
+                        <td></td>
+                        <td style="visibility: hidden">{{ record.bom_request_type }}</td>
                         {% endif %}
                         {% for level in approval_seq %}
                         <td class="approval"><div data-id="{{ tracker.id }}" data-level="{{ level }}">
@@ -83,7 +110,12 @@
                     </tr>
 
                     {% endfor %}
-                    <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.latesttracker.next_approval|default:'' }} config" style="height:10px;"></tr>
+                    <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.latesttracker.next_approval|default:'' }} config" style="height:10px;">
+                        <td></td><td></td><td></td><td></td><td></td>
+                        <td style="visibility: hidden">{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
+                        <td></td>
+                        <td style="visibility: hidden">{{ record.bom_request_type }}</td>
+                    </tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -221,22 +253,60 @@
 
         function cust_filter(customer){
             if(customer !== 'All') {
-                $('tbody tr').css('display','');
-                $('tbody tr').not('.' + customer).css('display','none');
-                $('tbody tr').not('.' + customer).find('input').removeAttr('checked');
+                $('#pending_approval_records tbody tr').css('display','');
+                $('#pending_approval_records tbody tr').not('.' + customer).css('display','none');
+                $('#pending_approval_records tbody tr').not('.' + customer).find('input').removeAttr('checked');
                 if($('#my_approvals').prop('checked')) {
-                    $('tbody tr').filter('.' + customer).not('{{ available_levels }}').css('display', 'none');
-                    $('tbody tr').filter('.' + customer).not('{{ available_levels }}').find('input').removeAttr('checked');
+                    $('#pending_approval_records tbody tr').filter('.' + customer).not('{{ available_levels }}').css('display', 'none');
+                    $('#pending_approval_records tbody tr').filter('.' + customer).not('{{ available_levels }}').find('input').removeAttr('checked');
                 }
                 $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
             } else {
                 if ($('#my_approvals').prop('checked')){
-                    $('tbody tr').filter('{{ available_levels }}').css('display','');
-                    $('tbody tr').not('{{ available_levels }}').css('display','none');
+                    $('#pending_approval_records tbody tr').filter('{{ available_levels }}').css('display','');
+                    $('#pending_approval_records tbody tr').not('{{ available_levels }}').css('display','none');
                 } else {
-                    $('tbody tr').css('display','');
+                    $('#pending_approval_records tbody tr').css('display','');
                 }
                 $('#cu_filter').html('Customer <span class="caret"></span>');
+            }
+        }
+
+        function request_filter(request){
+            request = request.replace(/-_/g, ' ').replace(/_/g, '&');
+            var rows = $('#pending_approval_records tbody tr').toArray();
+            if(request !== "All"){
+                $("#request_filter").html(request + "&nbsp;<span class='caret'></span>");
+            }
+            else{
+                $("#request_filter").html("Request Type" + "&nbsp;<span class='caret'></span>");
+            }
+            for (var row in rows) {
+                $(rows[row]).show();
+                var cu_row = $(rows[row]).find('td:nth-of-type(8):contains(' + request + ')');
+                if (!(cu_row.length !== 0 && $(cu_row[0]).text() == request || request == "All")){
+                    $(rows[row]).hide();
+                    $(rows[row]).find('input').removeAttr('checked');
+                }
+            }
+        }
+
+        function baseline_filter(baseline){
+            baseline = baseline.replace(/-_/g, ' ').replace(/_/g, '&');
+            var rows = $('#pending_approval_records tbody tr').toArray();
+            if(baseline !== "All"){
+                $("#baseline_filter").html(baseline + "&nbsp;<span class='caret'></span>");
+            }
+            else{
+                $("#baseline_filter").html("Baseline" + "&nbsp;<span class='caret'></span>");
+            }
+            for (var row in rows) {
+                $(rows[row]).show();
+                var cu_row = $(rows[row]).find('td:nth-of-type(6):contains("' + baseline + '")');
+                if (!(cu_row.length !== 0 && $(cu_row[0]).text() == baseline || baseline == "All")){
+                    $(rows[row]).hide();
+                    $(rows[row]).find('input').removeAttr('checked');
+                }
             }
         }
 

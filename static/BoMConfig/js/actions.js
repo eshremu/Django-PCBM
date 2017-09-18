@@ -31,6 +31,44 @@ function cust_filter(customer){
     }
 }
 
+function request_filter(request){
+    request = request.replace(/-_/g, ' ').replace(/_/g, '&');
+    var rows = $('#in_process_records tbody tr').toArray();
+    if(request !== "All"){
+        $("#request_filter").html(request + "&nbsp;<span class='caret'></span>");
+    }
+    else{
+        $("#request_filter").html("Request Type" + "&nbsp;<span class='caret'></span>");
+    }
+    for (var row in rows) {
+        $(rows[row]).show();
+        var cu_row = $(rows[row]).find('td:nth-of-type(11):contains(' + request + ')');
+        if (!(cu_row.length !== 0 && $(cu_row[0]).text() == request || request == "All")){
+            $(rows[row]).hide();
+            $(rows[row]).find('input').removeAttr('checked');
+        }
+    }
+}
+
+function baseline_filter(baseline){
+    baseline = baseline.replace(/-_/g, ' ').replace(/_/g, '&');
+    var rows = $('#in_process_records tbody tr').toArray();
+    if(baseline !== "All"){
+        $("#baseline_filter").html(baseline + "&nbsp;<span class='caret'></span>");
+    }
+    else{
+        $("#baseline_filter").html("Baseline" + "&nbsp;<span class='caret'></span>");
+    }
+    for (var row in rows) {
+        $(rows[row]).show();
+        var cu_row = $(rows[row]).find('td:nth-of-type(7):contains("' + baseline + '")');
+        if (!(cu_row.length !== 0 && $(cu_row[0]).text() == baseline || baseline == "All")){
+            $(rows[row]).hide();
+            $(rows[row]).find('input').removeAttr('checked');
+        }
+    }
+}
+
 function process(action){
     var records = [];
 
