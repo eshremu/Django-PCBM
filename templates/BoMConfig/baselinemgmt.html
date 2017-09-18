@@ -20,8 +20,8 @@
 				<span style="color: #ff0000;">{{ error }}</span>
                 {% endfor %}
 			{% endfor %}
-			<input class="btn" type="submit" value="Search" />
-            {% if not downloadable or downloadable and tables and tables.0.baseline.title == 'No Associated Baseline' %}
+{#			<input class="btn" type="submit" value="Search" />#}
+            {% if not downloadable and not detailed %}
             <ul class="btn" style="border: none; padding: 0 0 0 20px;">
                 <li class="dropdown" style="list-style-type: none;">
                     <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
@@ -137,7 +137,7 @@
             {% endif %}
         {% endif %}
     </div>
-    {% if downloadable %}
+    {% if downloadable and detailed %}
     <div id="action_buttons" style="margin-top: 5px;">
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinedownload' %}">
             {% csrf_token %}
@@ -156,7 +156,7 @@
         </form>
         {% endif %}
     </div>
-    {% else %}
+    {% elif not detailed %}
     <div id="action_buttons" style="margin-top: 5px;">
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinemasterdownload' %}">
             {% csrf_token %}

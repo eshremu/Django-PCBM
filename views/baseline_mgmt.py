@@ -50,16 +50,16 @@ def BaselineMgmt(oRequest):
     # end if
 
     bDownloadable = False
+    bDetailed = False
     dTableData = None
     aTable = []
 
     # A POST was submitted, the user is searching for a baseline, so show single
     # baseline details
-    if oRequest.method == 'POST' and oRequest.POST:
+    if oRequest.method == 'POST' and oRequest.POST['baseline_title']:
         form = SubmitForm(oRequest.POST)
         if form.is_valid():
-            oBaseline = Baseline.objects.get(
-                title__iexact=form.cleaned_data['baseline_title'])
+            oBaseline = form.cleaned_data['baseline_title']
 
             # First get list of baseline revisions for this baseline a sort them
             # in reverse order
@@ -103,6 +103,8 @@ def BaselineMgmt(oRequest):
                         bDownloadable = True
                 # end if
             # end for
+
+            bDetailed = True
         # end if
 
         if dTableData:
@@ -178,6 +180,7 @@ def BaselineMgmt(oRequest):
         'form': form,
         'tables': aTable,
         'downloadable': bDownloadable,
+        'detailed': bDetailed,
         'column_titles': aTitles,
         'cust_list': REF_CUSTOMER.objects.all(),
     }

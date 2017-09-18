@@ -355,30 +355,43 @@ class FileUploadForm(forms.Form):
 # end class
 
 
+class BaselineModelChoiceField(forms.ModelChoiceField):
+    """
+    Custom class to override how Baselines are displayed in dropdown menu for
+    baseline management view
+    """
+    def label_from_instance(self, obj):
+        return obj.title
+
+
 class SubmitForm(forms.Form):
     """
     Form used during baseline management search to find baselines
     """
-    baseline_title = forms.CharField(max_length=50, label='Baseline')
+    baseline_title = BaselineModelChoiceField(
+        queryset=Baseline.objects.exclude(title='No Associated Baseline'),
+        empty_label="-- Show All --",
+        required=False,
+        label='Baseline')
 
-    def clean(self):
-        """
-        Function to clean/validate input data to SubmitForm
-        :return:
-        """
-        data = super().clean()
-
-        if 'baseline_title' in data:
-            try:
-                Baseline.objects.get(title__iexact=data['baseline_title'])
-            except Baseline.DoesNotExist:
-                self.add_error('baseline_title',
-                               forms.ValidationError(
-                                   'No matching Baseline found'))
-            # end try
-        # end if
-
-        return data
+    # def clean(self):
+    #     """
+    #     Function to clean/validate input data to SubmitForm
+    #     :return:
+    #     """
+    #     data = super().clean()
+    #
+    #     if 'baseline_title' in data:
+    #         try:
+    #             Baseline.objects.get(title__iexact=data['baseline_title'])
+    #         except Baseline.DoesNotExist:
+    #             self.add_error('baseline_title',
+    #                            forms.ValidationError(
+    #                                'No matching Baseline found'))
+    #         # end try
+    #     # end if
+    #
+    #     return data
 # end class
 
 
