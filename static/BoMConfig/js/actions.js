@@ -21,48 +21,63 @@ function cleanDataCheck(link){
 
 function cust_filter(customer){
     if(customer !== 'All') {
-        $('tr').not('.' + customer).attr('style', 'display:none;');
-        $('tr:not(".' + customer + '") input').removeAttr('checked');
-        $('tr.' + customer).removeAttr('style');
-        $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
+        $('#cu_filter').html(customer +" <span class=\"caret\"></span>");
     } else {
-        $('tr').removeAttr('style');
         $('#cu_filter').html('Customer <span class="caret"></span>');
     }
+    updateFilters();
 }
 
 function request_filter(request){
-    request = request.replace(/-_/g, ' ').replace(/_/g, '&');
-    var rows = $('#in_process_records tbody tr').toArray();
     if(request !== "All"){
         $("#request_filter").html(request + "&nbsp;<span class='caret'></span>");
     }
     else{
         $("#request_filter").html("Request Type" + "&nbsp;<span class='caret'></span>");
     }
-    for (var row in rows) {
-        $(rows[row]).show();
-        var cu_row = $(rows[row]).find('td:nth-of-type(11):contains(' + request + ')');
-        if (!(cu_row.length !== 0 && $(cu_row[0]).text() == request || request == "All")){
-            $(rows[row]).hide();
-            $(rows[row]).find('input').removeAttr('checked');
-        }
-    }
+    updateFilters();
 }
 
 function baseline_filter(baseline){
-    baseline = baseline.replace(/-_/g, ' ').replace(/_/g, '&');
-    var rows = $('#in_process_records tbody tr').toArray();
     if(baseline !== "All"){
         $("#baseline_filter").html(baseline + "&nbsp;<span class='caret'></span>");
     }
     else{
         $("#baseline_filter").html("Baseline" + "&nbsp;<span class='caret'></span>");
     }
+    updateFilters();
+}
+
+function updateFilters(){
+    var customer = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+    var request = $("#request_filter").text().trim();
+    var baseline = $("#baseline_filter").text().trim();
+
+    $('tbody tr').show();
+
+    var rows = $('#in_process_records tbody tr').toArray();
+
     for (var row in rows) {
-        $(rows[row]).show();
-        var cu_row = $(rows[row]).find('td:nth-of-type(7):contains("' + baseline + '")');
-        if (!(cu_row.length !== 0 && $(cu_row[0]).text() == baseline || baseline == "All")){
+        let hide = false;
+        if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
+            hide = true;
+        }
+
+        if(baseline !== "Baseline"){
+            var baseline_row = $(rows[row]).find('td:nth-of-type(7):contains("' + baseline + '")');
+            if (!(baseline_row.length !== 0 && $(baseline_row[0]).text() == baseline)){
+                hide = true;
+            }
+        }
+
+        if(request !== "Request Type"){
+            var request_row = $(rows[row]).find('td:nth-of-type(11):contains("' + request + '")');
+            if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
+                hide = true;
+            }
+        }
+
+        if (hide){
             $(rows[row]).hide();
             $(rows[row]).find('input').removeAttr('checked');
         }

@@ -9,7 +9,7 @@
                 <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for customer in customer_list %}
-                    <li><a href="#" onclick="cust_filter('{{ customer|replace:"& _"|replacewhitespace:"-_" }}');">{{ customer }}</a></li>
+                    <li><a href="#" onclick="cust_filter('{{ customer }}');">{{ customer }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
@@ -19,7 +19,7 @@
                 <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Baseline <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for baseline in baselines %}
-                    <li><a href="#" onclick="baseline_filter('{{ baseline|replace:"& _"|replacewhitespace:"-_" }}');">{{ baseline }}</a></li>
+                    <li><a href="#" onclick="baseline_filter('{{ baseline }}');">{{ baseline }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
@@ -29,7 +29,7 @@
                 <button id="request_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Request Type <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for request in requests %}
-                    <li><a href="#" onclick="request_filter('{{ request|replace:"& _"|replacewhitespace:"-_" }}');">{{ request }}</a></li>
+                    <li><a href="#" onclick="request_filter('{{ request }}');">{{ request }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
