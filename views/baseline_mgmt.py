@@ -170,7 +170,7 @@ def BaselineMgmt(oRequest):
             )
     # end if
 
-    aTitles = ['', '', 'Configuration', 'Status', 'BoM Request Type', 'Program',
+    aTitles = ['', '', 'Configuration', 'Product Area 2', 'Status', 'BoM Request Type', 'Program',
                'Customer Number', 'Model', 'Model Description',
                'Customer Price', 'Created Year', 'Inquiry/Site Template Number',
                'Model Replacing', 'Comments', 'Release Date', 'ZUST', 'P-Code',
