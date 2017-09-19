@@ -731,7 +731,7 @@ function build_table() {
                                     }
 
                                     // Clean & set Vendor Article Number
-                                    // TODO: Clean van
+                                    van = van.replace(/^\.+/, '').replace(/\/$/, '');
                                     tableThis.setDataAtRowProp(parseInt(changes[i][0]), 29, van, 'edit');
 
                                     // Set current cell to updated & cleaned value
@@ -886,6 +886,7 @@ function build_table() {
                             case 22: // Condition
                                 var condition = changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3];
                                 var line_number = tableThis.getDataAtCell(parseInt(changes[i][0]), 1);
+                                var all_conds = tableThis.getDataAtCol(22);
 
                                 if(condition == "ZUST" && line_number !== "10"){
                                     cellMeta['cellStatus'] = "X";
@@ -893,7 +894,9 @@ function build_table() {
                                 }
 
                                 if(condition == "ZPRU" || condition == "ZPR1"){
-                                    // TODO: Set needs ZPRU flag(?)
+                                    $('[name="needs_zpru"]').val("True");
+                                } else if(all_conds.indexOf("ZPRU") === -1 && all_conds.indexOf("ZPR1") === -1){
+                                    $('[name="needs_zpru"]').val("False");
                                 }
 
                                 if(condition && !tableThis.getDataAtCell(parseInt(changes[i][0]), 23)){
