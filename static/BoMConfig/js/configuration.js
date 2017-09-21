@@ -572,6 +572,9 @@ function build_table() {
                 $("#saveexitForm").attr('disabled', 'disabled').css('color','gray');
                 $("#saveForm").attr('disabled', 'disabled').css('color','gray');
                 $("#nextForm").attr('disabled', 'disabled').css('color','gray');
+
+                this.setCellMeta(row, prop, 'cellStatus', 'X');
+                UpdateValidation(row, this);
             }
         },
         afterChange: function(changes, source){
@@ -1010,108 +1013,6 @@ function build_table() {
                             })(data);
                         }
                     }
-
-                    /*
-                    var lineEstimates;
-                    if (source == 'paste') {
-                        lineEstimates = estimateLineNumbers(changes, this.getDataAtCol(1));
-                    }
-
-                    for (var i = 0; i < changes.length; i++) {
-                        if (changes[i][1] == 0 || (changes[i][2] == changes[i][3] && !(changes[i][1] == 4 || changes[i][1] == 26 || changes[i][1] == 22 || changes[i][1] == 23))) {
-                            continue;
-                        }
-
-                        var dataGenerator = function () {
-                            return {
-                                row: parseInt(changes[i][0]),
-                                col: parseInt(changes[i][1]),
-                                value: changes[i][3],
-                                allowChain: source != 'loadData'
-                            }
-                        };
-
-                        var data = dataGenerator();
-
-                        switch (parseInt(changes[i][1])) {
-                            case 1:
-                                data['other_lines'] = this.getDataAtCol(1);
-                                data['other_lines'].splice(-1 * this.countEmptyRows(true));
-                                data['other_lines'].splice(changes[i][0], 1);
-                                data['part_number'] = this.getDataAtCell(changes[i][0], 2) ? this.getDataAtCell(changes[i][0], 2).replace(/^[\s]+|[\s]+$/g, '') : this.getDataAtCell(changes[i][0], 2);
-                                break;
-                            case 2:
-                                data['quantity'] = this.getDataAtCell(changes[i][0], 4);
-                                data['line_number'] = lineEstimates == undefined ? this.getDataAtCell(changes[i][0], 1) : lineEstimates[changes[i][0]];
-                                data['row_index'] = changes[i][0];
-                                data['other_lines'] = this.getDataAtCol(1);
-                                data['other_lines'].splice(-1 * this.countEmptyRows(true));
-                                data['context_id'] = this.getDataAtCell(changes[i][0], 6);
-                                data['writeable'] = cust_write_auth;
-                                break;
-                            case 6:
-                                data['part_number'] = this.getDataAtCell(changes[i][0], 2);
-                                break;
-                            case 7:
-                                data['sloc'] = this.getDataAtCell(changes[i][0], 8);
-                                data['part_number'] = this.getDataAtCell(changes[i][0], 2);
-                                break;
-                            case 8:
-                                data['plant'] = this.getDataAtCell(changes[i][0], 7);
-                                data['part_number'] = this.getDataAtCell(changes[i][0], 2);
-                                break;
-                            case 11:
-                                data['pcode'] = this.getDataAtCell(changes[i][0], 10);
-                                break;
-                            case 14:
-                                data['int_notes'] = this.getDataAtCell(changes[i][0], 17);
-                                break;
-                            case 18:
-                                data['line_number'] = this.getDataAtCell(changes[i][0], 1);
-                                break;
-                            case 19:
-                                data['other_lines'] = this.getDataAtCol(1);
-                                data['other_lines'].splice(-1 * this.countEmptyRows(true));
-                                break;
-                            case 22:
-                                data['other_conds'] = this.getDataAtCol(22);
-                                data['other_conds'].splice(-1 * this.countEmptyRows(true));
-                                data['other_conds'].splice(changes[i][0], 1);
-                                data['line_number'] = this.getDataAtCell(changes[i][0], 1);
-                                data['amount'] = this.getDataAtCell(changes[i][0], 23);
-                                data['previous_value'] = changes[i][2]==undefined ? null : changes[i][2];
-                                break;
-                            case 23:
-                                data['condition'] = this.getDataAtCell(changes[i][0], 22);
-                                data['previous_value'] = changes[i][2]==undefined ? null : changes[i][2];
-                                break;
-                            case 26:
-                                data['asset'] = this.getDataAtCell(changes[i][0], 25);
-                            case 25:
-                                data['tagging'] = this.getDataAtCell(changes[i][0], 26);
-                            case 27:
-                            case 28:
-                                data['part_number'] = this.getDataAtCell(changes[i][0], 2) ? this.getDataAtCell(changes[i][0], 2).replace(/^[.\s]+|[.\s]+$/g, '') : this.getDataAtCell(changes[i][0], 2);
-                                data['writeable'] = cust_write_auth;
-                                break;
-                        }
-
-                        (function (inputData) {
-                            var settings = {
-                                url: ajax_validate_url,
-                                type: "POST",
-                                data: inputData,
-                                headers: {
-                                    'X-CSRFToken': getcookie('csrftoken'),
-                                    'Content-type': 'application/x-www-form-urlencoded',
-                                    'Accept': 'application/json'
-                                }
-                            };
-
-                            validationQueue.add(settings);
-                        })(data);
-                    }
-                    */
                 }
             }
         },
