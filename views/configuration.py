@@ -2674,46 +2674,8 @@ def ValidateLineNumber(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    if not re.match("^\d+(?:\.\d+){0,2}$|^$", dData['value']):
-        dResult['error']['value'] = \
-            'X - Invalid character. Use 0-9 and "." only.\n'
-        dResult['status'] = 'X'
-        return
 
-    if dData['value'] not in (None, ''):
-        if dData['part_number'] not in (None, ''):
-            if dData['value'].count('.') == 2:
-                if StrToBool(dData['allowChain']):
-                    dResult['propagate']['line'][2] = {
-                        'value': '..' + dData['part_number'].strip('. '),
-                        'chain': False}
-            elif dData['value'].count('.') == 1:
-                if StrToBool(dData['allowChain']):
-                    dResult['propagate']['line'][2] = {
-                        'value': '.' + dData['part_number'].strip('. '),
-                        'chain': False}
-            # end if
-        # end if
-
-    if '.' in dData['value']:
-        if dData['value'].count('.') == 2:
-            if dData['value'][:dData['value'].rfind('.')] not in \
-                    dData.getlist('other_lines[]'):
-                dResult['error']['value'] = 'X - Parent line item not found.\n'
-                dResult['status'] = 'X'
-                return
-        else:
-            if dData['value'][:dData['value'].find('.')] not in \
-                    dData.getlist('other_lines[]'):
-                dResult['error']['value'] = 'X - Parent line item not found.\n'
-                dResult['status'] = 'X'
-                return
-        # end if
-
-    if dData['value'] in dData.getlist('other_lines[]'):
-        dResult['error']['value'] = 'X - Duplicate line number exists.\n'
-        dResult['status'] = 'X'
-        return
+    return
 # end def
 
 
@@ -2727,146 +2689,16 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
     on the configuration being validated
     :return: dictionary
     """
-    # try:
-    #     int(dData['value'].strip('. '))
-    #     dResult['value'] = dData['value'].upper().strip() + '/'
-    # except ValueError:
-    #     dResult['value'] = dData['value'].upper().strip()
-    #
-    # if StrToBool(dData['allowChain']):
-    #     dResult['propagate']['line'][4] = {
-    #         'value': dData['quantity'],
-    #         'chain': True
-    #     }
-    #
-    # if len(dResult['value'].strip('.')) > 18:
-    #     dResult['error']['value'] = \
-    #         'X - Product Number exceeds 18 characters.\n'
-    #     dResult['status'] = 'X'
-    #     return
-    #
-    # if dData['line_number'] in ('', None):
-    #     bNewParent = not dResult['value'].startswith('.')
-    #     bNewChild = dResult['value'].startswith('.') and not \
-    #         dResult['value'].startswith('..')
-    #     bNewGrandchild = dResult['value'].startswith('..')
-    #     assert bNewParent ^ bNewChild ^ bNewGrandchild
-    #
-    #     iParent = 0
-    #     iChild = 0
-    #     iGrandchild = 0
-    #
-    #     # Find closest parent line item (which may be a child) or top-level
-    #     # line item
-    #     other_lines = dData.getlist('other_lines[]')
-    #     idx = int(dData['row_index']) - 1
-    #     while idx >= 0:
-    #         if idx < len(other_lines) and\
-    #                 len(other_lines[idx].split('.')) > 0 and\
-    #                 other_lines[idx].split('.')[0] != '':
-    #             iParent = int(other_lines[idx].split('.')[0])
-    #             if bNewParent:
-    #                 break
-    #
-    #             if len(other_lines[idx].split('.')) > 1:
-    #                 iChild = int(
-    #                     other_lines[idx].split('.')[1]
-    #                 )
-    #             if bNewChild:
-    #                 break
-    #
-    #             if len(other_lines[idx].split('.')) > 2:
-    #                 iGrandchild = int(
-    #                     other_lines[idx].split('.')[2]
-    #                 )
-    #             if bNewGrandchild:
-    #                 break
-    #         else:
-    #             idx -= 1
-    #
-    #     if bNewParent:
-    #         # Check if next highest top-level line number (10 multiple)
-    #         # is available
-    #         if str(iParent + 10) not in other_lines:
-    #             iParent += 10
-    #         # Try to fit new parent between most previous and next
-    #         # if that doesn't work, add a new 10-based parent
-    #         else:
-    #             bMidAvailable = False
-    #             for iStep in range(1, 10):
-    #                 if iParent + iStep > 10 and str(iParent + iStep) not in \
-    #                         other_lines:
-    #                     bMidAvailable = True
-    #                     iParent += iStep
-    #                     break
-    #
-    #             if not bMidAvailable:
-    #                 if iParent == 0:
-    #                     iParent += 10
-    #                 while str(iParent) in other_lines:
-    #                     iParent += 10
-    #
-    #         sNewLineNumber = str(iParent)
-    #     elif bNewChild:
-    #         if iParent == 0:
-    #             iParent = 10
-    #
-    #         if iChild == 0:
-    #             iChild = 1
-    #
-    #         while ".".join([str(iParent), str(iChild)]) in \
-    #                 other_lines:
-    #             iChild += 1
-    #
-    #         sNewLineNumber = ".".join([str(iParent), str(iChild)])
-    #     elif bNewGrandchild:
-    #         if iParent == 0:
-    #             iParent = 10
-    #
-    #         if iChild == 0:
-    #             iChild = 1
-    #
-    #         if iGrandchild == 0:
-    #             iGrandchild = 1
-    #
-    #         while ".".join([str(iParent), str(iChild), str(iGrandchild)]) in \
-    #                 other_lines:
-    #             iGrandchild += 1
-    #
-    #         sNewLineNumber = ".".join([str(iParent),
-    #                                    str(iChild), str(iGrandchild)])
-    #     else:
-    #         sNewLineNumber = ''
-    #
-    #     if StrToBool(dData['allowChain']):
-    #         dResult['propagate']['line'][1] = {
-    #             'value': sNewLineNumber,
-    #             'chain': True
-    #         }
-    # else:
-    #     if dData['line_number'].count('.') == 0:
-    #         dResult['value'] = dResult['value'].strip('.')
-    #     elif dData['line_number'].count('.') == 1:
-    #         dResult['value'] = '.' + dResult['value'].strip('.')
-    #     elif dData['line_number'].count('.') == 2:
-    #         dResult['value'] = '..' + dResult['value'].strip('.')
-    #     dResult['propagate']['line'][1] = {'value': dData['line_number'],
-    #                                        'chain': True}
-    # # end if
-    #
-    # if StrToBool(dData['allowChain']):
-    #     dResult['propagate']['line'][29] = {
-    #         'value': dData['value'].upper().strip('./'),
-    #         'chain': False
-    #     }
 
     oCursor = connections['BCAMDB'].cursor()
 
     oCursor.execute(
         ('SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],'
-         "[Base Unit of Measure],[P Code],[MTyp],[ZMVKE Item Category] FROM  "
-         "dbo.BI_MM_ALL_DATA WHERE [Material]=%s AND "
-         "[ZMVKE Item Category]<>'NORM'"),
+         "[Base Unit of Measure],[P Code],[MTyp],[ZMVKE Item Category],"
+         "[PRIM RE Code],[PRIM Traceability] FROM "
+         "dbo.BI_MM_ALL_DATA LEFT JOIN dbo.SAP_ZQR_GMDM ON [Material Number]=[Material] "
+         "WHERE [ZMVKE Item Category]<>'NORM' AND [Material]=%s"
+         ),
         [bytes(dResult['value'].strip('.'), 'ascii')])
 
     tAllDataInfo = oCursor.fetchall()
@@ -2884,6 +2716,16 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 'value': tAllDataInfo[0][1], 'chain': True}
             dResult['propagate']['line'][16] = {
                 'value': tAllDataInfo[0][2], 'chain': True}
+
+            dResult['propagate']['line'][14] = {
+                'value': tAllDataInfo[0][7],
+                'chain': True
+            }
+            dResult['propagate']['line'][24] = {
+                'value': 'Y' if tAllDataInfo[0][8] == 'Z001' else 'N' if
+                tAllDataInfo[0][8] == 'Z002' else '',
+                'chain': True
+            }
 
             if tAllDataInfo[0][6] == 'ZF26':
                 dResult['propagate']['line'][12] = {
@@ -2917,29 +2759,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
         dResult['status'] = '!'
         return
 
-    oCursor.execute(
-        'SELECT DISTINCT [PRIM RE Code],[PRIM Traceability] FROM '
-        'dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
-        [bytes(dResult['value'].strip('.'), 'ascii')]
-    )
-    tPrimData = oCursor.fetchall()
-    oCursor.close()
-
-    if tPrimData:
-        if StrToBool(dData['allowChain']):
-            dResult['propagate']['line'][14] = {
-                'value': tPrimData[0][0],
-                'chain': True
-            }
-            dResult['propagate']['line'][24] = {
-                'value': 'Y' if tPrimData[0][1] == 'Z001' else 'N' if
-                tPrimData[0][1] == 'Z002' else '',
-                'chain': True
-            }
-
-    if oHead.configuration_status.name == 'In Process' or \
-            (bCanWriteConfig and
-                oHead.configuration_status.name == 'In Process/Pending'):
+    if oHead.configuration_status.name == 'In Process':
         try:
             oMPNCustMap = CustomerPartInfo.objects.get(
                 part__product_number=dResult['value'].strip('.'),
@@ -2988,13 +2808,8 @@ def ValidateDescription(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if len(dData['value'].strip()) > 40:
-        dResult['error']['value'] = \
-            'X - Product Description exceeds 40 characters.\n'
-        dResult['status'] = 'X'
-        return
+    return
 # end def
 
 
@@ -3005,15 +2820,8 @@ def ValidateQuantity(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    if not re.match("^\d+(?:.\d+)?$", dData['value']):
-        dResult['error']['value'] = 'X - Invalid Order Qty.\n'
-        dResult['status'] = 'X'
-        return
 
-    try:
-        dResult['value'] = str(float(dData['value']))
-    except ValueError:
-        pass
+    return
 # end def
 
 
@@ -3024,22 +2832,8 @@ def ValidateContextID(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    oCursor = connections['BCAMDB'].cursor()
-    oCursor.execute(
-        'SELECT DISTINCT [MTyp] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s',
-        [bytes(dData['part_number'].strip('.'), 'ascii')]
-    )
 
-    tMTypInfo = oCursor.fetchall()
-    oCursor.close()
-
-    if tMTypInfo:
-        if tMTypInfo[0][0] == 'ZASO' and dData['value'] in (None, ''):
-            dResult['error']['value'] = \
-                'X - ContextID must be populated for ASO parts.\n'
-            dResult['status'] = 'X'
-            return
-
+    return
 # end def
 
 
@@ -3050,10 +2844,6 @@ def ValidatePlant(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    # if not re.match("^\d{4}$|^$", dData['value']):
-    #     dResult['error']['value'] = 'X - Invalid Plant.\n'
-    #     dResult['status'] = 'X'
-    #     return
 
     if dData['value'] != '':
         oCursor = connections['BCAMDB'].cursor()
@@ -3071,7 +2861,7 @@ def ValidatePlant(dData, dResult):
             return
 
         oCursor.execute(
-            'SELECT [Plnt] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [Material]=%s',
+            'SELECT [Plnt] FROM dbo.SAP_ZQR_GMDM WHERE [Material]=%s',
             [bytes(dData['value'], 'ascii'),
              bytes(dData['part_number'].strip('. '), 'ascii')])
         tResults = oCursor.fetchall()
@@ -3090,10 +2880,6 @@ def ValidateSLOC(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    # if not re.match("^\w{3,4}$|^$", dData['value']):
-    #     dResult['error']['value'] = 'X - Invalid SLOC.\n'
-    #     dResult['status'] = 'X'
-    #     return
 
     oCursor = connections['BCAMDB'].cursor()
 
@@ -3111,10 +2897,8 @@ def ValidateSLOC(dData, dResult):
 
     if dData['plant'] not in ('', None):
         oCursor.execute(
-            'SELECT [Plnt],[SLoc] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND '
-            '[SLoc]=%s AND [Material]=%s',
+            'SELECT [SLoc] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [Material]=%s',
             [bytes(dData['plant'], 'ascii'),
-             bytes(dData['value'], 'ascii'),
              bytes(dData['part_number'].strip('. '), 'ascii')])
         tResults = oCursor.fetchall()
         oCursor.close()
@@ -3135,7 +2919,8 @@ def ValidateItemCategory(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    pass
+
+    return
 # end def
 
 
@@ -3146,21 +2931,15 @@ def ValidatePCode(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    # dResult['value'] = dData['value'].upper()
-    # if not re.match(
-    #         "^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
-    #         "|^\([A-Z]\d{2}-\d{4}\).*$|^$",
-    #         dData['value'], re.I):
-    #     dResult['error']['value'] = 'X - Invalid P-Code.\n'
-    #     dResult['status'] = 'X'
-    #     return
-    #
+
     if re.match(r'^\(\d{2,3}-\d{4}\).*$|^\([A-Z]\d{2}-\d{4}\).*$',
                 dResult['value'], re.I):
         sPCode = re.match(r'^\((?P<pcode>.{2,3})-\d{4}\).*$',
                           dResult['value'], re.I).group('pcode')
     else:
-        sPCode = dResult['value']
+        dResult['error']['value'] = 'X - Invalid P-Code format.\n'
+        dResult['status'] = 'X'
+        return
 
     oCursor = connections['BCAMDB'].cursor()
 
@@ -3177,7 +2956,7 @@ def ValidatePCode(dData, dResult):
             dResult['propagate']['line'][11] = {'value': tPCode[0][3],
                                                 'chain': True}
     else:
-        dResult['error']['value'] = 'X - Invalid P-Code.\n'
+        dResult['error']['value'] = 'X - P-Code not found.\n'
         dResult['status'] = 'X'
         return
     # end if
@@ -3192,17 +2971,8 @@ def ValidateCommodityType(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper()
-    if not re.match(
-            "^H(ARD)?W(ARE)?$|^S(OFT)?W(ARE)?$|^CS$|^$",
-            dData['value'], re.I):
-        dResult['error']['value'] = 'X - Invalid HW/SW Ind.\n'
-        dResult['status'] = 'X'
-        return
 
-    if dData['pcode'] in ('(752-2487) LTE RBS SW', '(872-2491) RBS HWAC',
-                          '752', '872'):
-        dResult['value'] = 'SW'
+    return
 # end def
 
 
@@ -3213,7 +2983,8 @@ def ValidatePackageType(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    pass
+
+    return
 # end def
 
 
@@ -3224,7 +2995,8 @@ def ValidateSPUD(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    pass
+
+    return
 # end def
 
 
@@ -3235,7 +3007,6 @@ def ValidateRECode(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    # dResult['value'] = dData['value'].upper().strip()
 
     oCursor = connections['BCAMDB'].cursor()
     oCursor.execute(
@@ -3266,7 +3037,8 @@ def ValidateMUFlag(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
+
+    return
 # end def
 
 
@@ -3277,7 +3049,6 @@ def ValidateXPlant(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    # dResult['value'] = dData['value'].upper().strip()
 
     oCursor = connections['BCAMDB'].cursor()
 
@@ -3303,7 +3074,6 @@ def ValidateUnitPrice(dData, dResult, oHead):
     :param oHead: Header object being validated
     :return: dictionary
     """
-    # dResult['value'] = dData['value'].upper().strip()
 
     if dResult['value'] not in ('', None):
         if dData['line_number'] == '10' and not oHead.pick_list:
@@ -3331,10 +3101,8 @@ def ValidateHigherLevel(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    if dData['value'] and dData['value'] not in dData.getlist('other_lines'):
-        dResult['error']['value'] = '! - Item number not found.\n'
-        dResult['status'] = '!'
-        return
+
+    return
 # end def
 
 
@@ -3345,7 +3113,8 @@ def ValidateMaterialGroup(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    pass
+
+    return
 # end def
 
 
@@ -3356,7 +3125,8 @@ def ValidatePurchaseOrderItemNumber(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    pass
+
+    return
 # end def
 
 
@@ -3368,37 +3138,8 @@ def ValidateCondition(dData, dResult, oHead):
     :param oHead: Header object being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if dResult['value'] == 'ZUST' and 'ZUST' in dData.getlist('other_conds[]'):
-        dResult['error']['value'] = 'X - Multiple ZUST conditions.\n'
-        dResult['status'] = 'X'
-        return
-
-    if dResult['value'] == 'ZUST' and dData['line_number'] != '10' and not \
-            oHead.pick_list:
-        dResult['error']['value'] = 'X - ZUST only allowed on line 10.\n'
-        dResult['status'] = 'X'
-        return
-
-    if StrToBool(dData['allowChain']):
-        if dResult['value'] in ('ZPRU', 'ZPR1') or 'ZPRU' in dData.getlist(
-                'other_conds[]') or 'ZPR1' in dData.getlist('other_conds'):
-            dResult['propagate']['needs_zpru'] = 'True'
-        else:
-            dResult['propagate']['needs_zpru'] = 'False'
-
-    if dData['amount'] in ('', None) and dResult['value'] not in ('', None):
-        dResult['error']['value'] = 'X - Condition provided without Amount.\n'
-        dResult['status'] = 'X'
-        return
-    else:
-        if bool(dData['previous_value'] in ('', None)) ^ bool(
-                        dResult['value'] in ('', None)):
-            if StrToBool(dData['allowChain']):
-                dResult['propagate']['line'][23] = {'value': dData['amount'],
-                                                    'chain': True}
-    # end if
+    return
 # end def
 
 
@@ -3409,25 +3150,8 @@ def ValidateAmount(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].replace('$', '').replace(',', '')
 
-    if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$",
-                    dData['value'].replace('$', '').replace(',', '')):
-        dResult['error']['value'] = 'X - Invalid Amount.\n'
-        dResult['status'] = 'X'
-        return
-
-    if dData['condition'] in ('', None) and dResult['value'] not in ('', None):
-        dResult['error']['value'] = 'X - Amount provided without Condition.\n'
-        dResult['status'] = 'X'
-        return
-    else:
-        if bool(dData['previous_value'] in ('', None)) ^ bool(
-                        dResult['value'] in ('', None)):
-            if StrToBool(dData['allowChain']):
-                dResult['propagate']['line'][22] = {'value': dData['condition'],
-                                                    'chain': True}
-    # end if
+    return
 # end def
 
 
@@ -3438,12 +3162,8 @@ def ValidateTraceability(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if not re.match("^Y$|^N$|^$", dData['value'].strip(), re.I):
-        dResult['error']['value'] = 'X - Invalid Traceability Req.\n'
-        dResult['status'] = 'X'
-        return
+    return
 # end def
 
 
@@ -3457,41 +3177,8 @@ def ValidateCustomerAsset(dData, dResult, oHead, bCanWriteConfig):
     on the configuration being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if not re.match("^Y$|^N$|^$", dData['value'].strip(), re.I):
-        dResult['error']['value'] = 'X - Invalid Customer Asset.\n'
-        dResult['status'] = 'X'
-        return
-
-    if dData['tagging'] != '':
-        if StrToBool(dData['allowChain']):
-            dResult['propagate']['line'][26] = {
-                'value': dData['tagging'], 'chain': True
-            }
-
-    if oHead.configuration_status.name == 'In Process' or \
-            (bCanWriteConfig and
-                oHead.configuration_status.name == 'In Process/Pending'):
-        try:
-            oMPNCustMap = CustomerPartInfo.objects.get(
-                part__product_number=dData['part_number'].strip('. '),
-                customer=oHead.customer_unit,
-                active=True)
-
-            if (oMPNCustMap.customer_asset is True and dData['value'] != 'Y') \
-                    or (oMPNCustMap.customer_asset is False and
-                        dData['value'] != 'N') or (
-                        oMPNCustMap.customer_asset is None and
-                        dData['value'] not in ('', 'NONE', None)):
-                dResult['error']['value'] = \
-                    "! - Customer Asset does not match stored data.\n"
-                dResult['status'] = '!'
-                return
-        except CustomerPartInfo.DoesNotExist:
-            if dData['value']:
-                dResult['propagate']['line'][25] = {'value': None,
-                                                    'chain': False}
+    return
 # end def
 
 
@@ -3505,44 +3192,8 @@ def ValidateAssetTagging(dData, dResult, oHead, bCanWriteConfig):
     on the configuration being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if not re.match("^Y$|^N$|^$", dData['value'].strip(), re.I):
-        dResult['error']['value'] = 'X - Invalid Customer Asset Tagging Req.\n'
-        dResult['status'] = 'X'
-        return
-
-    if dData['value'].upper().strip() == 'Y' and \
-            dData['asset'].upper().strip() == 'N':
-        dResult['error']['value'] = ('X - Cannot mark Customer Asset Tagging '
-                                     'when part is not Customer Asset.\n')
-        dResult['status'] = 'X'
-        return
-
-    if oHead.configuration_status.name == 'In Process' or \
-            (bCanWriteConfig and
-                oHead.configuration_status.name == 'In Process/Pending'):
-        try:
-            oMPNCustMap = CustomerPartInfo.objects.get(
-                part__product_number=dData['part_number'].strip('. '),
-                customer=oHead.customer_unit,
-                active=True)
-
-            if (oMPNCustMap.customer_asset_tagging is True and
-                    dData['value'] != 'Y') or (
-                            oMPNCustMap.customer_asset_tagging is False and
-                            dData['value'] != 'N') or (
-                            oMPNCustMap.customer_asset_tagging is None and
-                            dData['value'] not in ('', 'NONE', None)):
-                dResult['error']['value'] = \
-                    "! - Customer Asset Tagging does not match stored data.\n"
-                dResult['status'] = '!'
-                return
-        except CustomerPartInfo.DoesNotExist:
-            if dData['value']:
-                dResult['propagate']['line'][26] = {'value': None,
-                                                    'chain': False}
-                return
+    return
 # end def
 
 
@@ -3556,27 +3207,8 @@ def ValidateCustomerNumber(dData, dResult, oHead, bCanWriteConfig):
     on the configuration being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if oHead.configuration_status.name == 'In Process' or \
-            (bCanWriteConfig and
-                oHead.configuration_status.name == 'In Process/Pending'):
-        try:
-            oMPNCustMap = CustomerPartInfo.objects.get(
-                part__product_number=dData['part_number'].strip('. '),
-                customer=oHead.customer_unit,
-                active=True)
-
-            if oMPNCustMap.customer_number != dData['value']:
-                dResult['error']['value'] = \
-                    "! - Customer Number does not match stored data.\n"
-                dResult['status'] = '!'
-                return
-        except CustomerPartInfo.DoesNotExist:
-            if dData['value']:
-                dResult['propagate']['line'][27] = {'value': None,
-                                                    'chain': False}
-                return
+    return
 # end def
 
 
@@ -3590,27 +3222,8 @@ def ValidateSecCustomerNumber(dData, dResult, oHead, bCanWriteConfig):
     on the configuration being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if oHead.configuration_status.name == 'In Process' or \
-            (bCanWriteConfig and
-                oHead.configuration_status.name == 'In Process/Pending'):
-        try:
-            oMPNCustMap = CustomerPartInfo.objects.get(
-                part__product_number=dData['part_number'].strip('. '),
-                customer=oHead.customer_unit,
-                active=True)
-
-            if oMPNCustMap.second_customer_number and \
-                    oMPNCustMap.second_customer_number != dData['value']:
-                dResult['error']['value'] = ("! - Second Customer Number does "
-                                             "not match stored data.\n")
-                dResult['status'] = '!'
-        except CustomerPartInfo.DoesNotExist:
-            if dData['value']:
-                dResult['propagate']['line'][28] = {'value': None,
-                                                    'chain': False}
-                return
+    return
 # end def
 
 
@@ -3621,12 +3234,6 @@ def ValidateVendorNumber(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if dData['value'].upper().strip().startswith('.') or \
-            dData['value'].upper().strip().endswith('/'):
-        dResult['error']['value'] = ('! - Vendor Article Number should not '
-                                     'start with "." or end with "/".\n')
-        dResult['status'] = '!'
-        return
+    return
 # end def
