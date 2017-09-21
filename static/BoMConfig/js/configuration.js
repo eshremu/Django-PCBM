@@ -1117,7 +1117,7 @@ function build_table() {
         },
         beforeValidate: function(value, row, prop, source){
             if(['Unit Price','Amount'].indexOf(this.getColHeader(prop)) != -1){
-                value = value === null ? value : value.replace(/$/g,'').replace(/,/g,'').replace(/\s/g,'');
+                value = value === null ? value : value.toString().replace(/$/g,'').replace(/,/g,'').replace(/\s/g,'');
                 if (!isNaN(parseFloat(value))) {
                     value = String(parseFloat(value).toFixed(2));
                 }

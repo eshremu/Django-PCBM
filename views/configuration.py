@@ -1845,7 +1845,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                         r'^(?:\()?(?P<pcode>[A-Z]?\d{2,3})(?:-\d{4}\).*)?$',
                         obj['10']).group('pcode') for obj in aData if
                      re.match(r'^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$'
-                              '|^\([A-Z]\d{2}-\d{4}\).*$', obj['10']) is not None]
+                              '|^\([A-Z]\d{2}-\d{4}\).*$', obj['10'] or '') is not None]
                     )
             ), )
         )
@@ -1855,7 +1855,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             'SELECT [Plant] FROM dbo.REF_PLANTS WHERE [Plant] IN %s',
             (tuple(
                 map(lambda val: bytes(val, 'ascii'),
-                    [obj['7'] for obj in aData if obj not in ('', None)]
+                    [obj['7'] for obj in aData if obj['7'] not in ('', None)]
                     )
             ), )
         )
@@ -1865,7 +1865,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             'SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC WHERE [SLOC] IN %s',
             (tuple(
                 map(lambda val: bytes(val, 'ascii'),
-                    [obj['8'] for obj in aData if obj not in ('', None)]
+                    [obj['8'] for obj in aData if obj['8'] not in ('', None)]
                     )
             ), )
         )
@@ -1936,6 +1936,8 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     'X-Plant Desc': [row[14]],
                     'Traceability': [row[15]]
                 }
+            # end if
+        # end for
 
         dPCodes = {}
         for row in tPCode:
@@ -1949,12 +1951,8 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     'Description': [row[2]],
                     'Commodity': [row[3]]
                 }
-
-        import pprint
-        pprint.pprint(dPartData)
-        pprint.pprint(dPCodes)
-        pprint.pprint(tPlants)
-        pprint.pprint(tSLOC)
+            # end if
+        # end for
 
     # Step through each row
     for index in range(len(aData)):
@@ -2190,19 +2188,26 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             else:
                 error_matrix[index][2]['value'] += \
                     '! - Product Number not found.\n'
-                aData[index]['5'] = ''
-                aData[index]['14'] = ''
-                aData[index]['15'] = ''
-                aData[index]['16'] = ''
+                if oHead.configuration_status.name == 'In Process':
+                    aData[index]['5'] = ''
+                    aData[index]['14'] = ''
+                    aData[index]['15'] = ''
+                    aData[index]['16'] = ''
             # end def
 
-            # TODO: Create data object at start
             # P-Code, Fire Code, Description & HW/SW Indicator
             if aData[index]['10'] in (None, ''):  # P-Code is blank, so fill in with data from part (if available)
                 if corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
-                    aData[index]['10'] = dPartData[corePartNumber]['P-Code']
+                    aData[index]['10'] = dPartData[corePartNumber]['P-Code'][0]
                 else:
                     aData[index]['10'] = ''
+
+                # HW/SW Indication
+                if aData[index]['11'] in ('None', '', None) and corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
+                    aData[index]['11'] = dPartData[corePartNumber]['Commodity'][0]
+                else:
+                    aData[index]['11'] = aData[index]['11'] or ''
+                # end if
             else:  # P-Code is populated (but may not be a valid value)
                 # If P-Code is valid, extract the P-Code portion
                 if re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
@@ -2217,59 +2222,81 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     if P_Code in dPCodes.keys():
                         P_Code = dPCodes[P_Code]
                         bVerified = True
-                    else: # No matching P-Code was found in database
+                    else:  # No matching P-Code was found in database
                         bVerified = False
 
                     if bVerified:  # P-Code is valid and has a full description available
                         # # If the matching value does not match what is stored for the part, add a warning
-                        # if corePartNumber in dPartData.keys() and dPartData[corePartNumber]['P-Code'] != P_Code['Description']:
-                        #     error_matrix[index][10] += '! - P-Code provided does not match P-Code stored for Material Number.\n'
+                        # if corePartNumber in dPartData.keys() and dPartData[corePartNumber]['P-Code'][0] != P_Code['Description'][0]:
+                        #     error_matrix[index][10]['value'] += '! - P-Code provided does not match P-Code stored for Material Number.\n'
 
-                        # If the matching value does not match what is stored in the DB for the p-code, add a warning
-                        if re.match("^\(\d{2,3}-\d{4}\).*$|^\([A-Z]\d{2}-\d{4}\).*$", aData[index]['10'], re.IGNORECASE) and aData[index]['10'] != P_Code['Description']:
-                            error_matrix[index]['10'] += '! - P-Code description is not latest value.\n'
+                        # # If the matching value does not match what is stored in the DB for the p-code, add a warning
+                        # if re.match("^\(\d{2,3}-\d{4}\).*$|^\([A-Z]\d{2}-\d{4}\).*$", aData[index]['10'], re.IGNORECASE) and aData[index]['10'].upper() != P_Code['Description'][0].upper():
+                        #     if oHead.configuration_status.name == 'In Process':
+                        #         aData[index]['10'] = P_Code['Description'][0].upper()
+                        #     else:
+                        #         error_matrix[index][10]['value'] += '! - P-Code description is not latest value.\n'
+
+                        # If P-Code provided is valid, but is not in full description format, replace with full description
+                        if re.match("^\(\d{2,3}-\d{4}\).*$|^\([A-Z]\d{2}-\d{4}\).*$", aData[index]['10'], re.IGNORECASE) is None and oHead.configuration_status.name == 'In Process':
+                            aData[index]['10'] = P_Code['Description'][0].upper()
+
+                        # HW/SW Indication
+                        if aData[index]['11'] in ('None', '', None):
+                            aData[index]['11'] = P_Code['Commodity'][0] or ''
+                        # end if
                     else:
                         # Leave value as-is and add warning
-                        error_matrix[index][10] += '! - P-Code not found.\n'
+                        error_matrix[index][10]['value'] += '! - P-Code not found.\n'
+
+                        # HW/SW Indication
+                        if aData[index]['11'] in ('None', '', None) and corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
+                            aData[index]['11'] = dPartData[corePartNumber]['Commodity'][0]
+                        else:
+                            aData[index]['11'] = aData[index]['11'] or ''
+                        # end if
 
                 else:  # else leave it alone, the error will be displayed to the user
                     aData[index]['10'] = aData[index]['10'] or ''
 
-            # HW/SW Indication
-            if aData[index]['11'] in ('None',):
-                aData[index]['11'] = tPCode[0][3] if tPCode[0][3] else ''
-            # end if
+                    # HW/SW Indication
+                    if aData[index]['11'] in ('None', '', None) and corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
+                        aData[index]['11'] = dPartData[corePartNumber]['Commodity'][0]
+                    else:
+                        aData[index]['11'] = aData[index]['11'] or ''
+                    # end if
 
-            if corePartNumber in dPartData.keys():
-                # RE-Code
-                aData[index]['14'] = dPartData[corePartNumber]['RE-Code'][0] or ''
+            if oHead.configuration_status.name == 'In Process':
+                if corePartNumber in dPartData.keys():
+                    # RE-Code
+                    aData[index]['14'] = dPartData[corePartNumber]['RE-Code'][0] or ''
 
-                # Traceability Req
-                aData[index]['24'] = 'Y' if dPartData[corePartNumber]['Traceability'][0] == 'Z001' else 'N' \
-                    if dPartData[corePartNumber]['Traceability'][0] == 'Z002' else ''
+                    # Traceability Req
+                    aData[index]['24'] = 'Y' if dPartData[corePartNumber]['Traceability'][0] == 'Z001' else 'N' \
+                        if dPartData[corePartNumber]['Traceability'][0] == 'Z002' else ''
 
-                # RE-Code title
-                if aData[index]['17']:
-                    if dPartData[corePartNumber]['RE-Code Title'][0] and dPartData[corePartNumber]['RE-Code Title'][0] not in aData[index]['17']:
-                        aData[index]['17'] = aData[index]['17'] + '; ' + \
-                                             dPartData[corePartNumber]['RE-Code Title'][0]
+                    # RE-Code title
+                    if aData[index]['17']:
+                        if dPartData[corePartNumber]['RE-Code Title'][0] and dPartData[corePartNumber]['RE-Code Title'][0] not in aData[index]['17']:
+                            aData[index]['17'] = aData[index]['17'] + '; ' + \
+                                                 dPartData[corePartNumber]['RE-Code Title'][0]
+                    else:
+                        aData[index]['17'] = dPartData[corePartNumber]['RE-Code Title'][0] or ''
+
+                    # RE-Code description
+                    if dPartData[corePartNumber]['RE-Code Desc'][0] and dPartData[corePartNumber]['RE-Code Desc'][0] not in error_matrix[index][14]['value']:
+                        error_matrix[index][14]['value'] += dPartData[corePartNumber]['RE-Code Desc'][0] + '\n'
                 else:
-                    aData[index]['17'] = dPartData[corePartNumber]['RE-Code Title'][0] or ''
-
-                # RE-Code description
-                if dPartData[corePartNumber]['RE-Code Desc'][0] and dPartData[corePartNumber]['RE-Code Desc'][0] not in error_matrix[index][14]['value']:
-                    error_matrix[index][14]['value'] += dPartData[corePartNumber]['RE-Code Desc'][0] + '\n'
-            else:
-                # RE-Code
-                aData[index]['14'] = ''
-                # Traceability Req
-                aData[index]['24'] = ''
+                    # RE-Code
+                    aData[index]['14'] = ''
+                    # Traceability Req
+                    aData[index]['24'] = ''
+                # end if
             # end if
 
-            # TODO: Create data object at start
             # Ensure Plant exists for part number
             if aData[index]['7'] not in ('', None):
-                if not tPlants:
+                if (aData[index]['7'],) not in tPlants:
                     error_matrix[index][7]['value'] += \
                         "! - Plant not found in database.\n"
 
@@ -2278,10 +2305,9 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                         "! - Plant not found for material.\n"
             # end if
 
-            # TODO: Create data object at start
             # Ensure SLOC exists for part number
             if aData[index]['8'] not in (None, ''):
-                if not tSLOC:
+                if (aData[index]['8'],) not in tSLOC:
                     error_matrix[index][8]['value'] += \
                         "! - SLOC not found in database.\n"
 
