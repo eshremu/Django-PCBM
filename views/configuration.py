@@ -944,9 +944,9 @@ def AddConfig(oRequest):
 
     # Build and validate data for display in configuration table
     data = BuildDataArray(oHeader, config=True)
-    # error_matrix = Validator(data, oHeader, bCanWriteConfig,
-    #                          bFrameReadOnly or bActive)
-    error_matrix = []
+    error_matrix = Validator(data, oHeader, bCanWriteConfig,
+                             bFrameReadOnly or bActive)
+    # error_matrix = []
 
     dContext = {
         'data_array': json.dumps(data),
@@ -1809,6 +1809,153 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             dummy.append({'value': ''})
         error_matrix.append(dummy)
 
+    if not bFormatCheckOnly:
+        # Collect data from database(s)
+        oCursor = connections['BCAMDB'].cursor()
+        oCursor.execute(
+            """
+            SELECT DISTINCT all_data.[Material],all_data.[Material Description],[Base Unit of Measure],
+                gmdm.[Plant],[SLoc],[ZMVKE Item Category],pcode_fcode.[Description] as [P-Code Description],
+                [Commodity],[MTyp],[PRIM RE Code],recode.[Title],recode.[Description],[MU-Flag],[X-Plant Status],
+                xplantstatus.[Description] as [X-Plant Description],[PRIM Traceability]
+            FROM dbo.BI_MM_ALL_DATA as all_data
+            LEFT JOIN dbo.[REF_X_PLANT_STATUS_DESCRIPTIONS] as xplantstatus ON [X-Plant Status Code]=[X-Plant Status]
+            LEFT JOIN dbo.REF_PCODE_FCODE as pcode_fcode ON pcode_fcode.[PCODE ]=[P Code]
+            LEFT JOIN dbo.SAP_ZQR_GMDM as gmdm on [Material Number]=[Material]
+            LEFT JOIN dbo.REF_PRODUCT_STATUS_CODES as recode ON [Status Code]=[PRIM RE Code]
+            LEFT JOIN dbo.SAP_MB52 as mb52 ON mb52.[Material]=all_data.[Material] and mb52.[Plnt]=gmdm.[Plant]
+            WHERE [ZMVKE Item Category]<>'NORM' AND all_data.[Material] IN %s
+            ORDER BY all_data.[Material]
+            """,
+            (tuple(
+                map(lambda val: bytes(val, 'ascii'),
+                    [obj['2'] for obj in aData]
+                    )
+            ),)
+        )
+
+        tAllData = oCursor.fetchall()
+
+        oCursor.execute(
+            'SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM '
+            'dbo.REF_PCODE_FCODE WHERE [PCODE] IN %s',
+            (tuple(
+                map(lambda val: bytes(val, 'ascii'),
+                    [re.match(
+                        r'^(?:\()?(?P<pcode>[A-Z]?\d{2,3})(?:-\d{4}\).*)?$',
+                        obj['10']).group('pcode') for obj in aData if
+                     re.match(r'^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$'
+                              '|^\([A-Z]\d{2}-\d{4}\).*$', obj['10']) is not None]
+                    )
+            ), )
+        )
+        tPCode = oCursor.fetchall()
+
+        oCursor.execute(
+            'SELECT [Plant] FROM dbo.REF_PLANTS WHERE [Plant] IN %s',
+            (tuple(
+                map(lambda val: bytes(val, 'ascii'),
+                    [obj['7'] for obj in aData if obj not in ('', None)]
+                    )
+            ), )
+        )
+        tPlants = oCursor.fetchall()
+
+        oCursor.execute(
+            'SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC WHERE [SLOC] IN %s',
+            (tuple(
+                map(lambda val: bytes(val, 'ascii'),
+                    [obj['8'] for obj in aData if obj not in ('', None)]
+                    )
+            ), )
+        )
+        tSLOC = oCursor.fetchall()
+
+        oCursor.close()
+
+        dPartData = {}
+        for row in tAllData:
+            if row[0] in dPartData:
+                # Add row data to existing entry
+                if row[1] not in dPartData[row[0]]['Description']:
+                    dPartData[row[0]]['Description'].append(row[1])
+
+                if row[2] not in dPartData[row[0]]['UOM']:
+                    dPartData[row[0]]['UOM'].append(row[2])
+
+                if (row[3], row[4]) not in dPartData[row[0]]['Plant/SLoc']:
+                    dPartData[row[0]]['Plant/SLoc'].append((row[3], row[4]))
+
+                if row[5] not in dPartData[row[0]]['ItemCat']:
+                    dPartData[row[0]]['ItemCat'].append(row[5])
+
+                if row[6] not in dPartData[row[0]]['P-Code']:
+                    dPartData[row[0]]['P-Code'].append(row[6])
+
+                if row[7] not in dPartData[row[0]]['Commodity']:
+                    dPartData[row[0]]['Commodity'].append(row[7])
+
+                if row[8] not in dPartData[row[0]]['M-Type']:
+                    dPartData[row[0]]['M-Type'].append(row[8])
+
+                if row[9] not in dPartData[row[0]]['RE-Code']:
+                    dPartData[row[0]]['RE-Code'].append(row[9])
+
+                if row[10] not in dPartData[row[0]]['RE-Code Title']:
+                    dPartData[row[0]]['RE-Code Title'].append(row[10])
+
+                if row[11] not in dPartData[row[0]]['RE-Code Desc']:
+                    dPartData[row[0]]['RE-Code Desc'].append(row[11])
+
+                if row[12] not in dPartData[row[0]]['MU-Flag']:
+                    dPartData[row[0]]['MU-Flag'].append(row[12])
+
+                if row[13] not in dPartData[row[0]]['X-Plant']:
+                    dPartData[row[0]]['X-Plant'].append(row[13])
+
+                if row[14] not in dPartData[row[0]]['X-Plant Desc']:
+                    dPartData[row[0]]['X-Plant Desc'].append(row[14])
+
+                if row[15] not in dPartData[row[0]]['Traceability']:
+                    dPartData[row[0]]['Traceability'].append(row[15])
+            else:
+                # Create new entry
+                dPartData[row[0]] = {
+                    'Description': [row[1]],
+                    'UOM': [row[2]],
+                    'Plant/SLoc': [(row[3], row[4])],
+                    'ItemCat': [row[5]],
+                    'P-Code': [row[6]],
+                    'Commodity': [row[7]],
+                    'M-Type': [row[8]],
+                    'RE-Code': [row[9]],
+                    'RE-Code Title': [row[10]],
+                    'RE-Code Desc': [row[11]],
+                    'MU-Flag': [row[12]],
+                    'X-Plant': [row[13]],
+                    'X-Plant Desc': [row[14]],
+                    'Traceability': [row[15]]
+                }
+
+        dPCodes = {}
+        for row in tPCode:
+            if row[0] in dPCodes:
+                dPCodes[row[0]]['FireCode'].append(row[1])
+                dPCodes[row[0]]['Description'].append(row[2])
+                dPCodes[row[0]]['Commodity'].append(row[3])
+            else:
+                dPCodes[row[0]] = {
+                    'FireCode': [row[1]],
+                    'Description': [row[2]],
+                    'Commodity': [row[3]]
+                }
+
+        import pprint
+        pprint.pprint(dPartData)
+        pprint.pprint(dPCodes)
+        pprint.pprint(tPlants)
+        pprint.pprint(tSLOC)
+
     # Step through each row
     for index in range(len(aData)):
 
@@ -1923,7 +2070,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         if not re.match("^\d+(?:.\d+)?$", aData[index]['4'] or ''):
             if not bFormatCheckOnly:
                 error_matrix[index][4]['value'] += 'X - Invalid Order Qty.\n'
-            if aData[index]['4'] in ('None', ''):
+            if aData[index]['4'] in ('None', '', None):
                 aData[index]['4'] = ''
         # end if
 
@@ -1948,14 +2095,14 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                         aData[index]['10'] or '',
                         re.IGNORECASE):
             if not bFormatCheckOnly:
-                error_matrix[index][10]['value'] += 'X - Invalid P-Code.\n'
+                error_matrix[index][10]['value'] += 'X - Invalid P-Code format.\n'
         # end if
 
         # HW/SW Ind
         if aData[index]['11']:
             aData[index]['11'] = aData[index]['11'].upper()
 
-        if not re.match("^H(ARD)?W(ARE)?$|^S(OFT)?W(ARE)?$|^CS$|^$",
+        if not re.match("^HW$|^SW$|^CS$|^$",
                         aData[index]['11'] or '',
                         re.IGNORECASE):
             if not bFormatCheckOnly:
@@ -1990,194 +2137,128 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     'X - Invalid Amount provided.\n'
         # end if
 
-        if (oHead.configuration_status.name == 'In Process' or (
-                    bCanWriteConfig and oHead.configuration_status.name ==
-                    'In Process/Pending')) and not bFormatCheckOnly:
-            try:
-                oMPNCustMap = CustomerPartInfo.objects.get(
-                    part__product_number=aData[index]['2'].strip('. '),
-                    customer=oHead.customer_unit,
-                    active=True
-                )
-            except CustomerPartInfo.DoesNotExist:
-                oMPNCustMap = None
-            # end try
-
-            # Customer Asset
-            if oMPNCustMap:
-                aData[index]['25'] = 'Y' if oMPNCustMap.customer_asset else 'N'\
-                    if oMPNCustMap.customer_asset is False else ''
-            # end if
-
-            # Customer Asset tagging Req
-            if oMPNCustMap:
-                aData[index]['26'] = 'Y' if oMPNCustMap.customer_asset_tagging\
-                    else 'N' if oMPNCustMap.customer_asset_tagging is False\
-                    else ''
-            # end if
-
-            if aData[index]['25'] in ('N', 'NO') and aData[index]['26'] in \
-                    ('Y', 'YES'):
-                error_matrix[index][26]['value'] += \
-                    ('X - Cannot mark Customer Asset Tagging when '
-                     'part is not Customer Asset.\n')
-
-            # Customer Number
-            if oMPNCustMap:
-                aData[index]['27'] = oMPNCustMap.customer_number or ''
-            # end if
-
-            # Second Customer Number
-            if oMPNCustMap:
-                aData[index]['28'] = oMPNCustMap.second_customer_number or ''
-            # end if
-        # end if
+        if aData[index]['25'] in ('N', 'NO') and aData[index]['26'] in \
+                ('Y', 'YES'):
+            error_matrix[index][26]['value'] += \
+                ('X - Cannot mark Customer Asset Tagging when '
+                 'part is not Customer Asset.\n')
 
         if not bFormatCheckOnly:
-            # Collect data from database(s)
-            oCursor = connections['BCAMDB'].cursor()
-
+            corePartNumber = aData[index]['2'].strip('.')
             # Populate Read-only fields
-            P_Code = aData[index]['10'] if aData[index]['10'] and re.match(
-                "^\d{2,3}$", aData[index]['10'], re.IGNORECASE) else None
-            tPCode = None
-            oCursor.execute("SELECT DISTINCT [Material Description],[MU-Flag],"
-                            "[X-Plant Status],[Base Unit of Measure],[P Code],"
-                            "[MTyp],[ZMVKE Item Category] FROM dbo.BI_MM_ALL_DATA "
-                            "WHERE [Material]=%s AND [ZMVKE Item Category]<>'NORM'",
-                            [bytes(aData[index]['2'].strip('.'), 'ascii') if
-                             aData[index]['2'] else None]
-                            )
 
-            tPartData = oCursor.fetchall()
-            if tPartData:
+            if corePartNumber in dPartData.keys():
                 if oHead.configuration_status.name == 'In Process':
                     # Product Description
                     if aData[index]['3'] in (None, ''):
-                        aData[index]['3'] = tPartData[0][0] \
-                            if tPartData[0][0] not in (None, 'NONE', 'None') \
-                            else ''
+                        aData[index]['3'] = dPartData[corePartNumber]['Description'][0] or ''
 
                     # MU-Flag
-                    aData[index]['15'] = tPartData[0][1] \
-                        if tPartData[0][1] not in (None, 'NONE', 'None') else ''
+                    aData[index]['15'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
 
                     # X-Plant
-                    aData[index]['16'] = tPartData[0][2] \
-                        if tPartData[0][2] not in (None, 'NONE', 'None') else ''
+                    aData[index]['16'] = dPartData[corePartNumber]['X-Plant'][0] or ''
 
                     # UoM
-                    aData[index]['5'] = tPartData[0][3] \
-                        if tPartData[0][3] not in (None, 'NONE', 'None') else ''
+                    aData[index]['5'] = dPartData[corePartNumber]['UOM'][0] or ''
 
                     # Item Category Group
                     if not re.match("^Z[A-Z0-9]{3}$|^$",
                                     aData[index]['9'] or '',
                                     re.IGNORECASE):
-                        aData[index]['9'] = tPartData[0][6] \
-                            if tPartData[0][6] not in (None, 'NONE', 'None') \
-                            else ''
+                        aData[index]['9'] = dPartData[corePartNumber]['ItemCat'][0] or ''
 
                     # Product Package Type
-                    if tPartData[0][6] == 'ZF26':
+                    if dPartData[corePartNumber]['ItemCat'][0] == 'ZF26':
                         aData[index]['12'] = 'Fixed Product Package (FPP)'
-                    elif tPartData[0][5] == 'ZASO':
+                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZASO':
                         aData[index]['12'] = 'Assembled Sales Object (ASO)'
                         if aData[index]['6'] in (None, ''):
                             error_matrix[index][6]['value'] += \
                                 'X - ContextID must be populated for ASO parts.\n'
-                    elif tPartData[0][5] == 'ZAVA':
+                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZAVA':
                         aData[index]['12'] = 'Material Variant (MV)'
-                    elif tPartData[0][5] == 'ZEDY':
+                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZEDY':
                         aData[index]['12'] = 'Dynamic Product Package (DPP)'
 
                     # X-Plant Description
-                    if tPartData[0][2]:
-                        oCursor.execute(
-                            'SELECT [Description] FROM '
-                            'dbo.[REF_X_PLANT_STATUS_DESCRIPTIONS] '
-                            'WHERE [X-Plant Status Code]=%s',
-                            [bytes(tPartData[0][2], 'ascii')]
-                        )
-                        tXPlant = oCursor.fetchall()
-                        if tXPlant:
-                            if tXPlant[0][0] not in \
-                                    error_matrix[index][16]['value']:
-                                error_matrix[index][16]['value'] += \
-                                    tXPlant[0][0] + '\n'
-                        # end if
+                    if dPartData[corePartNumber]['X-Plant Desc'][0]\
+                            and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][16]['value']:
+                        error_matrix[index][16]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
                     # end if
                 # end if
-
-                # P-Code
-                P_Code = aData[index]['10'] if\
-                    aData[index]['10'] is not None and re.match(
-                        "^\d{2,3}$", aData[index]['10'], re.IGNORECASE)\
-                    else tPartData[0][4]
             else:
                 error_matrix[index][2]['value'] += \
-                    '! - Product Number not found.'
+                    '! - Product Number not found.\n'
+                aData[index]['5'] = ''
+                aData[index]['14'] = ''
                 aData[index]['15'] = ''
                 aData[index]['16'] = ''
             # end def
 
-            if P_Code:
-                oCursor.execute(
-                    'SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM '
-                    'dbo.REF_PCODE_FCODE WHERE [PCODE]=%s',
-                    [bytes(P_Code, 'ascii')]
-                )
-                tPCode = oCursor.fetchall()
+            # TODO: Create data object at start
+            # P-Code, Fire Code, Description & HW/SW Indicator
+            if aData[index]['10'] in (None, ''):  # P-Code is blank, so fill in with data from part (if available)
+                if corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
+                    aData[index]['10'] = dPartData[corePartNumber]['P-Code']
+                else:
+                    aData[index]['10'] = ''
+            else:  # P-Code is populated (but may not be a valid value)
+                # If P-Code is valid, extract the P-Code portion
+                if re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
+                            "|^\([A-Z]\d{2}-\d{4}\).*$",
+                            aData[index]['10'],
+                            re.IGNORECASE):
+                    P_Code = re.match(
+                        r'^(?:\()?(?P<pcode>[A-Z]?\d{2,3})(?:-\d{4}\).*)?$',
+                        aData[index]['10']).group('pcode')
+
+                    # Use the extracted value to find the full P-Code description
+                    if P_Code in dPCodes.keys():
+                        P_Code = dPCodes[P_Code]
+                        bVerified = True
+                    else: # No matching P-Code was found in database
+                        bVerified = False
+
+                    if bVerified:  # P-Code is valid and has a full description available
+                        # # If the matching value does not match what is stored for the part, add a warning
+                        # if corePartNumber in dPartData.keys() and dPartData[corePartNumber]['P-Code'] != P_Code['Description']:
+                        #     error_matrix[index][10] += '! - P-Code provided does not match P-Code stored for Material Number.\n'
+
+                        # If the matching value does not match what is stored in the DB for the p-code, add a warning
+                        if re.match("^\(\d{2,3}-\d{4}\).*$|^\([A-Z]\d{2}-\d{4}\).*$", aData[index]['10'], re.IGNORECASE) and aData[index]['10'] != P_Code['Description']:
+                            error_matrix[index]['10'] += '! - P-Code description is not latest value.\n'
+                    else:
+                        # Leave value as-is and add warning
+                        error_matrix[index][10] += '! - P-Code not found.\n'
+
+                else:  # else leave it alone, the error will be displayed to the user
+                    aData[index]['10'] = aData[index]['10'] or ''
+
+            # HW/SW Indication
+            if aData[index]['11'] in ('None',):
+                aData[index]['11'] = tPCode[0][3] if tPCode[0][3] else ''
             # end if
 
-            if tPCode:
-                # P-Code, Fire Code, Description
-                if aData[index]['10'] in (None, '') or re.match(
-                        "^\d{2,3}$", aData[index]['10'], re.IGNORECASE):
-                    aData[index]['10'] = tPCode[0][2] if tPCode[0][2] else ''
-
-                # HW/SW Indication
-                if aData[index]['11'] in ('None',):
-                    aData[index]['11'] = tPCode[0][3] if tPCode[0][3] else ''
-                # end if
-            # end if
-
-            oCursor.execute(
-                'SELECT DISTINCT [PRIM RE Code],[PRIM Traceability] FROM '
-                'dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
-                [bytes(
-                    aData[index]['2'].strip('.'), 'ascii'
-                ) if aData[index]['2'] else None]
-            )
-            tPartData = oCursor.fetchall()
-            if tPartData:
+            if corePartNumber in dPartData.keys():
                 # RE-Code
-                aData[index]['14'] = tPartData[0][0] if tPartData[0][0] else ''
+                aData[index]['14'] = dPartData[corePartNumber]['RE-Code'][0] or ''
 
                 # Traceability Req
-                aData[index]['24'] = 'Y' if tPartData[0][1] == 'Z001' else 'N' \
-                    if tPartData[0][1] == 'Z002' else ''
+                aData[index]['24'] = 'Y' if dPartData[corePartNumber]['Traceability'][0] == 'Z001' else 'N' \
+                    if dPartData[corePartNumber]['Traceability'][0] == 'Z002' else ''
 
-                oCursor.execute(
-                    'SELECT DISTINCT [Title],[Description] FROM '
-                    'dbo.REF_PRODUCT_STATUS_CODES WHERE [Status Code]=%s',
-                    [bytes(tPartData[0][0] or '', 'ascii')]
-                )
+                # RE-Code title
+                if aData[index]['17']:
+                    if dPartData[corePartNumber]['RE-Code Title'][0] and dPartData[corePartNumber]['RE-Code Title'][0] not in aData[index]['17']:
+                        aData[index]['17'] = aData[index]['17'] + '; ' + \
+                                             dPartData[corePartNumber]['RE-Code Title'][0]
+                else:
+                    aData[index]['17'] = dPartData[corePartNumber]['RE-Code Title'][0] or ''
 
-                tRECode = oCursor.fetchall()
-                if tRECode:
-                    # RE-Code description
-                    if aData[index]['17']:
-                        if tRECode[0][0] not in aData[index]['17']:
-                            aData[index]['17'] = aData[index]['17'] + '; ' + \
-                                                 tRECode[0][0]
-                    else:
-                        aData[index]['17'] = tRECode[0][0]
-
-                    # RE-Code title
-                    if tRECode[0][1] not in error_matrix[index][14]['value']:
-                        error_matrix[index][14]['value'] += tRECode[0][1] + '\n'
-                # end if
+                # RE-Code description
+                if dPartData[corePartNumber]['RE-Code Desc'][0] and dPartData[corePartNumber]['RE-Code Desc'][0] not in error_matrix[index][14]['value']:
+                    error_matrix[index][14]['value'] += dPartData[corePartNumber]['RE-Code Desc'][0] + '\n'
             else:
                 # RE-Code
                 aData[index]['14'] = ''
@@ -2185,67 +2266,30 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                 aData[index]['24'] = ''
             # end if
 
+            # TODO: Create data object at start
             # Ensure Plant exists for part number
             if aData[index]['7'] not in ('', None):
-                oCursor.execute(
-                    'SELECT [Plant] FROM dbo.REF_PLANTS WHERE [Plant]=%s',
-                    [bytes(aData[index]['7'], 'ascii')]
-                )
-                tPlants = oCursor.fetchall()
                 if not tPlants:
                     error_matrix[index][7]['value'] += \
                         "! - Plant not found in database.\n"
 
-                oCursor.execute(
-                    'SELECT [Plnt] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND '
-                    '[Material]=%s',
-                    [bytes(aData[index]['7'], 'ascii'),
-                     bytes(aData[index]['2'], 'ascii')]
-                )
-                tPlants = oCursor.fetchall()
-                if (aData[index]['7'],) not in tPlants:
+                if corePartNumber in dPartData.keys() and not any(aData[index]['7'] == plant for (plant, _) in dPartData[corePartNumber]['Plant/SLoc']):
                     error_matrix[index][7]['value'] += \
                         "! - Plant not found for material.\n"
             # end if
 
+            # TODO: Create data object at start
             # Ensure SLOC exists for part number
             if aData[index]['8'] not in (None, ''):
-                oCursor.execute(
-                    'SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC '
-                    'WHERE [SLOC]=%s',
-                    [bytes(aData[index]['8'], 'ascii')]
-                )
-                tSLOC = oCursor.fetchall()
                 if not tSLOC:
                     error_matrix[index][8]['value'] += \
                         "! - SLOC not found in database.\n"
 
-                oCursor.execute(
-                    'SELECT [Plnt],[SLoc] FROM dbo.SAP_MB52 WHERE [Plnt]=%s '
-                    'AND [SLoc]=%s AND [Material]=%s',
-                    [bytes(aData[index]['7'], 'ascii'),
-                     bytes(aData[index]['8'], 'ascii'),
-                     bytes(aData[index]['2'], 'ascii')]
-                )
-                tResults = oCursor.fetchall()
-                if (aData[index]['7'], aData[index]['8']) not in tResults:
+                if corePartNumber in dPartData.keys() and (aData[index]['7'], aData[index]['8']) not in dPartData[corePartNumber]['Plant/SLoc']:
                     error_matrix[index][8]['value'] += \
                         '! - Plant/SLOC combination not found for material.\n'
                 # end if
             # end if
-
-            oCursor.close()
-        # end if
-
-        # Item Category
-        if aData[index]['9']:
-            aData[index]['9'] = aData[index]['9'].upper()
-
-        if not re.match("^Z[A-Z0-9]{3}$|^$",
-                        aData[index]['9'] or '',
-                        re.IGNORECASE):
-            if not bFormatCheckOnly:
-                error_matrix[index][9]['value'] += 'X - Invalid Item Cat.\n'
         # end if
 
         aLineNumbers.append(aData[index]['1'])

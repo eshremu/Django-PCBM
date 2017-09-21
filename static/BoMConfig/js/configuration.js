@@ -565,7 +565,9 @@ function build_table() {
             return cellProperties;
         },
         afterValidate: function(isValid, value, row, prop, source){
-            if (!isValid){
+            if(this.isEmptyRow(row)){
+                return true;
+            } else if (!isValid){
                 $('#prevForm').attr('disabled', 'disabled').css('color','gray');
                 $("#saveexitForm").attr('disabled', 'disabled').css('color','gray');
                 $("#saveForm").attr('disabled', 'disabled').css('color','gray');
@@ -1180,6 +1182,7 @@ function build_table() {
     }
 
     hot.render();
+    hot.validateCells();
 }
 
 function estimateLineNumbers(changes, current_line_numbers) {
