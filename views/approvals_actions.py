@@ -1375,7 +1375,7 @@ def CreateDocument(oRequest):
         "record_id": oHeader.id,
         'credentials': {
             'username': oRequest.POST.get('user'),
-            'password': oRequest.POST.get('pass')
+            'password': oRequest.POST.get('pass')  # TODO: This needs to be encoded
         },
         'user': {
             'signum': oRequest.user.username,
