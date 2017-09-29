@@ -46,6 +46,13 @@ def Approval(oRequest):
     dContext = {
         'approval_wait': Header.objects.filter(
             configuration_status__name='In Process/Pending'),
+        'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
+        'baselines': ['All'] + sorted(list(
+            set(
+                [str(obj.baseline.title) if
+                 obj.baseline.title != 'No Associated Baseline' else
+                 "(Not baselined)" for obj in Header.objects.filter(
+                    configuration_status__name='In Process/Pending')]))),
         'customer_list': ['All'] + [obj.name for obj in
                                     REF_CUSTOMER.objects.all()],
         'approval_seq': HeaderTimeTracker.approvals(),
@@ -106,6 +113,13 @@ def Action(oRequest, **kwargs):
     dContext = {
         'in_process': Header.objects.filter(
             configuration_status__name='In Process'),
+        'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
+        'baselines': ['All'] + sorted(list(
+            set(
+                [str(obj.baseline) if
+                 obj.baseline.title != 'No Associated Baseline' else
+                 "(Not baselined)" for obj in Header.objects.filter(
+                    configuration_status__name='In Process')]))),
         'active': [obj for obj in Header.objects.filter(
             configuration_status__name='In Process/Pending',) if
                    HeaderTimeTracker.approvals().index(

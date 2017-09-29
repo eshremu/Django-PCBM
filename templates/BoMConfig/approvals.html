@@ -11,13 +11,33 @@
                 <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for customer in customer_list %}
-                    <li><a onclick="cust_filter('{{ customer|replace:"& _"|replacewhitespace:"-_" }}');">{{ customer }}</a></li>
+                    <li><a onclick="cust_filter('{{ customer }}');">{{ customer }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+        <ul class="btn" style="border: none; padding: 5px 0 0 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Baseline <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for baseline in baselines %}
+                    <li><a href="#" onclick="baseline_filter('{{ baseline }}');">{{ baseline }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+        <ul class="btn" style="border: none; padding: 5px 0 0 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="request_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Request Type <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for request in requests %}
+                    <li><a href="#" onclick="request_filter('{{ request }}');">{{ request }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
         </ul>
         <div style="padding: 5px 5px 5px 25px; display: inline-block;">
-            <input style="transform: translate(0, 4px);" type="checkbox" name="my_approvals" id="my_approvals" onchange="approval_filter();">
+            <input style="transform: translate(0, 4px);" type="checkbox" name="my_approvals" id="my_approvals" onchange="updateFilters();">
             <label style="transform: translate(0, 3px); padding-left: 5px;" for="my_approvals">Only show records I can approve</label>
         </div>
 
@@ -35,10 +55,12 @@
                     <tr> {# class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}" #}
                         <th style="height: 160px;vertical-align: bottom;"></th>
                         <th style="height: 160px;vertical-align: bottom;">Configuration</th>
-                        <td style="width:25px;"></td>
+                        <th style="width:25px;"></th>
                         <th style="height: 160px;vertical-align: bottom;">Program</th>
-                        <td style="width:25px;"></td>
+                        <th style="width:25px;"></th>
                         <th style="height: 160px;vertical-align: bottom;">Baseline</th>
+                        <th style="width:25px;"></th>
+                        <th style="height: 160px;vertical-align: bottom;">BoM Request Type</th>
                         {% for name in namelist %}
                         <th class="rotate"><div><span>{{ name }}</span></div></th>
                         {% endfor %}
@@ -55,8 +77,13 @@
                         <td>{{ record.program|default:"------" }}</td>
                         <td></td>
                         <td>{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
+                        <td></td>
+                        <td>{{ record.bom_request_type }}</td>
                         {% else %}
-                        <td></td><td></td><td></td><td></td><td></td><td></td>
+                        <td></td><td></td><td></td><td></td><td></td>
+                        <td style="visibility: hidden">{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
+                        <td></td>
+                        <td style="visibility: hidden">{{ record.bom_request_type }}</td>
                         {% endif %}
                         {% for level in approval_seq %}
                         <td class="approval"><div data-id="{{ tracker.id }}" data-level="{{ level }}">
@@ -83,7 +110,12 @@
                     </tr>
 
                     {% endfor %}
-                    <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.latesttracker.next_approval|default:'' }} config" style="height:10px;"></tr>
+                    <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.latesttracker.next_approval|default:'' }} config" style="height:10px;">
+                        <td></td><td></td><td></td><td></td><td></td>
+                        <td style="visibility: hidden">{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
+                        <td></td>
+                        <td style="visibility: hidden">{{ record.bom_request_type }}</td>
+                    </tr>
                 {% endfor %}
                 </tbody>
             </table>
@@ -221,31 +253,75 @@
 
         function cust_filter(customer){
             if(customer !== 'All') {
-                $('tbody tr').css('display','');
-                $('tbody tr').not('.' + customer).css('display','none');
-                $('tbody tr').not('.' + customer).find('input').removeAttr('checked');
-                if($('#my_approvals').prop('checked')) {
-                    $('tbody tr').filter('.' + customer).not('{{ available_levels }}').css('display', 'none');
-                    $('tbody tr').filter('.' + customer).not('{{ available_levels }}').find('input').removeAttr('checked');
-                }
-                $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
+                $('#cu_filter').html(customer +" <span class=\"caret\"></span>");
             } else {
-                if ($('#my_approvals').prop('checked')){
-                    $('tbody tr').filter('{{ available_levels }}').css('display','');
-                    $('tbody tr').not('{{ available_levels }}').css('display','none');
-                } else {
-                    $('tbody tr').css('display','');
-                }
                 $('#cu_filter').html('Customer <span class="caret"></span>');
             }
+            updateFilters();
         }
 
-        function approval_filter(){
-            var cust = $('#cu_filter').text().slice(0,-1).replace('&','_').replace(' ','-_');
-            if (cust == 'Customer'){
-                cust = 'All';
+        function request_filter(request){
+            if(request !== "All"){
+                $("#request_filter").html(request + "&nbsp;<span class='caret'></span>");
             }
-            cust_filter(cust);
+            else{
+                $("#request_filter").html("Request Type" + "&nbsp;<span class='caret'></span>");
+            }
+            updateFilters();
+        }
+
+        function baseline_filter(baseline){
+            if(baseline !== "All"){
+                $("#baseline_filter").html(baseline + "&nbsp;<span class='caret'></span>");
+            }
+            else{
+                $("#baseline_filter").html("Baseline" + "&nbsp;<span class='caret'></span>");
+            }
+            updateFilters();
+        }
+
+        function updateFilters(){
+            var customer = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+            var request = $("#request_filter").text().trim();
+            var baseline = $("#baseline_filter").text().trim();
+            var approval = $("#my_approvals").prop("checked");
+
+            $('tbody tr').show();
+
+            var rows = $('#pending_approval_records tbody tr').toArray();
+
+            for (var row in rows) {
+                let hide = false;
+                if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
+                    hide = true;
+                }
+
+                if(baseline !== "Baseline"){
+                    var baseline_row = $(rows[row]).find('td:nth-of-type(6):contains("' + baseline + '")');
+                    if (!(baseline_row.length !== 0 && $(baseline_row[0]).text() == baseline)){
+                        hide = true;
+                    }
+                }
+
+                if(request !== "Request Type"){
+                    var request_row = $(rows[row]).find('td:nth-of-type(8):contains("' + request + '")');
+                    if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
+                        hide = true;
+                    }
+                }
+
+                if(approval){
+                    var approval_row = $(rows[row]).filter('{{ available_levels }}');
+                    if(approval_row.length === 0){
+                        hide = true;
+                    }
+                }
+
+                if (hide){
+                    $(rows[row]).hide();
+                    $(rows[row]).find('input').removeAttr('checked');
+                }
+            }
         }
 
         function form_check($form){
