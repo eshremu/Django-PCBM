@@ -3,7 +3,7 @@ Views related to actions and function in the "Actions" and "Approvals" sections
 of the tool.
 """
 
-from django.utils import timezone
+from django.utils import timezone, encoding
 from django.http import HttpResponse, Http404, JsonResponse
 from django.core.urlresolvers import reverse
 from django.template import loader
@@ -12,6 +12,7 @@ from django.shortcuts import redirect
 from django.db import transaction, connections
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER,\
     REF_REQUEST, SecurityPermission, HeaderTimeTracker, REF_STATUS, \
@@ -21,9 +22,74 @@ from BoMConfig.utils import UpRev, GrabValue, StrToBool
 from BoMConfig.views.landing import Unlock, Default
 from django.contrib.auth.models import User
 
+import base64
 import copy
+from cryptography.fernet import Fernet
+import hashlib
 import json
 import re
+
+UNICODE_ENCODING = 'utf-8'
+
+
+def ToBytes(sData):
+    """Ensure that a character sequence is represented as a bytes object. If
+    it's already a bytes object, no change is made. If it's a string object,
+    it's encoded as a UTF-8 string. Otherwise, it is treated as a sequence of
+    character ordinal values."""
+
+    if isinstance(sData, str):
+        return sData.encode(UNICODE_ENCODING)
+    else:
+        return bytes(sData)
+
+
+def FromBytes(sBytes):
+    """Ensure that a character sequence is represented as a string object. If
+    it's already a string object, no change is made. If it's a bytes object,
+    it's decoded as a UTF-8 string. Otherwise, it is treated as a sequence of
+    character ordinal values and decoded as a UTF-8 string."""
+
+    if isinstance(sBytes, str):
+        return sBytes
+    else:
+        return bytes(sBytes).decode(UNICODE_ENCODING)
+
+
+def GetEncryptionKey(sPassword):
+    """Convert a password to a 32-bit encryption key, represented in base64
+    URL-safe encoding."""
+    return base64.b64encode(hashlib.sha256(ToBytes(sPassword)).digest())
+
+
+def Encrypt(sUnencryptedData, sPassword=None):
+    """Accept a string of unencrypted data and return it as an encrypted byte
+    sequence (a bytes instance). Note that this function returns a bytes instance, not a
+    unicode string."""
+
+    sKey = GetEncryptionKey(sPassword)
+    del sPassword
+    oSymmetricEncoding = Fernet(sKey)
+    del sKey
+    return oSymmetricEncoding.encrypt(ToBytes(sUnencryptedData))
+
+
+def Decrypt(sEncryptedData, sPassword=None):
+    """Accept an encrypted byte sequence (a bytes instance) and return it as an
+    unencrypted byte sequence. Note that the return value is a bytes instance,
+    not a string; if you passed in a unicode string and want that back, you will
+    have to decode it using FromBytes(). This is because this function makes no
+    assumption that what you originally passed in was a UTF-8 string as opposed
+    to a raw byte sequence."""
+
+    sKey = GetEncryptionKey(sPassword)
+    del sPassword
+    oSymmetricEncoding = Fernet(sKey)
+    del sKey
+
+    # An error here typically indicates that a different password was used to
+    # encrypt the data:
+    return oSymmetricEncoding.decrypt(ToBytes(sEncryptedData))
 
 
 @login_required
@@ -1375,7 +1441,12 @@ def CreateDocument(oRequest):
         "record_id": oHeader.id,
         'credentials': {
             'username': oRequest.POST.get('user'),
-            'password': oRequest.POST.get('pass')  # TODO: This needs to be encoded
+            'password': FromBytes(
+                Encrypt(
+                    oRequest.POST.get('pass'),
+                    encoding.force_text(settings.SECRET_KEY)
+                )
+            )
         },
         'user': {
             'signum': oRequest.user.username,
