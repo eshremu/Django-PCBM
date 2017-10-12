@@ -1846,40 +1846,49 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
 
         tAllData = oCursor.fetchall()
 
-        oCursor.execute(
-            'SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM '
-            'dbo.REF_PCODE_FCODE WHERE [PCODE] IN %s',
-            (tuple(
-                map(lambda val: bytes(val, 'ascii'),
-                    [re.match(
-                        r'^(?:\()?(?P<pcode>[A-Z]?\d{2,3})(?:-\d{4}\).*)?$',
-                        obj['10']).group('pcode') for obj in aData if
-                     re.match(r'^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$'
-                              '|^\([A-Z]\d{2}-\d{4}\).*$', obj['10'] or '') is not None]
-                    )
-            ), )
-        )
-        tPCode = oCursor.fetchall()
+        if any([obj['10'] for obj in aData]):
+            oCursor.execute(
+                'SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM '
+                'dbo.REF_PCODE_FCODE WHERE [PCODE] IN %s',
+                (tuple(
+                    map(lambda val: bytes(val, 'ascii'),
+                        [re.match(
+                            r'^(?:\()?(?P<pcode>[A-Z]?\d{2,3})(?:-\d{4}\).*)?$',
+                            obj['10']).group('pcode') for obj in aData if
+                         re.match(r'^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$'
+                                  '|^\([A-Z]\d{2}-\d{4}\).*$', obj['10'] or '') is not None]
+                        )
+                ), )
+            )
+            tPCode = oCursor.fetchall()
+        else:
+            tPCode = ()
 
-        oCursor.execute(
-            'SELECT [Plant] FROM dbo.REF_PLANTS WHERE [Plant] IN %s',
-            (tuple(
-                map(lambda val: bytes(val, 'ascii'),
-                    [obj['7'] for obj in aData if obj['7'] not in ('', None)]
-                    )
-            ), )
-        )
-        tPlants = oCursor.fetchall()
+        if any([obj['7'] for obj in aData]):
+            oCursor.execute(
+                'SELECT [Plant] FROM dbo.REF_PLANTS WHERE [Plant] IN %s',
+                (tuple(
+                    map(lambda val: bytes(val, 'ascii'),
+                        [obj['7'] for obj in aData if obj['7'] not in ('', None)]
+                        )
+                ), )
+            )
+            tPlants = oCursor.fetchall()
+        else:
+            tPlants = ()
 
-        oCursor.execute(
-            'SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC WHERE [SLOC] IN %s',
-            (tuple(
-                map(lambda val: bytes(val, 'ascii'),
-                    [obj['8'] for obj in aData if obj['8'] not in ('', None)]
-                    )
-            ), )
-        )
-        tSLOC = oCursor.fetchall()
+        if any([obj['8'] for obj in aData]):
+            oCursor.execute(
+                'SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC WHERE [SLOC] IN %s',
+                (tuple(
+                    map(lambda val: bytes(val, 'ascii'),
+                        [obj['8'] for obj in aData if obj['8'] not in ('', None)]
+                        )
+                ), )
+            )
+            tSLOC = oCursor.fetchall()
+        else:
+            tSLOC = ()
 
         oCursor.close()
 
@@ -2748,10 +2757,11 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                     'chain': False
                 }
 
-            dResult['propagate']['line'][6] = {
-                'value': dData['context_id'],
-                'chain': True
-            }
+            if 'context_id' in dData.keys():
+                dResult['propagate']['line'][6] = {
+                    'value': dData['context_id'],
+                    'chain': True
+                }
 
     else:
         oCursor.close()
@@ -2936,6 +2946,8 @@ def ValidatePCode(dData, dResult):
                 dResult['value'], re.I):
         sPCode = re.match(r'^\((?P<pcode>.{2,3})-\d{4}\).*$',
                           dResult['value'], re.I).group('pcode')
+    elif re.match(r'^\d{2,3}$|^[A-Z]\d{2}$', dResult['value'], re.I):
+        sPCode = dResult['value']
     else:
         dResult['error']['value'] = 'X - Invalid P-Code format.\n'
         dResult['status'] = 'X'

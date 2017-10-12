@@ -852,25 +852,25 @@ function build_table() {
                             case 13: // SPUD
                                 break;
                             case 14: // RE-Code
-                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 14, changes[i][3].toUpperCase().trim(), 'validation');
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 14, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
                                 data['value'] = changes[i][3];
                                 data['int_notes'] = tableThis.getDataAtCell(parseInt(changes[i][0]), 17);
                                 data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
                                 break;
                             case 15: // MU-Flag
-                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 15, changes[i][3].toUpperCase().trim(), 'validation');
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 15, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
                                 data['value'] = changes[i][3];
                                 data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
                                 break;
                             case 16: // X-Plant Material Status
-                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3].toUpperCase().trim(), 'validation');
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
                                 data['value'] = changes[i][3];
                                 data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
                                 break;
                             case 17: // Internal Notes
                                 break;
                             case 18: // Unit Price
-                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3].toUpperCase().trim(), 'validation');
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
                                 data['value'] = changes[i][3];
                                 data['line_number'] = tableThis.getDataAtCell(parseInt(changes[i][0]), 1);
                                 data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
