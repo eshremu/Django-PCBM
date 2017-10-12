@@ -867,6 +867,10 @@ def AddConfig(oRequest):
                         # end if
 
                         # Determine Pricing data for the line
+                        oConfigLine = ConfigLine.objects.get(
+                            **{'config': oConfig,
+                               'line_number': dConfigLine['1']}
+                        )
                         dPriceData = {'config_line': oConfigLine}
                         (oPrice, _) = LinePricing.objects.get_or_create(
                             **dPriceData)
