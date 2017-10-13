@@ -48,7 +48,8 @@ function XHRQueue(hash) {
         return JSON.parse(JSON.stringify(param));
     };
 
-    this.add = function(settings) {
+    this.add = function(settings, table) {
+        table = table === undefined ? hot : table;
 
         var storageObject = this;
 
@@ -60,7 +61,7 @@ function XHRQueue(hash) {
         xhr.headers = settings['headers'];
 
         xhr.onloadstart = function(){
-            hot.setDataAtCell(settings['data'].row, 0, 'INW');
+            table.setDataAtCell(settings['data'].row, 0, 'INW');
             UpdateValidation();
         };
 
@@ -71,24 +72,24 @@ function XHRQueue(hash) {
 
             if (this.status == 200){
                 var returneddata = JSON.parse(this.response);
-                hot.setDataAtCell(returneddata.row, returneddata.col, returneddata.value, 'validation');
-                if (hot.getCellMeta(returneddata.row, returneddata.col)['comment'] != undefined) {
-                    hot.getCellMeta(returneddata.row, returneddata.col)['comment']['value'] = returneddata.error['value'];
+                table.setDataAtCell(returneddata.row, returneddata.col, returneddata.value, 'validation');
+                if (table.getCellMeta(returneddata.row, returneddata.col)['comment'] != undefined) {
+                    table.getCellMeta(returneddata.row, returneddata.col)['comment']['value'] = returneddata.error['value'];
                 } else {
-                    hot.setCellMeta(returneddata.row, returneddata.col, 'comment', returneddata.error);
+                    table.setCellMeta(returneddata.row, returneddata.col, 'comment', returneddata.error);
                 }
-                hot.setCellMeta(returneddata.row, returneddata.col, 'cellStatus', returneddata.status);
+                table.setCellMeta(returneddata.row, returneddata.col, 'cellStatus', returneddata.status);
 
-                hot.render();
+                table.render();
 
                 for (var col in returneddata.propagate.line) {
                     if (returneddata.propagate.line.hasOwnProperty(col)) {
                         // Determine if a newer validation request has been entered into the storage hash
                         if(!(storageObject.storageHash.storage.hasOwnProperty(returneddata.row) && storageObject.storageHash.storage[returneddata.row].hasOwnProperty(col) && storageObject.storageHash.storage[returneddata.row][col].isInProcess)) {
                             if (returneddata.propagate.line[col].chain) {
-                                hot.setDataAtRowProp(returneddata.row, parseInt(col), returneddata.propagate.line[col].value, 'edit');
+                                table.setDataAtRowProp(returneddata.row, parseInt(col), returneddata.propagate.line[col].value, 'edit');
                             } else {
-                                hot.setDataAtRowProp(returneddata.row, parseInt(col), returneddata.propagate.line[col].value, 'validation');
+                                table.setDataAtRowProp(returneddata.row, parseInt(col), returneddata.propagate.line[col].value, 'validation');
                             }
                         }
                     }
@@ -104,13 +105,13 @@ function XHRQueue(hash) {
                     }
                 }
             } else {
-                if (hot.getCellMeta(settings['data'].row, settings['data'].col)['comment'] != undefined) {
-                    hot.getCellMeta(settings['data'].row, settings['data'].col)['comment']['value'] = '? - An error occurred while validating.\n';
+                if (table.getCellMeta(settings['data'].row, settings['data'].col)['comment'] != undefined) {
+                    table.getCellMeta(settings['data'].row, settings['data'].col)['comment']['value'] = '? - An error occurred while validating.\n';
                 } else {
-                    hot.setCellMeta(settings['data'].row, settings['data'].col, 'comment', {value: '? - An error occurred while validating.\n'});
+                    table.setCellMeta(settings['data'].row, settings['data'].col, 'comment', {value: '? - An error occurred while validating.\n'});
                 }
                 
-                hot.setCellMeta(settings['data'].row, settings['data'].col, 'cellStatus', '?');
+                table.setCellMeta(settings['data'].row, settings['data'].col, 'cellStatus', '?');
             }
 
             storageObject.finish();
@@ -121,13 +122,13 @@ function XHRQueue(hash) {
                 storageObject.storageHash.finish(settings['data'].row, settings['data'].col);
             }
 
-            if (hot.getCellMeta(settings['data'].row, settings['data'].col)['comment'] != undefined) {
-                hot.getCellMeta(settings['data'].row, settings['data'].col)['comment']['value'] = '? - An error occurred while validating.\n';
+            if (table.getCellMeta(settings['data'].row, settings['data'].col)['comment'] != undefined) {
+                table.getCellMeta(settings['data'].row, settings['data'].col)['comment']['value'] = '? - An error occurred while validating.\n';
             } else {
-                hot.setCellMeta(settings['data'].row, settings['data'].col, 'comment', {value: '? - An error occurred while validating.\n'});
+                table.setCellMeta(settings['data'].row, settings['data'].col, 'comment', {value: '? - An error occurred while validating.\n'});
             }
             
-            hot.setCellMeta(settings['data'].row, settings['data'].col, 'cellStatus', '?');
+            table.setCellMeta(settings['data'].row, settings['data'].col, 'cellStatus', '?');
 
             storageObject.finish();
         };
@@ -136,13 +137,13 @@ function XHRQueue(hash) {
                 storageObject.storageHash.finish(settings['data'].row, settings['data'].col);
             }
 
-            if (hot.getCellMeta(settings['data'].row, settings['data'].col)['comment'] != undefined) {
-                hot.getCellMeta(settings['data'].row, settings['data'].col)['comment']['value'] = '? - Validation timed out.\n';
+            if (table.getCellMeta(settings['data'].row, settings['data'].col)['comment'] != undefined) {
+                table.getCellMeta(settings['data'].row, settings['data'].col)['comment']['value'] = '? - Validation timed out.\n';
             } else {
-                hot.setCellMeta(settings['data'].row, settings['data'].col, 'comment', {value: '? - Validation timed out.\n'});
+                table.setCellMeta(settings['data'].row, settings['data'].col, 'comment', {value: '? - Validation timed out.\n'});
             }
             
-            hot.setCellMeta(settings['data'].row, settings['data'].col, 'cellStatus', '?');
+            table.setCellMeta(settings['data'].row, settings['data'].col, 'cellStatus', '?');
 
             storageObject.finish();
         };
@@ -151,13 +152,13 @@ function XHRQueue(hash) {
                 storageObject.storageHash.finish(settings['data'].row, settings['data'].col);
             }
 
-            if (hot.getCellMeta(settings['data'].row, settings['data'].col)['comment'] != undefined) {
-                hot.getCellMeta(settings['data'].row, settings['data'].col)['comment']['value'] = '? - Validation was aborted.\n';
+            if (table.getCellMeta(settings['data'].row, settings['data'].col)['comment'] != undefined) {
+                table.getCellMeta(settings['data'].row, settings['data'].col)['comment']['value'] = '? - Validation was aborted.\n';
             } else {
-                hot.setCellMeta(settings['data'].row, settings['data'].col, 'comment', {value: '? - Validation was aborted.\n'});
+                table.setCellMeta(settings['data'].row, settings['data'].col, 'comment', {value: '? - Validation was aborted.\n'});
             }
             
-            hot.setCellMeta(settings['data'].row, settings['data'].col, 'cellStatus', '?');
+            table.setCellMeta(settings['data'].row, settings['data'].col, 'cellStatus', '?');
         };
 
         xhr.onloadend = function(){

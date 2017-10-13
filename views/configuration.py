@@ -948,7 +948,7 @@ def AddConfig(oRequest):
                              bFrameReadOnly or bActive)
 
     dContext = {
-        'data_array': data,
+        'data_array': json.dumps(data),
         'errors': error_matrix,
         'form': configForm,
         'header': oHeader,
@@ -1486,7 +1486,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     return [{
                         '1': '10',
                         '2': oHeader.configuration_designation.upper(),
-                        '3': oHeader.model_description,
+                        '3': oHeader.model_description or '',
                         '4': '1',
                         '5': 'PC'
                     }]
@@ -1496,7 +1496,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                 return [{
                     '0': '10',
                     '1': oHeader.configuration_designation.upper(),
-                    '2': oHeader.model_description,
+                    '2': oHeader.model_description or '',
                     '3': '1'
                 }]
             # end if
@@ -1532,10 +1532,10 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     '10': Line.pcode,
                     '11': Line.commodity_type,
                     '12': Line.package_type,
-                    '13': str(Line.spud or ''),
+                    '13': str(Line.spud) if Line.spud else None,
                     '14': Line.REcode,
                     '15': Line.mu_flag,
-                    '16': str(Line.x_plant).zfill(2) if Line.x_plant else '',
+                    '16': str(Line.x_plant).zfill(2) if Line.x_plant else None,
                     '17': Line.internal_notes,
 
                     '19': Line.higher_level_item,
@@ -1560,7 +1560,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                                 {'18': str(oConfig.override_net_value)}
                             )
                         else:
-                            dLine.update({'18': str(oConfig.net_value or '')})
+                            dLine.update({'18': str(oConfig.net_value) if oConfig.net_value is not None else None})
                         # end if
                     else:
                         dLine.update({'18': ''})
@@ -1579,7 +1579,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                             }
                         )
                     else:
-                        dLine.update({'18': ''})
+                        dLine.update({'18': None})
                     # end if
                 # end if
             else:
@@ -1808,6 +1808,171 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             dummy.append({'value': ''})
         error_matrix.append(dummy)
 
+    if not bFormatCheckOnly:
+        # Collect data from database(s)
+        oCursor = connections['BCAMDB'].cursor()
+        oCursor.execute(
+            """
+            SELECT DISTINCT all_data.[Material],all_data.[Material Description],
+                all_data.[Base Unit of Measure],gmdm.[Plant],mb52.[SLoc],
+                all_data.[ZMVKE Item Category],
+                pcode_fcode.[Description] AS [P-Code Description],
+                pcode_fcode.[Commodity],all_data.[MTyp],gmdm.[PRIM RE Code],
+                recode.[Title],recode.[Description],all_data.[MU-Flag],
+                all_data.[X-Plant Status],
+                xplantstatus.[Description] AS [X-Plant Description],
+                gmdm.[PRIM Traceability]
+            FROM dbo.BI_MM_ALL_DATA AS all_data
+            LEFT JOIN dbo.[REF_X_PLANT_STATUS_DESCRIPTIONS] AS xplantstatus ON
+                xplantstatus.[X-Plant Status Code]=all_data.[X-Plant Status]
+            LEFT JOIN dbo.REF_PCODE_FCODE AS pcode_fcode ON
+                pcode_fcode.[PCODE ]=all_data.[P Code]
+            LEFT JOIN dbo.SAP_ZQR_GMDM AS gmdm ON
+                gmdm.[Material Number]=all_data.[Material]
+            LEFT JOIN dbo.REF_PRODUCT_STATUS_CODES AS recode ON
+                recode.[Status Code]=gmdm.[PRIM RE Code]
+            LEFT JOIN dbo.SAP_MB52 AS mb52 ON
+                mb52.[Material]=all_data.[Material] and mb52.[Plnt]=gmdm.[Plant]
+            WHERE all_data.[ZMVKE Item Category]<>'NORM' AND
+                all_data.[Material] IN %s
+            ORDER BY all_data.[Material]
+            """,
+            (tuple(
+                map(lambda val: bytes(val, 'ascii'),
+                    [obj['2'] for obj in aData]
+                    )
+            ),)
+        )
+
+        tAllData = oCursor.fetchall()
+
+        if any([obj['10'] for obj in aData]):
+            oCursor.execute(
+                'SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM '
+                'dbo.REF_PCODE_FCODE WHERE [PCODE] IN %s',
+                (tuple(
+                    map(lambda val: bytes(val, 'ascii'),
+                        [re.match(
+                            r'^(?:\()?(?P<pcode>[A-Z]?\d{2,3})(?:-\d{4}\).*)?$',
+                            obj['10']).group('pcode') for obj in aData if
+                         re.match(r'^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$'
+                                  '|^\([A-Z]\d{2}-\d{4}\).*$', obj['10'] or '') is not None]
+                        )
+                ), )
+            )
+            tPCode = oCursor.fetchall()
+        else:
+            tPCode = ()
+
+        if any([obj['7'] for obj in aData]):
+            oCursor.execute(
+                'SELECT [Plant] FROM dbo.REF_PLANTS WHERE [Plant] IN %s',
+                (tuple(
+                    map(lambda val: bytes(val, 'ascii'),
+                        [obj['7'] for obj in aData if obj['7'] not in ('', None)]
+                        )
+                ), )
+            )
+            tPlants = oCursor.fetchall()
+        else:
+            tPlants = ()
+
+        if any([obj['8'] for obj in aData]):
+            oCursor.execute(
+                'SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC WHERE [SLOC] IN %s',
+                (tuple(
+                    map(lambda val: bytes(val, 'ascii'),
+                        [obj['8'] for obj in aData if obj['8'] not in ('', None)]
+                        )
+                ), )
+            )
+            tSLOC = oCursor.fetchall()
+        else:
+            tSLOC = ()
+
+        oCursor.close()
+
+        dPartData = {}
+        for row in tAllData:
+            if row[0] in dPartData:
+                # Add row data to existing entry
+                if row[1] not in dPartData[row[0]]['Description']:
+                    dPartData[row[0]]['Description'].append(row[1])
+
+                if row[2] not in dPartData[row[0]]['UOM']:
+                    dPartData[row[0]]['UOM'].append(row[2])
+
+                if (row[3], row[4]) not in dPartData[row[0]]['Plant/SLoc']:
+                    dPartData[row[0]]['Plant/SLoc'].append((row[3], row[4]))
+
+                if row[5] not in dPartData[row[0]]['ItemCat']:
+                    dPartData[row[0]]['ItemCat'].append(row[5])
+
+                if row[6] not in dPartData[row[0]]['P-Code']:
+                    dPartData[row[0]]['P-Code'].append(row[6])
+
+                if row[7] not in dPartData[row[0]]['Commodity']:
+                    dPartData[row[0]]['Commodity'].append(row[7])
+
+                if row[8] not in dPartData[row[0]]['M-Type']:
+                    dPartData[row[0]]['M-Type'].append(row[8])
+
+                if row[9] not in dPartData[row[0]]['RE-Code']:
+                    dPartData[row[0]]['RE-Code'].append(row[9])
+
+                if row[10] not in dPartData[row[0]]['RE-Code Title']:
+                    dPartData[row[0]]['RE-Code Title'].append(row[10])
+
+                if row[11] not in dPartData[row[0]]['RE-Code Desc']:
+                    dPartData[row[0]]['RE-Code Desc'].append(row[11])
+
+                if row[12] not in dPartData[row[0]]['MU-Flag']:
+                    dPartData[row[0]]['MU-Flag'].append(row[12])
+
+                if row[13] not in dPartData[row[0]]['X-Plant']:
+                    dPartData[row[0]]['X-Plant'].append(row[13])
+
+                if row[14] not in dPartData[row[0]]['X-Plant Desc']:
+                    dPartData[row[0]]['X-Plant Desc'].append(row[14])
+
+                if row[15] not in dPartData[row[0]]['Traceability']:
+                    dPartData[row[0]]['Traceability'].append(row[15])
+            else:
+                # Create new entry
+                dPartData[row[0]] = {
+                    'Description': [row[1]],
+                    'UOM': [row[2]],
+                    'Plant/SLoc': [(row[3], row[4])],
+                    'ItemCat': [row[5]],
+                    'P-Code': [row[6]],
+                    'Commodity': [row[7]],
+                    'M-Type': [row[8]],
+                    'RE-Code': [row[9]],
+                    'RE-Code Title': [row[10]],
+                    'RE-Code Desc': [row[11]],
+                    'MU-Flag': [row[12]],
+                    'X-Plant': [row[13]],
+                    'X-Plant Desc': [row[14]],
+                    'Traceability': [row[15]]
+                }
+            # end if
+        # end for
+
+        dPCodes = {}
+        for row in tPCode:
+            if row[0] in dPCodes:
+                dPCodes[row[0]]['FireCode'].append(row[1])
+                dPCodes[row[0]]['Description'].append(row[2])
+                dPCodes[row[0]]['Commodity'].append(row[3])
+            else:
+                dPCodes[row[0]] = {
+                    'FireCode': [row[1]],
+                    'Description': [row[2]],
+                    'Commodity': [row[3]]
+                }
+            # end if
+        # end for
+
     # Step through each row
     for index in range(len(aData)):
 
@@ -1922,7 +2087,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         if not re.match("^\d+(?:.\d+)?$", aData[index]['4'] or ''):
             if not bFormatCheckOnly:
                 error_matrix[index][4]['value'] += 'X - Invalid Order Qty.\n'
-            if aData[index]['4'] in ('None', ''):
+            if aData[index]['4'] in ('None', '', None):
                 aData[index]['4'] = ''
         # end if
 
@@ -1947,14 +2112,14 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                         aData[index]['10'] or '',
                         re.IGNORECASE):
             if not bFormatCheckOnly:
-                error_matrix[index][10]['value'] += 'X - Invalid P-Code.\n'
+                error_matrix[index][10]['value'] += 'X - Invalid P-Code format.\n'
         # end if
 
         # HW/SW Ind
         if aData[index]['11']:
             aData[index]['11'] = aData[index]['11'].upper()
 
-        if not re.match("^H(ARD)?W(ARE)?$|^S(OFT)?W(ARE)?$|^CS$|^$",
+        if not re.match("^HW$|^SW$|^CS$|^$",
                         aData[index]['11'] or '',
                         re.IGNORECASE):
             if not bFormatCheckOnly:
@@ -1989,262 +2154,187 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     'X - Invalid Amount provided.\n'
         # end if
 
-        if oHead.configuration_status.name == 'In Process' or (
-                    bCanWriteConfig and oHead.configuration_status.name ==
-                    'In Process/Pending'):
-            try:
-                oMPNCustMap = CustomerPartInfo.objects.get(
-                    part__product_number=aData[index]['2'].strip('. '),
-                    customer=oHead.customer_unit,
-                    active=True
-                )
-            except CustomerPartInfo.DoesNotExist:
-                oMPNCustMap = None
-            # end try
-
-            # Customer Asset
-            if oMPNCustMap:
-                aData[index]['25'] = 'Y' if oMPNCustMap.customer_asset else 'N'\
-                    if oMPNCustMap.customer_asset is False else ''
-            # end if
-
-            # Customer Asset tagging Req
-            if oMPNCustMap:
-                aData[index]['26'] = 'Y' if oMPNCustMap.customer_asset_tagging\
-                    else 'N' if oMPNCustMap.customer_asset_tagging is False\
-                    else ''
-            # end if
-
-            if aData[index]['25'] in ('N', 'NO') and aData[index]['26'] in \
-                    ('Y', 'YES'):
-                error_matrix[index][26]['value'] += \
-                    ('X - Cannot mark Customer Asset Tagging when '
-                     'part is not Customer Asset.\n')
-
-            # Customer Number
-            if oMPNCustMap:
-                aData[index]['27'] = oMPNCustMap.customer_number or ''
-            # end if
-
-            # Second Customer Number
-            if oMPNCustMap:
-                aData[index]['28'] = oMPNCustMap.second_customer_number or ''
-            # end if
-        # end if
+        if aData[index]['25'] in ('N', 'NO') and aData[index]['26'] in \
+                ('Y', 'YES'):
+            error_matrix[index][26]['value'] += \
+                ('X - Cannot mark Customer Asset Tagging when '
+                 'part is not Customer Asset.\n')
 
         if not bFormatCheckOnly:
-            # Collect data from database(s)
-            oCursor = connections['BCAMDB'].cursor()
-
+            corePartNumber = aData[index]['2'].strip('.')
             # Populate Read-only fields
-            P_Code = aData[index]['10'] if aData[index]['10'] and re.match(
-                "^\d{2,3}$", aData[index]['10'], re.IGNORECASE) else None
-            tPCode = None
-            oCursor.execute("SELECT DISTINCT [Material Description],[MU-Flag],"
-                            "[X-Plant Status],[Base Unit of Measure],[P Code],"
-                            "[MTyp],[ZMVKE Item Category] FROM dbo.BI_MM_ALL_DATA "
-                            "WHERE [Material]=%s AND [ZMVKE Item Category]<>'NORM'",
-                            [bytes(aData[index]['2'].strip('.'), 'ascii') if
-                             aData[index]['2'] else None]
-                            )
 
-            tPartData = oCursor.fetchall()
-            if tPartData:
+            if corePartNumber in dPartData.keys():
                 if oHead.configuration_status.name == 'In Process':
                     # Product Description
                     if aData[index]['3'] in (None, ''):
-                        aData[index]['3'] = tPartData[0][0] \
-                            if tPartData[0][0] not in (None, 'NONE', 'None') \
-                            else ''
+                        aData[index]['3'] = dPartData[corePartNumber]['Description'][0] or ''
 
                     # MU-Flag
-                    aData[index]['15'] = tPartData[0][1] \
-                        if tPartData[0][1] not in (None, 'NONE', 'None') else ''
+                    aData[index]['15'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
 
                     # X-Plant
-                    aData[index]['16'] = tPartData[0][2] \
-                        if tPartData[0][2] not in (None, 'NONE', 'None') else ''
+                    aData[index]['16'] = dPartData[corePartNumber]['X-Plant'][0] or ''
 
                     # UoM
-                    aData[index]['5'] = tPartData[0][3] \
-                        if tPartData[0][3] not in (None, 'NONE', 'None') else ''
+                    aData[index]['5'] = dPartData[corePartNumber]['UOM'][0] or ''
 
                     # Item Category Group
                     if not re.match("^Z[A-Z0-9]{3}$|^$",
                                     aData[index]['9'] or '',
                                     re.IGNORECASE):
-                        aData[index]['9'] = tPartData[0][6] \
-                            if tPartData[0][6] not in (None, 'NONE', 'None') \
-                            else ''
+                        aData[index]['9'] = dPartData[corePartNumber]['ItemCat'][0] or ''
 
                     # Product Package Type
-                    if tPartData[0][6] == 'ZF26':
+                    if dPartData[corePartNumber]['ItemCat'][0] == 'ZF26':
                         aData[index]['12'] = 'Fixed Product Package (FPP)'
-                    elif tPartData[0][5] == 'ZASO':
+                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZASO':
                         aData[index]['12'] = 'Assembled Sales Object (ASO)'
                         if aData[index]['6'] in (None, ''):
                             error_matrix[index][6]['value'] += \
                                 'X - ContextID must be populated for ASO parts.\n'
-                    elif tPartData[0][5] == 'ZAVA':
+                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZAVA':
                         aData[index]['12'] = 'Material Variant (MV)'
-                    elif tPartData[0][5] == 'ZEDY':
+                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZEDY':
                         aData[index]['12'] = 'Dynamic Product Package (DPP)'
 
                     # X-Plant Description
-                    if tPartData[0][2]:
-                        oCursor.execute(
-                            'SELECT [Description] FROM '
-                            'dbo.[REF_X_PLANT_STATUS_DESCRIPTIONS] '
-                            'WHERE [X-Plant Status Code]=%s',
-                            [bytes(tPartData[0][2], 'ascii')]
-                        )
-                        tXPlant = oCursor.fetchall()
-                        if tXPlant:
-                            if tXPlant[0][0] not in \
-                                    error_matrix[index][16]['value']:
-                                error_matrix[index][16]['value'] += \
-                                    tXPlant[0][0] + '\n'
-                        # end if
+                    if dPartData[corePartNumber]['X-Plant Desc'][0]\
+                            and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][16]['value']:
+                        error_matrix[index][16]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
                     # end if
                 # end if
-
-                # P-Code
-                P_Code = aData[index]['10'] if\
-                    aData[index]['10'] is not None and re.match(
-                        "^\d{2,3}$", aData[index]['10'], re.IGNORECASE)\
-                    else tPartData[0][4]
             else:
                 error_matrix[index][2]['value'] += \
-                    '! - Product Number not found.'
-                aData[index]['15'] = ''
-                aData[index]['16'] = ''
+                    '! - Product Number not found.\n'
+                if oHead.configuration_status.name == 'In Process':
+                    aData[index]['5'] = ''
+                    aData[index]['14'] = ''
+                    aData[index]['15'] = ''
+                    aData[index]['16'] = ''
             # end def
 
-            if P_Code:
-                oCursor.execute(
-                    'SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM '
-                    'dbo.REF_PCODE_FCODE WHERE [PCODE]=%s',
-                    [bytes(P_Code, 'ascii')]
-                )
-                tPCode = oCursor.fetchall()
-            # end if
-
-            if tPCode:
-                # P-Code, Fire Code, Description
-                if aData[index]['10'] in (None, '') or re.match(
-                        "^\d{2,3}$", aData[index]['10'], re.IGNORECASE):
-                    aData[index]['10'] = tPCode[0][2] if tPCode[0][2] else ''
+            # P-Code, Fire Code, Description & HW/SW Indicator
+            if aData[index]['10'] in (None, ''):  # P-Code is blank, so fill in with data from part (if available)
+                if corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
+                    aData[index]['10'] = dPartData[corePartNumber]['P-Code'][0]
+                else:
+                    aData[index]['10'] = ''
 
                 # HW/SW Indication
-                if aData[index]['11'] in ('None',):
-                    aData[index]['11'] = tPCode[0][3] if tPCode[0][3] else ''
+                if aData[index]['11'] in ('None', '', None) and corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
+                    aData[index]['11'] = dPartData[corePartNumber]['Commodity'][0]
+                else:
+                    aData[index]['11'] = aData[index]['11'] or ''
                 # end if
-            # end if
+            else:  # P-Code is populated (but may not be a valid value)
+                # If P-Code is valid, extract the P-Code portion
+                if re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
+                            "|^\([A-Z]\d{2}-\d{4}\).*$",
+                            aData[index]['10'],
+                            re.IGNORECASE):
+                    P_Code = re.match(
+                        r'^(?:\()?(?P<pcode>[A-Z]?\d{2,3})(?:-\d{4}\).*)?$',
+                        aData[index]['10']).group('pcode')
 
-            oCursor.execute(
-                'SELECT DISTINCT [PRIM RE Code],[PRIM Traceability] FROM '
-                'dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
-                [bytes(
-                    aData[index]['2'].strip('.'), 'ascii'
-                ) if aData[index]['2'] else None]
-            )
-            tPartData = oCursor.fetchall()
-            if tPartData:
-                # RE-Code
-                aData[index]['14'] = tPartData[0][0] if tPartData[0][0] else ''
+                    # Use the extracted value to find the full P-Code description
+                    if P_Code in dPCodes.keys():
+                        P_Code = dPCodes[P_Code]
+                        bVerified = True
+                    else:  # No matching P-Code was found in database
+                        bVerified = False
 
-                # Traceability Req
-                aData[index]['24'] = 'Y' if tPartData[0][1] == 'Z001' else 'N' \
-                    if tPartData[0][1] == 'Z002' else ''
+                    if bVerified:  # P-Code is valid and has a full description available
+                        # # If the matching value does not match what is stored for the part, add a warning
+                        # if corePartNumber in dPartData.keys() and dPartData[corePartNumber]['P-Code'][0] != P_Code['Description'][0]:
+                        #     error_matrix[index][10]['value'] += '! - P-Code provided does not match P-Code stored for Material Number.\n'
 
-                oCursor.execute(
-                    'SELECT DISTINCT [Title],[Description] FROM '
-                    'dbo.REF_PRODUCT_STATUS_CODES WHERE [Status Code]=%s',
-                    [bytes(tPartData[0][0] or '', 'ascii')]
-                )
+                        # # If the matching value does not match what is stored in the DB for the p-code, add a warning
+                        # if re.match("^\(\d{2,3}-\d{4}\).*$|^\([A-Z]\d{2}-\d{4}\).*$", aData[index]['10'], re.IGNORECASE) and aData[index]['10'].upper() != P_Code['Description'][0].upper():
+                        #     if oHead.configuration_status.name == 'In Process':
+                        #         aData[index]['10'] = P_Code['Description'][0].upper()
+                        #     else:
+                        #         error_matrix[index][10]['value'] += '! - P-Code description is not latest value.\n'
 
-                tRECode = oCursor.fetchall()
-                if tRECode:
-                    # RE-Code description
-                    if aData[index]['17']:
-                        if tRECode[0][0] not in aData[index]['17']:
-                            aData[index]['17'] = aData[index]['17'] + '; ' + \
-                                                 tRECode[0][0]
+                        # If P-Code provided is valid, but is not in full description format, replace with full description
+                        if re.match("^\(\d{2,3}-\d{4}\).*$|^\([A-Z]\d{2}-\d{4}\).*$", aData[index]['10'], re.IGNORECASE) is None and oHead.configuration_status.name == 'In Process':
+                            aData[index]['10'] = P_Code['Description'][0].upper()
+
+                        # HW/SW Indication
+                        if aData[index]['11'] in ('None', '', None):
+                            aData[index]['11'] = P_Code['Commodity'][0] or ''
+                        # end if
                     else:
-                        aData[index]['17'] = tRECode[0][0]
+                        # Leave value as-is and add warning
+                        error_matrix[index][10]['value'] += '! - P-Code not found.\n'
+
+                        # HW/SW Indication
+                        if aData[index]['11'] in ('None', '', None) and corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
+                            aData[index]['11'] = dPartData[corePartNumber]['Commodity'][0]
+                        else:
+                            aData[index]['11'] = aData[index]['11'] or ''
+                        # end if
+
+                else:  # else leave it alone, the error will be displayed to the user
+                    aData[index]['10'] = aData[index]['10'] or ''
+
+                    # HW/SW Indication
+                    if aData[index]['11'] in ('None', '', None) and corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
+                        aData[index]['11'] = dPartData[corePartNumber]['Commodity'][0]
+                    else:
+                        aData[index]['11'] = aData[index]['11'] or ''
+                    # end if
+
+            if oHead.configuration_status.name == 'In Process':
+                if corePartNumber in dPartData.keys():
+                    # RE-Code
+                    aData[index]['14'] = dPartData[corePartNumber]['RE-Code'][0] or ''
+
+                    # Traceability Req
+                    aData[index]['24'] = 'Y' if dPartData[corePartNumber]['Traceability'][0] == 'Z001' else 'N' \
+                        if dPartData[corePartNumber]['Traceability'][0] == 'Z002' else ''
 
                     # RE-Code title
-                    if tRECode[0][1] not in error_matrix[index][14]['value']:
-                        error_matrix[index][14]['value'] += tRECode[0][1] + '\n'
+                    if aData[index]['17']:
+                        if dPartData[corePartNumber]['RE-Code Title'][0] and dPartData[corePartNumber]['RE-Code Title'][0] not in aData[index]['17']:
+                            aData[index]['17'] = aData[index]['17'] + '; ' + \
+                                                 dPartData[corePartNumber]['RE-Code Title'][0]
+                    else:
+                        aData[index]['17'] = dPartData[corePartNumber]['RE-Code Title'][0] or ''
+
+                    # RE-Code description
+                    if dPartData[corePartNumber]['RE-Code Desc'][0] and dPartData[corePartNumber]['RE-Code Desc'][0] not in error_matrix[index][14]['value']:
+                        error_matrix[index][14]['value'] += dPartData[corePartNumber]['RE-Code Desc'][0] + '\n'
+                else:
+                    # RE-Code
+                    aData[index]['14'] = ''
+                    # Traceability Req
+                    aData[index]['24'] = ''
                 # end if
-            else:
-                # RE-Code
-                aData[index]['14'] = ''
-                # Traceability Req
-                aData[index]['24'] = ''
             # end if
 
             # Ensure Plant exists for part number
             if aData[index]['7'] not in ('', None):
-                oCursor.execute(
-                    'SELECT [Plant] FROM dbo.REF_PLANTS WHERE [Plant]=%s',
-                    [bytes(aData[index]['7'], 'ascii')]
-                )
-                tPlants = oCursor.fetchall()
-                if not tPlants:
+                if (aData[index]['7'],) not in tPlants:
                     error_matrix[index][7]['value'] += \
                         "! - Plant not found in database.\n"
 
-                oCursor.execute(
-                    'SELECT [Plnt] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND '
-                    '[Material]=%s',
-                    [bytes(aData[index]['7'], 'ascii'),
-                     bytes(aData[index]['2'], 'ascii')]
-                )
-                tPlants = oCursor.fetchall()
-                if (aData[index]['7'],) not in tPlants:
+                if corePartNumber in dPartData.keys() and not any(aData[index]['7'] == plant for (plant, _) in dPartData[corePartNumber]['Plant/SLoc']):
                     error_matrix[index][7]['value'] += \
                         "! - Plant not found for material.\n"
             # end if
 
             # Ensure SLOC exists for part number
             if aData[index]['8'] not in (None, ''):
-                oCursor.execute(
-                    'SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC '
-                    'WHERE [SLOC]=%s',
-                    [bytes(aData[index]['8'], 'ascii')]
-                )
-                tSLOC = oCursor.fetchall()
-                if not tSLOC:
+                if (aData[index]['8'],) not in tSLOC:
                     error_matrix[index][8]['value'] += \
                         "! - SLOC not found in database.\n"
 
-                oCursor.execute(
-                    'SELECT [Plnt],[SLoc] FROM dbo.SAP_MB52 WHERE [Plnt]=%s '
-                    'AND [SLoc]=%s AND [Material]=%s',
-                    [bytes(aData[index]['7'], 'ascii'),
-                     bytes(aData[index]['8'], 'ascii'),
-                     bytes(aData[index]['2'], 'ascii')]
-                )
-                tResults = oCursor.fetchall()
-                if (aData[index]['7'], aData[index]['8']) not in tResults:
+                if corePartNumber in dPartData.keys() and (aData[index]['7'], aData[index]['8']) not in dPartData[corePartNumber]['Plant/SLoc']:
                     error_matrix[index][8]['value'] += \
                         '! - Plant/SLOC combination not found for material.\n'
                 # end if
             # end if
-
-            oCursor.close()
-        # end if
-
-        # Item Category
-        if aData[index]['9']:
-            aData[index]['9'] = aData[index]['9'].upper()
-
-        if not re.match("^Z[A-Z0-9]{3}$|^$",
-                        aData[index]['9'] or '',
-                        re.IGNORECASE):
-            if not bFormatCheckOnly:
-                error_matrix[index][9]['value'] += 'X - Invalid Item Cat.\n'
         # end if
 
         aLineNumbers.append(aData[index]['1'])
@@ -2593,46 +2683,8 @@ def ValidateLineNumber(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    if not re.match("^\d+(?:\.\d+){0,2}$|^$", dData['value']):
-        dResult['error']['value'] = \
-            'X - Invalid character. Use 0-9 and "." only.\n'
-        dResult['status'] = 'X'
-        return
 
-    if dData['value'] not in (None, ''):
-        if dData['part_number'] not in (None, ''):
-            if dData['value'].count('.') == 2:
-                if StrToBool(dData['allowChain']):
-                    dResult['propagate']['line'][2] = {
-                        'value': '..' + dData['part_number'].strip('. '),
-                        'chain': False}
-            elif dData['value'].count('.') == 1:
-                if StrToBool(dData['allowChain']):
-                    dResult['propagate']['line'][2] = {
-                        'value': '.' + dData['part_number'].strip('. '),
-                        'chain': False}
-            # end if
-        # end if
-
-    if '.' in dData['value']:
-        if dData['value'].count('.') == 2:
-            if dData['value'][:dData['value'].rfind('.')] not in \
-                    dData.getlist('other_lines[]'):
-                dResult['error']['value'] = 'X - Parent line item not found.\n'
-                dResult['status'] = 'X'
-                return
-        else:
-            if dData['value'][:dData['value'].find('.')] not in \
-                    dData.getlist('other_lines[]'):
-                dResult['error']['value'] = 'X - Parent line item not found.\n'
-                dResult['status'] = 'X'
-                return
-        # end if
-
-    if dData['value'] in dData.getlist('other_lines[]'):
-        dResult['error']['value'] = 'X - Duplicate line number exists.\n'
-        dResult['status'] = 'X'
-        return
+    return
 # end def
 
 
@@ -2646,146 +2698,16 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
     on the configuration being validated
     :return: dictionary
     """
-    try:
-        int(dData['value'].strip('. '))
-        dResult['value'] = dData['value'].upper().strip() + '/'
-    except ValueError:
-        dResult['value'] = dData['value'].upper().strip()
-
-    if StrToBool(dData['allowChain']):
-        dResult['propagate']['line'][4] = {
-            'value': dData['quantity'],
-            'chain': True
-        }
-
-    if len(dResult['value'].strip('.')) > 18:
-        dResult['error']['value'] = \
-            'X - Product Number exceeds 18 characters.\n'
-        dResult['status'] = 'X'
-        return
-
-    if dData['line_number'] in ('', None):
-        bNewParent = not dResult['value'].startswith('.')
-        bNewChild = dResult['value'].startswith('.') and not \
-            dResult['value'].startswith('..')
-        bNewGrandchild = dResult['value'].startswith('..')
-        assert bNewParent ^ bNewChild ^ bNewGrandchild
-
-        iParent = 0
-        iChild = 0
-        iGrandchild = 0
-
-        # Find closest parent line item (which may be a child) or top-level
-        # line item
-        other_lines = dData.getlist('other_lines[]')
-        idx = int(dData['row_index']) - 1
-        while idx >= 0:
-            if idx < len(other_lines) and\
-                    len(other_lines[idx].split('.')) > 0 and\
-                    other_lines[idx].split('.')[0] != '':
-                iParent = int(other_lines[idx].split('.')[0])
-                if bNewParent:
-                    break
-
-                if len(other_lines[idx].split('.')) > 1:
-                    iChild = int(
-                        other_lines[idx].split('.')[1]
-                    )
-                if bNewChild:
-                    break
-
-                if len(other_lines[idx].split('.')) > 2:
-                    iGrandchild = int(
-                        other_lines[idx].split('.')[2]
-                    )
-                if bNewGrandchild:
-                    break
-            else:
-                idx -= 1
-
-        if bNewParent:
-            # Check if next highest top-level line number (10 multiple)
-            # is available
-            if str(iParent + 10) not in other_lines:
-                iParent += 10
-            # Try to fit new parent between most previous and next
-            # if that doesn't work, add a new 10-based parent
-            else:
-                bMidAvailable = False
-                for iStep in range(1, 10):
-                    if iParent + iStep > 10 and str(iParent + iStep) not in \
-                            other_lines:
-                        bMidAvailable = True
-                        iParent += iStep
-                        break
-
-                if not bMidAvailable:
-                    if iParent == 0:
-                        iParent += 10
-                    while str(iParent) in other_lines:
-                        iParent += 10
-
-            sNewLineNumber = str(iParent)
-        elif bNewChild:
-            if iParent == 0:
-                iParent = 10
-
-            if iChild == 0:
-                iChild = 1
-
-            while ".".join([str(iParent), str(iChild)]) in \
-                    other_lines:
-                iChild += 1
-
-            sNewLineNumber = ".".join([str(iParent), str(iChild)])
-        elif bNewGrandchild:
-            if iParent == 0:
-                iParent = 10
-
-            if iChild == 0:
-                iChild = 1
-
-            if iGrandchild == 0:
-                iGrandchild = 1
-
-            while ".".join([str(iParent), str(iChild), str(iGrandchild)]) in \
-                    other_lines:
-                iGrandchild += 1
-
-            sNewLineNumber = ".".join([str(iParent),
-                                       str(iChild), str(iGrandchild)])
-        else:
-            sNewLineNumber = ''
-
-        if StrToBool(dData['allowChain']):
-            dResult['propagate']['line'][1] = {
-                'value': sNewLineNumber,
-                'chain': True
-            }
-    else:
-        if dData['line_number'].count('.') == 0:
-            dResult['value'] = dResult['value'].strip('.')
-        elif dData['line_number'].count('.') == 1:
-            dResult['value'] = '.' + dResult['value'].strip('.')
-        elif dData['line_number'].count('.') == 2:
-            dResult['value'] = '..' + dResult['value'].strip('.')
-        dResult['propagate']['line'][1] = {'value': dData['line_number'],
-                                           'chain': True}
-    # end if
-
-    if StrToBool(dData['allowChain']):
-        dResult['propagate']['line'][29] = {
-            'value': dData['value'].upper().strip('./'),
-            'chain': False
-        }
 
     oCursor = connections['BCAMDB'].cursor()
 
     oCursor.execute(
         ('SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],'
-         "[Base Unit of Measure],[P Code],[MTyp],[ZMVKE Item Category] FROM  "
-         "dbo.BI_MM_ALL_DATA WHERE [Material]=%s AND "
-         "[ZMVKE Item Category]<>'NORM'"),
+         "[Base Unit of Measure],[P Code],[MTyp],[ZMVKE Item Category],"
+         "[PRIM RE Code],[PRIM Traceability] FROM "
+         "dbo.BI_MM_ALL_DATA LEFT JOIN dbo.SAP_ZQR_GMDM ON [Material Number]=[Material] "
+         "WHERE [ZMVKE Item Category]<>'NORM' AND [Material]=%s"
+         ),
         [bytes(dResult['value'].strip('.'), 'ascii')])
 
     tAllDataInfo = oCursor.fetchall()
@@ -2803,6 +2725,16 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 'value': tAllDataInfo[0][1], 'chain': True}
             dResult['propagate']['line'][16] = {
                 'value': tAllDataInfo[0][2], 'chain': True}
+
+            dResult['propagate']['line'][14] = {
+                'value': tAllDataInfo[0][7],
+                'chain': True
+            }
+            dResult['propagate']['line'][24] = {
+                'value': 'Y' if tAllDataInfo[0][8] == 'Z001' else 'N' if
+                tAllDataInfo[0][8] == 'Z002' else '',
+                'chain': True
+            }
 
             if tAllDataInfo[0][6] == 'ZF26':
                 dResult['propagate']['line'][12] = {
@@ -2825,10 +2757,11 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                     'chain': False
                 }
 
-            dResult['propagate']['line'][6] = {
-                'value': dData['context_id'],
-                'chain': True
-            }
+            if 'context_id' in dData.keys():
+                dResult['propagate']['line'][6] = {
+                    'value': dData['context_id'],
+                    'chain': True
+                }
 
     else:
         oCursor.close()
@@ -2836,29 +2769,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
         dResult['status'] = '!'
         return
 
-    oCursor.execute(
-        'SELECT DISTINCT [PRIM RE Code],[PRIM Traceability] FROM '
-        'dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
-        [bytes(dResult['value'].strip('.'), 'ascii')]
-    )
-    tPrimData = oCursor.fetchall()
-    oCursor.close()
-
-    if tPrimData:
-        if StrToBool(dData['allowChain']):
-            dResult['propagate']['line'][14] = {
-                'value': tPrimData[0][0],
-                'chain': True
-            }
-            dResult['propagate']['line'][24] = {
-                'value': 'Y' if tPrimData[0][1] == 'Z001' else 'N' if
-                tPrimData[0][1] == 'Z002' else '',
-                'chain': True
-            }
-
-    if oHead.configuration_status.name == 'In Process' or \
-            (bCanWriteConfig and
-                oHead.configuration_status.name == 'In Process/Pending'):
+    if oHead.configuration_status.name == 'In Process':
         try:
             oMPNCustMap = CustomerPartInfo.objects.get(
                 part__product_number=dResult['value'].strip('.'),
@@ -2907,13 +2818,8 @@ def ValidateDescription(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if len(dData['value'].strip()) > 40:
-        dResult['error']['value'] = \
-            'X - Product Description exceeds 40 characters.\n'
-        dResult['status'] = 'X'
-        return
+    return
 # end def
 
 
@@ -2924,15 +2830,8 @@ def ValidateQuantity(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    if not re.match("^\d+(?:.\d+)?$", dData['value']):
-        dResult['error']['value'] = 'X - Invalid Order Qty.\n'
-        dResult['status'] = 'X'
-        return
 
-    try:
-        dResult['value'] = str(float(dData['value']))
-    except ValueError:
-        pass
+    return
 # end def
 
 
@@ -2943,22 +2842,8 @@ def ValidateContextID(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    oCursor = connections['BCAMDB'].cursor()
-    oCursor.execute(
-        'SELECT DISTINCT [MTyp] FROM dbo.BI_MM_ALL_DATA WHERE [Material]=%s',
-        [bytes(dData['part_number'].strip('.'), 'ascii')]
-    )
 
-    tMTypInfo = oCursor.fetchall()
-    oCursor.close()
-
-    if tMTypInfo:
-        if tMTypInfo[0][0] == 'ZASO' and dData['value'] in (None, ''):
-            dResult['error']['value'] = \
-                'X - ContextID must be populated for ASO parts.\n'
-            dResult['status'] = 'X'
-            return
-
+    return
 # end def
 
 
@@ -2969,10 +2854,6 @@ def ValidatePlant(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    if not re.match("^\d{4}$|^$", dData['value']):
-        dResult['error']['value'] = 'X - Invalid Plant.\n'
-        dResult['status'] = 'X'
-        return
 
     if dData['value'] != '':
         oCursor = connections['BCAMDB'].cursor()
@@ -2990,7 +2871,7 @@ def ValidatePlant(dData, dResult):
             return
 
         oCursor.execute(
-            'SELECT [Plnt] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [Material]=%s',
+            'SELECT [Plnt] FROM dbo.SAP_ZQR_GMDM WHERE [Material]=%s',
             [bytes(dData['value'], 'ascii'),
              bytes(dData['part_number'].strip('. '), 'ascii')])
         tResults = oCursor.fetchall()
@@ -3009,10 +2890,6 @@ def ValidateSLOC(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    if not re.match("^\w{3,4}$|^$", dData['value']):
-        dResult['error']['value'] = 'X - Invalid SLOC.\n'
-        dResult['status'] = 'X'
-        return
 
     oCursor = connections['BCAMDB'].cursor()
 
@@ -3030,10 +2907,8 @@ def ValidateSLOC(dData, dResult):
 
     if dData['plant'] not in ('', None):
         oCursor.execute(
-            'SELECT [Plnt],[SLoc] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND '
-            '[SLoc]=%s AND [Material]=%s',
+            'SELECT [SLoc] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [Material]=%s',
             [bytes(dData['plant'], 'ascii'),
-             bytes(dData['value'], 'ascii'),
              bytes(dData['part_number'].strip('. '), 'ascii')])
         tResults = oCursor.fetchall()
         oCursor.close()
@@ -3054,7 +2929,8 @@ def ValidateItemCategory(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    pass
+
+    return
 # end def
 
 
@@ -3065,21 +2941,17 @@ def ValidatePCode(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper()
-    if not re.match(
-            "^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
-            "|^\([A-Z]\d{2}-\d{4}\).*$|^$",
-            dData['value'], re.I):
-        dResult['error']['value'] = 'X - Invalid P-Code.\n'
-        dResult['status'] = 'X'
-        return
 
     if re.match(r'^\(\d{2,3}-\d{4}\).*$|^\([A-Z]\d{2}-\d{4}\).*$',
                 dResult['value'], re.I):
         sPCode = re.match(r'^\((?P<pcode>.{2,3})-\d{4}\).*$',
                           dResult['value'], re.I).group('pcode')
-    else:
+    elif re.match(r'^\d{2,3}$|^[A-Z]\d{2}$', dResult['value'], re.I):
         sPCode = dResult['value']
+    else:
+        dResult['error']['value'] = 'X - Invalid P-Code format.\n'
+        dResult['status'] = 'X'
+        return
 
     oCursor = connections['BCAMDB'].cursor()
 
@@ -3096,7 +2968,7 @@ def ValidatePCode(dData, dResult):
             dResult['propagate']['line'][11] = {'value': tPCode[0][3],
                                                 'chain': True}
     else:
-        dResult['error']['value'] = 'X - Invalid P-Code.\n'
+        dResult['error']['value'] = 'X - P-Code not found.\n'
         dResult['status'] = 'X'
         return
     # end if
@@ -3111,17 +2983,8 @@ def ValidateCommodityType(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper()
-    if not re.match(
-            "^H(ARD)?W(ARE)?$|^S(OFT)?W(ARE)?$|^CS$|^$",
-            dData['value'], re.I):
-        dResult['error']['value'] = 'X - Invalid HW/SW Ind.\n'
-        dResult['status'] = 'X'
-        return
 
-    if dData['pcode'] in ('(752-2487) LTE RBS SW', '(872-2491) RBS HWAC',
-                          '752', '872'):
-        dResult['value'] = 'SW'
+    return
 # end def
 
 
@@ -3132,7 +2995,8 @@ def ValidatePackageType(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    pass
+
+    return
 # end def
 
 
@@ -3143,7 +3007,8 @@ def ValidateSPUD(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    pass
+
+    return
 # end def
 
 
@@ -3154,7 +3019,6 @@ def ValidateRECode(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
     oCursor = connections['BCAMDB'].cursor()
     oCursor.execute(
@@ -3185,7 +3049,8 @@ def ValidateMUFlag(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
+
+    return
 # end def
 
 
@@ -3196,7 +3061,6 @@ def ValidateXPlant(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
     oCursor = connections['BCAMDB'].cursor()
 
@@ -3222,7 +3086,6 @@ def ValidateUnitPrice(dData, dResult, oHead):
     :param oHead: Header object being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
     if dResult['value'] not in ('', None):
         if dData['line_number'] == '10' and not oHead.pick_list:
@@ -3250,10 +3113,8 @@ def ValidateHigherLevel(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    if dData['value'] and dData['value'] not in dData.getlist('other_lines'):
-        dResult['error']['value'] = '! - Item number not found.\n'
-        dResult['status'] = '!'
-        return
+
+    return
 # end def
 
 
@@ -3264,7 +3125,8 @@ def ValidateMaterialGroup(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    pass
+
+    return
 # end def
 
 
@@ -3275,7 +3137,8 @@ def ValidatePurchaseOrderItemNumber(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    pass
+
+    return
 # end def
 
 
@@ -3287,37 +3150,8 @@ def ValidateCondition(dData, dResult, oHead):
     :param oHead: Header object being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if dResult['value'] == 'ZUST' and 'ZUST' in dData.getlist('other_conds[]'):
-        dResult['error']['value'] = 'X - Multiple ZUST conditions.\n'
-        dResult['status'] = 'X'
-        return
-
-    if dResult['value'] == 'ZUST' and dData['line_number'] != '10' and not \
-            oHead.pick_list:
-        dResult['error']['value'] = 'X - ZUST only allowed on line 10.\n'
-        dResult['status'] = 'X'
-        return
-
-    if StrToBool(dData['allowChain']):
-        if dResult['value'] in ('ZPRU', 'ZPR1') or 'ZPRU' in dData.getlist(
-                'other_conds[]') or 'ZPR1' in dData.getlist('other_conds'):
-            dResult['propagate']['needs_zpru'] = 'True'
-        else:
-            dResult['propagate']['needs_zpru'] = 'False'
-
-    if dData['amount'] in ('', None) and dResult['value'] not in ('', None):
-        dResult['error']['value'] = 'X - Condition provided without Amount.\n'
-        dResult['status'] = 'X'
-        return
-    else:
-        if bool(dData['previous_value'] in ('', None)) ^ bool(
-                        dResult['value'] in ('', None)):
-            if StrToBool(dData['allowChain']):
-                dResult['propagate']['line'][23] = {'value': dData['amount'],
-                                                    'chain': True}
-    # end if
+    return
 # end def
 
 
@@ -3328,25 +3162,8 @@ def ValidateAmount(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].replace('$', '').replace(',', '')
 
-    if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$",
-                    dData['value'].replace('$', '').replace(',', '')):
-        dResult['error']['value'] = 'X - Invalid Amount.\n'
-        dResult['status'] = 'X'
-        return
-
-    if dData['condition'] in ('', None) and dResult['value'] not in ('', None):
-        dResult['error']['value'] = 'X - Amount provided without Condition.\n'
-        dResult['status'] = 'X'
-        return
-    else:
-        if bool(dData['previous_value'] in ('', None)) ^ bool(
-                        dResult['value'] in ('', None)):
-            if StrToBool(dData['allowChain']):
-                dResult['propagate']['line'][22] = {'value': dData['condition'],
-                                                    'chain': True}
-    # end if
+    return
 # end def
 
 
@@ -3357,12 +3174,8 @@ def ValidateTraceability(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if not re.match("^Y$|^N$|^$", dData['value'].strip(), re.I):
-        dResult['error']['value'] = 'X - Invalid Traceability Req.\n'
-        dResult['status'] = 'X'
-        return
+    return
 # end def
 
 
@@ -3376,41 +3189,8 @@ def ValidateCustomerAsset(dData, dResult, oHead, bCanWriteConfig):
     on the configuration being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if not re.match("^Y$|^N$|^$", dData['value'].strip(), re.I):
-        dResult['error']['value'] = 'X - Invalid Customer Asset.\n'
-        dResult['status'] = 'X'
-        return
-
-    if dData['tagging'] != '':
-        if StrToBool(dData['allowChain']):
-            dResult['propagate']['line'][26] = {
-                'value': dData['tagging'], 'chain': True
-            }
-
-    if oHead.configuration_status.name == 'In Process' or \
-            (bCanWriteConfig and
-                oHead.configuration_status.name == 'In Process/Pending'):
-        try:
-            oMPNCustMap = CustomerPartInfo.objects.get(
-                part__product_number=dData['part_number'].strip('. '),
-                customer=oHead.customer_unit,
-                active=True)
-
-            if (oMPNCustMap.customer_asset is True and dData['value'] != 'Y') \
-                    or (oMPNCustMap.customer_asset is False and
-                        dData['value'] != 'N') or (
-                        oMPNCustMap.customer_asset is None and
-                        dData['value'] not in ('', 'NONE', None)):
-                dResult['error']['value'] = \
-                    "! - Customer Asset does not match stored data.\n"
-                dResult['status'] = '!'
-                return
-        except CustomerPartInfo.DoesNotExist:
-            if dData['value']:
-                dResult['propagate']['line'][25] = {'value': None,
-                                                    'chain': False}
+    return
 # end def
 
 
@@ -3424,44 +3204,8 @@ def ValidateAssetTagging(dData, dResult, oHead, bCanWriteConfig):
     on the configuration being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if not re.match("^Y$|^N$|^$", dData['value'].strip(), re.I):
-        dResult['error']['value'] = 'X - Invalid Customer Asset Tagging Req.\n'
-        dResult['status'] = 'X'
-        return
-
-    if dData['value'].upper().strip() == 'Y' and \
-            dData['asset'].upper().strip() == 'N':
-        dResult['error']['value'] = ('X - Cannot mark Customer Asset Tagging '
-                                     'when part is not Customer Asset.\n')
-        dResult['status'] = 'X'
-        return
-
-    if oHead.configuration_status.name == 'In Process' or \
-            (bCanWriteConfig and
-                oHead.configuration_status.name == 'In Process/Pending'):
-        try:
-            oMPNCustMap = CustomerPartInfo.objects.get(
-                part__product_number=dData['part_number'].strip('. '),
-                customer=oHead.customer_unit,
-                active=True)
-
-            if (oMPNCustMap.customer_asset_tagging is True and
-                    dData['value'] != 'Y') or (
-                            oMPNCustMap.customer_asset_tagging is False and
-                            dData['value'] != 'N') or (
-                            oMPNCustMap.customer_asset_tagging is None and
-                            dData['value'] not in ('', 'NONE', None)):
-                dResult['error']['value'] = \
-                    "! - Customer Asset Tagging does not match stored data.\n"
-                dResult['status'] = '!'
-                return
-        except CustomerPartInfo.DoesNotExist:
-            if dData['value']:
-                dResult['propagate']['line'][26] = {'value': None,
-                                                    'chain': False}
-                return
+    return
 # end def
 
 
@@ -3475,27 +3219,8 @@ def ValidateCustomerNumber(dData, dResult, oHead, bCanWriteConfig):
     on the configuration being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if oHead.configuration_status.name == 'In Process' or \
-            (bCanWriteConfig and
-                oHead.configuration_status.name == 'In Process/Pending'):
-        try:
-            oMPNCustMap = CustomerPartInfo.objects.get(
-                part__product_number=dData['part_number'].strip('. '),
-                customer=oHead.customer_unit,
-                active=True)
-
-            if oMPNCustMap.customer_number != dData['value']:
-                dResult['error']['value'] = \
-                    "! - Customer Number does not match stored data.\n"
-                dResult['status'] = '!'
-                return
-        except CustomerPartInfo.DoesNotExist:
-            if dData['value']:
-                dResult['propagate']['line'][27] = {'value': None,
-                                                    'chain': False}
-                return
+    return
 # end def
 
 
@@ -3509,27 +3234,8 @@ def ValidateSecCustomerNumber(dData, dResult, oHead, bCanWriteConfig):
     on the configuration being validated
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if oHead.configuration_status.name == 'In Process' or \
-            (bCanWriteConfig and
-                oHead.configuration_status.name == 'In Process/Pending'):
-        try:
-            oMPNCustMap = CustomerPartInfo.objects.get(
-                part__product_number=dData['part_number'].strip('. '),
-                customer=oHead.customer_unit,
-                active=True)
-
-            if oMPNCustMap.second_customer_number and \
-                    oMPNCustMap.second_customer_number != dData['value']:
-                dResult['error']['value'] = ("! - Second Customer Number does "
-                                             "not match stored data.\n")
-                dResult['status'] = '!'
-        except CustomerPartInfo.DoesNotExist:
-            if dData['value']:
-                dResult['propagate']['line'][28] = {'value': None,
-                                                    'chain': False}
-                return
+    return
 # end def
 
 
@@ -3540,12 +3246,6 @@ def ValidateVendorNumber(dData, dResult):
     :param dResult: Dictionary of output data
     :return: dictionary
     """
-    dResult['value'] = dData['value'].upper().strip()
 
-    if dData['value'].upper().strip().startswith('.') or \
-            dData['value'].upper().strip().endswith('/'):
-        dResult['error']['value'] = ('! - Vendor Article Number should not '
-                                     'start with "." or end with "/".\n')
-        dResult['status'] = '!'
-        return
+    return
 # end def
