@@ -41,6 +41,10 @@ $(document).ready(function() {
         form_resize();
         BuildTable();
     });
+
+    $('#id_baseline_title').change(function(event){
+        this.form.submit();
+    });
 });
 
 function cust_filter(customer){

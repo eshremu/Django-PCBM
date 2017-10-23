@@ -646,7 +646,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                 'user': oUser,
                 'invalid': aInvalidEntries,
                 'filename': oStream.name,
-                'type': iFileType
+                'doc_type': iFileType
             }
         )
         html_message = render_to_string(
