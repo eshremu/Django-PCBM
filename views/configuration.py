@@ -705,6 +705,7 @@ def AddConfig(oRequest):
                 # This is typically unneeded, but performed just to be safe.
                 if not hasattr(oHeader, 'configuration'):
                     oConfig.header = oHeader
+                    oConfig.save()
                 # end if
 
                 # ConfigLine data for the configuration can only be saved if the
@@ -1850,7 +1851,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
 
         tAllData = oCursor.fetchall()
 
-        if any([obj['10'] for obj in aData]):
+        if any([obj['10'] for obj in aData if '10' in obj]):
             oCursor.execute(
                 'SELECT [PCODE],[FireCODE],[Description],[Commodity] FROM '
                 'dbo.REF_PCODE_FCODE WHERE [PCODE] IN %s',
@@ -1868,7 +1869,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         else:
             tPCode = ()
 
-        if any([obj['7'] for obj in aData]):
+        if any([obj['7'] for obj in aData if '7' in obj]):
             oCursor.execute(
                 'SELECT [Plant] FROM dbo.REF_PLANTS WHERE [Plant] IN %s',
                 (tuple(
@@ -1881,7 +1882,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         else:
             tPlants = ()
 
-        if any([obj['8'] for obj in aData]):
+        if any([obj['8'] for obj in aData if '8' in obj]):
             oCursor.execute(
                 'SELECT DISTINCT [SLOC] FROM dbo.REF_PLANT_SLOC WHERE [SLOC] IN %s',
                 (tuple(
@@ -1997,14 +1998,14 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         # end if
 
         # Vendor Article Number
-        if aData[index]['29'] in ('', None):
+        if '29' in aData[index] and aData[index]['29'] in ('', None):
             aData[index]['29'] = aData[index]['2'].strip('./')
 
         # Line number
         # If line number is provided, ensure it is the correct format and track
         # the last Part, Child, Grandchild line number encountered.  This is
         # used to ensure any new part numbers fit correctly.
-        if aData[index]['1'] not in ('', None):
+        if '1' in aData[index] and aData[index]['1'] not in ('', None):
             if not re.match("^\d+(?:\.\d+){0,2}$|^$", aData[index]['1'] or
                             '') and aData[index]['1'] not in (None,):
                 if not bFormatCheckOnly:
@@ -2079,7 +2080,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         # end if
 
         # Product Description
-        if aData[index]['3'] is None or aData[index]['3'].strip() == '':
+        if '3' not in aData[index] or aData[index]['3'] is None or aData[index]['3'].strip() == '':
             aData[index]['3'] = ''
         else:
             if len(aData[index]['3']) > 40:
@@ -2096,43 +2097,43 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         # end if
 
         # Plant
-        if not re.match("^\d{4}$|^$", aData[index]['7'] or ''):
+        if not re.match("^\d{4}$|^$", aData[index]['7'] if '7' in aData[index] and aData[index]['7'] is not None else ''):
             if not bFormatCheckOnly:
                 error_matrix[index][7]['value'] += 'X - Invalid Plant.\n'
         # end if
 
         # SLOC
-        if not re.match("^\w{4}$|^$", aData[index]['8'] or ''):
+        if not re.match("^\w{4}$|^$", aData[index]['8'] if '8' in aData[index] and aData[index]['8'] is not None else ''):
             if not bFormatCheckOnly:
                 error_matrix[index][8]['value'] += 'X - Invalid SLOC.\n'
         # end if
 
         # P-Code
-        if aData[index]['10']:
+        if '10' in aData[index] and aData[index]['10']:
             aData[index]['10'] = aData[index]['10'].upper()
 
         if not re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
                         "|^\([A-Z]\d{2}-\d{4}\).*$|^$",
-                        aData[index]['10'] or '',
+                        aData[index]['10'] if '10' in aData[index] else '',
                         re.IGNORECASE):
             if not bFormatCheckOnly:
                 error_matrix[index][10]['value'] += 'X - Invalid P-Code format.\n'
         # end if
 
         # HW/SW Ind
-        if aData[index]['11']:
+        if '11' in aData[index] and aData[index]['11']:
             aData[index]['11'] = aData[index]['11'].upper()
 
         if not re.match("^HW$|^SW$|^CS$|^$",
-                        aData[index]['11'] or '',
+                        aData[index]['11'] if '11' in aData[index] else '',
                         re.IGNORECASE):
             if not bFormatCheckOnly:
                 error_matrix[index][11]['value'] += 'X - Invalid HW/SW Ind.\n'
         # end if
 
         # Condition Type & Amount Supplied Together
-        NoCondition = aData[index]['22'] in ('', None)
-        NoAmount = aData[index]['23'] in ('', None)
+        NoCondition = '22' not in aData[index] or aData[index]['22'] in ('', None)
+        NoAmount = '23' not in aData[index] or aData[index]['23'] in ('', None)
         if not bFormatCheckOnly:
             if (NoCondition and not NoAmount) or (NoAmount and not NoCondition):
                 if NoAmount and not NoCondition:
@@ -2145,20 +2146,20 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             # end if
 
         # Amount
-        if isinstance(aData[index]['23'], str):
+        if '23' in aData[index] and isinstance(aData[index]['23'], str):
             aData[index]['23'] = aData[index]['23'].replace('$',
                                                             '').replace(',',
                                                                         '')
 
         if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$",
                         str(aData[index]['23']) if
-                        aData[index]['23'] is not None else ''):
+                        '23' in aData[index] and aData[index]['23'] is not None else ''):
             if not bFormatCheckOnly:
                 error_matrix[index][23]['value'] += \
                     'X - Invalid Amount provided.\n'
         # end if
 
-        if aData[index]['25'] in ('N', 'NO') and aData[index]['26'] in \
+        if '25' in aData[index] and aData[index]['25'] in ('N', 'NO') and '26' in aData[index] and aData[index]['26'] in \
                 ('Y', 'YES'):
             error_matrix[index][26]['value'] += \
                 ('X - Cannot mark Customer Asset Tagging when '
@@ -2219,7 +2220,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             # end def
 
             # P-Code, Fire Code, Description & HW/SW Indicator
-            if aData[index]['10'] in (None, ''):  # P-Code is blank, so fill in with data from part (if available)
+            if '10' in aData[index] and aData[index]['10'] in ('', None):  # P-Code is blank, so fill in with data from part (if available)
                 if corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
                     aData[index]['10'] = dPartData[corePartNumber]['P-Code'][0]
                 else:
@@ -2235,11 +2236,11 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                 # If P-Code is valid, extract the P-Code portion
                 if re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
                             "|^\([A-Z]\d{2}-\d{4}\).*$",
-                            aData[index]['10'],
+                            aData[index]['10'] if '10' in aData[index] else '',
                             re.IGNORECASE):
                     P_Code = re.match(
                         r'^(?:\()?(?P<pcode>[A-Z]?\d{2,3})(?:-\d{4}\).*)?$',
-                        aData[index]['10']).group('pcode')
+                        aData[index]['10'] if '10' in aData[index] else '').group('pcode')
 
                     # Use the extracted value to find the full P-Code description
                     if P_Code in dPCodes.keys():
@@ -2280,13 +2281,13 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                         # end if
 
                 else:  # else leave it alone, the error will be displayed to the user
-                    aData[index]['10'] = aData[index]['10'] or ''
+                    aData[index]['10'] = aData[index]['10'] if '10' in aData[index] else ''
 
                     # HW/SW Indication
-                    if aData[index]['11'] in ('None', '', None) and corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
+                    if '11' in aData[index] and aData[index]['11'] in ('', None) and corePartNumber in dPartData.keys() and oHead.configuration_status.name == 'In Process':
                         aData[index]['11'] = dPartData[corePartNumber]['Commodity'][0]
                     else:
-                        aData[index]['11'] = aData[index]['11'] or ''
+                        aData[index]['11'] = aData[index]['11'] if '11' in aData[index] else ''
                     # end if
 
             if oHead.configuration_status.name == 'In Process':
@@ -2318,7 +2319,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             # end if
 
             # Ensure Plant exists for part number
-            if aData[index]['7'] not in ('', None):
+            if '7' in aData[index] and aData[index]['7'] not in ('', None):
                 if (aData[index]['7'],) not in tPlants:
                     error_matrix[index][7]['value'] += \
                         "! - Plant not found in database.\n"
@@ -2329,7 +2330,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             # end if
 
             # Ensure SLOC exists for part number
-            if aData[index]['8'] not in (None, ''):
+            if '8' in aData[index] and aData[index]['8'] not in ('', None):
                 if (aData[index]['8'],) not in tSLOC:
                     error_matrix[index][8]['value'] += \
                         "! - SLOC not found in database.\n"
@@ -2870,18 +2871,17 @@ def ValidatePlant(dData, dResult):
 
         if not tPlants:
             oCursor.close()
-            dResult['error']['value'] = "! - Plant not found in database.\n"
+            dResult['error']['value'] = "! - Plant not found in REF_PLANTS.\n"
             dResult['status'] = "!"
             return
 
         oCursor.execute(
             'SELECT [Plant] FROM dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
-            [bytes(dData['value'], 'ascii'),
-             bytes(dData['part_number'].strip('. '), 'ascii')])
+            [bytes(dData['part_number'].strip('. '), 'ascii')])
         tResults = oCursor.fetchall()
         oCursor.close()
         if (dData['value'],) not in tResults:
-            dResult['error']['value'] = '! - Plant not found for material.\n'
+            dResult['error']['value'] = '! - Plant not found for material in SAP_ZQR_GMDM.\n'
             dResult['status'] = '!'
             # end if
 # end def
@@ -2905,7 +2905,7 @@ def ValidateSLOC(dData, dResult):
 
     if not tSLOCs:
         oCursor.close()
-        dResult['error']['value'] = "! - SLOC not found in database.\n"
+        dResult['error']['value'] = "! - SLOC not found in REF_PLANT_SLOC.\n"
         dResult['status'] = "!"
         return
 
@@ -2918,7 +2918,7 @@ def ValidateSLOC(dData, dResult):
         oCursor.close()
         if (dData['plant'], dData['value']) not in tResults:
             dResult['error']['value'] = \
-                '! - Plant/SLOC combination not found for material.\n'
+                '! - Plant/SLOC combination not found in SAP_MB52 for material.\n'
             dResult['status'] = '!'
         # end if
     else:
