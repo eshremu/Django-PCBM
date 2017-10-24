@@ -2132,8 +2132,8 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         # end if
 
         # Condition Type & Amount Supplied Together
-        NoCondition = '22' in aData[index] and aData[index]['22'] in ('', None)
-        NoAmount = '23' in aData[index] and aData[index]['23'] in ('', None)
+        NoCondition = '22' not in aData[index] or aData[index]['22'] in ('', None)
+        NoAmount = '23' not in aData[index] or aData[index]['23'] in ('', None)
         if not bFormatCheckOnly:
             if (NoCondition and not NoAmount) or (NoAmount and not NoCondition):
                 if NoAmount and not NoCondition:
@@ -2146,7 +2146,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             # end if
 
         # Amount
-        if isinstance('23' in aData[index] and aData[index]['23'] in ('', None), str):
+        if '23' in aData[index] and isinstance(aData[index]['23'], str):
             aData[index]['23'] = aData[index]['23'].replace('$',
                                                             '').replace(',',
                                                                         '')
