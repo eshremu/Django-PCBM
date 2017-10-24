@@ -2875,7 +2875,7 @@ def ValidatePlant(dData, dResult):
             return
 
         oCursor.execute(
-            'SELECT [Plnt] FROM dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
+            'SELECT [Plant] FROM dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
             [bytes(dData['value'], 'ascii'),
              bytes(dData['part_number'].strip('. '), 'ascii')])
         tResults = oCursor.fetchall()
