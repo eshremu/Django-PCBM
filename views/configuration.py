@@ -2114,7 +2114,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
 
         if not re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
                         "|^\([A-Z]\d{2}-\d{4}\).*$|^$",
-                        aData[index]['10'] if '10' in aData[index] else '',
+                        aData[index]['10'] if '10' in aData[index] and aData[index]['10'] is not None else '',
                         re.IGNORECASE):
             if not bFormatCheckOnly:
                 error_matrix[index][10]['value'] += 'X - Invalid P-Code format.\n'
@@ -2125,7 +2125,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             aData[index]['11'] = aData[index]['11'].upper()
 
         if not re.match("^HW$|^SW$|^CS$|^$",
-                        aData[index]['11'] if '11' in aData[index] else '',
+                        aData[index]['11'] if '11' in aData[index] and aData[index]['11'] is not None else '',
                         re.IGNORECASE):
             if not bFormatCheckOnly:
                 error_matrix[index][11]['value'] += 'X - Invalid HW/SW Ind.\n'
