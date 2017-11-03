@@ -2159,11 +2159,11 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     'X - Invalid Amount provided.\n'
         # end if
 
-        if '25' in aData[index] and aData[index]['25'] in ('N', 'NO') and '26' in aData[index] and aData[index]['26'] in \
-                ('Y', 'YES'):
-            error_matrix[index][26]['value'] += \
-                ('X - Cannot mark Customer Asset Tagging when '
-                 'part is not Customer Asset.\n')
+        # if '25' in aData[index] and aData[index]['25'] in ('N', 'NO') and '26' in aData[index] and aData[index]['26'] in \
+        #         ('Y', 'YES'):
+        #     error_matrix[index][26]['value'] += \
+        #         ('X - Cannot mark Customer Asset Tagging when '
+        #          'part is not Customer Asset.\n')
 
         if not bFormatCheckOnly:
             corePartNumber = aData[index]['2'].strip('.')
