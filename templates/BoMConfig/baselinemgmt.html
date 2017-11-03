@@ -59,7 +59,7 @@
                     <tr class="first_row {{ revision.customer }}">
                         <td class="baseline_name">
                             {% if not downloadable %}
-                            <a onclick="$('#id_baseline_title').val('{{ table.baseline.title }}'); $('#headersubform form').submit();" style="cursor: pointer">
+                            <a onclick="$('#id_baseline_title').val('{{ table.baseline.id }}'); $('#headersubform form').submit();" style="cursor: pointer">
                                 {{ table.baseline.title }}{% if revision.revision.version %}{% if downloadable or not downloadable and table.baseline.title != 'No Associated Baseline'  %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}{% endif %}
                             </a>
                             {% else %}
