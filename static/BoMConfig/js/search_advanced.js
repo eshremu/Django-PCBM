@@ -5,6 +5,8 @@ $('a:contains("Search")').css('outline','5px auto -webkit-focus-ring-color').css
 $('button[value="advanced"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 var xhr;
 $(document).ready(function(){
+    $('#status option[value="active"]').attr("selected",true);
+
     $('#search_button').click(function(){
         $('#search_form').submit();
     });

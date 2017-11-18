@@ -409,7 +409,7 @@ $(document).ready(function(){
 
 
                 if (prop == '6' && source == 'edit'){
-                    if(Date.parse(value) <= (Date.parse(this.getDataAtCell(row, 6)) || new Date(Date.now()).setHours(0,0,0,0))){
+                    if(Date.parse(value) <= (Date.parse(this.getDataAtCell(row, 7)) || new Date(Date.now()).setHours(0,0,0,0))){
                         return false;
                     }
                 }

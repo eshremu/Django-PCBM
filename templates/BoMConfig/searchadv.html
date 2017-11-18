@@ -125,7 +125,6 @@
                         </li>
                         <li><label for="status">Configuration/Ordering Status</label>
                             <select id="status" name="status">
-                                <option value="">-------</option>
                                 <option value="n/a">Any</option>
                                 {% for status in status_list %}
                                 <option value="{{ status.name|lower|replacewhitespace:"_" }}">{{ status.name }}</option>

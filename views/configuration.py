@@ -243,7 +243,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                         oHeader.model_replaced_link:
 
                                     # Determine previous revisions
-                                    if oHeader.baseline:
+                                    if hasattr(oHeader, 'baseline') and oHeader.baseline:
                                         aExistingRevs = sorted(
                                             list(set([oBaseRev.version for
                                                       oBaseRev in
@@ -486,6 +486,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
         # Make 'Person Responsible' field a dropdown of PSM users
         if not oExisting:
             headerForm.fields['person_responsible'] = fields.ChoiceField(
+                #choices=[('', '---------'), ('Suvasish', 'Suvasish')] + list(
                 choices=[('', '---------')] + list(
                     [(user.first_name + ' ' + user.last_name,
                       user.first_name + ' ' + user.last_name) for user in

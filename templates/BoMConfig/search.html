@@ -32,7 +32,7 @@
             </select>
             <label for="status">Configuration/Ordering Status</label>
             <select id="status" name="status">
-                <option value="">-------</option>
+                <!--option value="">-------</option-->
                 {% for status in status_list %}
                 <option value="{{ status.name|lower|replacewhitespace:"_" }}">{{ status.name }}</option>
                 {% endfor %}
@@ -98,6 +98,7 @@
     $('button[value="basic"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
     var xhr;
     $(document).ready(function(){
+        $('#status option[value="active"]').attr("selected",true);
         $('#search_button').click(function(){
            $('#search_form').submit();
         });
