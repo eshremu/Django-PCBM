@@ -486,7 +486,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
         # Make 'Person Responsible' field a dropdown of PSM users
         if not oExisting:
             headerForm.fields['person_responsible'] = fields.ChoiceField(
-                #choices=[('', '---------'), ('Suvasish', 'Suvasish')] + list(
+                #choices=[('', '---------'), ('Suvasish', 'Suvasish')] + list( #This is for local Dev
                 choices=[('', '---------')] + list(
                     [(user.first_name + ' ' + user.last_name,
                       user.first_name + ' ' + user.last_name) for user in
@@ -592,28 +592,28 @@ def AddConfig(oRequest):
     bActive = oHeader.configuration_status.name not in ('In Process',
                                                         'In Process/Pending')
     bPending = oHeader.configuration_status.name in ('In Process/Pending',)
-
+    userin=oRequest.user.groups.all()
     # Determine user read/write permission levels for configurations
     bCanReadConfigBOM = bool(
         SecurityPermission.objects.filter(
             title='Config_Entry_BOM_Read').filter(
-            user__in=oRequest.user.groups.all())
+            user__in=userin)
     )
     bCanReadConfigSAP = bool(SecurityPermission.objects.filter(
         title='Config_Entry_SAPDoc_Read').filter(
-        user__in=oRequest.user.groups.all()))
+        user__in=userin))
     bCanReadConfigAttr = bool(SecurityPermission.objects.filter(
         title='Config_Entry_Attributes_Read').filter(
-        user__in=oRequest.user.groups.all()))
+        user__in=userin))
     bCanReadConfigPrice = bool(SecurityPermission.objects.filter(
         title='Config_Entry_PriceLinks_Read').filter(
-        user__in=oRequest.user.groups.all()))
+        user__in=userin))
     bCanReadConfigCust = bool(SecurityPermission.objects.filter(
         title='Config_Entry_CustomerData_Read').filter(
-        user__in=oRequest.user.groups.all()))
+        user__in=userin))
     bCanReadConfigBaseline = bool(SecurityPermission.objects.filter(
         title='Config_Entry_Baseline_Read').filter(
-        user__in=oRequest.user.groups.all()))
+        user__in=userin))
 
     sNeededLevel = oHeader.latesttracker.next_approval
     if sNeededLevel:
@@ -631,47 +631,47 @@ def AddConfig(oRequest):
         bCanWriteConfigBOM = bool(
             SecurityPermission.objects.filter(
                 title='Config_Entry_BOM_Write').filter(
-                user__in=oRequest.user.groups.all())) and (
+                user__in=userin)) and (
             not bPending or (bApprovalPermission and sNeededLevel is None))
         bCanWriteConfigSAP = bool(SecurityPermission.objects.filter(
             title='Config_Entry_SAPDoc_Write').filter(
-            user__in=oRequest.user.groups.all())) and (not bPending or (
+            user__in=userin)) and (not bPending or (
                 bApprovalPermission and sNeededLevel is None))
         bCanWriteConfigAttr = bool(SecurityPermission.objects.filter(
             title='Config_Entry_Attributes_Write').filter(
-            user__in=oRequest.user.groups.all())) and (
+            user__in=userin)) and (
             not bPending or (bApprovalPermission and sNeededLevel == 'cpm'))
         bCanWriteConfigPrice = bool(SecurityPermission.objects.filter(
             title='Config_Entry_PriceLinks_Write').filter(
-            user__in=oRequest.user.groups.all())) and (
+            user__in=userin)) and (
             not bPending or (bApprovalPermission and sNeededLevel in (
                 'blm', 'cust1', 'cust2', 'cust_whse', 'evar', 'brd')))
         bCanWriteConfigCust = bool(SecurityPermission.objects.filter(
             title='Config_Entry_CustomerData_Write').filter(
-            user__in=oRequest.user.groups.all())) and (
+            user__in=userin)) and (
             not bPending or (bApprovalPermission and sNeededLevel in (
                 'cust1', 'cust2', 'cust_whse', 'evar', 'brd')))
         bCanWriteConfigBaseline = bool(SecurityPermission.objects.filter(
             title='Config_Entry_Baseline_Write').filter(
-            user__in=oRequest.user.groups.all())) and (
+            user__in=userin)) and (
             not bPending or (bApprovalPermission and sNeededLevel in (
                 'blm', 'csr')))
 
     # Determine which pages to which the user is able to move forward or
     # backward
     bCanReadHeader = bool(SecurityPermission.objects.filter(
-        title='Config_Header_Read').filter(user__in=oRequest.user.groups.all()))
+        title='Config_Header_Read').filter(user__in=userin))
     bCanReadTOC = bool(SecurityPermission.objects.filter(
-        title='Config_ToC_Read').filter(user__in=oRequest.user.groups.all()))
+        title='Config_ToC_Read').filter(user__in=userin))
     bCanReadRevision = bool(SecurityPermission.objects.filter(
         title='Config_Revision_Read').filter(
-        user__in=oRequest.user.groups.all()))
+        user__in=userin))
     bCanReadInquiry = bool(SecurityPermission.objects.filter(
         title='SAP_Inquiry_Creation_Read').filter(
-        user__in=oRequest.user.groups.all()))
+        user__in=userin))
     bCanReadSiteTemplate = bool(SecurityPermission.objects.filter(
         title='SAP_ST_Creation_Read').filter(
-        user__in=oRequest.user.groups.all()))
+        user__in=userin))
 
     bCanMoveForward = bCanReadTOC or bCanReadRevision or bCanReadInquiry or \
         bCanReadSiteTemplate
@@ -991,6 +991,7 @@ def AddConfig(oRequest):
     oCursor.execute("SELECT [ICG] FROM [BCAMDB].[dbo].[REF_ITEM_CAT_GROUP]")
     dContext.update({'item_cat_list': [obj for (obj,) in oCursor.fetchall()]})
 
+    oCursor.close();
     return Default(oRequest,
                    sTemplate='BoMConfig/configuration.html',
                    dContext=dContext)
@@ -2509,7 +2510,6 @@ def Clone(oRequest):
         'name': '',
         'errors': []
     }
-
     oOld = Header.objects.get(id=oRequest.POST.get('header'))
     try:
         oNew = CloneHeader(oOld)
