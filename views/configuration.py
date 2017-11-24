@@ -486,7 +486,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
         # Make 'Person Responsible' field a dropdown of PSM users
         if not oExisting:
             headerForm.fields['person_responsible'] = fields.ChoiceField(
-                #choices=[('', '---------'), ('Suvasish', 'Suvasish')] + list(
+                #choices=[('', '---------'), ('Suvasish', 'Suvasish')] + list( #This is for local Dev
                 choices=[('', '---------')] + list(
                     [(user.first_name + ' ' + user.last_name,
                       user.first_name + ' ' + user.last_name) for user in
