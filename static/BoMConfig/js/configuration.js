@@ -46,7 +46,7 @@ function ValidationXHRHash () {
     this.removeRow = function(row, amount){
         var keys = Object.keys(this.storage).sort();
 
-        for(let idx in keys){
+        for(var idx in keys){
             var key = keys[idx];
             if(this.storage.hasOwnProperty(key)) {
                 if (key >= row && key < row + amount) {
@@ -62,7 +62,7 @@ function ValidationXHRHash () {
     this.addRow = function(row, amount){
         var keys = Object.keys(this.storage).sort().reverse();
 
-        for(let idx in keys){
+        for(var idx in keys){
             var key = keys[idx];
             if(this.storage.hasOwnProperty(key)) {
                 if(key >= row){
@@ -565,11 +565,16 @@ function build_table() {
             return cellProperties;
         },
         afterValidate: function(isValid, value, row, prop, source){
-            if (!isValid){
+            if(this.isEmptyRow(row)){
+                return true;
+            } else if (!isValid){
                 $('#prevForm').attr('disabled', 'disabled').css('color','gray');
                 $("#saveexitForm").attr('disabled', 'disabled').css('color','gray');
                 $("#saveForm").attr('disabled', 'disabled').css('color','gray');
                 $("#nextForm").attr('disabled', 'disabled').css('color','gray');
+
+                this.setCellMeta(row, prop, 'cellStatus', 'X');
+                UpdateValidation(row, this);
             }
         },
         afterChange: function(changes, source){
@@ -589,16 +594,41 @@ function build_table() {
                  so we do nothing on 'validation' changes because we want to avoid creating a feedback loop
                  */
 
-                if (['loadData', 'validation'].indexOf(source) == -1) {
-                    var lineEstimates;
-                    if (source == 'paste') {
-                        lineEstimates = estimateLineNumbers(changes, this.getDataAtCol(1));
-                    }
+                // On "loadData", turn all data into an array of changes in order to validate
+                if(source === 'loadData'){
+                    var dataset = JSON.parse(JSON.stringify(tableThis.getSourceData()));
+                    dataset.splice(-1 * tableThis.countEmptyRows(true));
 
-                    for (var i = 0; i < changes.length; i++) {
-                        if (changes[i][1] == 0 || (changes[i][2] == changes[i][3] && !(changes[i][1] == 4 || changes[i][1] == 26 || changes[i][1] == 22 || changes[i][1] == 23))) {
+                    changes = [];
+
+                    for(var row in dataset){
+                        if(!dataset.hasOwnProperty(row)){
                             continue;
                         }
+                        for(var col in dataset[row]){
+                            if(!dataset[row].hasOwnProperty(col)){
+                                continue;
+                            }
+
+                            if(dataset[row][col] != null) {
+                                changes.push([row, col, null, dataset[row][col]]);
+                            }
+                        }
+                    }
+                }
+
+                if (['loadData','validation'].indexOf(source) == -1) {
+                    for (var i = 0; i < changes.length; i++) {
+                        // Validate any elements locally that we can and push the rest to the server for validation
+
+                        // Get cellMeta for modifications
+                        var cellMeta = tableThis.getCellMeta(parseInt(changes[i][0]), parseInt(changes[i][1]));
+                        if(cellMeta['comment'] === undefined){
+                            cellMeta['comment'] = {value: ''};
+                        } else {
+                            cellMeta['comment']['value'] = '';
+                        }
+                        cellMeta['cellStatus'] = 'OK';
 
                         var dataGenerator = function () {
                             return {
@@ -611,96 +641,390 @@ function build_table() {
 
                         var data = dataGenerator();
 
-                        switch (parseInt(changes[i][1])) {
-                            case 1:
-                                data['other_lines'] = this.getDataAtCol(1);
-                                data['other_lines'].splice(-1 * this.countEmptyRows(true));
-                                data['other_lines'].splice(changes[i][0], 1);
-                                data['part_number'] = this.getDataAtCell(changes[i][0], 2) ? this.getDataAtCell(changes[i][0], 2).replace(/^[\s]+|[\s]+$/g, '') : this.getDataAtCell(changes[i][0], 2);
+                        switch(parseInt(changes[i][1])){
+                            case 0: // Status
+                                continue;
                                 break;
-                            case 2:
-                                data['quantity'] = this.getDataAtCell(changes[i][0], 4);
-                                data['line_number'] = lineEstimates == undefined ? this.getDataAtCell(changes[i][0], 1) : lineEstimates[changes[i][0]];
-                                data['row_index'] = changes[i][0];
-                                data['other_lines'] = this.getDataAtCol(1);
-                                data['other_lines'].splice(-1 * this.countEmptyRows(true));
-                                data['context_id'] = this.getDataAtCell(changes[i][0], 6);
-                                data['writeable'] = cust_write_auth;
+                            case 1: // Line number
+                                // Test format
+                                if(!/^\d+(?:\.\d+){0,2}$|^$/.test(changes[i][3])){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Invalid format. Use #.#.# format.\n';
+                                } else {
+                                    var partnumber = tableThis.getDataAtCell(changes[i][0], 2);
+                                    var other_lines = tableThis.getDataAtCol(1);
+                                    other_lines.splice(-1 * tableThis.countEmptyRows(true));
+                                    other_lines.splice(changes[i][0], 1);
+                                    // Test duplication
+                                    if (changes[i][3] && other_lines.indexOf(changes[i][3]) !== -1) {
+                                        cellMeta['cellStatus'] = "X";
+                                        cellMeta['comment']['value'] += 'X - Line number already exists.\n';
+                                    } else
+                                    // Test parent exists
+                                    if (changes[i][3] && changes[i][3].indexOf(".") > -1 && other_lines.indexOf(changes[i][3].slice(0, changes[i][3].lastIndexOf("."))) == -1) {
+                                        cellMeta['cellStatus'] = "X";
+                                        cellMeta['comment']['value'] += 'X - Parent line item not found.\n';
+                                    } else
+                                    // Ensure part number has correct number of dots
+                                    if(changes[i][3] && partnumber){
+                                        var modPartnumber = partnumber.trim();
+                                        modPartnumber = modPartnumber.replace(/^\.+/, '');
+                                        modPartnumber = modPartnumber.toUpperCase();
+                                        if(changes[i][3].split(".").length == 3){
+                                            modPartnumber = ".." + modPartnumber;
+                                        } else if(changes[i][3].split(".").length == 2) {
+                                            modPartnumber = "." + modPartnumber;
+                                        }
+
+                                        if(modPartnumber != partnumber){
+                                            tableThis.setDataAtRowProp(parseInt(changes[i][0]), 2, modPartnumber, 'validation');
+                                        }
+                                    }
+
+                                    // Generate validation of Condition to ensure line number related errors are removed
+                                    if(changes[i][2] !== changes[i][3]){
+                                        tableThis.setDataAtRowProp(parseInt(changes[i][0]), 22, tableThis.getDataAtCell(parseInt(changes[i][0]), 22), 'edit');
+                                    }
+                                }
                                 break;
-                            case 6:
-                                data['part_number'] = this.getDataAtCell(changes[i][0], 2);
+                            case 2: // Product number
+                                var partnumber = changes[i][3];
+                                var old_partnumber = changes[i][2];
+
+                                if(partnumber){
+                                    // Convert to trimmed uppercase string
+                                    partnumber = partnumber.toUpperCase().trim();
+
+                                    // Remove any leading dots pertaining to line number
+                                    partnumber = partnumber.replace(/^\.+/, '');
+
+                                    if(old_partnumber){
+                                        old_partnumber = old_partnumber.toUpperCase().trim();
+                                        old_partnumber = old_partnumber.replace(/^\.+/, '');
+                                    }
+
+                                    var van = partnumber;
+
+                                    // If partnumber is all digits, and slash to end
+                                    if(/^\d+$/.test(partnumber)){
+                                        partnumber += "/";
+                                    }
+
+                                    // Test if length of part number is too long
+                                    if(partnumber.length > 18){
+                                        cellMeta['cellStatus'] = "X";
+                                        cellMeta['comment']['value'] += 'X - Product Number exceeds 18 characters.\n';
+                                    }
+
+                                    // Add part number to data being sent to server before further modification
+                                    data['value'] = partnumber;
+                                    data['send'] = partnumber != old_partnumber;
+
+                                    // If line number is populated, ensure part number has leading dots to match
+                                    if(tableThis.getDataAtCell(changes[i][0], 1)){
+                                        var lineNumber = tableThis.getDataAtCell(changes[i][0], 1);
+                                        if(lineNumber.split(".").length == 3){
+                                            partnumber = ".." + partnumber;
+                                        } else if(lineNumber.split(".").length == 2) {
+                                            partnumber = "." + partnumber;
+                                        }
+                                    }
+                                    // If part number is not populated, generate a part number
+                                    else {
+                                        var lineEstimates = estimateLineNumbers([changes[i]], tableThis.getDataAtCol(1));
+                                        tableThis.setDataAtRowProp(parseInt(changes[i][0]), 1, lineEstimates[changes[i][0]], "edit");
+                                    }
+
+                                    // Clean & set Vendor Article Number
+                                    van = van.replace(/^\.+/, '').replace(/\/$/, '');
+                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 29, van, 'edit');
+
+                                    // Set current cell to updated & cleaned value
+                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 2, partnumber, 'validation');
+
+                                    if(partnumber && !tableThis.getDataAtCell(changes[i][0], 4)){
+                                        var qtyMeta = tableThis.getCellMeta(parseInt(changes[i][0]), 4);
+
+                                        if(qtyMeta['comment'] === undefined){
+                                            qtyMeta['comment'] = {value: ''};
+                                        }
+
+                                        if(!(qtyMeta['cellStatus'] == 'X' && qtyMeta['comment']['value'].includes("X - Invalid Order Qty.\n"))) {
+                                            qtyMeta['cellStatus'] = "X";
+                                            qtyMeta['comment']['value'] += "X - Invalid Order Qty.\n";
+                                        }
+
+                                        tableThis.setCellMetaObject(parseInt(changes[i][0]), 4, qtyMeta);
+                                    }
+                                }
                                 break;
-                            case 7:
-                                data['sloc'] = this.getDataAtCell(changes[i][0], 8);
-                                data['part_number'] = this.getDataAtCell(changes[i][0], 2);
+                            case 3: // Product description
+                                var description = changes[i][3] === null ? "" : changes[i][3].toUpperCase();
+
+                                if(description.length > 40){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Product Description exceeds 40 characters.\n';
+                                }
+
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 3, description, 'validation');
                                 break;
-                            case 8:
-                                data['plant'] = this.getDataAtCell(changes[i][0], 7);
-                                data['part_number'] = this.getDataAtCell(changes[i][0], 2);
+                            case 4: // Order qty
+                                // Test format
+                                if(!/^\d+(?:\.\d+)?$|^$/.test(changes[i][3])){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Invalid format. Use #.# format.\n';
+                                } else {
+                                    if(/^$/.test(changes[i][3]) && tableThis.getDataAtCell(changes[i][0], 2)){
+                                        cellMeta['cellStatus'] = "X";
+                                        cellMeta['comment']['value'] += 'X - Invalid Order Qty.\n';
+                                    } else {
+                                        // Convert to float with at least one decimal
+                                        var updatedQty = parseFloat(changes[i][3]);
+                                        if(Number.isInteger(updatedQty)){
+                                            updatedQty = updatedQty + ".0";
+                                        } else {
+                                            updatedQty = updatedQty.toString();
+                                        }
+                                        tableThis.setDataAtRowProp(parseInt(changes[i][0]), 4, updatedQty, 'validation');
+                                    }
+                                }
                                 break;
-                            case 11:
-                                data['pcode'] = this.getDataAtCell(changes[i][0], 10);
+                            case 5: // UoM
                                 break;
-                            case 14:
-                                data['int_notes'] = this.getDataAtCell(changes[i][0], 17);
+                            case 6: // Context ID
+                                if(!changes[i][3] && tableThis.getDataAtCell(parseInt(changes[i][0]), 12) == "Assembled Sales Object (ASO)"){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - ContextID must be populated for ASO parts.\n';
+                                }
                                 break;
-                            case 18:
-                                data['line_number'] = this.getDataAtCell(changes[i][0], 1);
+                            case 7: // Plant
+                                if(!/^\d{4}$|^$/.test(changes[i][3])){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Invalid Plant.\n';
+                                } else if(/^\d{4}$/.test(changes[i][3])){
+                                    data['value'] = changes[i][3];
+                                    data['part_number'] = tableThis.getDataAtCell(parseInt(changes[i][0]), 2);
+                                    data['send'] = changes[i][3] != changes[i][2];
+                                }
                                 break;
-                            case 19:
-                                data['other_lines'] = this.getDataAtCol(1);
-                                data['other_lines'].splice(-1 * this.countEmptyRows(true));
+                            case 8: // SLOC
+                                if(!/^\w{3,4}$|^$/.test(changes[i][3])){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Invalid SLOC.\n';
+                                } else if(/^\w{3,4}$/.test(changes[i][3])){
+                                    data['value'] = changes[i][3];
+                                    data['plant'] = tableThis.getDataAtCell(parseInt(changes[i][0]), 7);
+                                    data['part_number'] = tableThis.getDataAtCell(parseInt(changes[i][0]), 2);
+                                    data['send'] = changes[i][3] != changes[i][2];
+                                }
                                 break;
-                            case 22:
-                                data['other_conds'] = this.getDataAtCol(22);
-                                data['other_conds'].splice(-1 * this.countEmptyRows(true));
-                                data['other_conds'].splice(changes[i][0], 1);
-                                data['line_number'] = this.getDataAtCell(changes[i][0], 1);
-                                data['amount'] = this.getDataAtCell(changes[i][0], 23);
-                                data['previous_value'] = changes[i][2]==undefined ? null : changes[i][2];
+                            case 9: // Item Category
                                 break;
-                            case 23:
-                                data['condition'] = this.getDataAtCell(changes[i][0], 22);
-                                data['previous_value'] = changes[i][2]==undefined ? null : changes[i][2];
+                            case 10: // P-Code
+                                var p_code = changes[i][3] === null ? null : changes[i][3].toUpperCase();
+                                
+                                if(!/^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$|^\([A-Z]\d{2}-\d{4}\).*$|^$/.test(p_code)){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Invalid P-Code format.\n';
+                                } else if (p_code) {
+                                    var found = p_code.match(/^(\d{2,3})$|^\((\d{2,3})-\d{4}\).*$|^([A-Z]\d{2})$|^\(([A-Z]\d{2})-\d{4}\).*$|^$/);
+                                    data['value'] = (found[1] || found[2] || found[3] || found[4]);
+                                    data['send'] = changes[i][3] != changes[i][2];
+                                }
+                                
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 10, p_code, 'validation');
                                 break;
-                            case 26:
-                                data['asset'] = this.getDataAtCell(changes[i][0], 25);
-                            case 25:
-                                data['tagging'] = this.getDataAtCell(changes[i][0], 26);
-                            case 27:
-                            case 28:
-                                data['part_number'] = this.getDataAtCell(changes[i][0], 2) ? this.getDataAtCell(changes[i][0], 2).replace(/^[.\s]+|[.\s]+$/g, '') : this.getDataAtCell(changes[i][0], 2);
-                                data['writeable'] = cust_write_auth;
+                            case 11: // HW/SW Indicatory
+                                var commodity = changes[i][3] === null ? null : changes[i][3].toUpperCase();
+                                if(!/^HW$|^SW$|^CS$|^$/.test(commodity)){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Invalid HW/SW Ind.\n';
+                                }
+
+                                if(/^\(752-2487\) LTE RBS SW$|^\(872-2491\) RBS HWAC$|^752$|^872$/.test(tableThis.getDataAtCell(parseInt(changes[i][0]), 10))){
+                                    commodity = "SW";
+                                }
+
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 11, commodity, 'validation');
+                                break;
+                            case 12: // Product Package Type
+                                break;
+                            case 13: // SPUD
+                                break;
+                            case 14: // RE-Code
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 14, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
+                                data['value'] = changes[i][3];
+                                data['int_notes'] = tableThis.getDataAtCell(parseInt(changes[i][0]), 17);
+                                data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
+                                break;
+                            case 15: // MU-Flag
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 15, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
+                                data['value'] = changes[i][3];
+                                data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
+                                break;
+                            case 16: // X-Plant Material Status
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
+                                data['value'] = changes[i][3];
+                                data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
+                                break;
+                            case 17: // Internal Notes
+                                break;
+                            case 18: // Unit Price
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
+                                data['value'] = changes[i][3];
+                                data['line_number'] = tableThis.getDataAtCell(parseInt(changes[i][0]), 1);
+                                data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
+                                break;
+                            case 19: // Higher Level Item
+                                if(changes[i][3]){
+                                    var other_lines = tableThis.getDataAtCol(1);
+                                    if(other_lines.indexOf(changes[i][3]) === -1){
+                                        cellMeta['cellStatus'] = "!";
+                                        cellMeta['comment']['value'] += '! - Item number not found.\n';
+                                    }
+                                }
+                                break;
+                            case 20: // Material Group 5
+                                break;
+                            case 21: // Purchase order Item number
+                                break;
+                            case 22: // Condition
+                                var condition = changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3];
+                                var line_number = tableThis.getDataAtCell(parseInt(changes[i][0]), 1);
+                                var all_conds = tableThis.getDataAtCol(22);
+
+                                if(condition == "ZUST" && line_number !== "10"){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - ZUST only allowed on line 10.\n';
+                                }
+
+                                if(condition == "ZPRU" || condition == "ZPR1"){
+                                    $('[name="needs_zpru"]').val("True");
+                                } else if(all_conds.indexOf("ZPRU") === -1 && all_conds.indexOf("ZPR1") === -1){
+                                    $('[name="needs_zpru"]').val("False");
+                                }
+
+                                if(condition && !tableThis.getDataAtCell(parseInt(changes[i][0]), 23)){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Condition provided without Amount.\n';
+                                }
+
+                                if(changes[i][2] !== changes[i][3]){
+                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 23, tableThis.getDataAtCell(parseInt(changes[i][0]), 23), 'edit');
+                                }
+
+                                if(condition){
+                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 22, condition, 'validation');
+                                }
+                                break;
+                            case 23: // Amount
+                                var amount = changes[i][3] === null ? null : changes[i][3].trim();
+
+                                if(amount !== null) {
+                                    amount = amount.replace(/\$|,/g, '');
+
+                                    if (!/^(?:-)?\d+(?:\.\d+)?$|^$/.test(amount)) {
+                                        cellMeta['cellStatus'] = "X";
+                                        cellMeta['comment']['value'] += 'X - Invalid Amount.\n';
+                                    }
+
+                                    if (amount && !tableThis.getDataAtCell(parseInt(changes[i][0]), 22)) {
+                                        cellMeta['cellStatus'] = "X";
+                                        cellMeta['comment']['value'] += 'X - Amount provided without Condition.\n';
+                                    }
+
+                                    if (changes[i][2] !== changes[i][3]) {
+                                        tableThis.setDataAtRowProp(parseInt(changes[i][0]), 22, tableThis.getDataAtCell(parseInt(changes[i][0]), 22), 'edit');
+                                    }
+
+                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 23, amount, 'validation');
+                                }
+                                break;
+                            case 24: // Traceability req.
+                                var traceability = changes[i][3] === null ? null : changes[i][3].toUpperCase().trim();
+
+                                if(!/^Y$|^N$|^$/.test(traceability)){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Invalid Traceability Req.\n';
+                                }
+
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 24, traceability, 'validation');
+                                break;
+                            case 25: // Customer Asset
+                                if(changes[i][3] !== null && !/^Y$|^N$|^$/.test(changes[i][3])){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Invalid Customer Asset.\n';
+                                }
+                                break;
+                            case 26: // Customer Asset Tagging Req
+                                if(changes[i][3] !== null && !/^Y$|^N$|^$/.test(changes[i][3])){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Invalid Customer Asset Tagging Req.\n';
+                                } else if(changes[i][3] == 'Y' && tableThis.getDataAtCell(parseInt(changes[i][0]), 25) != 'Y'){
+                                    cellMeta['cellStatus'] = "X";
+                                    cellMeta['comment']['value'] += 'X - Cannot require asset tagging if part is not a customer asset.\n';
+                                }
+                                break;
+                            case 27: // Customer Number
+                                break;
+                            case 28: // Second Customer Number
+                                break;
+                            case 29: // Vendor Article number
+                                if(/^\.+.+|.+\/$/.test(changes[i][3])){
+                                    cellMeta['cellStatus'] = "!";
+                                    cellMeta['comment']['value'] += '! - Vendor Article Number should not start with "." or end with "/".\n';
+                                }
+                                break;
+                            case 30: // Comments
+                                break;
+                            case 31: // Additional Refs
                                 break;
                         }
 
-                        (function (inputData) {
-                            var settings = {
-                                url: ajax_validate_url,
-                                type: "POST",
-                                data: inputData,
-                                headers: {
-                                    'X-CSRFToken': getcookie('csrftoken'),
-                                    'Content-type': 'application/x-www-form-urlencoded',
-                                    'Accept': 'application/json'
-                                }
-                            };
+                        // Make sure each comment only exists once
+                        var comments = cellMeta['comment']['value'].split("\n");
+                        var uniqueComments = [];
+                        for(var idx in comments){
+                            if(uniqueComments.indexOf(comments[idx]) == -1){
+                                uniqueComments.push(comments[idx]);
+                            }
+                        }
+                        cellMeta['comment']['value'] = uniqueComments.join("\n");
 
-                            validationQueue.add(settings);
-                        })(data);
+
+                        tableThis.setCellMetaObject(parseInt(changes[i][0]), parseInt(changes[i][1]), cellMeta);
+                        UpdateValidation(parseInt(changes[i][0]), tableThis);
+
+                        // If data needs to be sent and validated, send it now
+                        if(data['send']){
+                            (function (inputData) {
+                                var settings = {
+                                    url: ajax_validate_url,
+                                    type: "POST",
+                                    data: inputData,
+                                    headers: {
+                                        'X-CSRFToken': getcookie('csrftoken'),
+                                        'Content-type': 'application/x-www-form-urlencoded',
+                                        'Accept': 'application/json'
+                                    }
+                                };
+
+                                validationQueue.add(settings, tableThis);
+                            })(data);
+                        }
                     }
                 }
             }
         },
         beforeValidate: function(value, row, prop, source){
             if(['Unit Price','Amount'].indexOf(this.getColHeader(prop)) != -1){
-                value = value.replace(/$/g,'').replace(/,/g,'').replace(/\s/g,'');
+                value = value === null ? value : value.toString().replace(/$/g,'').replace(/,/g,'').replace(/\s/g,'');
                 if (!isNaN(parseFloat(value))) {
                     value = String(parseFloat(value).toFixed(2));
                 }
             }
             if (['Product Number'].indexOf(this.getColHeader(prop)) != -1) {
-                value = value.replace(/\s/g,'');
+                value = value === null ? value : value.replace(/\s/g,'');
             }
 
             return value;
@@ -737,7 +1061,11 @@ function build_table() {
                 } else {
                     hot.setCellMeta(row, col, 'comment', errors[row][col]);
                 }
-                hot.setCellMeta(row, col, 'cellStatus', hot.getDataAtCell(row, col));
+                if(col === 0) {
+                    hot.setCellMeta(row, col, 'cellStatus', hot.getDataAtCell(row, col));
+                } else {
+                    hot.setCellMeta(row, col, 'cellStatus', hot.getCellMeta(row, col)['comment']['value'][0]);
+                }
             }
         }
 
@@ -755,6 +1083,7 @@ function build_table() {
     }
 
     hot.render();
+    hot.validateCells();
 }
 
 function estimateLineNumbers(changes, current_line_numbers) {
@@ -820,15 +1149,17 @@ function estimateLineNumbers(changes, current_line_numbers) {
     return current_line_numbers;
 }
 
-function UpdateValidation(row){
+function UpdateValidation(row, table){
+    table = table === undefined ? hot : table;
+
     if (row === undefined){
         // Update page status based on Status column
         if(!validationStorage.validating()){
             var sTableStatus = 'GOOD';
-            var iTotalRows = hot.countRows() - hot.countEmptyRows(true);
+            var iTotalRows = table.countRows() - table.countEmptyRows(true);
 
             for(var currentRow = 0; currentRow < iTotalRows; currentRow++){
-                switch(hot.getCellMeta(parseInt(currentRow), 0)['cellStatus']){
+                switch(table.getCellMeta(parseInt(currentRow), 0)['cellStatus']){
                     case 'X':
                         if(sTableStatus == 'GOOD' || sTableStatus == 'WARNING'){
                             sTableStatus = 'ERROR';
@@ -863,11 +1194,11 @@ function UpdateValidation(row){
             }
 
             for(var i = 0; i < iTotalRows; i++){
-                if(!isNaN(hot.getDataAtCell(parseInt(i), 23))){
-                    if(hot.getDataAtCell(parseInt(i), 22) == 'ZUST') {
-                        fCurrentTotal += parseFloat(hot.getDataAtCell(parseInt(i), 23));
-                    } else if(hot.getDataAtCell(parseInt(i), 22) == 'ZPR1'){
-                        fZpruTotal += parseFloat(hot.getDataAtCell(parseInt(i), 23));
+                if(!isNaN(table.getDataAtCell(parseInt(i), 23))){
+                    if(table.getDataAtCell(parseInt(i), 22) == 'ZUST') {
+                        fCurrentTotal += parseFloat(table.getDataAtCell(parseInt(i), 23));
+                    } else if(table.getDataAtCell(parseInt(i), 22) == 'ZPR1'){
+                        fZpruTotal += parseFloat(table.getDataAtCell(parseInt(i), 23));
                     }
                 }
             }
@@ -914,7 +1245,7 @@ function UpdateValidation(row){
 
             if(firstLoad){
                 valid = true;
-                clean_form = JSON.parse(JSON.stringify(hot.getSourceData()));
+                clean_form = JSON.parse(JSON.stringify(table.getSourceData()));
                 for(var i = 0; i < clean_form.length; i++){
                     if(typeof clean_form[i] == 'object'){
                         delete clean_form[i][0];
@@ -935,12 +1266,12 @@ function UpdateValidation(row){
         if(!validationStorage.validating(parseInt(row))){
             var sFinalStatus = 'OK';
 
-            for(var col = 1; col < hot.countCols(); col++){
+            for(var col = 1; col < table.countCols(); col++){
                 if(hidden_cols.indexOf(col) != -1){
                     continue;
                 }
 
-                switch(hot.getCellMeta(parseInt(row), col)['cellStatus']){
+                switch(table.getCellMeta(parseInt(row), col)['cellStatus']){
                     case 'X':
                         if(sFinalStatus == 'OK' || sFinalStatus == '!'){
                             sFinalStatus = 'X';
@@ -960,9 +1291,9 @@ function UpdateValidation(row){
                 }
             }
 
-            hot.setDataAtCell(parseInt(row), 0, sFinalStatus);
-            hot.setCellMeta(parseInt(row), 0, 'cellStatus', sFinalStatus);
-            UpdateValidation();
+            table.setDataAtCell(parseInt(row), 0, sFinalStatus);
+            table.setCellMeta(parseInt(row), 0, 'cellStatus', sFinalStatus);
+            UpdateValidation(undefined, table);
         }
     }
 }

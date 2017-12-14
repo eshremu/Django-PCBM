@@ -165,7 +165,7 @@ function rollbackModal(){
                         // var returned = JSON.parse(data);
                         if(returned.status == 1) {
                             messageToModal('Rollback completed', 'Baseline has been rolled back ' + returned.revision,
-                                function(){$('#id_baseline_title').val($('#rollbackform input[name="baseline"]').val()); $('#headersubform form').submit();}
+                                function(){$('#id_baseline_title').val($('#rollbackform input[name="baseline_title"]').val()); $('#headersubform form').submit();}
                             );
                         } else {
                             var errorMessage = 'The following errors occurred:';
