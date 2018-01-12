@@ -107,6 +107,8 @@
             <input id="saveForm" class="btn" type="button" value="Save">
             {% endif %}
             {% if can_continue %}<input id="nextForm" class="btn" type="button" value="Next"/>{% endif %}
+            <input id="validateForm" class="btn" type="hidden" value="Validate">
+
 
             <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:300px;">
                 {% if status_message %}{{ status_message }}{% endif %}
