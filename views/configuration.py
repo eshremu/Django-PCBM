@@ -486,7 +486,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
         # Make 'Person Responsible' field a dropdown of PSM users
         if not oExisting:
             headerForm.fields['person_responsible'] = fields.ChoiceField(
-                #choices=[('', '---------'), ('Suvasish', 'Suvasish')] + list( #This is for local Dev
+                # choices=[('', '---------'), ('Suvasish', 'Suvasish')] + list( #This is for local Dev
                 choices=[('', '---------')] + list(
                     [(user.first_name + ' ' + user.last_name,
                       user.first_name + ' ' + user.last_name) for user in
@@ -592,6 +592,7 @@ def AddConfig(oRequest):
     bActive = oHeader.configuration_status.name not in ('In Process',
                                                         'In Process/Pending')
     bPending = oHeader.configuration_status.name in ('In Process/Pending',)
+
     userin=oRequest.user.groups.all()
     # Determine user read/write permission levels for configurations
     bCanReadConfigBOM = bool(
@@ -937,6 +938,11 @@ def AddConfig(oRequest):
                     reverse(sDestination) + ('?id=' + str(oHeader.id) +
                                              '&readonly=1' if bFrameReadOnly
                                              else ''))
+            elif oRequest.POST['formaction']=='validate':
+                status_message = oRequest.session['status'] = ''
+                sDestination = 'bomconfig:config'
+                return redirect(
+                    reverse(sDestination) + ('?validation=true'))
             # end if
         else:
             status_message = configForm.errors['__all__'].as_text()
@@ -950,8 +956,15 @@ def AddConfig(oRequest):
 
     # Build and validate data for display in configuration table
     data = BuildDataArray(oHeader, config=True)
-    error_matrix = Validator(data, oHeader, bCanWriteConfig,
-                             bFrameReadOnly or bActive)
+    error_matrix ={}
+
+    validation = oRequest.GET.get('validation')
+
+    if validation == 'true':
+        error_matrix = Validator(data, oHeader, bCanWriteConfig,
+                                 bFrameReadOnly or bActive)
+    else:
+        error_matrix = {}
 
     dContext = {
         'data_array': json.dumps(data),
@@ -991,7 +1004,7 @@ def AddConfig(oRequest):
     oCursor.execute("SELECT [ICG] FROM [BCAMDB].[dbo].[REF_ITEM_CAT_GROUP]")
     dContext.update({'item_cat_list': [obj for (obj,) in oCursor.fetchall()]})
 
-    oCursor.close();
+    oCursor.close()
     return Default(oRequest,
                    sTemplate='BoMConfig/configuration.html',
                    dContext=dContext)
@@ -3168,7 +3181,7 @@ def ValidateAmount(dData, dResult):
     :return: dictionary
     """
 
-    return
+    return ''
 # end def
 
 
