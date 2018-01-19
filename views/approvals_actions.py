@@ -909,6 +909,7 @@ def CloneHeader(oHeader):
         if hasattr(oConfigLine, 'linepricing'):
             oNewPrice = copy.deepcopy(oConfigLine.linepricing)
             oNewPrice.pk = None
+            oNewPrice.override_price = None
             oNewPrice.config_line = oNewLine
             oNewPrice.pricing_object = PricingObject.getClosestMatch(oNewLine)
             oNewPrice.save()
