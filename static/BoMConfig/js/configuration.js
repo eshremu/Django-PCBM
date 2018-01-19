@@ -986,13 +986,13 @@ function build_table() {
                                 }
                                 break;
                             case 26: // Customer Asset Tagging Req
-                                if(changes[i][3] !== null && !/^Y$|^N$|^$/.test(changes[i][3])){
+                                /*if(changes[i][3] !== null && !/^Y$|^N$|^$/.test(changes[i][3])){
                                     cellMeta['cellStatus'] = "X";
                                     cellMeta['comment']['value'] += 'X - Invalid Customer Asset Tagging Req.\n';
                                 } else if(changes[i][3] == 'Y' && tableThis.getDataAtCell(parseInt(changes[i][0]), 25) != 'Y'){
                                     cellMeta['cellStatus'] = "X";
                                     cellMeta['comment']['value'] += 'X - Cannot require asset tagging if part is not a customer asset.\n';
-                                }
+                                }*/
                                 break;
                             case 27: // Customer Number
                                 break;
