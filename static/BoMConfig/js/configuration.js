@@ -197,9 +197,38 @@ $(document).ready(function(){
             submit();
         }
     });
+
+     $('#validateForm').click(function () {
+        if (configuration_status == 'In Process' || configuration_status == 'In Process/Pending') {
+            $.ajax({
+                url: "/pcbm/entry/config/?validation=true",
+                type: "GET",
+                success: function () {
+                    if (!validating) {
+                         $('#formaction').val('validate');
+                         submit();
+                    }
+                }
+            });
+        }
+    });
+
+    var endstr = "?validation=true";
+    var end = window.location.href.endsWith(endstr);
+    $("#saveexitForm").attr('disabled', 'disabled').css('color','gray');
+    $("#saveForm").attr('disabled', 'disabled').css('color','gray');
+    $("#status").css('color','#FF8800');
+    $("#status").html('PAGE LOADED,VALIDATION PENDING');
+    if(!end){
+       if (configuration_status == 'In Process' || configuration_status == 'In Process/Pending' ){
+            $("#validateForm").trigger('click');
+       }
+     }
 });
 
 function submit(){
+    $("#status").css('color','#AAAAAA');
+    $("#status").html('VALIDATING...');
     if (configuration_status != 'In Process') {
         $('#configform').submit();
     } else {
@@ -957,13 +986,13 @@ function build_table() {
                                 }
                                 break;
                             case 26: // Customer Asset Tagging Req
-                                if(changes[i][3] !== null && !/^Y$|^N$|^$/.test(changes[i][3])){
+                                /*if(changes[i][3] !== null && !/^Y$|^N$|^$/.test(changes[i][3])){
                                     cellMeta['cellStatus'] = "X";
                                     cellMeta['comment']['value'] += 'X - Invalid Customer Asset Tagging Req.\n';
                                 } else if(changes[i][3] == 'Y' && tableThis.getDataAtCell(parseInt(changes[i][0]), 25) != 'Y'){
                                     cellMeta['cellStatus'] = "X";
                                     cellMeta['comment']['value'] += 'X - Cannot require asset tagging if part is not a customer asset.\n';
-                                }
+                                }*/
                                 break;
                             case 27: // Customer Number
                                 break;
@@ -1151,150 +1180,156 @@ function estimateLineNumbers(changes, current_line_numbers) {
 
 function UpdateValidation(row, table){
     table = table === undefined ? hot : table;
+    var endstr = '?validation=true';
+    var end = window.location.href.endsWith(endstr);
+    if(end){
+        if (row === undefined){
+            // Update page status based on Status column
+            if(!validationStorage.validating()){
+                var sTableStatus = 'GOOD';
+                var iTotalRows = table.countRows() - table.countEmptyRows(true);
 
-    if (row === undefined){
-        // Update page status based on Status column
-        if(!validationStorage.validating()){
-            var sTableStatus = 'GOOD';
-            var iTotalRows = table.countRows() - table.countEmptyRows(true);
-
-            for(var currentRow = 0; currentRow < iTotalRows; currentRow++){
-                switch(table.getCellMeta(parseInt(currentRow), 0)['cellStatus']){
-                    case 'X':
-                        if(sTableStatus == 'GOOD' || sTableStatus == 'WARNING'){
-                            sTableStatus = 'ERROR';
-                        }
-                        break;
-                    case '?':
-                        sTableStatus = 'FAILURE';
-                        break;
-                    case '!':
-                        if(sTableStatus == 'GOOD'){
-                            sTableStatus = 'WARNING';
-                        }
-                        break;
-                    case 'INW':
-                        sTableStatus = 'VALIDATING';
-                        break;
-                    case 'OK':
-                    default:
-                        break;
-                }
-            }
-
-            // Update Total net value and ZPRU total based on table data
-            var fZpruTotal = 0.0;
-            var fCurrentTotal;
-            if($('#id_override_net_value').val()){
-                fCurrentTotal = parseFloat($('#id_override_net_value').val());
-            } else if ($('#id_net_value').val()){
-                fCurrentTotal = parseFloat($('#id_net_value').val());
-            } else {
-                fCurrentTotal = 0.0;
-            }
-
-            for(var i = 0; i < iTotalRows; i++){
-                if(!isNaN(table.getDataAtCell(parseInt(i), 23))){
-                    if(table.getDataAtCell(parseInt(i), 22) == 'ZUST') {
-                        fCurrentTotal += parseFloat(table.getDataAtCell(parseInt(i), 23));
-                    } else if(table.getDataAtCell(parseInt(i), 22) == 'ZPR1'){
-                        fZpruTotal += parseFloat(table.getDataAtCell(parseInt(i), 23));
+                for(var currentRow = 0; currentRow < iTotalRows; currentRow++){
+                    switch(table.getCellMeta(parseInt(currentRow), 0)['cellStatus']){
+                        case 'X':
+                            if(sTableStatus == 'GOOD' || sTableStatus == 'WARNING'){
+                                sTableStatus = 'ERROR';
+                            }
+                            break;
+                        case '?':
+                            sTableStatus = 'FAILURE';
+                            break;
+                        case '!':
+                            if(sTableStatus == 'GOOD'){
+                                sTableStatus = 'WARNING';
+                            }
+                            break;
+                        case 'INW':
+                            sTableStatus = 'VALIDATING';
+                            break;
+                        case 'OK':
+                        default:
+                            break;
                     }
                 }
-            }
 
-            if(fCurrentTotal != undefined) {
-                $('#id_total_value').val(fCurrentTotal.toFixed(2).toString());
-            }
-            if(fZpruTotal != undefined) {
-                $('#id_zpru_total').val(fZpruTotal.toFixed(2).toString());
-            }
+                // Update Total net value and ZPRU total based on table data
+                var fZpruTotal = 0.0;
+                var fCurrentTotal;
+                if($('#id_override_net_value').val()){
+                    fCurrentTotal = parseFloat($('#id_override_net_value').val());
+                } else if ($('#id_net_value').val()){
+                    fCurrentTotal = parseFloat($('#id_net_value').val());
+                } else {
+                    fCurrentTotal = 0.0;
+                }
 
-            // Update page form and status
-            if( $('[name="needs_zpru"]').val().toLowerCase() == 'true' && $('[name="zpru_total"]').val() != $('[name="total_value"]').val()){
-                $('#id_total_value').css('border', '3px solid red');
-                $('#id_zpru_total').css('border', '3px solid red');
-                sTableStatus = 'ERROR';
+                for(var i = 0; i < iTotalRows; i++){
+                    if(!isNaN(table.getDataAtCell(parseInt(i), 23))){
+                        if(table.getDataAtCell(parseInt(i), 22) == 'ZUST') {
+                            fCurrentTotal += parseFloat(table.getDataAtCell(parseInt(i), 23));
+                        } else if(table.getDataAtCell(parseInt(i), 22) == 'ZPR1'){
+                            fZpruTotal += parseFloat(table.getDataAtCell(parseInt(i), 23));
+                        }
+                    }
+                }
+
+                if(fCurrentTotal != undefined) {
+                    $('#id_total_value').val(fCurrentTotal.toFixed(2).toString());
+                }
+                if(fZpruTotal != undefined) {
+                    $('#id_zpru_total').val(fZpruTotal.toFixed(2).toString());
+                }
+
+                // Update page form and status
+                if( $('[name="needs_zpru"]').val().toLowerCase() == 'true' && $('[name="zpru_total"]').val() != $('[name="total_value"]').val()){
+                    $('#id_total_value').css('border', '3px solid red');
+                    $('#id_zpru_total').css('border', '3px solid red');
+                    sTableStatus = 'ERROR';
+                } else {
+                    $('#id_total_value').removeAttr('style');
+                    $('#id_zpru_total').removeAttr('style');
+                }
+
+                // Disable save if errors are present
+                if(sTableStatus === 'ERROR'){
+                    $('#prevForm').attr('disabled', 'disabled').css('color','gray');
+                    $("#saveexitForm").attr('disabled', 'disabled').css('color','gray');
+                    $("#saveForm").attr('disabled', 'disabled').css('color','gray');
+                    $("#nextForm").attr('disabled', 'disabled').css('color','gray');
+                }
+
+                $('#status').html(sTableStatus);
+                if(sTableStatus === 'ERROR'){
+                    $('#status').css('color','#DD0000');
+                } else if (sTableStatus === 'WARNING') {
+                    $('#status').css('color','#FF8800');
+                } else if (sTableStatus === 'VALIDATING') {
+                    $('#status').css('color','#AAAAAA');
+                } else if (sTableStatus === 'FAILURE') {
+                    $('#status').css('color','#0055FF');
+                } else {
+                    $('#status').css('color','#00AA00');
+                }
+
+                validating = false;
+
+                if(firstLoad){
+                    valid = true;
+                    clean_form = JSON.parse(JSON.stringify(table.getSourceData()));
+                    for(var i = 0; i < clean_form.length; i++){
+                        if(typeof clean_form[i] == 'object'){
+                            delete clean_form[i][0];
+                        }
+                    }
+                    $('[name="data_form"]').remove();
+                    clean_sub = $('#configform').serialize();
+                    firstLoad = false;
+                }
             } else {
-                $('#id_total_value').removeAttr('style');
-                $('#id_zpru_total').removeAttr('style');
-            }
-
-            // Disable save if errors are present
-            if(sTableStatus === 'ERROR'){
-                $('#prevForm').attr('disabled', 'disabled').css('color','gray');
-                $("#saveexitForm").attr('disabled', 'disabled').css('color','gray');
-                $("#saveForm").attr('disabled', 'disabled').css('color','gray');
-                $("#nextForm").attr('disabled', 'disabled').css('color','gray');
-            }
-
-            $('#status').html(sTableStatus);
-            if(sTableStatus === 'ERROR'){
-                $('#status').css('color','#DD0000');
-            } else if (sTableStatus === 'WARNING') {
-                $('#status').css('color','#FF8800');
-            } else if (sTableStatus === 'VALIDATING') {
+                $('#status').html('VALIDATING');
                 $('#status').css('color','#AAAAAA');
-            } else if (sTableStatus === 'FAILURE') {
-                $('#status').css('color','#0055FF');
-            } else {
-                $('#status').css('color','#00AA00');
-            }
+                validating = true;
 
-            validating = false;
-
-            if(firstLoad){
-                valid = true;
-                clean_form = JSON.parse(JSON.stringify(table.getSourceData()));
-                for(var i = 0; i < clean_form.length; i++){
-                    if(typeof clean_form[i] == 'object'){
-                        delete clean_form[i][0];
-                    }
-                }
-                $('[name="data_form"]').remove();
-                clean_sub = $('#configform').serialize();
-                firstLoad = false;
             }
         } else {
-            $('#status').html('VALIDATING');
-            $('#status').css('color','#AAAAAA');
-            validating = true;
+            // Update Status column based on cellStatus in given row
+            if(!validationStorage.validating(parseInt(row))){
+                var sFinalStatus = 'OK';
 
-        }
-    } else {
-        // Update Status column based on cellStatus in given row
-        if(!validationStorage.validating(parseInt(row))){
-            var sFinalStatus = 'OK';
+                for(var col = 1; col < table.countCols(); col++){
+                    if(hidden_cols.indexOf(col) != -1){
+                        continue;
+                    }
 
-            for(var col = 1; col < table.countCols(); col++){
-                if(hidden_cols.indexOf(col) != -1){
-                    continue;
+                    switch(table.getCellMeta(parseInt(row), col)['cellStatus']){
+                        case 'X':
+                            if(sFinalStatus == 'OK' || sFinalStatus == '!'){
+                                sFinalStatus = 'X';
+                            }
+                            break;
+                        case '?':
+                            sFinalStatus = '?';
+                            break;
+                        case '!':
+                            if(sFinalStatus == 'OK'){
+                                sFinalStatus = '!';
+                            }
+                            break;
+                        case 'OK':
+                        default:
+                            break;
+                    }
                 }
 
-                switch(table.getCellMeta(parseInt(row), col)['cellStatus']){
-                    case 'X':
-                        if(sFinalStatus == 'OK' || sFinalStatus == '!'){
-                            sFinalStatus = 'X';
-                        }
-                        break;
-                    case '?':
-                        sFinalStatus = '?';
-                        break;
-                    case '!':
-                        if(sFinalStatus == 'OK'){
-                            sFinalStatus = '!';
-                        }
-                        break;
-                    case 'OK':
-                    default:
-                        break;
-                }
+                table.setDataAtCell(parseInt(row), 0, sFinalStatus);
+                table.setCellMeta(parseInt(row), 0, 'cellStatus', sFinalStatus);
+                UpdateValidation(undefined, table);
             }
-
-            table.setDataAtCell(parseInt(row), 0, sFinalStatus);
-            table.setCellMeta(parseInt(row), 0, 'cellStatus', sFinalStatus);
-            UpdateValidation(undefined, table);
         }
+    }else{
+             $("#saveexitForm").attr('disabled', 'disabled').css('color','gray');
+             $("#saveForm").attr('disabled', 'disabled').css('color','gray');
     }
 }
 
