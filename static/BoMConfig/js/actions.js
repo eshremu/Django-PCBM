@@ -1,6 +1,6 @@
 /**
- * Created by epastag on 7/11/2016.
- */
+* Created by epastag on 7/11/2016.
+*/
 
 $('a.headtitle:contains("Actions")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 
@@ -413,12 +413,23 @@ $(document).ready(function(){
                 error: function(xhr, status, error){
                     $('#myModal').modal('hide');
                     messageToModal('Submission Error','The following error occurred during record submission.<br/>' +
-                        status + ": " + error + '<br/>If the error continues, contact a tool admin.', function(){});
+                       status + ": " + error + '<br/>If the error continues, contact a tool admin.', function(){});
                 }
             });
         } else {
             iIndex++;
-            messageToModal('Select Approval levels and desired Points of Contact for ' + returnedFormData[keys[iIndex]][0], returnedFormData[keys[iIndex]][1], function () {
+
+            if(keys.length == 1){
+                    var message = 'Select Approval levels and desired Points of Contact ' + returnedFormData[keys[iIndex]][0];
+//                messageToModal('Select Approval levels and desired Points of Contact ' + returnedFormData[keys[iIndex]][0], returnedFormData[keys[iIndex]][1], function () {
+           }else{
+                    var message = 'Select Approval levels and desired Points of Contact for selected models';
+           }
+
+
+            messageToModal(message,  returnedFormData[keys[iIndex]][1], function () {
+
+                for (var iIndex=0; iIndex<keys.length;iIndex++){
                 approvalFormData[keys[iIndex]]={};
                 for (var i=0; i < approval_levels.length; i++){
                     approvalFormData[keys[iIndex]][approval_levels[i]]=[];
@@ -426,10 +437,41 @@ $(document).ready(function(){
                     approvalFormData[keys[iIndex]][approval_levels[i]][1]= $("select[name='" + approval_levels[i] + "-notify" + "']").val();
                     approvalFormData[keys[iIndex]][approval_levels[i]][2]= $("input[name='" + approval_levels[i] + "-email" + "']").val();
                 }
-                $('#messageModal').one('hidden.bs.modal', function () {
-                    $(document).trigger('pcbm.modal.formdisplay');
-                });
+//                 iIndex++;
+                 }
+//                $('#messageModal').one('hidden.bs.modal', function () {
+//                    $(document).trigger('pcbm.modal.formdisplay');
+//                });
+
+            if ((iIndex) >= keys.length) {
+            $('#myModal').modal('show');
+            $.ajax({
+                url: approve_url,
+                type: "POST",
+                data: {
+                    action: 'send_to_approve',
+                    data: JSON.stringify(keys),
+                    approval: JSON.stringify(approvalFormData)
+                },
+                headers:{
+                    'X-CSRFToken': getcookie('csrftoken')
+                },
+                success: function(data) {
+                    if(data){
+                        location.href = data;
+                    } else {
+                        location.reload(true);
+                    }
+                },
+                error: function(xhr, status, error){
+                    $('#myModal').modal('hide');
+                    messageToModal('Submission Error','The following error occurred during record submission.<br/>' +
+                        status + ": " + error + '<br/>If the error continues, contact a tool admin.', function(){});
+                }
+            });
+            }
             });
         }
     }
 });
+
