@@ -387,6 +387,7 @@ $(document).ready(function(){
         }
     });
 
+    //changes done for-- to open single popup to send notification for multiple models
     function processForms(){
         if (returnedFormData == null){
 
