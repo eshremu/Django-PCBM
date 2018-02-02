@@ -778,7 +778,7 @@ the attached Configuration file.</p>
                             mimetype='application/ms-excel'
                         )
 
-                        # oMessage.send()
+                        oMessage.send()
                     # end if
                 # end if
             # end if
