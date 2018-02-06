@@ -215,11 +215,14 @@ $(document).ready(function(){
 
     var endstr = "?validation=true";
     var end = window.location.href.endsWith(endstr);
+
+    var findreadonly = window.location.href.indexOf("readonly");
+
     $("#saveexitForm").attr('disabled', 'disabled').css('color','gray');
     $("#saveForm").attr('disabled', 'disabled').css('color','gray');
     $("#status").css('color','#FF8800');
     $("#status").html('PAGE LOADED,VALIDATION PENDING');
-    if(!end){
+    if(!end && findreadonly == -1){
        if (configuration_status == 'In Process' || configuration_status == 'In Process/Pending' ){
             $("#validateForm").trigger('click');
        }
