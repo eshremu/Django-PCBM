@@ -903,6 +903,10 @@ def CloneHeader(oHeader):
         oNewLine.sec_customer_number = None
         oNewLine.customer_asset = None
         oNewLine.customer_asset_tagging = None
+        if oConfigLine.linepricing.pricing_object:
+            oNewLine.unit_price = oConfigLine.linepricing.pricing_object.unit_price
+        else:
+            oNewLine.unit_price=None
         # oNewLine.comments = None
         oNewLine.save()
 

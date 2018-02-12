@@ -90,7 +90,7 @@
                                     {% if header.configuration.get_first_line.linepricing.override_price %}
                                     $&nbsp;{{ header.configuration.get_first_line.linepricing.override_price|iffloatformat:'2'|default:'' }}
                                     {% else %}
-                                    {% if header.configuration.get_first_line.linepricing.unit_price %}$&nbsp;{% endif %}{{ header.configuration.get_first_line.linepricing.unit_price|iffloatformat:'2'|default:'' }}
+                                    {% if header.configuration.get_first_line.linepricing.pricing_object.unit_price %}$&nbsp;{% endif %}{{ header.configuration.get_first_line.linepricing.pricing_object.unit_price|iffloatformat:'2'|default:'' }}
                                     {% endif %}
                                 {% else %}
                                 {% if header.configuration.net_value %}$&nbsp;{% endif %}{{ header.configuration.net_value|iffloatformat:'2'|default:'' }}
