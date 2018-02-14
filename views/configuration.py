@@ -1833,29 +1833,35 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         oCursor = connections['BCAMDB'].cursor()
         oCursor.execute(
             """
-            SELECT DISTINCT all_data.[Material],all_data.[Material Description],
-                all_data.[Base Unit of Measure],gmdm.[Plant],mb52.[SLoc],
-                all_data.[ZMVKE Item Category],
-                pcode_fcode.[Description] AS [P-Code Description],
-                pcode_fcode.[Commodity],all_data.[MTyp],gmdm.[PRIM RE Code],
-                recode.[Title],recode.[Description],all_data.[MU-Flag],
-                all_data.[X-Plant Status],
-                xplantstatus.[Description] AS [X-Plant Description],
-                gmdm.[PRIM Traceability]
-            FROM dbo.BI_MM_ALL_DATA AS all_data
-            LEFT JOIN dbo.[REF_X_PLANT_STATUS_DESCRIPTIONS] AS xplantstatus ON
-                xplantstatus.[X-Plant Status Code]=all_data.[X-Plant Status]
-            LEFT JOIN dbo.REF_PCODE_FCODE AS pcode_fcode ON
-                pcode_fcode.[PCODE ]=all_data.[P Code]
-            LEFT JOIN dbo.SAP_ZQR_GMDM AS gmdm ON
-                gmdm.[Material Number]=all_data.[Material]
-            LEFT JOIN dbo.REF_PRODUCT_STATUS_CODES AS recode ON
-                recode.[Status Code]=gmdm.[PRIM RE Code]
-            LEFT JOIN dbo.SAP_MB52 AS mb52 ON
-                mb52.[Material]=all_data.[Material] and mb52.[Plnt]=gmdm.[Plant]
-            WHERE all_data.[ZMVKE Item Category]<>'NORM' AND
-                all_data.[Material] IN %s
-            ORDER BY all_data.[Material]
+                SELECT DISTINCT all_data.[Material],
+                        all_data.[Material Description],
+                         all_data.[Base Unit of Measure],
+                         all_data.Plant,
+                         all_data.[ZMARD SLoc],
+                         all_data.[ZMVKE Item Category],
+                         pcode_fcode.[Description] AS [P-Code Description],
+                         pcode_fcode.[Commodity],
+                         all_data.[MTyp],
+                         gmdm.[PRIM RE Code],
+                         recode.[Title],
+                         recode.[Description],
+                         all_data.[MU-Flag],
+                         all_data.[X-Plant Status],
+                         xplantstatus.[Description] AS [X-Plant Description],
+                         gmdm.[PRIM Traceability]
+                FROM dbo.BI_MM_ALL_DATA AS all_data
+                LEFT JOIN dbo.SAP_ZQR_GMDM AS gmdm
+                    ON all_data.Material=gmdm.[Material Number]
+                LEFT JOIN dbo.REF_PCODE_FCODE AS pcode_fcode
+                    ON all_data.[P Code]=pcode_fcode.[PCODE ]
+                LEFT JOIN dbo.REF_PRODUCT_STATUS_CODES AS recode
+                    ON gmdm.[PRIM RE Code]=recode.[Status Code]
+                LEFT JOIN dbo.REF_X_PLANT_STATUS_DESCRIPTIONS AS xplantstatus
+                    ON all_data.[X-Plant Status]=xplantstatus.[X-Plant Status Code]
+                WHERE [ZMVKE Item Category]<>'NORM'
+                        AND all_data.[Plant] IN ('2685','2666','2392')
+                        AND all_data.[Material] IN %s
+                        ORDER BY  all_data.[Material]
             """,
             (tuple(
                 map(lambda val: bytes(val, 'ascii'),
