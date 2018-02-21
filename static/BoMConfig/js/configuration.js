@@ -788,6 +788,7 @@ function build_table() {
 
                                         tableThis.setCellMetaObject(parseInt(changes[i][0]), 4, qtyMeta);
                                     }
+                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 2, partnumber, 'validation');
                                 }
                                 break;
                             case 3: // Product description
@@ -861,7 +862,7 @@ function build_table() {
                                 } else if (p_code) {
                                     var found = p_code.match(/^(\d{2,3})$|^\((\d{2,3})-\d{4}\).*$|^([A-Z]\d{2})$|^\(([A-Z]\d{2})-\d{4}\).*$|^$/);
                                     data['value'] = (found[1] || found[2] || found[3] || found[4]);
-                                    data['send'] = changes[i][3] != changes[i][2];
+                                    //data['send'] = changes[i][3] != changes[i][2];
                                 }
                                 
                                 tableThis.setDataAtRowProp(parseInt(changes[i][0]), 10, p_code, 'validation');
@@ -884,10 +885,18 @@ function build_table() {
                             case 13: // SPUD
                                 break;
                             case 14: // RE-Code
-                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 14, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
-                                data['value'] = changes[i][3];
-                                data['int_notes'] = tableThis.getDataAtCell(parseInt(changes[i][0]), 17);
-                                data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
+                                var REerr=changes[i][3] ? changes[i][3].trim() : changes[i][3];
+                                if(REerr == null){
+                                continue;
+                                }
+                                else{
+                                var RECode=REerr.substring(0,REerr.indexOf(","));
+                                var REMsg = REerr.substring(REerr.indexOf(",")+1);
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 14, RECode ? RECode.trim() : RECode, 'validation');
+                                //data['value'] = changes[i][3];
+                                cellMeta['cellStatus'] = "OK";
+                                cellMeta['comment']['value'] += REMsg;
+                                }
                                 break;
                             case 15: // MU-Flag
                                 tableThis.setDataAtRowProp(parseInt(changes[i][0]), 15, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
@@ -895,11 +904,22 @@ function build_table() {
                                 data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
                                 break;
                             case 16: // X-Plant Material Status
-                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
-                                data['value'] = changes[i][3];
-                                data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
+                                var Xplt=changes[i][3] ? changes[i][3].trim() : changes[i][3];
+                                if(Xplt == null){
+                                continue;
+                                }
+                                else{
+                                var XpltCode=Xplt.substring(0,Xplt.indexOf(","));
+                                var XpltErr = Xplt.substring(Xplt.indexOf(",")+1);
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, XpltCode ? XpltCode.trim() : XpltCode, 'validation');
+                                //data['value'] = changes[i][3];
+                                cellMeta['cellStatus'] = "OK";
+                                cellMeta['comment']['value'] += XpltErr;
+                                 }
                                 break;
                             case 17: // Internal Notes
+                                var int_notes = changes[i][3] ? changes[i][3].trim() : changes[i][3];
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 17, int_notes, 'validation');
                                 break;
                             case 18: // Unit Price
                                 tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
