@@ -302,7 +302,7 @@ function req_search(){
             dataType: "html",
             type: "POST",
             data: {
-                psm_req: $(reactrequest_id).val()
+                psm_req: $(reactrequest_id).val().trim() //To remove spaces (proceeding and succeeding) around the PSMREQ number
             },
             headers:{
                 'X-CSRFToken': getcookie('csrftoken')
