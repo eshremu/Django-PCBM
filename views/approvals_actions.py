@@ -899,7 +899,7 @@ def CloneHeader(oHeader):
         oNewLine = copy.deepcopy(oConfigLine)
         oNewLine.pk = None
         oNewLine.config = oNewConfig
-        oNewLine.customer_number = None
+        oNewLine.customer_number = copy.deepcopy(oConfigLine.customer_number)
         oNewLine.sec_customer_number = None
         oNewLine.customer_asset = None
         oNewLine.customer_asset_tagging = None
