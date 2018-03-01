@@ -899,10 +899,10 @@ def CloneHeader(oHeader):
         oNewLine = copy.deepcopy(oConfigLine)
         oNewLine.pk = None
         oNewLine.config = oNewConfig
-        oNewLine.customer_number = None
+        oNewLine.customer_number = copy.deepcopy(oConfigLine.customer_number)
         oNewLine.sec_customer_number = None
-        oNewLine.customer_asset = None
-        oNewLine.customer_asset_tagging = None
+        oNewLine.customer_asset = None #copy.deepcopy(oConfigLine.customer_asset)
+        oNewLine.customer_asset_tagging = None #copy.deepcopy(oConfigLine.customer_asset_tagging)
         if oConfigLine.linepricing.pricing_object:
             oNewLine.unit_price = oConfigLine.linepricing.pricing_object.unit_price
         else:

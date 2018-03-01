@@ -280,7 +280,6 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                         oHeader.bom_request_type.name in \
                                         ('New',) and \
                                         oHeader.model_replaced_link:
-
                                     oDiscontinued = CloneHeader(
                                         oHeader.model_replaced_link)
                                     oDiscontinued.bom_request_type = \
@@ -753,12 +752,12 @@ def AddConfig(oRequest):
                     for dConfigLine in oForm:
                         # Create PartBase objects as needed
                         dBaseData = {
-                            'product_number': dConfigLine['2'].strip('. '),
+                            'product_number': dConfigLine['2'].lstrip('. '),
                             'unit_of_measure': dConfigLine['5']
                         }
 
                         (oBase, _) = PartBase.objects.get_or_create(
-                            product_number=dConfigLine['2'].strip('. ')
+                            product_number=dConfigLine['2'].lstrip('. ')
                         )
                         PartBase.objects.filter(pk=oBase.pk).update(**dBaseData)
 
@@ -1575,6 +1574,8 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
 
                 if not oHeader.pick_list:
                     if str(Line.line_number) == '10':
+                        # if oHeader.bom_request_type.name == 'New': #added for disabling CEQ No. for new Confifuration
+                        #     dLine.update({'27': ''})
                         if oConfig.override_net_value:
                             dLine.update(
                                 {'18': str(oConfig.override_net_value)}
@@ -2187,7 +2188,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         #          'part is not Customer Asset.\n')
 
         if not bFormatCheckOnly:
-            corePartNumber = aData[index]['2'].strip('.')
+            corePartNumber = aData[index]['2'].lstrip('.')
             # Populate Read-only fields
 
             if corePartNumber in dPartData.keys():
@@ -2312,6 +2313,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     # end if
 
             if oHead.configuration_status.name == 'In Process':
+
                 if corePartNumber in dPartData.keys():
                     # RE-Code
                     aData[index]['14'] = dPartData[corePartNumber]['RE-Code'][0] or ''
@@ -2807,6 +2809,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
         return
 
     if oHead.configuration_status.name == 'In Process':
+
         try:
             oMPNCustMap = CustomerPartInfo.objects.get(
                 part__product_number=dResult['value'].strip('.'),

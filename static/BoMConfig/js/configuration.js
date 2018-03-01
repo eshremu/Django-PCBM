@@ -661,7 +661,6 @@ function build_table() {
                             cellMeta['comment']['value'] = '';
                         }
                         cellMeta['cellStatus'] = 'OK';
-
                         var dataGenerator = function () {
                             return {
                                 row: parseInt(changes[i][0]),
@@ -672,7 +671,6 @@ function build_table() {
                         };
 
                         var data = dataGenerator();
-
                         switch(parseInt(changes[i][1])){
                             case 0: // Status
                                 continue;
@@ -707,7 +705,6 @@ function build_table() {
                                         } else if(changes[i][3].split(".").length == 2) {
                                             modPartnumber = "." + modPartnumber;
                                         }
-
                                         if(modPartnumber != partnumber){
                                             tableThis.setDataAtRowProp(parseInt(changes[i][0]), 2, modPartnumber, 'validation');
                                         }
@@ -722,14 +719,12 @@ function build_table() {
                             case 2: // Product number
                                 var partnumber = changes[i][3];
                                 var old_partnumber = changes[i][2];
-
                                 if(partnumber){
                                     // Convert to trimmed uppercase string
                                     partnumber = partnumber.toUpperCase().trim();
 
                                     // Remove any leading dots pertaining to line number
                                     partnumber = partnumber.replace(/^\.+/, '');
-
                                     if(old_partnumber){
                                         old_partnumber = old_partnumber.toUpperCase().trim();
                                         old_partnumber = old_partnumber.replace(/^\.+/, '');
@@ -747,11 +742,9 @@ function build_table() {
                                         cellMeta['cellStatus'] = "X";
                                         cellMeta['comment']['value'] += 'X - Product Number exceeds 18 characters.\n';
                                     }
-
                                     // Add part number to data being sent to server before further modification
                                     data['value'] = partnumber;
                                     data['send'] = partnumber != old_partnumber;
-
                                     // If line number is populated, ensure part number has leading dots to match
                                     if(tableThis.getDataAtCell(changes[i][0], 1)){
                                         var lineNumber = tableThis.getDataAtCell(changes[i][0], 1);
@@ -1167,8 +1160,10 @@ function estimateLineNumbers(changes, current_line_numbers) {
             usedNumbers.push(current_line_numbers[i]);
         } else { // This is not a line number and needs to have one assigned
             var decimalCount = (current_line_numbers[i].match(/\./g)||[]).length;
+            var firstDot = current_line_numbers[i].indexOf(".");     //Added by Manoj for First Dot
+            var SecondDot = current_line_numbers[i].indexOf(".",1);  //Added by Manoj for Second Dot
             var prefix;
-            if (decimalCount == 2) { // grandchild
+            if (decimalCount == 2 && SecondDot == 1 && firstDot == 0 ) { // grandchild
                 prefix = parent.toString() + "." + child.toString();
                 while (usedNumbers.indexOf(prefix + "." + grand.toString()) != -1 ) {
                     grand += 1;
@@ -1176,7 +1171,7 @@ function estimateLineNumbers(changes, current_line_numbers) {
                 current_line_numbers[i] = prefix + "." + grand.toString();
                 usedNumbers.push(prefix);
                 usedNumbers.push(current_line_numbers[i]);
-            } else if (decimalCount == 1) { // child
+            } else if (decimalCount == 1 && firstDot == 0) { // child
                 prefix = parent.toString();
                 while (usedNumbers.indexOf(prefix + "." + child.toString()) != -1 ) {
                     child += 1;
