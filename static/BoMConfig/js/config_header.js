@@ -302,8 +302,7 @@ function req_search(){
             dataType: "html",
             type: "POST",
             data: {
-                //psm_req: $(reactrequest_id).val()
-                psm_req: $(reactrequest_id).val().trim()
+                psm_req: $(reactrequest_id).val()
             },
             headers:{
                 'X-CSRFToken': getcookie('csrftoken')
