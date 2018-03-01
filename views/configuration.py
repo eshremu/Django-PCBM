@@ -280,7 +280,6 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                         oHeader.bom_request_type.name in \
                                         ('New',) and \
                                         oHeader.model_replaced_link:
-
                                     oDiscontinued = CloneHeader(
                                         oHeader.model_replaced_link)
                                     oDiscontinued.bom_request_type = \
@@ -753,12 +752,12 @@ def AddConfig(oRequest):
                     for dConfigLine in oForm:
                         # Create PartBase objects as needed
                         dBaseData = {
-                            'product_number': dConfigLine['2'].strip('. '),
+                            'product_number': dConfigLine['2'].lstrip('. '),
                             'unit_of_measure': dConfigLine['5']
                         }
 
                         (oBase, _) = PartBase.objects.get_or_create(
-                            product_number=dConfigLine['2'].strip('. ')
+                            product_number=dConfigLine['2'].lstrip('. ')
                         )
                         PartBase.objects.filter(pk=oBase.pk).update(**dBaseData)
 
@@ -1575,6 +1574,8 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
 
                 if not oHeader.pick_list:
                     if str(Line.line_number) == '10':
+                        # if oHeader.bom_request_type.name == 'New': #added for disabling CEQ No. for new Confifuration
+                        #     dLine.update({'27': ''})
                         if oConfig.override_net_value:
                             dLine.update(
                                 {'18': str(oConfig.override_net_value)}
@@ -2101,55 +2102,55 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         # end if
 
         # Product Description
-        if '3' not in aData[index] or aData[index]['3'] is None or aData[index]['3'].strip() == '':
-            aData[index]['3'] = ''
-        else:
-            if len(aData[index]['3']) > 40:
-                if not bFormatCheckOnly:
-                    error_matrix[index][3]['value'] += \
-                        'X - Product Description exceeds 40 characters.\n'
+        # if '3' not in aData[index] or aData[index]['3'] is None or aData[index]['3'].strip() == '':
+        #     aData[index]['3'] = ''
+        # else:
+        #     if len(aData[index]['3']) > 40:
+        #         if not bFormatCheckOnly:
+        #             error_matrix[index][3]['value'] += \
+        #                 'X - Product Description exceeds 40 characters.\n'
 
         # Order Qty
-        if not re.match("^\d+(?:.\d+)?$", aData[index]['4'] or ''):
-            if not bFormatCheckOnly:
-                error_matrix[index][4]['value'] += 'X - Invalid Order Qty.\n'
-            if aData[index]['4'] in ('None', '', None):
-                aData[index]['4'] = ''
+        # if not re.match("^\d+(?:.\d+)?$", aData[index]['4'] or ''):
+        #     if not bFormatCheckOnly:
+        #         error_matrix[index][4]['value'] += 'X - Invalid Order Qty.\n'
+        #     if aData[index]['4'] in ('None', '', None):
+        #         aData[index]['4'] = ''
         # end if
 
         # Plant
-        if not re.match("^\d{4}$|^$", aData[index]['7'] if '7' in aData[index] and aData[index]['7'] is not None else ''):
-            if not bFormatCheckOnly:
-                error_matrix[index][7]['value'] += 'X - Invalid Plant.\n'
+        # if not re.match("^\d{4}$|^$", aData[index]['7'] if '7' in aData[index] and aData[index]['7'] is not None else ''):
+        #     if not bFormatCheckOnly:
+        #         error_matrix[index][7]['value'] += 'X - Invalid Plant.\n'
         # end if
 
         # SLOC
-        if not re.match("^\w{4}$|^$", aData[index]['8'] if '8' in aData[index] and aData[index]['8'] is not None else ''):
-            if not bFormatCheckOnly:
-                error_matrix[index][8]['value'] += 'X - Invalid SLOC.\n'
+        # if not re.match("^\w{4}$|^$", aData[index]['8'] if '8' in aData[index] and aData[index]['8'] is not None else ''):
+        #     if not bFormatCheckOnly:
+        #         error_matrix[index][8]['value'] += 'X - Invalid SLOC.\n'
         # end if
 
         # P-Code
-        if '10' in aData[index] and aData[index]['10']:
-            aData[index]['10'] = aData[index]['10'].upper()
-
-        if not re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
-                        "|^\([A-Z]\d{2}-\d{4}\).*$|^$",
-                        aData[index]['10'] if '10' in aData[index] and aData[index]['10'] is not None else '',
-                        re.IGNORECASE):
-            if not bFormatCheckOnly:
-                error_matrix[index][10]['value'] += 'X - Invalid P-Code format.\n'
+        # if '10' in aData[index] and aData[index]['10']:
+        #     aData[index]['10'] = aData[index]['10'].upper()
+        #
+        # if not re.match("^\d{2,3}$|^\(\d{2,3}-\d{4}\).*$|^[A-Z]\d{2}$"
+        #                 "|^\([A-Z]\d{2}-\d{4}\).*$|^$",
+        #                 aData[index]['10'] if '10' in aData[index] and aData[index]['10'] is not None else '',
+        #                 re.IGNORECASE):
+        #     if not bFormatCheckOnly:
+        #         error_matrix[index][10]['value'] += 'X - Invalid P-Code format.\n'
         # end if
 
         # HW/SW Ind
-        if '11' in aData[index] and aData[index]['11']:
-            aData[index]['11'] = aData[index]['11'].upper()
-
-        if not re.match("^HW$|^SW$|^CS$|^$",
-                        aData[index]['11'] if '11' in aData[index] and aData[index]['11'] is not None else '',
-                        re.IGNORECASE):
-            if not bFormatCheckOnly:
-                error_matrix[index][11]['value'] += 'X - Invalid HW/SW Ind.\n'
+        # if '11' in aData[index] and aData[index]['11']:
+        #     aData[index]['11'] = aData[index]['11'].upper()
+        #
+        # if not re.match("^HW$|^SW$|^CS$|^$",
+        #                 aData[index]['11'] if '11' in aData[index] and aData[index]['11'] is not None else '',
+        #                 re.IGNORECASE):
+        #     if not bFormatCheckOnly:
+        #         error_matrix[index][11]['value'] += 'X - Invalid HW/SW Ind.\n'
         # end if
 
         # Condition Type & Amount Supplied Together
@@ -2167,17 +2168,17 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             # end if
 
         # Amount
-        if '23' in aData[index] and isinstance(aData[index]['23'], str):
-            aData[index]['23'] = aData[index]['23'].replace('$',
-                                                            '').replace(',',
-                                                                        '')
-
-        if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$",
-                        str(aData[index]['23']) if
-                        '23' in aData[index] and aData[index]['23'] is not None else ''):
-            if not bFormatCheckOnly:
-                error_matrix[index][23]['value'] += \
-                    'X - Invalid Amount provided.\n'
+        # if '23' in aData[index] and isinstance(aData[index]['23'], str):
+        #     aData[index]['23'] = aData[index]['23'].replace('$',
+        #                                                     '').replace(',',
+        #                                                                 '')
+        #
+        # if not re.match("^(?:-)?\d+(?:\.\d+)?$|^$",
+        #                 str(aData[index]['23']) if
+        #                 '23' in aData[index] and aData[index]['23'] is not None else ''):
+        #     if not bFormatCheckOnly:
+        #         error_matrix[index][23]['value'] += \
+        #             'X - Invalid Amount provided.\n'
         # end if
 
         # if '25' in aData[index] and aData[index]['25'] in ('N', 'NO') and '26' in aData[index] and aData[index]['26'] in \
@@ -2187,7 +2188,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         #          'part is not Customer Asset.\n')
 
         if not bFormatCheckOnly:
-            corePartNumber = aData[index]['2'].strip('.')
+            corePartNumber = aData[index]['2'].lstrip('.')
             # Populate Read-only fields
 
             if corePartNumber in dPartData.keys():
@@ -2312,6 +2313,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     # end if
 
             if oHead.configuration_status.name == 'In Process':
+
                 if corePartNumber in dPartData.keys():
                     # RE-Code
                     aData[index]['14'] = dPartData[corePartNumber]['RE-Code'][0] or ''
@@ -2611,9 +2613,9 @@ def AjaxValidator(oRequest):
         elif int(dData['col']) == 9:
             validate_func = ValidateItemCategory
             args = [dData, dResult]
-        elif int(dData['col']) == 10:
-            validate_func = ValidatePCode
-            args = [dData, dResult]
+        # elif int(dData['col']) == 10:
+        #     validate_func = ValidatePCode
+        #     args = [dData, dResult]
         elif int(dData['col']) == 11:
             validate_func = ValidateCommodityType
             args = [dData, dResult]
@@ -2623,15 +2625,15 @@ def AjaxValidator(oRequest):
         elif int(dData['col']) == 13:
             validate_func = ValidateSPUD
             args = [dData, dResult]
-        elif int(dData['col']) == 14:
-            validate_func = ValidateRECode
-            args = [dData, dResult]
+        # elif int(dData['col']) == 14:
+        #     validate_func = ValidateRECode
+        #     args = [dData, dResult]
         elif int(dData['col']) == 15:
             validate_func = ValidateMUFlag
             args = [dData, dResult]
-        elif int(dData['col']) == 16:
-            validate_func = ValidateXPlant
-            args = [dData, dResult]
+        # elif int(dData['col']) == 16:
+        #     validate_func = ValidateXPlant
+        #     args = [dData, dResult]
         elif int(dData['col']) == 17:
             validate_func = Placeholder
             args = [dData, dResult]
@@ -2727,12 +2729,21 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
     oCursor = connections['BCAMDB'].cursor()
 
     oCursor.execute(
-        ('SELECT DISTINCT [Material Description],[MU-Flag],[X-Plant Status],'
-         "[Base Unit of Measure],[P Code],[MTyp],[ZMVKE Item Category],"
-         "[PRIM RE Code],[PRIM Traceability] FROM "
-         "dbo.BI_MM_ALL_DATA LEFT JOIN dbo.SAP_ZQR_GMDM ON [Material Number]=[Material] "
-         "WHERE [ZMVKE Item Category]<>'NORM' AND [Material]=%s"
-         ),
+        """
+        SELECT TOP 1 [Material Description],[MU-Flag],[X-Plant Status]+','+ REFSTATUS.[Description] xplantdesc,[Base Unit of Measure],
+        AP.[Description],[MTyp],[ZMVKE Item Category],[PRIM RE Code]+','+RE.[Description] ErrorDescription,
+        [PRIM Traceability],AP.[Commodity],RE.[Title] FROM dbo.BI_MM_ALL_DATA 
+        LEFT JOIN dbo.SAP_ZQR_GMDM 
+        ON [Material Number]=[Material] 
+        LEFT JOIN dbo.REF_PCODE_FCODE AP
+        ON [P Code]=AP.PCODE 
+        LEFT JOIN dbo.REF_PRODUCT_STATUS_CODES RE 
+        ON [PRIM RE Code]=RE.[Status Code] 
+        LEFT JOIN dbo.REF_X_PLANT_STATUS_DESCRIPTIONS REFSTATUS 
+        ON [X-Plant Status]=REFSTATUS.[X-Plant Status Code] 
+        WHERE [ZMVKE Item Category]<>'NORM' and [Material] = %s
+        """
+        ,
         [bytes(dResult['value'].strip('.'), 'ascii')])
 
     tAllDataInfo = oCursor.fetchall()
@@ -2750,7 +2761,10 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 'value': tAllDataInfo[0][1], 'chain': True}
             dResult['propagate']['line'][16] = {
                 'value': tAllDataInfo[0][2], 'chain': True}
-
+            dResult['propagate']['line'][11] = {
+                'value': tAllDataInfo[0][9], 'chain': True}
+            dResult['propagate']['line'][17] = {
+                'value': tAllDataInfo[0][10], 'chain': True}
             dResult['propagate']['line'][14] = {
                 'value': tAllDataInfo[0][7],
                 'chain': True
@@ -2795,6 +2809,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
         return
 
     if oHead.configuration_status.name == 'In Process':
+
         try:
             oMPNCustMap = CustomerPartInfo.objects.get(
                 part__product_number=dResult['value'].strip('.'),
