@@ -723,8 +723,7 @@ function build_table() {
                                     // Convert to trimmed uppercase string
                                     partnumber = partnumber.toUpperCase().trim();
 
-                                    // Remove any leading dots pertaining to line number
-                                    partnumber = partnumber.replace(/^\.+/, '');
+                     // Remove any leading dots pertaining to line number--> partnumber = partnumber.replace(/^\.+/, '');      //not required now
                                     if(old_partnumber){
                                         old_partnumber = old_partnumber.toUpperCase().trim();
                                         old_partnumber = old_partnumber.replace(/^\.+/, '');
@@ -1160,10 +1159,11 @@ function estimateLineNumbers(changes, current_line_numbers) {
             usedNumbers.push(current_line_numbers[i]);
         } else { // This is not a line number and needs to have one assigned
             var decimalCount = (current_line_numbers[i].match(/\./g)||[]).length;
-            var firstDot = current_line_numbers[i].indexOf(".");     //Added by Manoj for First Dot
-            var SecondDot = current_line_numbers[i].indexOf(".",1);  //Added by Manoj for Second Dot
+            var firstDot = current_line_numbers[i].slice(0,1);      //Added for First Dot
+            var SecondDot = current_line_numbers[i].slice(0,2);     //Added for Second Dot
             var prefix;
-            if (decimalCount == 2 && SecondDot == 1 && firstDot == 0 ) { // grandchild
+
+            if (SecondDot == ".." ){            // grandchild
                 prefix = parent.toString() + "." + child.toString();
                 while (usedNumbers.indexOf(prefix + "." + grand.toString()) != -1 ) {
                     grand += 1;
@@ -1171,7 +1171,7 @@ function estimateLineNumbers(changes, current_line_numbers) {
                 current_line_numbers[i] = prefix + "." + grand.toString();
                 usedNumbers.push(prefix);
                 usedNumbers.push(current_line_numbers[i]);
-            } else if (decimalCount == 1 && firstDot == 0) { // child
+               }else if (firstDot == "."){      // child
                 prefix = parent.toString();
                 while (usedNumbers.indexOf(prefix + "." + child.toString()) != -1 ) {
                     child += 1;
@@ -1253,7 +1253,7 @@ function UpdateValidation(row, table){
                 }
 
                 if(fCurrentTotal != undefined) {
-                    $('#id_total_value').val(fCurrentTotal.toFixed(2).toString());
+                    $('#id_total_value').val(fCurrentTotal.toString());         //.toFixed() removed to make the total value of Integer type
                 }
                 if(fZpruTotal != undefined) {
                     $('#id_zpru_total').val(fZpruTotal.toFixed(2).toString());

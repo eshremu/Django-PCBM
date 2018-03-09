@@ -4,12 +4,15 @@ Views related to Baseline viewing and management.
 
 from django.http import JsonResponse, QueryDict
 from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse, Http404
 
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER
 from BoMConfig.forms import SubmitForm
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import RollbackBaseline, TestRollbackBaseline, \
     RollbackError, RevisionCompare
+
+import json
 
 
 @login_required
@@ -115,7 +118,7 @@ def BaselineMgmt(oRequest):
     # baselines
     else:
         form = SubmitForm()
-        aBaselines = Baseline.objects.exclude(title='No Associated Baseline')
+        aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
 
         # For each baseline, get header data for active and in-process
         # Baseline_Revision
@@ -233,6 +236,26 @@ def BaselineRollbackTest(oRequest):
     return JsonResponse(dResult)
 # end def
 
+def DeleteBaseline(oRequest):
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        print(oRequest.POST.get('data'))
+        aRecords = [
+            int(record) for record in json.loads(oRequest.POST.get('data'))]
+
+        # print(aRecords)
+
+        Baseline.objects.filter(pk__in=aRecords).update(
+            isdeleted=1)
+
+        Baseline_Revision.objects.filter(baseline__in=aRecords).update(
+            isdeleted=1)
+
+        return HttpResponse()
+    else:
+        raise Http404()
+
+# end def
 
 def BaselineRollback(oRequest):
     """

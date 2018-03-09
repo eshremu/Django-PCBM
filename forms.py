@@ -369,7 +369,7 @@ class SubmitForm(forms.Form):
     Form used during baseline management search to find baselines
     """
     baseline_title = BaselineModelChoiceField(
-        queryset=Baseline.objects.exclude(title=''),
+        queryset=Baseline.objects.exclude(title='').exclude(isdeleted=1),
         empty_label="-- Show All --",
         required=False,
         label='Baseline')

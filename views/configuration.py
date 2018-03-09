@@ -1865,7 +1865,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                         ORDER BY  all_data.[Material]
             """,
             (tuple(
-                map(lambda val: bytes(val, 'ascii'),
+                map(lambda val: bytes(val.lstrip('.'), 'ascii'),
                     [obj['2'] for obj in aData]
                     )
             ),)
@@ -2479,7 +2479,7 @@ def ListFill(oRequest):
             cChildClass = Baseline
             result = OrderedDict(
                 [('i' + obj.title, obj.title) for obj in
-                 cChildClass.objects.filter(customer=oParent).order_by('title')]
+                 cChildClass.objects.filter(customer=oParent).order_by('title').exclude(isdeleted=1)]
             )
 
         return JsonResponse(result)
