@@ -1,6 +1,6 @@
 {% extends "BoMConfig/template.html" %}
 {% load bomconfig_customtemplatetags %}
-		
+
 {% block content %}
 <div id="main-body">
 	{% if user.is_authenticated %}
@@ -82,7 +82,14 @@
                         <td>{{ header.configuration_status|default:'' }}</td>
                         <td>{{ header.bom_request_type }}</td>
                         <td>{{ header.program.name|default:'' }}</td>
-                        <td>{% if firstline and not header.pick_list %}{{ firstline.customer_number }}{% elif header.pick_list %}Multiple{% endif %}</td>
+                        <td>
+                            {% if firstline and not header.pick_list and header.bom_request_type_id == 1 %}None
+                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 2 %}{{ firstline.customer_number }}
+                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 4 %}{{ firstline.customer_number }}
+                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 5 %}{{ firstline.customer_number }}
+                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 6 %}{{ firstline.customer_number }}
+                            {% elif header.pick_list %}Multiple{% endif %}
+                        </td>
                         <td>{{ header.model|default:'' }}</td>
                         <td>{{ header.model_description|default:'' }}</td>
                         <td style="text-align: right;">
@@ -138,9 +145,9 @@
             <h5>No configurations found for baseline</h5>
             {% endif %}
         {% endif %}
-    </div>
-    {% if downloadable and detailed %}
-    <div id="action_buttons" style="margin-top: 5px;">
+
+        {% if downloadable and detailed %}
+        <div id="action_buttons" style="margin-top: 5px;">
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinedownload' %}">
             {% csrf_token %}
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
