@@ -17,6 +17,8 @@ from BoMConfig.utils import GenerateRevisionSummary, GrabValue, \
 from BoMConfig.views.configuration import BuildDataArray
 from BoMConfig.views.pricing import PricingOverviewLists
 
+
+
 import datetime
 from io import BytesIO
 from itertools import chain
@@ -430,7 +432,6 @@ def DownloadBaseline(oRequest):
 
         # Write Baseline to file stream
         oFile = WriteBaselineToFile(oBaseline, sVersion, sCust)
-
         # Attach filestream to HTTP response
         response = HttpResponse(content_type='application/ms-excel')
         response['Content-Disposition'] = 'attachment;filename="{0}"'.format(
@@ -1161,9 +1162,16 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             elif iCurrentRow % 2 == 0:
                 oSheet['J' + str(iCurrentRow)].fill = oOffRowColor
 
-            oSheet['K' + str(iCurrentRow)] = oLineItem.customer_number
-            oSheet['K' + str(iCurrentRow)].alignment = oCentered
-            oSheet['K' + str(iCurrentRow)].border = oBorder
+
+            if oHeader.bom_request_type.name == 'New':
+               oSheet['K' + str(iCurrentRow)] = None
+               oSheet['K' + str(iCurrentRow)].alignment = oCentered
+               oSheet['K' + str(iCurrentRow)].border = oBorder
+            else :
+                oSheet['K' + str(iCurrentRow)] = oLineItem.customer_number
+                oSheet['K' + str(iCurrentRow)].alignment = oCentered
+                oSheet['K' + str(iCurrentRow)].border = oBorder
+
             if oLineItem == oFirstItem and not oHeader.pick_list:
                 oSheet['K' + str(iCurrentRow)].fill = oFirstRowColor
                 oSheet['K' + str(iCurrentRow)].font = Font(bold=True)
@@ -1254,23 +1262,20 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     # for Header objects still in the array after the previous section
     oSheet = oFile.create_sheet('ToC', 0)
     dTOCData = {
-        5: ['Customer Number', 'configuration.first_line.customer_number', 20],
-        6: ['Second Customer Number',
-            'configuration.first_line.sec_customer_number', 20],
         3: ['Configuration', 'configuration_designation', 25],
-        15: ['Customer Designation', 'customer_designation', 15],
-        10: ['Technology', 'technology', 15],
+        13: ['Customer Designation', 'customer_designation', 15],
+        8: ['Technology', 'technology', 15],
         1: ['Product Area 1', 'product_area1', 25],
         2: ['Product Area 2', 'product_area2', 10],
         4: ['Model', 'model', 25],
-        7: ['Model Description', 'model_description', 50],
-        11: ['What Model is this replacing?', 'model_replaced', 25],
-        9: ['BoM & Inquiry Details', None, 25],
-        12: ['BoM Request Type', 'bom_request_type', 10],
-        8: ['Configuration / Ordering Status', 'configuration_status', 15],
-        13: ['Inquiry', 'inquiry_site_template', 10],
-        14: ['Site Template', 'inquiry_site_template', 10],
-        16: ['Ext Notes', 'external_notes', 50],
+        5: ['Model Description', 'model_description', 50],
+        9: ['What Model is this replacing?', 'model_replaced', 25],
+        7: ['BoM & Inquiry Details', None, 25],
+        10: ['BoM Request Type', 'bom_request_type', 10],
+        6: ['Configuration / Ordering Status', 'configuration_status', 15],
+        11: ['Inquiry', 'inquiry_site_template', 10],
+        12: ['Site Template', 'inquiry_site_template', 10],
+        14: ['Ext Notes', 'external_notes', 50],
     }
 
     for iIndex in sorted(dTOCData.keys()):
