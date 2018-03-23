@@ -167,7 +167,10 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
             oFile.active['W' + str(iRow)] = oConfigLine.traceability_req
             oFile.active['X' + str(iRow)] = oConfigLine.customer_asset
             oFile.active['Y' + str(iRow)] = oConfigLine.customer_asset_tagging
-            oFile.active['Z' + str(iRow)] = oConfigLine.customer_number
+            if oHeader.bom_request_type.name == 'New':
+              oFile.active['Z' + str(iRow)] = None
+            else :
+                oFile.active['Z' + str(iRow)] = oConfigLine.customer_number
             oFile.active['AA' + str(iRow)] = oConfigLine.sec_customer_number
             oFile.active['AB' + str(iRow)] = oConfigLine.vendor_article_number
             oFile.active['AC' + str(iRow)] = oConfigLine.comments
