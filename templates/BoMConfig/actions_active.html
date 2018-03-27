@@ -22,7 +22,8 @@
                 <table>
                     <thead>
                         <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
-                            <th style="width:25px"></th><th style="width:200px">Configuration Designation</th><th style="width:400px">Baseline</th><th style="width:115px">Program</th><th style="width:200px">Inquiry / Site Template</th><th style="width:115px"></th><th style="width:115px"></th>
+                            <th style="width:25px"></th><th style="width:200px">Configuration Designation</th><th style="width:400px">Baseline</th>
+                            <th style="width:75px">BOM Request Type</th><th style="width:115px">Program</th><th style="width:200px">Inquiry / Site Template</th><th style="width:115px"></th><th style="width:115px"></th>
                             {% if user|has_group:"BOM_PSM_SAP_Document" or user|has_group:"BOM_BPMA_Architect" %}
                             <th style="width:115px">Request Error</th>
                             {% endif %}
@@ -34,6 +35,7 @@
                             <td><input class="active" type="checkbox" data-index="{{ record.id }}"/></td>
                             <td>{{ record.configuration_designation }}</td>
                             <td>{{ record.baseline | default:"(Not baselined)" }}</td>
+                            <td>{{ record.bom_request_type.name }}</td>
                             <td>{{ record.program | default:"(None)" }}</td>
                             <td>
                                 {% if record.inquiry_site_template and record.inquiry_site_template < 0 %}
