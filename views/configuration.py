@@ -2902,10 +2902,10 @@ def ValidatePlant(dData, dResult):
             dResult['error']['value'] = "! - Plant not found in REF_PLANTS.\n"
             dResult['status'] = "!"
             return
-
+    # 27/03: to remove the . from LHS of the part number so that part no. having . in the RHS would be considered a valid one.
         oCursor.execute(
             'SELECT [Plant] FROM dbo.SAP_ZQR_GMDM WHERE [Material Number]=%s',
-            [bytes(dData['part_number'].strip('. '), 'ascii')])
+            [bytes(dData['part_number'].lstrip('. '), 'ascii')])
         tResults = oCursor.fetchall()
         oCursor.close()
         if (dData['value'],) not in tResults:
@@ -2938,17 +2938,20 @@ def ValidateSLOC(dData, dResult):
         return
 
     if dData['plant'] not in ('', None):
+    # 27/03: query changed , replaced SAP_MB52 with SAP_ZMARD and added SLOC column as a filter .
         oCursor.execute(
-            'SELECT [SLoc] FROM dbo.SAP_MB52 WHERE [Plnt]=%s AND [Material]=%s',
+            'SELECT [SLoc] FROM dbo.SAP_ZMARD WHERE [Plant]=%s AND [Material]=%s and [SLoc]=%s',
             [bytes(dData['plant'], 'ascii'),
-             bytes(dData['part_number'].strip('. '), 'ascii')])
+             bytes(dData['part_number'].lstrip('. '), 'ascii'),
+             bytes(dData['value'], 'ascii')])
         tResults = oCursor.fetchall()
         oCursor.close()
-        if (dData['plant'], dData['value']) not in tResults:
+        if not tResults:
+    # 27/03: For SLOC validation we are refering to SAP_ZMARD instead of SAP_MB52
             dResult['error']['value'] = \
-                '! - Plant/SLOC combination not found in SAP_MB52 for material.\n'
+                '! - Plant/SLOC combination not found in SAP_ZMARD for material.\n'
             dResult['status'] = '!'
-        # end if
+            # end if
     else:
         oCursor.close()
 # end def

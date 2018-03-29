@@ -1165,7 +1165,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             elif iCurrentRow % 2 == 0:
                 oSheet['J' + str(iCurrentRow)].fill = oOffRowColor
 
-
+#Added not to show the customer no. in the downloaded sheet of baseline tab when BOM req type is new
             if oHeader.bom_request_type.name == 'New':
                oSheet['K' + str(iCurrentRow)] = None
                oSheet['K' + str(iCurrentRow)].alignment = oCentered
