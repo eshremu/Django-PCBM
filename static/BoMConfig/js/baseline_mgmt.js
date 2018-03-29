@@ -116,7 +116,7 @@ function BuildTable(){
         'scrollX': true,
         'scrollY': parseInt($('.table-wrapper').css("height")) - 71,
         fixedColumns: {
-            leftColumns: 0
+            leftColumns: 3
         }
     });
 
