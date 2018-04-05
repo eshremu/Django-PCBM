@@ -123,6 +123,10 @@ function BuildTable(){
     if (searchText != undefined) {
         table.search(searchText).draw();
     }
+
+    //    * changes done for S-05409 : scrolling issue
+
+    $('.DTFC_LeftBodyLiner').css('overflow','hidden');
 }
 
 function downloadModal(){
