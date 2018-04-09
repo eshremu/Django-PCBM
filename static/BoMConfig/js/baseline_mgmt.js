@@ -126,7 +126,7 @@ function BuildTable(){
 
     //    * changes done for S-05409 : scrolling issue
 
-    $('.DTFC_LeftBodyLiner').css('overflow','hidden');
+   // $('.DTFC_LeftBodyLiner').css('overflow','hidden');
 }
 
 function downloadModal(){
