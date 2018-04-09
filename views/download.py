@@ -167,7 +167,8 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
             oFile.active['W' + str(iRow)] = oConfigLine.traceability_req
             oFile.active['X' + str(iRow)] = oConfigLine.customer_asset
             oFile.active['Y' + str(iRow)] = oConfigLine.customer_asset_tagging
-            if oHeader.bom_request_type.name == 'New':
+            # Changes done for Bom request type = New, customer no will be none in line 10
+            if oHeader.bom_request_type.name == 'New' and str(oConfigLine.line_number) == '10':
               oFile.active['Z' + str(iRow)] = None
             else :
                 oFile.active['Z' + str(iRow)] = oConfigLine.customer_number
@@ -1165,12 +1166,12 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             elif iCurrentRow % 2 == 0:
                 oSheet['J' + str(iCurrentRow)].fill = oOffRowColor
 
-#Added not to show the customer no. in the downloaded sheet of baseline tab when BOM req type is new
-            if oHeader.bom_request_type.name == 'New':
-               oSheet['K' + str(iCurrentRow)] = None
-               oSheet['K' + str(iCurrentRow)].alignment = oCentered
-               oSheet['K' + str(iCurrentRow)].border = oBorder
-            else :
+# Added not to show the customer no. in the downloaded sheet of baseline tab when BOM req type is new and line no 10
+            if oHeader.bom_request_type.name == 'New' and oLineItem == oFirstItem:
+                oSheet['K' + str(iCurrentRow)] = None
+                oSheet['K' + str(iCurrentRow)].alignment = oCentered
+                oSheet['K' + str(iCurrentRow)].border = oBorder
+            else:
                 oSheet['K' + str(iCurrentRow)] = oLineItem.customer_number
                 oSheet['K' + str(iCurrentRow)].alignment = oCentered
                 oSheet['K' + str(iCurrentRow)].border = oBorder
