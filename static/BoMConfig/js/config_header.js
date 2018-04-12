@@ -136,6 +136,10 @@ $(document).ready(function(){
         }
     });
 
+    $('#id_react_request').keyup(function(){
+       $('#id_react_request').val($('input[name="react_request"]').val().trim());
+    });
+
     $('#id_model').keyup(function(){
         if ($('#id_configuration_designation').val() == $('#id_model').val()){
             attached = true;
@@ -284,14 +288,12 @@ function form_resize(){
     $('#headerformtable').css("height", tableheight);
     $('#headerformtable').css("overflow", 'auto');
 }
-
-function save_form(){
-    form_save = true;
-    $('[readonly=true]').removeAttr('readonly');
-    $('[disabled=true]').removeAttr('disabled');
-    clean_form = $('#headerform').serialize();
+function save_form(){
+    form_save = true;
+    $('[readonly=true]').removeAttr('readonly');
+    $('[disabled=true]').removeAttr('disabled');
+    clean_form = $('#headerform').serialize();
 }
-
 function req_search(){
     if($(reactrequest_id).val() == null || $(reactrequest_id).val() == ''){
         messageToModal('', 'Please provide a REACT request number', function(){})
@@ -302,7 +304,7 @@ function req_search(){
             dataType: "html",
             type: "POST",
             data: {
-                psm_req: $(reactrequest_id).val()
+                psm_req: $(reactrequest_id).val().trim()
             },
             headers:{
                 'X-CSRFToken': getcookie('csrftoken')

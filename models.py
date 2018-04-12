@@ -337,6 +337,7 @@ class Baseline(models.Model):
     current_inprocess_version = models.CharField(max_length=50, default='A')
     customer = models.ForeignKey(REF_CUSTOMER, db_constraint=False, blank=True,
                                  null=True)
+    isdeleted = models.BooleanField(default=0)
 
     def save(self, *args, **kwargs):
         """
@@ -406,7 +407,8 @@ class Baseline_Revision(models.Model):
     previous_revision = models.ForeignKey('Baseline_Revision', blank=True,
                                           null=True,
                                           related_name='next_revision')
-
+    isdeleted = models.BooleanField(default=0)
+    
     @property
     def title(self):
         """
@@ -1072,11 +1074,12 @@ class Configuration(models.Model):
                                       verbose_name="PSM On Hold?")
     internal_external_linkage = models.BooleanField(default=False,
                                                     verbose_name="Internal/External Linkage")
-    net_value = models.FloatField(blank=True, null=True,
+    # FloatField changed to IntegerField for below 3 fields
+    net_value = models.IntegerField(blank=True, null=True,
                                   verbose_name="Net Value")
-    override_net_value = models.FloatField(blank=True, null=True,
+    override_net_value = models.IntegerField(blank=True, null=True,
                                            verbose_name="Overriden Net Value")
-    total_value = models.FloatField(blank=True, null=True,
+    total_value = models.IntegerField(blank=True, null=True,
                                     verbose_name="Total Net Value")
     zpru_total = models.FloatField(blank=True, null=True,
                                    verbose_name="ZPRU Total")

@@ -9,7 +9,8 @@ from BoMConfig.views.configuration import AddHeader, AddConfig, AddTOC, \
     Clone, BuildDataArray, AjaxValidator
 from BoMConfig.views.search import Search
 from BoMConfig.views.baseline_mgmt import BaselineMgmt, BaselineLoad, \
-    BaselineRollback, BaselineRollbackTest
+    BaselineRollback, BaselineRollbackTest, DeleteBaseline
+
 from BoMConfig.views.pricing import ConfigPricing, OverviewPricing, PartPricing, \
     PriceErosion, ErosionAjax
 from BoMConfig.views.reporting import Report

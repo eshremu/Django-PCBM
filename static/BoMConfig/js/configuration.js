@@ -215,11 +215,14 @@ $(document).ready(function(){
 
     var endstr = "?validation=true";
     var end = window.location.href.endsWith(endstr);
+
+    var findreadonly = window.location.href.indexOf("readonly");
+
     $("#saveexitForm").attr('disabled', 'disabled').css('color','gray');
     $("#saveForm").attr('disabled', 'disabled').css('color','gray');
     $("#status").css('color','#FF8800');
     $("#status").html('PAGE LOADED,VALIDATION PENDING');
-    if(!end){
+    if(!end && findreadonly == -1){
        if (configuration_status == 'In Process' || configuration_status == 'In Process/Pending' ){
             $("#validateForm").trigger('click');
        }
@@ -658,7 +661,6 @@ function build_table() {
                             cellMeta['comment']['value'] = '';
                         }
                         cellMeta['cellStatus'] = 'OK';
-
                         var dataGenerator = function () {
                             return {
                                 row: parseInt(changes[i][0]),
@@ -669,7 +671,6 @@ function build_table() {
                         };
 
                         var data = dataGenerator();
-
                         switch(parseInt(changes[i][1])){
                             case 0: // Status
                                 continue;
@@ -704,7 +705,6 @@ function build_table() {
                                         } else if(changes[i][3].split(".").length == 2) {
                                             modPartnumber = "." + modPartnumber;
                                         }
-
                                         if(modPartnumber != partnumber){
                                             tableThis.setDataAtRowProp(parseInt(changes[i][0]), 2, modPartnumber, 'validation');
                                         }
@@ -719,14 +719,11 @@ function build_table() {
                             case 2: // Product number
                                 var partnumber = changes[i][3];
                                 var old_partnumber = changes[i][2];
-
                                 if(partnumber){
                                     // Convert to trimmed uppercase string
                                     partnumber = partnumber.toUpperCase().trim();
 
-                                    // Remove any leading dots pertaining to line number
-                                    partnumber = partnumber.replace(/^\.+/, '');
-
+                     // Remove any leading dots pertaining to line number--> partnumber = partnumber.replace(/^\.+/, '');      //not required now
                                     if(old_partnumber){
                                         old_partnumber = old_partnumber.toUpperCase().trim();
                                         old_partnumber = old_partnumber.replace(/^\.+/, '');
@@ -744,11 +741,9 @@ function build_table() {
                                         cellMeta['cellStatus'] = "X";
                                         cellMeta['comment']['value'] += 'X - Product Number exceeds 18 characters.\n';
                                     }
-
                                     // Add part number to data being sent to server before further modification
                                     data['value'] = partnumber;
                                     data['send'] = partnumber != old_partnumber;
-
                                     // If line number is populated, ensure part number has leading dots to match
                                     if(tableThis.getDataAtCell(changes[i][0], 1)){
                                         var lineNumber = tableThis.getDataAtCell(changes[i][0], 1);
@@ -785,6 +780,7 @@ function build_table() {
 
                                         tableThis.setCellMetaObject(parseInt(changes[i][0]), 4, qtyMeta);
                                     }
+                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 2, partnumber, 'validation');
                                 }
                                 break;
                             case 3: // Product description
@@ -858,7 +854,7 @@ function build_table() {
                                 } else if (p_code) {
                                     var found = p_code.match(/^(\d{2,3})$|^\((\d{2,3})-\d{4}\).*$|^([A-Z]\d{2})$|^\(([A-Z]\d{2})-\d{4}\).*$|^$/);
                                     data['value'] = (found[1] || found[2] || found[3] || found[4]);
-                                    data['send'] = changes[i][3] != changes[i][2];
+                                    //data['send'] = changes[i][3] != changes[i][2];
                                 }
                                 
                                 tableThis.setDataAtRowProp(parseInt(changes[i][0]), 10, p_code, 'validation');
@@ -881,10 +877,18 @@ function build_table() {
                             case 13: // SPUD
                                 break;
                             case 14: // RE-Code
-                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 14, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
-                                data['value'] = changes[i][3];
-                                data['int_notes'] = tableThis.getDataAtCell(parseInt(changes[i][0]), 17);
-                                data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
+                                var REerr=changes[i][3] ? changes[i][3].trim() : changes[i][3];
+                                if(REerr == null){
+                                continue;
+                                }
+                                else{
+                                var RECode=REerr.substring(0,REerr.indexOf(","));
+                                var REMsg = REerr.substring(REerr.indexOf(",")+1);
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 14, RECode ? RECode.trim() : RECode, 'validation');
+                                //data['value'] = changes[i][3];
+                                cellMeta['cellStatus'] = "OK";
+                                cellMeta['comment']['value'] += REMsg;
+                                }
                                 break;
                             case 15: // MU-Flag
                                 tableThis.setDataAtRowProp(parseInt(changes[i][0]), 15, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
@@ -892,11 +896,22 @@ function build_table() {
                                 data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
                                 break;
                             case 16: // X-Plant Material Status
-                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
-                                data['value'] = changes[i][3];
-                                data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
+                                var Xplt=changes[i][3] ? changes[i][3].trim() : changes[i][3];
+                                if(Xplt == null){
+                                continue;
+                                }
+                                else{
+                                var XpltCode=Xplt.substring(0,Xplt.indexOf(","));
+                                var XpltErr = Xplt.substring(Xplt.indexOf(",")+1);
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, XpltCode ? XpltCode.trim() : XpltCode, 'validation');
+                                //data['value'] = changes[i][3];
+                                cellMeta['cellStatus'] = "OK";
+                                cellMeta['comment']['value'] += XpltErr;
+                                 }
                                 break;
                             case 17: // Internal Notes
+                                var int_notes = changes[i][3] ? changes[i][3].trim() : changes[i][3];
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 17, int_notes, 'validation');
                                 break;
                             case 18: // Unit Price
                                 tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
@@ -1144,8 +1159,11 @@ function estimateLineNumbers(changes, current_line_numbers) {
             usedNumbers.push(current_line_numbers[i]);
         } else { // This is not a line number and needs to have one assigned
             var decimalCount = (current_line_numbers[i].match(/\./g)||[]).length;
+            var firstDot = current_line_numbers[i].slice(0,1);      //Added for First Dot
+            var SecondDot = current_line_numbers[i].slice(0,2);     //Added for Second Dot
             var prefix;
-            if (decimalCount == 2) { // grandchild
+
+            if (SecondDot == ".." ){            // grandchild
                 prefix = parent.toString() + "." + child.toString();
                 while (usedNumbers.indexOf(prefix + "." + grand.toString()) != -1 ) {
                     grand += 1;
@@ -1153,7 +1171,7 @@ function estimateLineNumbers(changes, current_line_numbers) {
                 current_line_numbers[i] = prefix + "." + grand.toString();
                 usedNumbers.push(prefix);
                 usedNumbers.push(current_line_numbers[i]);
-            } else if (decimalCount == 1) { // child
+               }else if (firstDot == "."){      // child
                 prefix = parent.toString();
                 while (usedNumbers.indexOf(prefix + "." + child.toString()) != -1 ) {
                     child += 1;
@@ -1235,7 +1253,7 @@ function UpdateValidation(row, table){
                 }
 
                 if(fCurrentTotal != undefined) {
-                    $('#id_total_value').val(fCurrentTotal.toFixed(2).toString());
+                    $('#id_total_value').val(fCurrentTotal.toString());         //.toFixed() removed to make the total value of Integer type
                 }
                 if(fZpruTotal != undefined) {
                     $('#id_zpru_total').val(fZpruTotal.toFixed(2).toString());

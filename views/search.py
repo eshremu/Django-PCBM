@@ -565,7 +565,7 @@ def Search(oRequest, advanced=False):
         'prog_list': sorted(list(set(REF_PROGRAM.objects.all().values_list(
             'name', flat=True)))),
         'tech_list': REF_TECHNOLOGY.objects.all(),
-        'baseline_list': Baseline.objects.all().order_by('title'),
+        'baseline_list': Baseline.objects.all().order_by('title').exclude(isdeleted=1),
         'prod1_list': sorted(list(set(
             REF_PRODUCT_AREA_1.objects.all().values_list('name', flat=True)))),
         'prod2_list': sorted(list(set(

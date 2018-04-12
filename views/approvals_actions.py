@@ -111,14 +111,14 @@ def Approval(oRequest):
 
     dContext = {
         'approval_wait': Header.objects.filter(
-            configuration_status__name='In Process/Pending'),
+            configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0),
         'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
         'baselines': ['All'] + sorted(list(
             set(
                 [str(obj.baseline.title) if
                  obj.baseline.title != 'No Associated Baseline' else
                  "(Not baselined)" for obj in Header.objects.filter(
-                    configuration_status__name='In Process/Pending')]))),
+                    configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0)]))),
         'customer_list': ['All'] + [obj.name for obj in
                                     REF_CUSTOMER.objects.all()],
         'approval_seq': HeaderTimeTracker.approvals(),
@@ -178,14 +178,14 @@ def Action(oRequest, **kwargs):
 
     dContext = {
         'in_process': Header.objects.filter(
-            configuration_status__name='In Process'),
+            configuration_status__name='In Process').filter(baseline__isdeleted=0),
         'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
         'baselines': ['All'] + sorted(list(
             set(
                 [str(obj.baseline) if
                  obj.baseline.title != 'No Associated Baseline' else
                  "(Not baselined)" for obj in Header.objects.filter(
-                    configuration_status__name='In Process')]))),
+                    configuration_status__name='In Process').filter(baseline__isdeleted=0)]))),
         'active': [obj for obj in Header.objects.filter(
             configuration_status__name='In Process/Pending',) if
                    HeaderTimeTracker.approvals().index(
@@ -749,7 +749,7 @@ def AjaxApprove(oRequest):
             Header.objects.filter(pk__in=aRecords).delete()
         elif sAction == 'cancel':
             Header.objects.filter(pk__in=aRecords).update(
-                configuration_status__name='Cancelled')
+                configuration_status__name='Cancelled')             # __(double underscore means join)
         elif sAction in ('hold', 'unhold'):
             for iRecord in aRecords:
                 oHeader = Header.objects.get(pk=iRecord)
@@ -899,10 +899,14 @@ def CloneHeader(oHeader):
         oNewLine = copy.deepcopy(oConfigLine)
         oNewLine.pk = None
         oNewLine.config = oNewConfig
-        oNewLine.customer_number = None
+        oNewLine.customer_number = copy.deepcopy(oConfigLine.customer_number)
         oNewLine.sec_customer_number = None
-        oNewLine.customer_asset = None
-        oNewLine.customer_asset_tagging = None
+        oNewLine.customer_asset = copy.deepcopy(oConfigLine.customer_asset)
+        oNewLine.customer_asset_tagging = copy.deepcopy(oConfigLine.customer_asset_tagging)
+        if oConfigLine.linepricing.pricing_object:
+            oNewLine.unit_price = oConfigLine.linepricing.pricing_object.unit_price
+        else:
+            oNewLine.unit_price=None
         # oNewLine.comments = None
         oNewLine.save()
 

@@ -1,6 +1,6 @@
 {% extends "BoMConfig/template.html" %}
 {% load bomconfig_customtemplatetags %}
-		
+
 {% block content %}
 <div id="main-body">
 	{% if user.is_authenticated %}
@@ -58,6 +58,9 @@
                 {% for revision in table.revisions %}
                     <tr class="first_row {{ revision.customer }}">
                         <td class="baseline_name">
+                            {% if user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_PSM_Tool_Administrator" %}
+                            <input type="checkbox" class="baselineChk" data-index="{{table.baseline_id}}" value="{{table.baseline.id}}">
+                            {% endif %}
                             {% if not downloadable %}
                             <a onclick="$('#id_baseline_title').val('{{ table.baseline.id }}'); $('#headersubform form').submit();" style="cursor: pointer">
                                 {{ table.baseline.title }}{% if revision.revision.version %}{% if downloadable or not downloadable and table.baseline.title != 'No Associated Baseline'  %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}{% endif %}
@@ -81,7 +84,14 @@
                         <td>{{ header.configuration_status|default:'' }}</td>
                         <td>{{ header.bom_request_type }}</td>
                         <td>{{ header.program.name|default:'' }}</td>
-                        <td>{% if firstline and not header.pick_list %}{{ firstline.customer_number }}{% elif header.pick_list %}Multiple{% endif %}</td>
+                        <td>
+                            {% if firstline and not header.pick_list and header.bom_request_type_id == 1 %}None
+                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 2 %}{{ firstline.customer_number }}
+                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 4 %}{{ firstline.customer_number }}
+                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 5 %}{{ firstline.customer_number }}
+                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 6 %}{{ firstline.customer_number }}
+                            {% elif header.pick_list %}Multiple{% endif %}
+                        </td>
                         <td>{{ header.model|default:'' }}</td>
                         <td>{{ header.model_description|default:'' }}</td>
                         <td style="text-align: right;">
@@ -90,7 +100,7 @@
                                     {% if header.configuration.get_first_line.linepricing.override_price %}
                                     $&nbsp;{{ header.configuration.get_first_line.linepricing.override_price|iffloatformat:'2'|default:'' }}
                                     {% else %}
-                                    {% if header.configuration.get_first_line.linepricing.unit_price %}$&nbsp;{% endif %}{{ header.configuration.get_first_line.linepricing.unit_price|iffloatformat:'2'|default:'' }}
+                                    {% if header.configuration.get_first_line.linepricing.pricing_object.unit_price %}$&nbsp;{% endif %}{{ header.configuration.get_first_line.linepricing.pricing_object.unit_price|iffloatformat:'2'|default:'' }}
                                     {% endif %}
                                 {% else %}
                                 {% if header.configuration.net_value %}$&nbsp;{% endif %}{{ header.configuration.net_value|iffloatformat:'2'|default:'' }}
@@ -137,9 +147,9 @@
             <h5>No configurations found for baseline</h5>
             {% endif %}
         {% endif %}
-    </div>
-    {% if downloadable and detailed %}
-    <div id="action_buttons" style="margin-top: 5px;">
+
+        {% if downloadable and detailed %}
+        <div id="action_buttons" style="margin-top: 5px;">
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinedownload' %}">
             {% csrf_token %}
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
@@ -156,26 +166,33 @@
             <button style="display: inline" id="rollback" class="btn" type="button" onclick="rollbackTest()">Rollback</button>
         </form>
         {% endif %}
-    </div>
-    {% elif not detailed %}
-    <div id="action_buttons" style="margin-top: 5px;">
+        </div>
+
+        {% elif not detailed %}
+        <div id="action_buttons" style="margin-top: 5px;">
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinemasterdownload' %}">
             {% csrf_token %}
             <input id="master-cust-unit" name="customer" type="hidden" value="">
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
             <button style="display: inline" id="download" class="btn" type="button" onclick="pickCustomer()">Download</button>
-        </form>
+            {% if user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_PSM_Tool_Administrator" %}
+            <button id="deleteBaseline" class="btn btn-danger" type="button" value="delete">Delete</button>
+            {% endif %}
+            </form>
+        </div>
+        {% endif %}
+        {% else %}
+
+        <h4>You must be logged in to access this feature</h4>
+        {% endif %}
     </div>
-    {% endif %}
-	{% else %}
-	<h4>You must be logged in to access this feature</h4>
-	{% endif %}
 </div>
 <script>
     var revision_list = '{% for revision in tables.0.revisions %}<option value="{{ revision.revision.version }}">{{ revision.revision.version }}</option>{% endfor %}';
     var cust_list = '<option value="">All</option>{% for cust in cust_list %}<option value="{{ cust.name }}">{{ cust.name }}</option>{% endfor %}';
     var rollback_url = "{% url 'bomconfig:baselinerollback' %}";
     var rollbacktest_url = "{% url 'bomconfig:baselinerollbacktest' %}";
+    var deletebaseline_url = "{% url 'bomconfig:baselinedelete' %}";
 </script>
 
 <style>

@@ -45,7 +45,49 @@ $(document).ready(function() {
     $('#id_baseline_title').change(function(event){
         this.form.submit();
     });
+
+    $('#deleteBaseline').click(function(){
+        if($('.baselineChk:checked').length > 0) {
+            messageToModal('Confirm deletion','STOP!!! Are you sure you wish to delete the selected records? This is permanent and CANNOT be undone.', function(source){
+                $('#myModal').modal('show');
+                process();
+            }, this);
+        } else {
+            messageToModal('Error','Please select at least 1 record for deletion.', function(){});
+        }
+    });
 });
+function process(){
+    var records = [];
+    $('.baselineChk:checkbox:checked').each(function(i)
+    {
+      records[i] = $(this).val();
+    });
+
+        $('#myModal').modal('show');
+        $.ajax({
+            url: deletebaseline_url,
+            type: "POST",
+            data: {
+                data: JSON.stringify(records)
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+                if(data){
+                    location.href = data;
+                } else {
+                    location.reload(true);
+                }
+            },
+            error: function(xhr, status, error){
+                $('#myModal').modal('hide');
+                messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                    status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+            }
+        });
+}
 
 function cust_filter(customer){
     if(customer !== 'All') {
@@ -81,6 +123,7 @@ function BuildTable(){
     if (searchText != undefined) {
         table.search(searchText).draw();
     }
+
 }
 
 function downloadModal(){
@@ -137,7 +180,7 @@ function rollbackTest(){
             }
         },
         error: function(xhr, status, error){
-            messageToModal('Unknown error', 'The following error occurred while checking rollback.<br/>' + 
+            messageToModal('Unknown error', 'The following error occurred while checking rollback.<br/>' +
                 status + ": " + error + '<br/>If this issue persists, contact a tool admin.');
             $('#myModal').modal('hide');
         }
