@@ -514,7 +514,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                             baseline__customer=oExisting.customer_unit if
                             oExisting else None).filter(
                             completed_date=None).exclude(
-                            baseline__title='No Associated Baseline').order_by(
+                            baseline__title='No Associated Baseline').exclude(baseline__isdeleted=1).order_by(
                             'baseline__title'))
                 )
 
