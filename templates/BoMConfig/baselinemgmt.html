@@ -140,15 +140,16 @@
                 </tr>
 
             {% else %}
-            <tr class="first_row {{ revision.customer }}">
+            <tr class="first_row {{ revision.customer }}" >
                 <td class="baseline_name">
                 {% if user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_PSM_Tool_Administrator" %}
-                <input type="checkbox" class="baselineChk" data-index="{{table.baseline_id}}" value="{{table.baseline.id}}">{{table.baseline.title}} ( No Revision & Configuration Available)
+                <input type="checkbox" class="baselineChk" data-index="{{table.baseline_id}}" value="{{table.baseline.id}}">{{table.baseline.title}} (No Revision and Configuration Available)
+                    {% endif %}
                 </td>
-                <td></td>
-                <td></td>
+                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                        <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
             </tr>
-                {% endif %}
+
             {% endif %}
             {% endfor %}
             </tbody>
