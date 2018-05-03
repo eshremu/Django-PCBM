@@ -1075,11 +1075,11 @@ class Configuration(models.Model):
     internal_external_linkage = models.BooleanField(default=False,
                                                     verbose_name="Internal/External Linkage")
     # FloatField changed to IntegerField for below 3 fields
-    net_value = models.IntegerField(blank=True, null=True,
+    net_value = models.FloatField(blank=True, null=True,
                                   verbose_name="Net Value")
-    override_net_value = models.IntegerField(blank=True, null=True,
+    override_net_value = models.FloatField(blank=True, null=True,
                                            verbose_name="Overriden Net Value")
-    total_value = models.IntegerField(blank=True, null=True,
+    total_value = models.FloatField(blank=True, null=True,
                                     verbose_name="Total Net Value")
     zpru_total = models.FloatField(blank=True, null=True,
                                    verbose_name="ZPRU Total")
@@ -1487,10 +1487,13 @@ class PricingObject(models.Model):
             customer=oConfigLine.config.header.customer_unit,
             part=oConfigLine.part.base,
             is_current_active=True)
-        oPriceObj = aPricingList.filter(
-            sold_to=oConfigLine.config.header.sold_to_party,
-            spud=oConfigLine.spud,
-            technology=oConfigLine.config.header.technology).first()
+        oPriceObj = aPricingList.filter(part=oConfigLine.part.base).first()
+
+        if not oPriceObj:
+            oPriceObj = aPricingList.filter(
+                sold_to=oConfigLine.config.header.sold_to_party,
+                spud=oConfigLine.spud,
+                technology=oConfigLine.config.header.technology).first()
 
         if not oPriceObj:
             oPriceObj = aPricingList.filter(

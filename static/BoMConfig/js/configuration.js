@@ -1253,7 +1253,7 @@ function UpdateValidation(row, table){
                 }
 
                 if(fCurrentTotal != undefined) {
-                    $('#id_total_value').val(fCurrentTotal.toString());         //.toFixed() removed to make the total value of Integer type
+                    $('#id_total_value').val(parseInt(fCurrentTotal.toString()));         //.toFixed() removed to make the total value of Integer type
                 }
                 if(fZpruTotal != undefined) {
                     $('#id_zpru_total').val(fZpruTotal.toFixed(2).toString());
