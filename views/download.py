@@ -472,9 +472,9 @@ def DownloadBaselineMaster(oRequest):
     # so we exclude the pseudo-baseline "No Associated Baseline". When customer
     # is provided, the filtering will ensure the pseudo-baseline is excluded
     if not sCustomer:
-        aBaselines = Baseline.objects.exclude(title='No Associated Baseline')
+        aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
     else:
-        aBaselines = Baseline.objects.filter(customer__name=sCustomer)
+        aBaselines = Baseline.objects.filter(customer__name=sCustomer).exclude(isdeleted=1)
 
     # Add the pseudo-baseline to the end of the list to ensure it is displayed
     # last

@@ -1200,7 +1200,7 @@ function UpdateValidation(row, table){
     table = table === undefined ? hot : table;
     var endstr = '?validation=true';
     var end = window.location.href.endsWith(endstr);
-    if(end){
+    if(end || is_picklist){    // added || is_picklist for D-02849
         if (row === undefined){
             // Update page status based on Status column
             if(!validationStorage.validating()){
@@ -1253,7 +1253,7 @@ function UpdateValidation(row, table){
                 }
 
                 if(fCurrentTotal != undefined) {
-                    $('#id_total_value').val(fCurrentTotal.toString());         //.toFixed() removed to make the total value of Integer type
+                    $('#id_total_value').val(parseInt(fCurrentTotal.toString())); //.toFixed() removed and parseInt added to make the total value of Integer type in configuration tab
                 }
                 if(fZpruTotal != undefined) {
                     $('#id_zpru_total').val(fZpruTotal.toFixed(2).toString());
