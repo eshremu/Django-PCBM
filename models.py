@@ -1487,6 +1487,8 @@ class PricingObject(models.Model):
             customer=oConfigLine.config.header.customer_unit,
             part=oConfigLine.part.base,
             is_current_active=True)
+
+        # --added 2 lines below line to fetch unit price for parts having unit_price present in DB (S-05918)
         oPriceObj = aPricingList.filter(part=oConfigLine.part.base).first()
 
         if not oPriceObj:
