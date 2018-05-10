@@ -561,6 +561,9 @@ class UserForm(forms.Form):
             name__startswith='BOM_').exclude(
             name__contains='BPMA').exclude(name__contains='SuperApprover'),
         label='Assigned Group',)
+    #  S-05687 : build CU checkbox for user admin, Added below 2lines
+    customer = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple,
+                                         required=False, label='Customer Unit', )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -571,6 +574,9 @@ class UserForm(forms.Form):
         self.fields['assigned_group'].label_from_instance = \
             lambda inst: "%s" % ((inst.name.replace('BOM_', '')
                                   .replace('_', ' - ', 1).replace('_', ' ')))
+        #  S-05687 : build CU checkbox for user admin, Added below 2lines
+        cust_list = tuple((str(oCust.id), oCust.name) for oCust in REF_CUSTOMER.objects.all())
+        self.fields['customer'].choices = cust_list
 
     def clean_email(self):
         """
