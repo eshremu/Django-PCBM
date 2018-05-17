@@ -19,18 +19,55 @@
     <form method="post" style="margin-top: 20px;">
         {% csrf_token %}
         <div id="formdiv">
-            <table>
+                       <table style="margin-bottom:20px; text-align:left; padding-bottom: 5px;}" >
                 <tbody>
-                    {% for field in form %}
                     <tr>
-                        <td style="padding-bottom: 3px;">{{ field.label_tag }}</td><td>{{ field }}</td>
-                        {% for error in field.errors %}
+                        <td>{{ form.signum.label_tag }}</td><td>{{ form.signum }}</td>
+                        {% for error in form.signum.errors %}
                         <td class="errortext">{{ error }}</td>
                         {% endfor %}
                     </tr>
-                    {% endfor %}
+                    <tr>
+                        <td>{{ form.first_name.label_tag }}</td><td>{{ form.first_name }}</td>
+                        {% for error in form.first_name.errors %}
+                        <td class="errortext">{{ error }}</td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <td>{{ form.last_name.label_tag }}</td><td>{{ form.last_name }}</td>
+                        {% for error in form.last_name.errors %}
+                        <td class="errortext">{{ error }}</td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <td>{{ form.email.label_tag }}</td><td>{{ form.email }}</td>
+                        {% for error in form.email.errors %}
+                        <td class="errortext">{{ error }}</td>
+                        {% endfor %}
+                    </tr>
+                    <tr>
+                        <td>{{ form.assigned_group.label_tag }}</td><td>{{ form.assigned_group }}</td>
+                        {% for error in form.assigned_group.errors %}
+                        <td class="errortext">{{ error }}</td>
+                        {% endfor %}
+                    </tr>
                 </tbody>
             </table>
+            <div style="width:75%;">
+                <tr>
+                    <td>{{ form.customer.label_tag }}</td>
+                        {% for error in form.customer.errors %}
+                        <td class="errortext">{{ error }}</td>
+                        {% endfor %}
+                </tr>
+                <br>
+                <tr>
+                            {% for choice in form.customer %}
+                            <div style="width:22%;display:inline-block;">{{ choice }}</div>
+                            {% endfor %}
+                </tr>
+            </div>
+
         </div>
         <div id="formbuttons" style="margin-top:10px;">
             <button class="btn btn-primary" value="save" type="submit" name="action">Save</button>

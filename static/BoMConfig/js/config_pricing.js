@@ -224,9 +224,9 @@ function calcValue(instance){
             }
         } else {
             if (i == 0 && not_picklist){
-                stated_total += parseInt(instance.getSourceDataAtCell(i, 4)) * parseInt(instance.getSourceDataAtCell(i, 5));   //parseFloat changed to parseInt
+                stated_total += parseInt(instance.getSourceDataAtCell(i, 4)) * parseFloat(instance.getSourceDataAtCell(i, 5));   //parseFloat changed to parseInt
             } else {
-                overall_total += parseInt(instance.getSourceDataAtCell(i, 4)) * parseInt(instance.getSourceDataAtCell(i, 5));  //parseFloat changed to parseInt
+                overall_total += parseInt(instance.getSourceDataAtCell(i, 4)) * parseFloat(instance.getSourceDataAtCell(i, 5));  //parseFloat changed to parseInt
             }
         }
     }
@@ -234,5 +234,5 @@ function calcValue(instance){
         overall_total = stated_total;
     }
 
-    $('#net_value').val(overall_total);     //.toFixed() removed to make the net value of Integer type
+    $('#net_value').val(overall_total.toFixed(2));
 }
