@@ -1253,8 +1253,8 @@ function UpdateValidation(row, table){
                 }
 
                 if(fCurrentTotal != undefined) {
-                    $('#id_total_value').val(parseInt(fCurrentTotal.toString())); //.toFixed() removed and parseInt added to make the total value of Integer type in configuration tab
-                }
+                    $('#id_total_value').val(fCurrentTotal.toFixed(2).toString());
+                 }
                 if(fZpruTotal != undefined) {
                     $('#id_zpru_total').val(fZpruTotal.toFixed(2).toString());
                 }
