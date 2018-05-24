@@ -85,11 +85,7 @@
                         <td>{{ header.bom_request_type }}</td>
                         <td>{{ header.program.name|default:'' }}</td>
                         <td>
-                            {% if firstline and not header.pick_list and header.bom_request_type_id == 1 %}None
-                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 2 %}{{ firstline.customer_number }}
-                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 4 %}{{ firstline.customer_number }}
-                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 5 %}{{ firstline.customer_number }}
-                            {% elif firstline and not header.pick_list and header.bom_request_type_id == 6 %}{{ firstline.customer_number }}
+                            {% if firstline and not header.pick_list %}{{ firstline.customer_number }}
                             {% elif header.pick_list %}Multiple{% endif %}
                         </td>
                         <td>{{ header.model|default:'' }}</td>
