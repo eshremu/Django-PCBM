@@ -1574,8 +1574,6 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
 
                 if not oHeader.pick_list:
                     if str(Line.line_number) == '10':
-                        if oHeader.bom_request_type.name == 'New': #added for disabling CEQ No. for new Confifuration
-                            dLine.update({'27': ''})
                         if oConfig.override_net_value:
                             dLine.update(
                                 {'18': str(oConfig.override_net_value)}
