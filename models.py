@@ -1877,6 +1877,19 @@ class DistroList(models.Model):
         return self.customer_unit.name
 # end def
 
+# S-06578 : Addition for User_Customer table
+class User_Customer(models.Model):
+
+    class Meta:
+        verbose_name = 'User Customer'
+        # end class
+    user_id = models.IntegerField( blank=False, null=False)
+    customer_id = models.IntegerField( blank=False, null=False)
+    is_deleted = models.BooleanField(default=0)
+
+    def __str__(self):
+        return (str(self.user_id))
+    # end def
 
 class ApprovalList(models.Model):
     """
