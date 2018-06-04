@@ -199,7 +199,7 @@ class UserCustomerAdmin(admin.ModelAdmin):
     ModelAdmin specifying how model should behave in built-in Django
     administration views
     """
-    list_display = ('user_id', 'customer_id',
+    list_display = ('user', 'customer','customer_name',
                     'is_deleted')
 
 class ConfigLineAdmin(admin.ModelAdmin):
