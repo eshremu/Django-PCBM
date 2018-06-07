@@ -9,7 +9,7 @@ from django.contrib.auth.models import Group
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 
-from BoMConfig.models import DistroList, ApprovalList, User_Customer
+from BoMConfig.models import DistroList, ApprovalList
 from BoMConfig.forms import DistroForm, UserForm, UserAddForm, CustomerApprovalLevelForm
 from BoMConfig.views.landing import Default
 
@@ -154,10 +154,6 @@ def UserChange(oRequest, iUserId=''):
             'assigned_group': oUser.groups.filter(name__startswith='BOM_') if oUser.groups.filter(name__startswith='BOM_') else None
         }
 
-    # Added for CU initial checked view
-        aMatrixEntries = User_Customer.objects.filter(user_id=iUserId)
-        dInitial['customer'] = list([str(oSecMat.customer_id) for oSecMat in aMatrixEntries.filter(user_id=iUserId)])
-
         # If this request is a form submission
         if oRequest.method == 'POST' and oRequest.POST:
             # Build a UserForm instance from the data submitted, using data in
@@ -189,30 +185,6 @@ def UserChange(oRequest, iUserId=''):
                                 oUser.groups.add(*tuple(oForm.cleaned_data[field]))
                                 oUser.groups.remove(*tuple(Group.objects.filter(name__startswith='BOM_').exclude(pk__in=oForm.cleaned_data[field])))
                             # end if
-                    # S-06578: Added For CU options in Admin page
-                            elif field == 'customer':
-                                UserCustomerRelationEntries = User_Customer.objects.filter(user_id=iUserId)
-                                aNewUserCustomerRelationEntries = []
-
-                                for iCustomer in oForm.cleaned_data[field]:
-                                    if UserCustomerRelationEntries.filter(customer_id=iCustomer, is_deleted=0):
-                                        aNewUserCustomerRelationEntries.append(
-                                            UserCustomerRelationEntries.get(customer_id=iCustomer, is_deleted=0))
-                                    else:
-                                        aNewUserCustomerRelationEntries.append(User_Customer(
-                                            user_id=iUserId,
-                                            customer_id=iCustomer,
-                                            is_deleted=0))
-                                    # end if
-                                # end for
-
-                                for oSecMatrix in UserCustomerRelationEntries:
-                                    if oSecMatrix not in aNewUserCustomerRelationEntries:
-                                        oSecMatrix.delete()
-
-                                for oSecMatrix in aNewUserCustomerRelationEntries:
-                                    oSecMatrix.save()
-
                         # end for
                         oUser.save()
                         oRequest.session['errors'] = ['User changed successfully']
