@@ -467,7 +467,6 @@ def DownloadBaselineMaster(oRequest):
     # If no customer was specified, we want to get all actual baselines first,
     # so we exclude the pseudo-baseline "No Associated Baseline". When customer
     # is provided, the filtering will ensure the pseudo-baseline is excluded
-    # S-05918- (PCBM:Pricing issues in regression testing) added .exclude(isdeleted=1)
     if not sCustomer:
         aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
     else:
