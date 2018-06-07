@@ -556,12 +556,11 @@ class UserForm(forms.Form):
     first_name = forms.CharField(label='First Name')
     last_name = forms.CharField(label='Last Name')
     email = forms.EmailField(label='Ericsson Email')
-    #  S-05904 : show all roles assigned group to each user added widget=forms.CheckboxSelectMultiple
     assigned_group = forms.ModelMultipleChoiceField(
         Group.objects.filter(
             name__startswith='BOM_').exclude(
             name__contains='BPMA').exclude(name__contains='SuperApprover'),
-        widget=forms.CheckboxSelectMultiple, label='Assigned Group', )
+        label='Assigned Group', )
     #  S-05687 : build CU checkbox for user admin, Added below 2lines
     customer = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple,
                                          required=False, label='Customer Unit', )
@@ -571,6 +570,7 @@ class UserForm(forms.Form):
         # SIGNUM will always be readonly, as it cannot be changed.  Changes of
         # that type will have to be done in the Djanog user adminstration view
         self.fields['signum'].widget.attrs['readonly'] = True
+        self.fields['signum'].widget.attrs['style'] = 'border: none;'
         self.fields['assigned_group'].label_from_instance = \
             lambda inst: "%s" % ((inst.name.replace('BOM_', '')
                                   .replace('_', ' - ', 1).replace('_', ' ')))
