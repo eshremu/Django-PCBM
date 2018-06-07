@@ -167,11 +167,7 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
             oFile.active['W' + str(iRow)] = oConfigLine.traceability_req
             oFile.active['X' + str(iRow)] = oConfigLine.customer_asset
             oFile.active['Y' + str(iRow)] = oConfigLine.customer_asset_tagging
-            # Changes done for Bom request type = New, customer no will be none in line 10
-            if oHeader.bom_request_type.name == 'New' and str(oConfigLine.line_number) == '10':
-              oFile.active['Z' + str(iRow)] = None
-            else :
-                oFile.active['Z' + str(iRow)] = oConfigLine.customer_number
+            oFile.active['Z' + str(iRow)] = oConfigLine.customer_number
             oFile.active['AA' + str(iRow)] = oConfigLine.sec_customer_number
             oFile.active['AB' + str(iRow)] = oConfigLine.vendor_article_number
             oFile.active['AC' + str(iRow)] = oConfigLine.comments
@@ -471,6 +467,7 @@ def DownloadBaselineMaster(oRequest):
     # If no customer was specified, we want to get all actual baselines first,
     # so we exclude the pseudo-baseline "No Associated Baseline". When customer
     # is provided, the filtering will ensure the pseudo-baseline is excluded
+    # S-05918- (PCBM:Pricing issues in regression testing) added .exclude(isdeleted=1)
     if not sCustomer:
         aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
     else:
@@ -1166,9 +1163,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             elif iCurrentRow % 2 == 0:
                 oSheet['J' + str(iCurrentRow)].fill = oOffRowColor
 
-# Added not to show the customer no. in the downloaded sheet of baseline tab when BOM req type is new and line no 10
-            if oHeader.bom_request_type.name == 'New' and oLineItem == oFirstItem:
-                oSheet['K' + str(iCurrentRow)] = None
+                oSheet['K' + str(iCurrentRow)] = oLineItem.customer_number
                 oSheet['K' + str(iCurrentRow)].alignment = oCentered
                 oSheet['K' + str(iCurrentRow)].border = oBorder
             else:

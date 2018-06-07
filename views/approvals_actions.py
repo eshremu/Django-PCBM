@@ -899,7 +899,11 @@ def CloneHeader(oHeader):
         oNewLine = copy.deepcopy(oConfigLine)
         oNewLine.pk = None
         oNewLine.config = oNewConfig
-        oNewLine.customer_number = copy.deepcopy(oConfigLine.customer_number)
+        # D- 03024 :added for if cloned configuration has New Configuration name, then it's customer no. will be none else will have customer no of previous configuration
+        if oNewConfig.header.configuration_designation != oOldHeader.configuration_designation:
+            oNewLine.customer_number = None
+        else:
+            oNewLine.customer_number = copy.deepcopy(oConfigLine.customer_number)
         oNewLine.sec_customer_number = None
         oNewLine.customer_asset = copy.deepcopy(oConfigLine.customer_asset)
         oNewLine.customer_asset_tagging = copy.deepcopy(oConfigLine.customer_asset_tagging)

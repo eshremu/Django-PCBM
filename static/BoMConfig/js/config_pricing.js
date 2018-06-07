@@ -234,5 +234,5 @@ function calcValue(instance){
         overall_total = stated_total;
     }
 
-    $('#net_value').val(parseInt(overall_total));    //.toFixed() removed and parseInt added to make the total value of Integer type in config-price-managemngt tab
+    $('#net_value').val(overall_total.toFixed(2));    // Changed .val to show net value as currency D-02989
 }
