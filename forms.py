@@ -560,7 +560,7 @@ class UserForm(forms.Form):
         Group.objects.filter(
             name__startswith='BOM_').exclude(
             name__contains='BPMA').exclude(name__contains='SuperApprover'),
-        label='Assigned Group',)
+        label='Assigned Group', )
     #  S-05687 : build CU checkbox for user admin, Added below 2lines
     customer = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple,
                                          required=False, label='Customer Unit', )

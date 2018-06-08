@@ -408,7 +408,7 @@ class Baseline_Revision(models.Model):
                                           null=True,
                                           related_name='next_revision')
     isdeleted = models.BooleanField(default=0)
-    
+
     @property
     def title(self):
         """
