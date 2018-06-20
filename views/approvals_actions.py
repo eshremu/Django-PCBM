@@ -820,7 +820,7 @@ def AjaxApprove(oRequest):
                              'action': approval
                              }
                         ), 'text/html')
-                        # oMessage.send(fail_silently=False)
+                        oMessage.send(fail_silently=False)
                     # end for
                 # end for
             # end for
