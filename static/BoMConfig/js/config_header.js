@@ -127,13 +127,14 @@ $(document).ready(function(){
     });
 
     $('#id_configuration_designation').keyup(function(){
-        if(!attached && $('#id_configuration_designation').val() == $('#id_model').val()){
-            attached = true;
-        }
-
-        if(attached) {
-            $('#id_model').val($(this).val());
-        }
+//        if(!attached && $('#id_configuration_designation').val() == $('#id_model').val()){
+//            attached = true;
+//        }
+//
+//        if(attached) {
+//
+//        }
+        $('#id_model').val($(this).val());
     });
 
     $('#id_react_request').keyup(function(){
