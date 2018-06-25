@@ -1370,10 +1370,10 @@ def EmailDownload(oBaseline):
         baseline=oBaseline, version=sVersion)) + ".xlsx"
 
     # Retrieve DistroList object, if it exists
-    try:
-        oDistroList = DistroList.objects.get(customer_unit=oBaseline.customer)
-    except DistroList.DoesNotExist:
-        oDistroList = None
+    # try:
+    #     oDistroList = DistroList.objects.get(customer_unit=oBaseline.customer)
+    # except DistroList.DoesNotExist:
+    oDistroList = None
 
     # Build email message
     sSubject = 'New revision released: ' + oBaseline.title
