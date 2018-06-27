@@ -1262,7 +1262,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
         1: ['Product Area 1', 'product_area1', 25],
         2: ['Product Area 2', 'product_area2', 10],
         4: ['Model', 'model', 25],
-        5: ['Model Description', 'model_description', 50],
+        7: ['Model Description', 'model_description', 50],
         11: ['What Model is this replacing?', 'model_replaced', 25],
         9: ['BoM & Inquiry Details', None, 25],
         12: ['BoM Request Type', 'bom_request_type', 10],
@@ -1270,8 +1270,8 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
         13: ['Inquiry', 'inquiry_site_template', 10],
         14: ['Site Template', 'inquiry_site_template', 10],
         16: ['Ext Notes', 'external_notes', 50],
-        6: ['Customer Number', 'configuration.first_line.customer_number', 20],
-        7: ['Second Customer Number', 'configuration.first_line.sec_customer_number' , 20]
+        5: ['Customer Number', 'configuration.first_line.customer_number', 20],
+        6: ['Second Customer Number', 'configuration.first_line.sec_customer_number' , 20]
     }
 
     for iIndex in sorted(dTOCData.keys()):
