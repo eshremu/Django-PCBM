@@ -127,13 +127,15 @@ $(document).ready(function(){
     });
 
     $('#id_configuration_designation').keyup(function(){
-        if(!attached && $('#id_configuration_designation').val() == $('#id_model').val()){
-            attached = true;
-        }
-
-        if(attached) {
-            $('#id_model').val($(this).val());
-        }
+//    Commented out below line for fix- D-03195- Model name doesn't change when Clone/Active/New
+//        if(!attached && $('#id_configuration_designation').val() == $('#id_model').val()){
+//            attached = true;
+//        }
+//
+//        if(attached) {
+//
+//        }
+        $('#id_model').val($(this).val());
     });
 
     $('#id_react_request').keyup(function(){

@@ -1254,21 +1254,24 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     # Write Table of Contents tab.  This is last so that we only write ToC data
     # for Header objects still in the array after the previous section
     oSheet = oFile.create_sheet('ToC', 0)
+    # added line 1273, 1274 for fix D-03265-Missing  columns in downloaded baseline files
     dTOCData = {
         3: ['Configuration', 'configuration_designation', 25],
-        13: ['Customer Designation', 'customer_designation', 15],
-        8: ['Technology', 'technology', 15],
+        15: ['Customer Designation', 'customer_designation', 15],
+        10: ['Technology', 'technology', 15],
         1: ['Product Area 1', 'product_area1', 25],
         2: ['Product Area 2', 'product_area2', 10],
         4: ['Model', 'model', 25],
-        5: ['Model Description', 'model_description', 50],
-        9: ['What Model is this replacing?', 'model_replaced', 25],
-        7: ['BoM & Inquiry Details', None, 25],
-        10: ['BoM Request Type', 'bom_request_type', 10],
-        6: ['Configuration / Ordering Status', 'configuration_status', 15],
-        11: ['Inquiry', 'inquiry_site_template', 10],
-        12: ['Site Template', 'inquiry_site_template', 10],
-        14: ['Ext Notes', 'external_notes', 50],
+        7: ['Model Description', 'model_description', 50],
+        11: ['What Model is this replacing?', 'model_replaced', 25],
+        9: ['BoM & Inquiry Details', None, 25],
+        12: ['BoM Request Type', 'bom_request_type', 10],
+        8: ['Configuration / Ordering Status', 'configuration_status', 15],
+        13: ['Inquiry', 'inquiry_site_template', 10],
+        14: ['Site Template', 'inquiry_site_template', 10],
+        16: ['Ext Notes', 'external_notes', 50],
+        5: ['Customer Number', 'configuration.first_line.customer_number', 20],
+        6: ['Second Customer Number', 'configuration.first_line.sec_customer_number' , 20]
     }
 
     for iIndex in sorted(dTOCData.keys()):
@@ -1370,10 +1373,11 @@ def EmailDownload(oBaseline):
         baseline=oBaseline, version=sVersion)) + ".xlsx"
 
     # Retrieve DistroList object, if it exists
-    try:
-        oDistroList = DistroList.objects.get(customer_unit=oBaseline.customer)
-    except DistroList.DoesNotExist:
-        oDistroList = None
+    # commented out line 1376-1378 for fix D-03232- baseline release mail not sent
+    # try:
+    #     oDistroList = DistroList.objects.get(customer_unit=oBaseline.customer)
+    # except DistroList.DoesNotExist:
+    oDistroList = None
 
     # Build email message
     sSubject = 'New revision released: ' + oBaseline.title
