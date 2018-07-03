@@ -452,20 +452,6 @@ def Search(oRequest, advanced=False):
                 aTempFilters.append('customer_number')
                 bRemoveDuplicates = False
 
-        #Added for S-05767:Addition of Second Cust No. in advance search filter
-            if 'sec_customer_num' in oRequest.POST and \
-                            oRequest.POST['sec_customer_num'] != '':
-                aConfigLines = aConfigLines.filter(
-                    sec_customer_number__iregex="^" + escape(
-                        oRequest.POST['sec_customer_num'].strip()
-                    ).replace(' ', '\W').replace('?', '.').replace('*', '.*') +
-                                                "$"
-                )
-                sTempHeaderLine += \
-                    '<th style="width:175px;">Second Customer Number</th>'
-                aTempFilters.append('sec_customer_number')
-                bRemoveDuplicates = False
-
             if sTempHeaderLine:
                 sTableHeader += '<th style="width:175px;">Line Number</th>' + \
                                 sTempHeaderLine

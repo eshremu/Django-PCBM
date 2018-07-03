@@ -10,11 +10,9 @@ from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
-from django.conf import settings
 
 import re
 
-authUser = settings.AUTH_USER_MODEL
 
 # Create your models here.
 class ParseException(Exception):
@@ -410,7 +408,7 @@ class Baseline_Revision(models.Model):
                                           null=True,
                                           related_name='next_revision')
     isdeleted = models.BooleanField(default=0)
-    
+
     @property
     def title(self):
         """
@@ -1886,14 +1884,14 @@ class User_Customer(models.Model):
         verbose_name = 'User Customer'
         # end class
 
-    user = models.ForeignKey(authUser,db_constraint=False,blank = True,null = True)
-    customer = models.ForeignKey(REF_CUSTOMER,db_constraint=False,blank = True,null = True)
+    user = models.ForeignKey(authUser, db_constraint=False, blank = True, null = True)
+    customer = models.ForeignKey(REF_CUSTOMER, db_constraint=False, blank = True, null = True)
     is_deleted = models.BooleanField(default=0)
-    customer_name = models.TextField(null=True,blank = True)
+    customer_name = models.TextField(null=True, blank = True)
 
     def __str__(self):
 
-        return(str(self.user)+" - "+str(self.customer)+" - "+str(self.customer_name)+" - "+str(self.is_deleted))
+        return(str(self.user)+ " - " + str(self.customer)+" - " + str(self.customer_name)+" - " + str(self.is_deleted))
     # end def
 
 
