@@ -17,7 +17,7 @@ from django.conf import settings
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER,\
     REF_REQUEST, SecurityPermission, HeaderTimeTracker, REF_STATUS, \
     ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, \
-    LinePricing, DocumentRequest
+    LinePricing, DocumentRequest,User_Customer
 from BoMConfig.utils import UpRev, GrabValue, StrToBool
 from BoMConfig.views.landing import Unlock, Default
 from django.contrib.auth.models import User
@@ -99,6 +99,14 @@ def Approval(oRequest):
     :param oRequest: Django request object
     :return: HTML response via Default function
     """
+    # S-067173 :Approvals -Resctrict view to logged in users CU:- Added to get the logged in user's CU list
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -108,19 +116,19 @@ def Approval(oRequest):
 
         del oRequest.session['existing']
     # end if
-
+    # S-067173 :Approvals -Restrict view to logged in users CU:- Added '.filter(customer_unit__in=aAvailableCU)' in the approval_wait,baselines attributes of dContext
+    # Added 'aAvailableCU' in customer_list attribute
     dContext = {
         'approval_wait': Header.objects.filter(
-            configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0),
+            configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU),
         'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
         'baselines': ['All'] + sorted(list(
             set(
                 [str(obj.baseline.title) if
                  obj.baseline.title != 'No Associated Baseline' else
                  "(Not baselined)" for obj in Header.objects.filter(
-                    configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0)]))),
-        'customer_list': ['All'] + [obj.name for obj in
-                                    REF_CUSTOMER.objects.all()],
+                    configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU)]))),
+        'customer_list': ['All'] + aAvailableCU,
         'approval_seq': HeaderTimeTracker.approvals(),
         'deaddate': timezone.datetime(1900, 1, 1),
         'namelist': ['PSM Configuration Mgr.', 'SCM #1', 'SCM #2', 'CSR',
@@ -160,6 +168,15 @@ def Action(oRequest, **kwargs):
     :param kwargs: Dictionary of keyword arguments passed to the function
     :return: HTML response via Default function
     """
+
+    # S-067172 :Actions -Resctrict view to logged in users CU:- Added to get the logged in user's CU list
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
     # Unlock any record previously held
     if 'existing' in oRequest.session:
         try:
@@ -176,24 +193,28 @@ def Action(oRequest, **kwargs):
     else:
         return redirect('bomconfig:action_inprocess')
 
+    # S-067172 :Actions -Restrict view to logged in users CU:- Added '.filter(customer_unit__in=aAvailableCU)' in the in_process,baselines,on-hold attributes of dContext
+    # Added 'aAvailableCU' in customer_list attribute
+
     dContext = {
         'in_process': Header.objects.filter(
-            configuration_status__name='In Process').filter(baseline__isdeleted=0),
+            configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
+            customer_unit__in=aAvailableCU),
         'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
         'baselines': ['All'] + sorted(list(
             set(
                 [str(obj.baseline) if
                  obj.baseline.title != 'No Associated Baseline' else
                  "(Not baselined)" for obj in Header.objects.filter(
-                    configuration_status__name='In Process').filter(baseline__isdeleted=0)]))),
+                    configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
+                    customer_unit__in=aAvailableCU)]))),
         'active': [obj for obj in Header.objects.filter(
-            configuration_status__name='In Process/Pending',) if
+            configuration_status__name='In Process/Pending', ) if
                    HeaderTimeTracker.approvals().index(
                        obj.latesttracker.next_approval) >
                    HeaderTimeTracker.approvals().index('acr')],
-        'on_hold': Header.objects.filter(configuration_status__name='On Hold'),
-        'customer_list': ['All'] + [obj.name for obj in
-                                    REF_CUSTOMER.objects.all()],
+        'on_hold': Header.objects.filter(configuration_status__name='On Hold').filter(customer_unit__in=aAvailableCU),
+        'customer_list': ['All'] + aAvailableCU,
         'viewauthorized': bool(oRequest.user.groups.filter(
             name__in=['BOM_BPMA_Architect', 'BOM_PSM_Product_Supply_Manager',
                       'BOM_PSM_Baseline_Manager'])),
@@ -204,6 +225,7 @@ def Action(oRequest, **kwargs):
                      'Customer Warehouse', 'Ericsson VAR',
                      'Baseline Release & Dist.'],
     }
+
     return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def
 

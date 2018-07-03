@@ -172,9 +172,9 @@ def BaselineMgmt(oRequest):
                 }
             )
     # end if
-
-    aTitles = ['', '', 'Configuration', 'Product Area 2', 'Status', 'BoM Request Type', 'Program',
-               'Customer Number', 'Model', 'Model Description',
+    # S-05745: Add Second Customer number in Baseline View :
+    aTitles = ['', 'Configuration', 'Product Area 2', 'Status', 'BoM Request Type', 'Program',
+               'Customer Number','Second Customer Number', 'Model', 'Model Description',
                'Customer Price', 'Created Year', 'Inquiry/Site Template Number',
                'Model Replacing', 'Comments', 'Release Date', 'ZUST', 'P-Code',
                'Plant']

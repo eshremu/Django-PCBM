@@ -83,12 +83,17 @@ def UserAdmin(oRequest):
     :param oRequest: Django request object
     :return: HTML response via Default function
     """
+    # S-05912: Add Customer filter to Roles in Admin Tab : added usercu,usercuname, customer_list
     dContext = {
         'users': set(
             get_user_model().objects.filter(groups__name__startswith='BOM_').exclude(groups__name__startswith='BOM_BPMA')
         ),
+        'approval_wait':Header.objects.filter(configuration_status__name = 'In Process/Pending').filter(baseline__isdeleted=0),
+        'usercu': User_Customer.objects.all(),
+        'usercuname': REF_CUSTOMER.objects.all(),
         'errors': oRequest.session.pop('errors', None),
-        'message_type_is_error': oRequest.session.pop('message_is_error', False)
+        'message_type_is_error': oRequest.session.pop('message_is_error', False),
+        'customer_list': ['All'] + [obj.name for obj in REF_CUSTOMER.objects.all()],
     }
     return Default(oRequest, 'BoMConfig/adminuser.html', dContext)
 # end def
@@ -153,6 +158,10 @@ def UserChange(oRequest, iUserId=''):
             'email': oUser.email,
             'assigned_group': oUser.groups.filter(name__startswith='BOM_') if oUser.groups.filter(name__startswith='BOM_') else None
         }
+
+    # Added for CU initial checked view S-06578
+        aMatrixEntries = User_Customer.objects.filter(user_id=iUserId)
+        dInitial['customer'] = list([str(oSecMat.customer_id) for oSecMat in aMatrixEntries.filter(user_id=iUserId)])
 
         # If this request is a form submission
         if oRequest.method == 'POST' and oRequest.POST:

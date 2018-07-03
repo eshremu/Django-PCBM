@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Configuration, ConfigLine, PartBase, \
     LinePricing, REF_CUSTOMER, SecurityPermission, REF_SPUD, PricingObject, \
-    REF_TECHNOLOGY, HeaderTimeTracker
+    REF_TECHNOLOGY, HeaderTimeTracker,User_Customer
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue, StrToBool
 
@@ -30,6 +30,12 @@ def PartPricing(oRequest):
     bCanWritePricing = bool(SecurityPermission.objects.filter(
         title='Detailed_Price_Write').filter(
         user__in=oRequest.user.groups.all()))
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
 
     dContext = {
         'partlines': []
@@ -75,7 +81,7 @@ def PartPricing(oRequest):
                             oCurrentPriceObj = PricingObject.objects.get(
                                 part__product_number__iexact=aRowToSave[0] or
                                 oRequest.POST.get('initial', None),
-                                customer__name=aRowToSave[1],
+                                customer__name=aRowToSave[1] if aRowToSave[1] in aAvailableCU else None , # S-05923: Pricing - Restrict View to allowed CU's based on permissions: added if
                                 sold_to=aRowToSave[2] if aRowToSave[2] not in
                                 ('', '(None)') else None,
                                 spud__name=aRowToSave[3] if aRowToSave[3] not in
@@ -225,7 +231,8 @@ def PartPricing(oRequest):
                                                      'sold_to', 'spud__name')
 
                 # Create table data from list of objects
-                for oPriceObj in aPriceObjs:
+                for oPriceObj in aPriceObjs.filter(customer__in=aAvailableCU): # S-05923: Pricing - Restrict View to allowed CU's based on permissions added filter
+
                     dContext['partlines'].append([
                         oPriceObj.part.product_number,
                         oPriceObj.customer.name,
@@ -246,7 +253,7 @@ def PartPricing(oRequest):
 
                 dContext.update({
                     'customer_list': [
-                        oCust.name for oCust in REF_CUSTOMER.objects.all()],
+                        oCust.name for oCust in aAvailableCU], # S-05923: Pricing - Restrict View to allowed CU's based on permissions added aAvailableCU
                     'spud_list': [
                         oSpud.name for oSpud in REF_SPUD.objects.all()],
                     'tech_list': [
@@ -293,6 +300,12 @@ def ConfigPricing(oRequest):
     bCanWritePricing = bool(SecurityPermission.objects.filter(
         title='Detailed_Price_Write').filter(
         user__in=oRequest.user.groups.all()))
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
 
     # Unlock any locked Header
     if 'existing' in oRequest.session:
@@ -332,7 +345,7 @@ def ConfigPricing(oRequest):
 
         # Start with all Headers that match the name
         aConfigMatches = Header.objects.filter(
-            configuration_designation__iexact=sConfig)
+            configuration_designation__iexact=sConfig).filter(customer_unit_id__in=aAvailableCU) # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
 
         # If iProgram has a value, filter Headers by program
         if iProgram and iProgram not in ('None', 'NONE'):
@@ -519,7 +532,7 @@ def OverviewPricing(oRequest):
     sTemplate = 'BoMConfig/overviewpricing.html'
 
     # Collect line data
-    aPricingLines, aComments = PricingOverviewLists()
+    aPricingLines, aComments = PricingOverviewLists(oRequest) # S-05923: Pricing - Restrict View to allowed CU's based on permissions: added oRequest
 
     dContext = {
         'pricelines': aPricingLines,
@@ -535,8 +548,8 @@ def OverviewPricing(oRequest):
     return Default(oRequest, sTemplate, dContext)
 # end def
 
-
-def PricingOverviewLists():
+# S-05923: Pricing - Restrict View to allowed CU's based on permissions: added oRequest
+def PricingOverviewLists(oRequest):
     """
     Function to write all pricing data into two lists.  The first list is a list
     of lists containing data to be displayed in each row/column of a table.  The
@@ -544,10 +557,18 @@ def PricingOverviewLists():
     on a each row/column.  Comments are displayed on mouseover.
     :return: 2x list of lists
     """
+
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
     # Retrieve all active PricingObjects
     aPricingObjectList = PricingObject.objects.filter(
-        is_current_active=True).order_by(
-        'part__product_number', 'customer__name', 'sold_to', 'spud__name')
+        is_current_active=True).filter(customer_id__in=aAvailableCU).order_by(
+        'part__product_number', 'customer__name', 'sold_to', 'spud__name') # For S-05923: Pricing added .filter(customer_id__in=aAvailableCU)
 
     aPricingLines = []
     aComments = []
@@ -584,7 +605,7 @@ def PricingOverviewLists():
                 # Retrieve PricingObject
                 oChainPriceObj = PricingObject.objects.filter(
                     part__product_number=oPriceObj.part.product_number,
-                    customer__name=oPriceObj.customer.name,
+                    customer__name=aAvailableCU,  # For S-05923: Pricing, changed to aAvailableCU
                     sold_to=oPriceObj.sold_to,
                     spud=oPriceObj.spud,
                     technology=oPriceObj.technology,
@@ -631,6 +652,13 @@ def PriceErosion(oRequest):
     """
     sTemplate = 'BoMConfig/erosionpricing.html'
     sStatusMessage = None
+    # For S-05923: Pricing added belwo lines
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
 
     # Determine user permissions
     bCanReadPricing = bool(SecurityPermission.objects.filter(
@@ -654,7 +682,7 @@ def PriceErosion(oRequest):
                             price_erosion=True,
                             is_current_active=True,
                             part__product_number=aRecord[1],
-                            customer__name=aRecord[2],
+                            customer__name=aAvailableCU, # For S-05923: Pricing changed to aAvailableCU
                             sold_to=aRecord[3] if aRecord[3] not in
                             ('', '(None)', None) else None,
                             spud__name=aRecord[4] if aRecord[4] not in
@@ -703,7 +731,7 @@ def PriceErosion(oRequest):
                             'part__base': PartBase.objects.get(
                                 product_number__iexact=aRecord[1]),
                             'config__header__customer_unit':
-                                REF_CUSTOMER.objects.get(name=aRecord[2])}
+                                aAvailableCU} # For S-05923: Pricing changed to aAvailableCU
 
                         # Update pricing information for any configuration which
                         # used the previous PricingObject
@@ -739,8 +767,8 @@ def PriceErosion(oRequest):
 
     aRecords = PricingObject.objects.filter(
         price_erosion=True,
-        is_current_active=True).order_by(
-        'part__product_number', 'customer__name', 'sold_to', 'spud__name')
+        is_current_active=True).filter(customer_id__in=aAvailableCU).order_by(
+        'part__product_number', 'customer__name', 'sold_to', 'spud__name') # For S-05923: Pricing added .filter
 
     dContext = {
         'data': [['False',

@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, \
     REF_STATUS, REF_PROGRAM, REF_PRODUCT_AREA_1, REF_PRODUCT_AREA_2, \
-    REF_TECHNOLOGY, REF_RADIO_BAND, REF_RADIO_FREQUENCY, Baseline
+    REF_TECHNOLOGY, REF_RADIO_BAND, REF_RADIO_FREQUENCY, Baseline,User_Customer
 
 from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
 from BoMConfig.views.landing import Unlock, Default
@@ -29,6 +29,14 @@ def Search(oRequest, advanced=False):
     search
     :return: HTTPResponse containing search results
     """
+
+    # S-06169: Search and Adv. Search restrict view to CU: added below 5lines
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
     # Unlock any locked Header
     if 'existing' in oRequest.session:
         try:
@@ -123,7 +131,7 @@ def Search(oRequest, advanced=False):
             results = HttpResponse()
             if aHeaders:
                 results.write('<h5 style="color:red">Found ' +
-                              str(len(aHeaders)) + ' matching record(s)</h5>')
+                              str(len(aHeaders.filter(customer_unit_id__in=aAvailableCU))) + ' matching record(s)</h5>') # added .filter(customer_unit_id__in=aAvailableCU) for S-06169
                 results.write(
                     '<table id="result_table"><thead><tr>'
                     '<th style="width: 20px;"><input class="selectall" '
@@ -138,7 +146,8 @@ def Search(oRequest, advanced=False):
                     '<th style="width:175px;">Status</th>'
                     '<th>Readiness Complete</th></tr></thead><tbody>')
                 for header in aHeaders:
-                    results.write(
+                    if header.customer_unit in aAvailableCU:  # added for S-06169 Search and Adv. Search restrict view to CU
+                        results.write(
                         ('<tr><td><input class="recordselect" type="checkbox" '
                          'value="{8}"/></td><td><a href="?link={0}">{1}</a>'
                          '</td><td><a href="?link={0}&readonly=1" '
@@ -199,7 +208,7 @@ def Search(oRequest, advanced=False):
             # searches can search on part number, customer number, and other
             # values stored at the ConfigLine level, while still allowing access
             # to values stored at the Header level
-            aConfigLines = ConfigLine.objects.all()
+            aConfigLines = ConfigLine.objects.filter(config__header__customer_unit_id__in=aAvailableCU) # added filter(config__header__customer_unit_id__in=aAvailableCU) for S-06169 Search and Adv. Search restrict view to CU
 
             # Filter configline list based on parameters POSTed.  Also add each
             # search parameter field as a field in the results table
@@ -340,6 +349,8 @@ def Search(oRequest, advanced=False):
                             oRequest.POST['base_impact'].strip()
                         ).replace(' ', '\W').replace('?', '.').replace(
                             '*', '.*') + "$")
+                sTableHeader += '<th style="width:175px;">Baseline Impacted</th>'
+                aLineFilter.append('config.header.base_impact')
 
             if 'model' in oRequest.POST and oRequest.POST['model'] != '':
                 aConfigLines = aConfigLines.filter(
@@ -373,7 +384,7 @@ def Search(oRequest, advanced=False):
                 sTableHeader += '<th style="width:175px;">Initial Revision</th>'
                 aLineFilter.append('config.header.initial_revision')
 
-            if 'status' in oRequest.POST and oRequest.POST['status'] != '':
+            if 'status' in oRequest.POST and  oRequest.POST['status'] != '':
                 if oRequest.POST['status'] != 'n/a':
                     aConfigLines = aConfigLines.filter(
                         config__header__configuration_status__name__iexact=
@@ -558,14 +569,14 @@ def Search(oRequest, advanced=False):
     # end if
 
     dContext = {
-        'header_list': aHeaders,
+        'header_list': aHeaders.extend(oCu for oCu in aAvailableCU if oCu in aAvailableCU), # added  for S-06169 Search and Adv. Search restrict view to CU
         'request_list': REF_REQUEST.objects.all(),
-        'cust_list': REF_CUSTOMER.objects.all(),
+        'cust_list': aAvailableCU, # added aAvailableCU for S-06169 Search and Adv. Search restrict view to CU
         'status_list': REF_STATUS.objects.all(),
-        'prog_list': sorted(list(set(REF_PROGRAM.objects.all().values_list(
-            'name', flat=True)))),
+        'prog_list': sorted(list(set(REF_PROGRAM.objects.filter(parent_id__in=aAvailableCU).values_list(
+            'name', flat=True)))), # added aAvailableCU for S-06169 Search and Adv. Search restrict view to CU
         'tech_list': REF_TECHNOLOGY.objects.all(),
-        'baseline_list': Baseline.objects.all().order_by('title').exclude(isdeleted=1),
+        'baseline_list': Baseline.objects.all().order_by('title').exclude(isdeleted=1).filter(customer_id__in=aAvailableCU), # added aAvailableCU for S-06169 Search and Adv. Search restrict view to CU
         'prod1_list': sorted(list(set(
             REF_PRODUCT_AREA_1.objects.all().values_list('name', flat=True)))),
         'prod2_list': sorted(list(set(

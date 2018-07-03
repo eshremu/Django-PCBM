@@ -18,7 +18,7 @@ from BoMConfig.models import Header, Part, Configuration, ConfigLine, PartBase,\
     Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, \
     SecurityPermission, REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, \
     REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_REQUEST, PricingObject, \
-    CustomerPartInfo, HeaderTimeTracker
+    CustomerPartInfo, HeaderTimeTracker,User_Customer
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException, Unlock
 from BoMConfig.views.approvals_actions import CloneHeader
@@ -96,6 +96,13 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
     :param sTemplate: Name of template to render for this view
     :return: HTTPResponse via Default function
     """
+    # S-06756- added for restricting customer_unit,person responsible as per logged in user's cu in BOM entry view
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
 
     # This is the case when the user clicks the "BoM Entry" link
     if sTemplate == 'BoMConfig/entrylanding.html':
@@ -483,13 +490,18 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
         # end try
 
         # Make 'Person Responsible' field a dropdown of PSM users
+        # S-06756- added for restricting person_responsible as per logged in user's cu
+        headerForm.fields['person_responsible'].queryset = User_Customer.objects.filter(customer_name__in=aAvailableCU)
+        ausers = []
+        ausers = headerForm.fields['person_responsible'].queryset.values_list('user_id')
+
         if not oExisting:
             headerForm.fields['person_responsible'] = fields.ChoiceField(
                 # choices=[('', '---------'), ('Suvasish', 'Suvasish')] + list( #This is for local Dev
                 choices=[('', '---------')] + list(
                     [(user.first_name + ' ' + user.last_name,
                       user.first_name + ' ' + user.last_name) for user in
-                     User.objects.all().order_by('last_name') if
+                     User.objects.all().filter(id__in=ausers).order_by('last_name') if # added filter(id__in=ausers) for S-06756
                      user.groups.filter(
                          name__in=['BOM_PSM_Baseline_Manager',
                                    'BOM_PSM_Product_Supply_Manager'])
@@ -531,10 +543,14 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                     choices=(('', '---------'),) +
                     tuple((obj, obj) for obj in chain.from_iterable(tResults))
                 )
+        # S-06756- added for restricting customer_unit
+        headerForm.fields['customer_unit'].queryset = REF_CUSTOMER.objects.filter(name__in=aAvailableCU)
 
         dContext = {
             'header': oExisting,
             'headerForm': headerForm,
+            # S-06756- added for restricting customer_unit
+            'customerlist': aAvailableCU,
             'break_list': ('Payment Terms', 'Shipping Condition',
                            'Initial Version', 'Configuration/Ordering Status',
                            'Name'),
@@ -2460,17 +2476,30 @@ def ListFill(oRequest):
         iParentID = int(oRequest.POST['id'])
         cParentClass = Header._meta.get_field(oRequest.POST['parent']).rel.to
         oParent = cParentClass.objects.get(pk=iParentID)
-        if oRequest.POST['child'] != 'baseline_impacted':
+        # S-06756 : Restricting BOM entry based on logged in user's CU:-- Added below & else block to restrict Person_responsible dropdown based on selected CU
+        userculist = []
+        userculist = User_Customer.objects.filter(customer_name=oParent)
+        ausers = []
+        ausers = userculist.values_list('user_id')
+
+        if oRequest.POST['child'] == 'program':
             cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
             result = OrderedDict(
                 [('i' + str(obj.id), obj.name) for obj in
                  cChildClass.objects.filter(parent=oParent).order_by('name')]
             )
-        else:
+        elif oRequest.POST['child'] == 'baseline_impacted':
             cChildClass = Baseline
             result = OrderedDict(
                 [('i' + obj.title, obj.title) for obj in
                  cChildClass.objects.filter(customer=oParent).order_by('title').exclude(isdeleted=1)]
+            )
+        else:
+            cChildClass = User
+            result = OrderedDict(
+                [('i' + str(obj.first_name + ' ' + obj.last_name), obj.first_name + ' ' + obj.last_name) for obj in
+                 cChildClass.objects.filter(id__in=ausers)]
+
             )
 
         return JsonResponse(result)
