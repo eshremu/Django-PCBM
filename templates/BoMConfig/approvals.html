@@ -360,15 +360,26 @@
                     destination.push($('.approve-form select[data-index="' + dataindex + '"]').val());
                 }
             });
+    <!--S-05766:Identify Emails from Test System-&#45;&#45;Added to check the window URL-->
+        var windowurlval = '';
+        if(window.location.href.indexOf('localhost')!=-1){
+            windowurlval='local';
+        }else if(window.location.href.indexOf('eusaalx0054')!=-1){
+            windowurlval='test';
+        }else{
+             windowurlval='prod';
+        }
 
             $.ajax({
                 url: "{% url 'bomconfig:approve' %}",
                 type: "POST",
                 data: {
                     action: action,
+                    windowurl: windowurlval,            <!--S-05766:Identify Emails from Test System---sending the current window url as a parameter to back end-->
                     data: JSON.stringify(records),
                     comments: JSON.stringify(comments),
-                    destinations: JSON.stringify(destination)
+                    destinations: JSON.stringify(destination),
+
                 },
                 headers:{
                     'X-CSRFToken': getcookie('csrftoken'),

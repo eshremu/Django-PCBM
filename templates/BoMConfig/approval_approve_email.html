@@ -43,6 +43,13 @@
         <li>Contact ACR for pricing and customer questions related to the BoM.</li>
         <li>Contact Baseline Management for baseline and customer setup related questions @ <a href="mailto:PSM-Baseline@ericsson.com">PSM-Baseline@ericsson.com</a>.</li>
     </ul>
-    <p>PCBM Link: <a>https://rnamsupply.internal.ericsson.com/pcbm</a></p>
+    <!--S-05766:Identify Emails from Test System:&#45;&#45; Added to fetch the windowURL from server and display the appropriate link as per the environment-->
+    {% if windowURL == 'local' %}
+         <p>PCBM Link: <a>http://localhost:8000/pcbm/</a></p>
+    {% elif windowURL == 'test' %}
+         <p>PCBM Link1: <a>http://eusaalx0054.aa.us.am.ericsson.se/pcbm/</a></p>
+    {% else %}
+         <p>PCBM Link2: <a>https://rnamsupply.internal.ericsson.com/pcbm/</a></p>
+    {% endif %}
 </body>
 </html>
