@@ -5,6 +5,21 @@
 {% block subcontent %}
     <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
     <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
+
+
+    <!-- S-05912:- Add CU filter to roles in Admin-User tab ---Added to display the Filter dropdown -->
+    <div>
+    <ul class="btn" style="border: none; padding: 5px 0 0 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for customer in customer_list %}
+                    <li><a onclick="cust_filter('{{ customer }}');">{{ customer }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+    </div>
     <h3 id="title"><u>Select a user to edit</u></h3>
     {% if errors %}
     <div class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">
@@ -15,24 +30,28 @@
     {% endif %}
 
     <div id="table_wrapper">
-        <table>
+        <table id="admin_user_change">
             <thead>
-                <tr>
+             <!-- S-05912:- Add CU filter to roles in Admin-User tab ---Added to assign the rows to the customer class -->
+                <tr> {# class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}" #}
                     <th>Username</th>
                     <th>First Name</th>
                     <th>Last name</th>
                     <th>Email address</th>
+                    <th>Customer Unit</th>
                     <th>Last Login</th>
                 </tr>
             </thead>
             <tbody>
-                {% for user in users %}
-                <tr>
-                    <td><a href="{% url 'bomconfig:userchange' user.id %}">{{ user.username }}</a></td>
-                    <td><a href="{% url 'bomconfig:userchange' user.id %}">{{ user.first_name }}</a></td>
-                    <td><a href="{% url 'bomconfig:userchange' user.id %}">{{ user.last_name }}</a></td>
-                    <td><a href="{% url 'bomconfig:userchange' user.id %}">{{ user.email }}</a></td>
+                {% for userin in usercu %}
+                <tr class="{{ userin.customer.name|safe|replace:'& _'|replacewhitespace:'-_' }}">
+                    <td><a href="{% url 'bomconfig:userchange' userin.user.id %}">{{ userin.user.username }}</a></td>
+                    <td><a href="{% url 'bomconfig:userchange' userin.user.id %}">{{ userin.user.first_name }}</a></td>
+                    <td><a href="{% url 'bomconfig:userchange' userin.user.id %}">{{ userin.user.last_name }}</a></td>
+                    <td><a href="{% url 'bomconfig:userchange' userin.user.id %}">{{ userin.user.email }}</a></td>
+                    <td><a href="{% url 'bomconfig:userchange' userin.user.id %}">{{ userin.customer.name }}</a></td>
                     <td>{{ user.last_login|date:"N j Y,  H:i" }}</td>
+
                 </tr>
                 {% endfor %}
             </tbody>
@@ -47,6 +66,34 @@
         }
     </style>
     <script type="text/javascript">
+
+    <!-- S-05912:- Add CU filter to roles in Admin-User tab--- Added to function the filter dropdown -->
+        function cust_filter(customer){
+            if(customer !== 'All') {
+                $('#cu_filter').html(customer +" <span class=\"caret\"></span>");
+            } else {
+                $('#cu_filter').html('Customer <span class="caret"></span>');
+            }
+            updateFilters();
+            }
+
+            function updateFilters(){
+            var customer = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+
+            $('tbody tr').show();
+
+            var rows = $('#admin_user_change tbody tr').toArray();
+
+            for (var row in rows) {
+                let hide = false;
+                if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
+                    hide = true;
+                }
+                 if (hide){
+                    $(rows[row]).hide();
+                }
+            }
+        }
         var table;
         $('button[value="user"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
         function BuildTable(first_build) {
@@ -67,10 +114,11 @@
                         {type:"date", targets: 4}
                     ]
                 });
-            } else {
+           } else {
                 $('.dataTables_scrollBody').css('height',max_available + "px");
             }
         }
+
 
         $(document).ready(function(){
             $(window).load(function(){
@@ -82,3 +130,5 @@
         });
     </script>
 {% endblock %}
+
+

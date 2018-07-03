@@ -9,7 +9,7 @@ from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import CustomerPartInfo, PartBase, REF_CUSTOMER, \
-    ConfigLine
+    ConfigLine, User_Customer
 from BoMConfig.views.landing import Default
 from BoMConfig.utils import StrToBool
 
@@ -37,8 +37,15 @@ def CustomerAudit(oRequest):
     :param oRequest: Django HTTP request
     :return: HTTPResponse via Default function
     """
+    # S-06174- Customer Audit restrict view
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
     dContext = {
-        'customer_list': REF_CUSTOMER.objects.all(),
+        'customer_list': aAvailableCU, # S-06174- Customer Audit restrict view changed to aAvailableCU
         'data': json.dumps([[]]),
         'selectedCust': REF_CUSTOMER.objects.first()
     }
@@ -312,8 +319,14 @@ def CustomerAuditUpload(oRequest):
     :param oRequest:
     :return:
     """
+    # S-06174- Customer Audit restrict view
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
 
-    dContext = {'customer_list': REF_CUSTOMER.objects.all()}
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+    dContext = {'customer_list': aAvailableCU}
 
     # If POSTing an upload file and file type
     if oRequest.POST:

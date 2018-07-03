@@ -126,14 +126,16 @@ $(document).ready(function(){
         }
     });
 
-    $('#id_configuration_designation').keyup(function(){
-        if(!attached && $('#id_configuration_designation').val() == $('#id_model').val()){
-            attached = true;
-        }
-
-        if(attached) {
-            $('#id_model').val($(this).val());
-        }
+     $('#id_configuration_designation').keyup(function(){
+//    Commented out below line for fix- D-03195- Model name doesn't change when Clone/Active/New
+//        if(!attached && $('#id_configuration_designation').val() == $('#id_model').val()){
+//            attached = true;
+//        }
+//
+//        if(attached) {
+//
+//        }
+        $('#id_model').val($(this).val());
     });
 
     $('#id_react_request').keyup(function(){
@@ -154,6 +156,7 @@ $(document).ready(function(){
 
     $('#id_customer_unit').change(function(){
         list_react_filler('customer_unit', 'customer_name');
+        list_filler('customer_unit', 'person_responsible'); //Added for S-06756- added for restricting person_responsible as per logged in user's cu
         list_filler('customer_unit', 'program');
         list_filler('customer_unit', 'baseline_impacted', 1);
     });

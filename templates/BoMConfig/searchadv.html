@@ -25,7 +25,6 @@
                         <li><label for="customer">Customer Unit</label>
                             <select id="customer" name="customer">
                                 <option value="">-------</option>
-                                <option value="n/a">Any</option>
                                 {% for cust in cust_list %}
                                 <option value="{{ cust.name }}">{{ cust.name }}</option>
                                 {% endfor %}

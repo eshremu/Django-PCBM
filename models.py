@@ -1881,18 +1881,21 @@ class DistroList(models.Model):
 
 # S-06578 : Addition for User_Customer table
 class User_Customer(models.Model):
+
     class Meta:
         verbose_name = 'User Customer'
         # end class
 
-    user = models.ForeignKey(authUser, db_constraint = False, blank=True, null=True)
-    customer = models.ForeignKey(REF_CUSTOMER, db_constraint = False, blank=True, null=True)
+    user = models.ForeignKey(authUser,db_constraint=False,blank = True,null = True)
+    customer = models.ForeignKey(REF_CUSTOMER,db_constraint=False,blank = True,null = True)
     is_deleted = models.BooleanField(default=0)
-    customer_name = models.TextField(null=True, blank=True)
+    customer_name = models.TextField(null=True,blank = True)
 
     def __str__(self):
-        return (str(self.user)+ " - " + str(self.customer)+ " - " + str(self.customer_name)+" - " + str(self.is_deleted))
+
+        return(str(self.user)+" - "+str(self.customer)+" - "+str(self.customer_name)+" - "+str(self.is_deleted))
     # end def
+
 
 class ApprovalList(models.Model):
     """

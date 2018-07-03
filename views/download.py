@@ -1256,19 +1256,22 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     oSheet = oFile.create_sheet('ToC', 0)
     dTOCData = {
         3: ['Configuration', 'configuration_designation', 25],
-        13: ['Customer Designation', 'customer_designation', 15],
-        8: ['Technology', 'technology', 15],
+        15: ['Customer Designation', 'customer_designation', 15],
+        10: ['Technology', 'technology', 15],
         1: ['Product Area 1', 'product_area1', 25],
         2: ['Product Area 2', 'product_area2', 10],
         4: ['Model', 'model', 25],
-        5: ['Model Description', 'model_description', 50],
-        9: ['What Model is this replacing?', 'model_replaced', 25],
-        7: ['BoM & Inquiry Details', None, 25],
-        10: ['BoM Request Type', 'bom_request_type', 10],
-        6: ['Configuration / Ordering Status', 'configuration_status', 15],
-        11: ['Inquiry', 'inquiry_site_template', 10],
-        12: ['Site Template', 'inquiry_site_template', 10],
-        14: ['Ext Notes', 'external_notes', 50],
+        7: ['Model Description', 'model_description', 50],
+        11: ['What Model is this replacing?', 'model_replaced', 25],
+        9: ['BoM & Inquiry Details', None, 25],
+        12: ['BoM Request Type', 'bom_request_type', 10],
+        8: ['Configuration / Ordering Status', 'configuration_status', 15],
+        13: ['Inquiry', 'inquiry_site_template', 10],
+        14: ['Site Template', 'inquiry_site_template', 10],
+        16: ['Ext Notes', 'external_notes', 50],
+        # D- 03265 - Missing columns in downloaded baseline files -added below two columns
+        5: ['Customer Number', 'configuration.first_line.customer_number', 20],
+        6: ['Second Customer Number', 'configuration.first_line.sec_customer_number', 20]
     }
 
     for iIndex in sorted(dTOCData.keys()):
@@ -1370,10 +1373,11 @@ def EmailDownload(oBaseline):
         baseline=oBaseline, version=sVersion)) + ".xlsx"
 
     # Retrieve DistroList object, if it exists
-    try:
-        oDistroList = DistroList.objects.get(customer_unit=oBaseline.customer)
-    except DistroList.DoesNotExist:
-        oDistroList = None
+    # commented out line 1377-1379 for fix D-03265- Review & Approval & Baseline Release mail not sent
+    # try:
+    #     oDistroList = DistroList.objects.get(customer_unit=oBaseline.customer)
+    # except DistroList.DoesNotExist:
+    oDistroList = None
 
     # Build email message
     sSubject = 'New revision released: ' + oBaseline.title
@@ -1426,14 +1430,16 @@ def ConfigPriceDownload(oRequest):
     :param oRequest: Django HTTP request object
     :return: HttpResponse containing downloaded data file
     """
+
     if oRequest.POST:
         # Retrieve desired Header object and determine filename
         oHeader = Header.objects.get(
             configuration_designation=oRequest.POST['config'],
             baseline=Baseline_Revision.objects.get(
-                id=oRequest.POST['baseline']) or None,
-            program=REF_PROGRAM.objects.get(
-                id=oRequest.POST['program']) or None)
+                id=oRequest.POST['baseline']) or None)
+        # S-05923: Pricing - Restrict View commented out below line to download configs which don't have program.
+            # program = REF_PROGRAM.objects.get(
+            # id=oRequest.POST['program']) or None
 
         sFileName = oHeader.configuration_designation + (
             '_' + oHeader.program.name if oHeader.program else ''
@@ -1532,7 +1538,7 @@ def PriceOverviewDownload(oRequest):
         sFileName = 'Pricing Overview.xlsx'
 
         # Write pricing data to data stream
-        oFile = WritePriceOverviewToFile(*PricingOverviewLists())
+        oFile = WritePriceOverviewToFile(*PricingOverviewLists(oRequest)) # S-05923: Pricing - Restrict View added oRequest
 
         response = HttpResponse(content_type='application/ms-excel')
         response['Content-Disposition'] = 'attachment;filename="{0}"'.format(
