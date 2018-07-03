@@ -842,6 +842,7 @@ def AjaxApprove(oRequest):
                              'action': approval
                              }
                         ), 'text/html')
+                        # uncommented below line for D-03232 to send mail for baseline Review and approval
                         oMessage.send(fail_silently=False)
                     # end for
                 # end for

@@ -10,11 +10,9 @@ from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
-from django.conf import settings
 
 import re
 
-authUser = settings.AUTH_USER_MODEL
 
 # Create your models here.
 class ParseException(Exception):
@@ -410,7 +408,7 @@ class Baseline_Revision(models.Model):
                                           null=True,
                                           related_name='next_revision')
     isdeleted = models.BooleanField(default=0)
-    
+
     @property
     def title(self):
         """

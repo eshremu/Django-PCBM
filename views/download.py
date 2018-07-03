@@ -1254,6 +1254,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     # Write Table of Contents tab.  This is last so that we only write ToC data
     # for Header objects still in the array after the previous section
     oSheet = oFile.create_sheet('ToC', 0)
+    # added line 1273, 1274 for fix D-03265-Missing  columns in downloaded baseline files
     dTOCData = {
         3: ['Configuration', 'configuration_designation', 25],
         15: ['Customer Designation', 'customer_designation', 15],
