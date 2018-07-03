@@ -781,6 +781,13 @@ def AjaxApprove(oRequest):
                 oHeader.configuration.save()
             # end for
         # end if
+        # S-05766:Identify Emails from Test System:-- Added to frame the Email content/subject as per the environment
+        if oRequest.POST.get('windowurl') == 'local':
+            envName = 'Local System:'
+        elif oRequest.POST.get('windowurl') == 'test':
+            envName = 'Test System:'
+        else:
+            envName = ''
 
         # Send the appropriate message to each user in the dEmailRecipients
         # dictionary.  Message is determined by level and action.
@@ -789,7 +796,8 @@ def AjaxApprove(oRequest):
                 for level in dEmailRecipients[key][approval]:
                     for baseline in dEmailRecipients[key][approval][level]:
                         oMessage = EmailMultiAlternatives(
-                            subject=((baseline or '(No baseline)') +
+                            # S-05766:Identify Emails from Test System:-- Concatenated envName to frame the Email subject as per the environment
+                            subject= envName+ ((baseline or '(No baseline)') +
                                      ' Review & Approval'),
                             body=loader.render_to_string(
                                 'BoMConfig/approval_approve_email_plain.txt',
@@ -839,7 +847,9 @@ def AjaxApprove(oRequest):
                                  email=key).first().first_name if
                              User.objects.filter(email=key) else key,
                              'level': level,
-                             'action': approval
+                             'action': approval,
+                             # S-05766:Identify Emails from Test System:-- Added this parameter to send the appropriate environment name to the email HTML content
+                             'windowURL': oRequest.POST.get('windowurl')
                              }
                         ), 'text/html')
                         # uncommented below line for D-03232 to send mail for baseline Review and approval
