@@ -147,7 +147,8 @@ def Search(oRequest, advanced=False):
                     '<th>Readiness Complete</th></tr></thead><tbody>')
                 for header in aHeaders:
                     if header.customer_unit in aAvailableCU:  # added for S-06169 Search and Adv. Search restrict view to CU
-                        results.write(
+                       if header.baseline.isdeleted != 1:
+                            results.write(
                         ('<tr><td><input class="recordselect" type="checkbox" '
                          'value="{8}"/></td><td><a href="?link={0}">{1}</a>'
                          '</td><td><a href="?link={0}&readonly=1" '
@@ -208,7 +209,7 @@ def Search(oRequest, advanced=False):
             # searches can search on part number, customer number, and other
             # values stored at the ConfigLine level, while still allowing access
             # to values stored at the Header level
-            aConfigLines = ConfigLine.objects.filter(config__header__customer_unit_id__in=aAvailableCU) # added filter(config__header__customer_unit_id__in=aAvailableCU) for S-06169 Search and Adv. Search restrict view to CU
+            aConfigLines = ConfigLine.objects.filter(config__header__customer_unit_id__in=aAvailableCU).exclude(config__header__baseline__isdeleted=1)  # added filter(config__header__customer_unit_id__in=aAvailableCU) for S-06169 Search and Adv. Search restrict view to CU
 
             # Filter configline list based on parameters POSTed.  Also add each
             # search parameter field as a field in the results table
@@ -450,6 +451,20 @@ def Search(oRequest, advanced=False):
                 sTempHeaderLine += \
                     '<th style="width:175px;">Customer Number</th>'
                 aTempFilters.append('customer_number')
+                bRemoveDuplicates = False
+
+        # Added for S-05767:Addition of Second Cust No. in advance search filter
+            if 'sec_customer_num' in oRequest.POST and \
+                            oRequest.POST['sec_customer_num'] != '':
+                aConfigLines = aConfigLines.filter(
+                    sec_customer_number__iregex="^" + escape(
+                        oRequest.POST['sec_customer_num'].strip()
+                    ).replace(' ', '\W').replace('?', '.').replace('*', '.*') +
+                                                "$"
+                )
+                sTempHeaderLine += \
+                    '<th style="width:175px;">Second Customer Number</th>'
+                aTempFilters.append('sec_customer_number')
                 bRemoveDuplicates = False
 
             if sTempHeaderLine:
