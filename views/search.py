@@ -209,7 +209,7 @@ def Search(oRequest, advanced=False):
             # searches can search on part number, customer number, and other
             # values stored at the ConfigLine level, while still allowing access
             # to values stored at the Header level
-            aConfigLines = ConfigLine.objects.filter(config__header__customer_unit_id__in=aAvailableCU) # added filter(config__header__customer_unit_id__in=aAvailableCU) for S-06169 Search and Adv. Search restrict view to CU
+            aConfigLines = ConfigLine.objects.filter(config__header__customer_unit_id__in=aAvailableCU).exclude(config__header__baseline__isdeleted=1)  # added filter(config__header__customer_unit_id__in=aAvailableCU) for S-06169 Search and Adv. Search restrict view to CU
 
             # Filter configline list based on parameters POSTed.  Also add each
             # search parameter field as a field in the results table
