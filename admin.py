@@ -194,6 +194,14 @@ class BaselineAdmin(admin.ModelAdmin):
     search_fields = ('title', 'customer__name')
 
 
+class UserCustomerAdmin(admin.ModelAdmin):
+    """
+    ModelAdmin specifying how model should behave in built-in Django
+    administration views
+    """
+    list_display = ('user', 'customer','customer_name',
+                    'is_deleted')
+
 class ConfigLineAdmin(admin.ModelAdmin):
     """
     ModelAdmin specifying how model should behave in built-in Django
@@ -281,3 +289,4 @@ admin.site.register(DistroList, DistroAdmin)
 admin.site.register(ApprovalList)
 admin.site.register(CustomerPartInfo, CustomerInfoAdmin)
 admin.site.register(DocumentRequest, DocumentAdmin)
+admin.site.register(User_Customer,UserCustomerAdmin)  # S-06578 : Addition for User_Customer table in Django Admin UI

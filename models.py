@@ -10,9 +10,11 @@ from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
+from django.conf import settings
 
 import re
 
+authUser = settings.AUTH_USER_MODEL
 
 # Create your models here.
 class ParseException(Exception):
@@ -338,6 +340,7 @@ class Baseline(models.Model):
     customer = models.ForeignKey(REF_CUSTOMER, db_constraint=False, blank=True,
                                  null=True)
     isdeleted = models.BooleanField(default=0)
+    # user = models.ForeignKey(authUser)
 
     def save(self, *args, **kwargs):
         """
@@ -408,7 +411,7 @@ class Baseline_Revision(models.Model):
                                           null=True,
                                           related_name='next_revision')
     isdeleted = models.BooleanField(default=0)
-
+    
     @property
     def title(self):
         """
@@ -440,8 +443,6 @@ class Header(models.Model):
     Model for Header objects.
     Each Bill of Materials (BoM) is comprised of a Header and a Configuration
     """
-    person_responsible = models.CharField(max_length=50,
-                                          verbose_name='Person Responsible')
     react_request = models.CharField(max_length=25,
                                      verbose_name='REACT Request', blank=True,
                                      null=True)
@@ -451,6 +452,9 @@ class Header(models.Model):
     customer_unit = models.ForeignKey(REF_CUSTOMER,
                                       verbose_name='Customer Unit',
                                       db_constraint=False)
+    person_responsible = models.CharField(max_length=50,
+                                          verbose_name='Person Responsible')
+
     customer_name = models.CharField(max_length=50,
                                      verbose_name='Customer Name', blank=True,
                                      null=True)
@@ -462,10 +466,10 @@ class Header(models.Model):
                                         blank=True, null=True)
     ship_to_party = models.IntegerField(verbose_name='Ship-to Party',
                                         blank=True, null=True)
-    bill_to_party = models.IntegerField(verbose_name='Bill-to Party',
-                                        blank=True, null=True)
     ericsson_contract = models.IntegerField(verbose_name='Ericsson Contract #',
                                             blank=True, null=True)
+    bill_to_party = models.IntegerField(verbose_name='Bill-to Party',
+                                        blank=True, null=True)
     payment_terms = models.CharField(max_length=50,
                                      verbose_name='Payment Terms', blank=True,
                                      null=True)
@@ -564,7 +568,7 @@ class Header(models.Model):
 
     class Meta:
         unique_together = ['configuration_designation', 'baseline_version',
-                           'baseline', 'program']
+                           'baseline', 'program', 'customer_name']
     # end class
 
     def __str__(self):
@@ -1879,21 +1883,18 @@ class DistroList(models.Model):
 
 # S-06578 : Addition for User_Customer table
 class User_Customer(models.Model):
-
     class Meta:
         verbose_name = 'User Customer'
         # end class
 
-    user = models.ForeignKey(authUser, db_constraint=False, blank = True, null = True)
-    customer = models.ForeignKey(REF_CUSTOMER, db_constraint=False, blank = True, null = True)
+    user = models.ForeignKey(authUser, db_constraint = False, blank=True, null=True)
+    customer = models.ForeignKey(REF_CUSTOMER, db_constraint = False, blank=True, null=True)
     is_deleted = models.BooleanField(default=0)
-    customer_name = models.TextField(null=True, blank = True)
+    customer_name = models.TextField(null=True, blank=True)
 
     def __str__(self):
-
-        return(str(self.user)+ " - " + str(self.customer)+" - " + str(self.customer_name)+" - " + str(self.is_deleted))
+        return (str(self.user)+ " - " + str(self.customer)+ " - " + str(self.customer_name)+" - " + str(self.is_deleted))
     # end def
-
 
 class ApprovalList(models.Model):
     """

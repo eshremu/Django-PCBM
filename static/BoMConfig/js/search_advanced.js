@@ -159,6 +159,7 @@ function search(eventObj){
             product_num: $('#prod_num').val(),
             context_id: $('#contextID').val(),
             customer_num: $('#cust_num').val(),
+            sec_customer_num: $('#sec_cust_num').val(),  //Added for S-05767:Addition of Second Cust No. in advance search filter
             description: $('#prod_desc').val(),
 
             base_rev: $('#base_rev').val(),
