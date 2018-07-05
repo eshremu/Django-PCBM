@@ -1381,7 +1381,7 @@ def CreateDocument(oRequest):
                     'item_category': dItemCatMap[oLine.item_category] if
                     oLine.item_category in dItemCatMap else
                     oLine.item_category or '',
-                    'pcode': oLine.pcode[1:4] if oLine.pcode else '',
+                    'pcode': (oLine.pcode[1:4]).strip('-') if oLine.pcode else '',  #  D-03252 : Incorrect p-code passed to Inquiry creation table addition of .strip('-')
                     'unit_price': str(
                         oHeader.configuration.override_net_value or
                         oHeader.configuration.net_value or '')
