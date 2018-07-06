@@ -460,11 +460,12 @@ def ConfigPricing(oRequest):
                 '6': float(oLine.order_qty or 0) * float(GrabValue(
                     oLine, 'linepricing.pricing_object.unit_price', 0)),
                 '7': GrabValue(oLine, 'linepricing.override_price', ''),
-                '8': oLine.higher_level_item or '',
-                '9': oLine.material_group_5 or '',
-                '10': oLine.commodity_type or '',
-                '11': oLine.comments or '',
-                '12': oLine.additional_ref or ''
+                '8': oLine.traceability_req or '', # S-05769: Addition of Product Traceability field in Pricing->Config Price Management tab
+                '9': oLine.higher_level_item or '',
+                '10': oLine.material_group_5 or '',
+                '11': oLine.commodity_type or '',
+                '12': oLine.comments or '',
+                '13': oLine.additional_ref or ''
                             } for oLine in aLine]
 
             # Update expected price roll-up (determined by unit price per line)

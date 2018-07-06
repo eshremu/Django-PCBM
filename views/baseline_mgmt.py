@@ -183,11 +183,12 @@ def BaselineMgmt(oRequest):
             )
     # end if
 
-    aTitles = ['', '', 'Configuration', 'Product Area 2', 'Status', 'BoM Request Type', 'Program',
-               'Customer Number', 'Model', 'Model Description',
+    aTitles = ['', 'Configuration', 'Product Area 2', 'Status', 'BoM Request Type', 'Program',
+               'Customer Number', 'Second Customer Number', 'Model', 'Model Description',
                'Customer Price', 'Created Year', 'Inquiry/Site Template Number',
                'Model Replacing', 'Comments', 'Release Date', 'ZUST', 'P-Code',
-               'Plant']
+               'Plant']  # S-05745: Add Second Customer number in Baseline View added Second Customer Number
+
     # S-06171: Baseline Restricts CU- added a cust_list attribute in dContext for CU fiter dropdown
     dContext = {
         'form': form,

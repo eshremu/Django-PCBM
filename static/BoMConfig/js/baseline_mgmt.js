@@ -116,7 +116,7 @@ function BuildTable(){
         'scrollX': true,
         'scrollY': parseInt($('.table-wrapper').css("height")) - 71,
         fixedColumns: {
-            leftColumns: 2
+            leftColumns: 2 //S-05745: Add Second Customer number in Baseline View
         }
     });
 
