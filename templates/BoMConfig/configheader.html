@@ -30,11 +30,36 @@
                             <input id="searchSubmit" class="btn" type="button" value="Search"/>
                             &nbsp;&nbsp;&nbsp;&nbsp;
                         </td>
+                    <!--S-06166- Shift header page to new reference table:Added below to make all the default dropdown fields appear as textbox in case called from react request no. search-->
                     {% elif field.label == 'Baseline Impacted' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
                         <td>
                             &nbsp;&nbsp;
                             <input id="new_baseline" type="text" name="new_baseline" placeholder="Baseline Name" style="display:none;"/>
                             &nbsp;&nbsp;&nbsp;&nbsp;
+                        </td>
+                    {% elif field.label == 'Person responsible' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
+                        <td class="perresp" style="">
+                      &nbsp;
+                        </td>
+                    {% elif field.label == 'Customer Name' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
+                        <td class="custName" style="">
+                      &nbsp;
+                        </td>
+                    {% elif field.label == 'Customer Unit' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
+                        <td class="custUnit" style="">
+                      &nbsp;
+                        </td>
+                    {% elif field.label == 'Sales Group' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
+                        <td class="salesgrp" style="">
+                      &nbsp;
+                        </td>
+                    {% elif field.label == 'Sold-to Party' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
+                        <td class="soldparty" style="">
+                      &nbsp;
+                        </td>
+                    {% elif field.label == 'Ericsson Contract #' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
+                        <td class="ericcont" style="">
+                      &nbsp;
                         </td>
                     {% elif field.label == 'Configuration/Ordering Status' and headerForm.configuration_status.value == 4 %}
                         <td>

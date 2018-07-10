@@ -296,43 +296,43 @@ function determineColumns(readonly, hidden_cols){
     }
 
     if(PriceVis === true && price_read_auth) {
-        readonly.push(18);
+        readonly.push(18,19);  //change   //Added for readonly of 18 & 19 columns
         if (!price_write_auth) {
-            readonly.push(19, 20, 21, 22, 23);
+            readonly.push(20, 21, 22, 23, 24);  //change
         } else if (price_write_auth && configuration_status == 'In Process/Pending') {
-            readonly.push(19, 20, 21);
+            readonly.push(20, 21, 22); //change
         }
 
         $('#viewprice').css('background-color', '#FFFF4D');
     } else {
-        hidden_cols.push(18, 19, 20, 21, 22, 23);
+        hidden_cols.push(19, 20, 21, 22, 23, 24); //change
         $('#viewprice').removeAttr('style');
     }
 
     if(CustVis === true && cust_read_auth) {
         //readonly.push(24); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
-        readonly.push(25, 26, 27, 28);
+        readonly.push(26, 27, 28, 29); //change
         if (!cust_write_auth || (cust_write_auth && configuration_status != 'In Process')) {
             readonly.push(24);
         }
 
         $('#viewcust').css('background-color', '#FFFF4D');
     } else {
-        hidden_cols.push(24, 25, 26, 27, 28);
+        hidden_cols.push(25, 26, 27, 28, 29); //change
         $('#viewcust').removeAttr('style');
     }
 
     if(BaselineVis === true && baseline_read_auth){
         if (!baseline_write_auth) {
-            readonly.push(29, 30, 31);
+            readonly.push(30, 31, 32);  //change
         } else if (baseline_write_auth && configuration_status != 'In Process' && next_approval == 'csr') {
-            readonly.push(29, 30);
+            readonly.push(30, 31);  //change
         } else if (baseline_write_auth && configuration_status != 'In Process' && next_approval == 'blm') {
-            readonly.push(29, 31);
+            readonly.push(30, 32);//change
         }
         $('#viewbase').css('background-color', '#FFFF4D');
     } else {
-        hidden_cols.push(29, 30, 31);
+        hidden_cols.push(30, 31, 32); //change
         $('#viewbase').removeAttr('style');
     }
 }
@@ -423,7 +423,7 @@ function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
 }
 
 function customRenderer(instance, td, row, col, prop, value, cellProperties) {
-    if (row === 0 && col === 18 && typeof(value) == 'string' && value.charAt(0)==='!' && PriceVis){
+    if (row === 0 && col === 19 && typeof(value) == 'string' && value.charAt(0)==='!' && PriceVis){  //change
         value = value.slice(1);
     }
 
@@ -442,33 +442,35 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties) {
 function build_table() {
     determineColumns(readonly_columns, hidden_cols);
     var container = document.getElementById('datatable');
-    var colWidths = [50,50,150,342,72,50,74,50,50,62,264,81,103,50,68,63,117,65,74,
-            119,116,162,105,62,160,118,246,124,176,151,250,250];
+    var colWidths = [50,50,150,342,72,50,74,50,50,62,264,81,103,50,68,63,117,65,125,125,
+            119,116,162,105,62,160,118,246,124,176,151,250,250];         // S-05770 : Added a new colwidth for net price & resized unit price to 125
     hot = new Handsontable(container, {
         data: data,
         minRows: 1,
-        minCols: 32,
-        maxCols: 32,
+        minCols: 33,
+        maxCols: 33,
         minSpareRows: overall_write_auth && !frame_readonly ? 5 : 0,
         rowHeaders: false,
+//       S-05768-Rename Unit Price to Net Price and Add Unit Price- Added new column 'Unit Price' at no.18 and renamed existing unit price to 'Net Price' at no.19.
         colHeaders: [
             'Status', 'Line #', 'Product Number<br><span class="smallItalics">'+config_id+"</span>", "Product Description", 'Order Qty',
             'UoM', 'Context ID','Plant', 'SLOC', 'Item Cat', 'P-Code - Fire Code, Desc',
             'HW/SW Ind', 'Prod Pkg Type', 'SPUD', 'RE-Code', 'MU-Flag', "X-Plant Mat'l Stat", 'Int Notes',
-            'Unit Price', "Higher Level Item", 'Material Group 5', 'Purchase Order Item No', 'Condition Type', 'Amount',
+            'Unit Price','Net Price', "Higher Level Item", 'Material Group 5', 'Purchase Order Item No', 'Condition Type', 'Amount',
             'Traceability Req. (Serialization)', 'Customer Asset', 'Customer Asset Tagging Requirement', 'Customer Number', 'Second Customer Number',
             'Vendor Article Number', 'Comments', 'Additional Reference (if required)',
         ],
         fixedColumnsLeft: 3,
         manualColumnFreeze: true,
         currentRowClassName: 'currentRow',
-        columns: [
+//       S-05768-Rename Unit Price to Net Price and Add Unit Price- Added {data:32}, as a new column got added.
+      columns: [
             {data: 0}, {data: 1}, {data: 2}, {data: 3}, {data: 4}, {data: 5},
             {data: 6}, {data: 7}, {data: 8}, {data: 9}, {data: 10}, {data: 11},
             {data: 12}, {data: 13}, {data: 14}, {data: 15}, {data: 16}, {data: 17},
             {data: 18}, {data: 19}, {data: 20}, {data: 21}, {data: 22}, {data: 23},
             {data: 24}, {data: 25}, {data: 26}, {data: 27}, {data: 28}, {data: 29},
-            {data: 30}, {data: 31},
+            {data: 30}, {data: 31}, {data: 32},
         ],
         manualColumnResize: true,
         copyPaste: true,
@@ -528,18 +530,21 @@ function build_table() {
 
             if(active_lock || (!is_picklist  && (row === 0 && [1,2,4].indexOf(col)!== -1)) || readonly_columns.indexOf(col) !== -1){
                 cellProperties.readOnly = true;
-                if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){//(col == 17 || col == 22) && PriceVis){
+   // S-05768-Rename Unit Price to Net Price and Add Unit Price- Renamed Unit to Net & also added 'Unit Price' for the currency format
+                if (['Net Price', 'Amount','Unit Price'].indexOf(this.instance.getColHeader(col)) != -1){//(col == 17 || col == 23) && PriceVis){
                     cellProperties.renderer = moneyRenderer;
                 } else {
                     cellProperties.renderer = readonlyRenderer;
                 }
             } else {
-                if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
+   // S-05768-Rename Unit Price to Net Price and Add Unit Price- Renamed Unit to Net & also added 'Unit Price' for the currency format
+               if (['Net Price', 'Amount','Unit Price'].indexOf(this.instance.getColHeader(col)) != -1){
                     cellProperties.renderer = moneyRenderer;
                 } else {
                     cellProperties.renderer = customRenderer;
                 }
             }
+
 
             if (['Status'].indexOf(this.instance.getColHeader(col)) != -1){
                 cellProperties.renderer = statusRenderer;
@@ -561,7 +566,8 @@ function build_table() {
 
             if (['Line #', 'Product Description', 'SPUD', 'Int Notes','P-Code - Fire Code, Desc', 'Vendor Article Number','Comments','Additional Reference (if required)'].indexOf(this.instance.getColHeader(col)) != -1){ //
                 cellProperties.className += 'htLeft';
-            } else if (['Unit Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
+ // S-05768-Rename Unit Price to Net Price and Add Unit Price- Renamed Unit price to Net price
+            } else if (['Net Price', 'Amount'].indexOf(this.instance.getColHeader(col)) != -1){
                 cellProperties.className += 'htRight';
             } else if (/^Product Number/.test(this.instance.getColHeader(col))) {
                 cellProperties.className += 'htLeft';
@@ -712,7 +718,7 @@ function build_table() {
 
                                     // Generate validation of Condition to ensure line number related errors are removed
                                     if(changes[i][2] !== changes[i][3]){
-                                        tableThis.setDataAtRowProp(parseInt(changes[i][0]), 22, tableThis.getDataAtCell(parseInt(changes[i][0]), 22), 'edit');
+                                        tableThis.setDataAtRowProp(parseInt(changes[i][0]), 23, tableThis.getDataAtCell(parseInt(changes[i][0]), 23), 'edit'); //change
                                     }
                                 }
                                 break;
@@ -761,7 +767,7 @@ function build_table() {
 
                                     // Clean & set Vendor Article Number
                                     van = van.replace(/^\.+/, '').replace(/\/$/, '');
-                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 29, van, 'edit');
+                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 30, van, 'edit'); //change
 
                                     // Set current cell to updated & cleaned value
                                     tableThis.setDataAtRowProp(parseInt(changes[i][0]), 2, partnumber, 'validation');
@@ -913,13 +919,19 @@ function build_table() {
                                 var int_notes = changes[i][3] ? changes[i][3].trim() : changes[i][3];
                                 tableThis.setDataAtRowProp(parseInt(changes[i][0]), 17, int_notes, 'validation');
                                 break;
-                            case 18: // Unit Price
+                            case 18: // S-05768-Rename Unit Price to Net Price and Add Unit Price- Unit Price (new unit price)
                                 tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
                                 data['value'] = changes[i][3];
                                 data['line_number'] = tableThis.getDataAtCell(parseInt(changes[i][0]), 1);
                                 data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
                                 break;
-                            case 19: // Higher Level Item
+                            case 19: // S-05768-Rename Unit Price to Net Price and Add Unit Price- Net Price renamed from Unit Price(Old Unit Price)
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 16, changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3], 'validation');
+                                data['value'] = changes[i][3];
+                                data['line_number'] = tableThis.getDataAtCell(parseInt(changes[i][0]), 1);
+                                data['send'] = changes[i][3] && changes[i][3] != changes[i][2];
+                                break;
+                            case 20: // Higher Level Item
                                 if(changes[i][3]){
                                     var other_lines = tableThis.getDataAtCol(1);
                                     if(other_lines.indexOf(changes[i][3]) === -1){
@@ -928,14 +940,14 @@ function build_table() {
                                     }
                                 }
                                 break;
-                            case 20: // Material Group 5
+                            case 21: // Material Group 5
                                 break;
-                            case 21: // Purchase order Item number
+                            case 22: // Purchase order Item number
                                 break;
-                            case 22: // Condition
+                            case 23: // Condition
                                 var condition = changes[i][3] ? changes[i][3].toUpperCase().trim() : changes[i][3];
                                 var line_number = tableThis.getDataAtCell(parseInt(changes[i][0]), 1);
-                                var all_conds = tableThis.getDataAtCol(22);
+                                var all_conds = tableThis.getDataAtCol(23); //change
 
                                 if(condition == "ZUST" && line_number !== "10"){
                                     cellMeta['cellStatus'] = "X";
@@ -948,20 +960,20 @@ function build_table() {
                                     $('[name="needs_zpru"]').val("False");
                                 }
 
-                                if(condition && !tableThis.getDataAtCell(parseInt(changes[i][0]), 23)){
+                                if(condition && !tableThis.getDataAtCell(parseInt(changes[i][0]), 24)){ //change
                                     cellMeta['cellStatus'] = "X";
                                     cellMeta['comment']['value'] += 'X - Condition provided without Amount.\n';
                                 }
 
                                 if(changes[i][2] !== changes[i][3]){
-                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 23, tableThis.getDataAtCell(parseInt(changes[i][0]), 23), 'edit');
+                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 24, tableThis.getDataAtCell(parseInt(changes[i][0]), 24), 'edit'); //change
                                 }
 
                                 if(condition){
-                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 22, condition, 'validation');
+                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 23, condition, 'validation'); //change
                                 }
                                 break;
-                            case 23: // Amount
+                            case 24: // Amount
                                 var amount = changes[i][3] === null ? null : changes[i][3].trim();
 
                                 if(amount !== null) {
@@ -972,19 +984,19 @@ function build_table() {
                                         cellMeta['comment']['value'] += 'X - Invalid Amount.\n';
                                     }
 
-                                    if (amount && !tableThis.getDataAtCell(parseInt(changes[i][0]), 22)) {
+                                    if (amount && !tableThis.getDataAtCell(parseInt(changes[i][0]), 23)) { //change
                                         cellMeta['cellStatus'] = "X";
                                         cellMeta['comment']['value'] += 'X - Amount provided without Condition.\n';
                                     }
 
                                     if (changes[i][2] !== changes[i][3]) {
-                                        tableThis.setDataAtRowProp(parseInt(changes[i][0]), 22, tableThis.getDataAtCell(parseInt(changes[i][0]), 22), 'edit');
+                                        tableThis.setDataAtRowProp(parseInt(changes[i][0]), 23, tableThis.getDataAtCell(parseInt(changes[i][0]), 23), 'edit'); //change
                                     }
 
-                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 23, amount, 'validation');
+                                    tableThis.setDataAtRowProp(parseInt(changes[i][0]), 24, amount, 'validation'); //change
                                 }
                                 break;
-                            case 24: // Traceability req.
+                            case 25: // Traceability req.
                                 var traceability = changes[i][3] === null ? null : changes[i][3].toUpperCase().trim();
 
                                 if(!/^Y$|^N$|^$/.test(traceability)){
@@ -992,15 +1004,15 @@ function build_table() {
                                     cellMeta['comment']['value'] += 'X - Invalid Traceability Req.\n';
                                 }
 
-                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 24, traceability, 'validation');
+                                tableThis.setDataAtRowProp(parseInt(changes[i][0]), 25, traceability, 'validation'); //change
                                 break;
-                            case 25: // Customer Asset
+                            case 26: // Customer Asset
                                 if(changes[i][3] !== null && !/^Y$|^N$|^$/.test(changes[i][3])){
                                     cellMeta['cellStatus'] = "X";
                                     cellMeta['comment']['value'] += 'X - Invalid Customer Asset.\n';
                                 }
                                 break;
-                            case 26: // Customer Asset Tagging Req
+                            case 27: // Customer Asset Tagging Req
                                 /*if(changes[i][3] !== null && !/^Y$|^N$|^$/.test(changes[i][3])){
                                     cellMeta['cellStatus'] = "X";
                                     cellMeta['comment']['value'] += 'X - Invalid Customer Asset Tagging Req.\n';
@@ -1009,19 +1021,19 @@ function build_table() {
                                     cellMeta['comment']['value'] += 'X - Cannot require asset tagging if part is not a customer asset.\n';
                                 }*/
                                 break;
-                            case 27: // Customer Number
+                            case 28: // Customer Number
                                 break;
-                            case 28: // Second Customer Number
+                            case 29: // Second Customer Number
                                 break;
-                            case 29: // Vendor Article number
+                            case 30: // Vendor Article number
                                 if(/^\.+.+|.+\/$/.test(changes[i][3])){
                                     cellMeta['cellStatus'] = "!";
                                     cellMeta['comment']['value'] += '! - Vendor Article Number should not start with "." or end with "/".\n';
                                 }
                                 break;
-                            case 30: // Comments
+                            case 31: // Comments
                                 break;
-                            case 31: // Additional Refs
+                            case 32: // Additional Refs
                                 break;
                         }
 
@@ -1061,7 +1073,8 @@ function build_table() {
             }
         },
         beforeValidate: function(value, row, prop, source){
-            if(['Unit Price','Amount'].indexOf(this.getColHeader(prop)) != -1){
+       // S-05768-Rename Unit Price to Net Price and Add Unit Price- Unit price renamed to Net Price
+            if(['Net Price','Amount'].indexOf(this.getColHeader(prop)) != -1){
                 value = value === null ? value : value.toString().replace(/$/g,'').replace(/,/g,'').replace(/\s/g,'');
                 if (!isNaN(parseFloat(value))) {
                     value = String(parseFloat(value).toFixed(2));
@@ -1075,7 +1088,8 @@ function build_table() {
         },
         beforeChange: function(changes, source){
             for(var i = 0; i < changes.length; i++) {
-                if (['Unit Price', 'Amount'].indexOf(this.getColHeader(changes[i][1])) != -1) {
+           // S-05768-Rename Unit Price to Net Price and Add Unit Price- Unit price renamed to Net Price
+                if (['Net Price', 'Amount'].indexOf(this.getColHeader(changes[i][1])) != -1) {
                     changes[i][3] = changes[i][3]== null ? changes[i][3] : changes[i][3].replace(/$/g,'').replace(/,/g,'').replace(/\s/g,'');
                     if (!isNaN(parseFloat(changes[i][3]))) {
                         changes[i][3] = String(parseFloat(changes[i][3]).toFixed(2));
@@ -1243,11 +1257,11 @@ function UpdateValidation(row, table){
                 }
 
                 for(var i = 0; i < iTotalRows; i++){
-                    if(!isNaN(table.getDataAtCell(parseInt(i), 23))){
-                        if(table.getDataAtCell(parseInt(i), 22) == 'ZUST') {
-                            fCurrentTotal += parseFloat(table.getDataAtCell(parseInt(i), 23));
-                        } else if(table.getDataAtCell(parseInt(i), 22) == 'ZPR1'){
-                            fZpruTotal += parseFloat(table.getDataAtCell(parseInt(i), 23));
+                    if(!isNaN(table.getDataAtCell(parseInt(i), 24))){ //change
+                        if(table.getDataAtCell(parseInt(i), 23) == 'ZUST') {//change
+                            fCurrentTotal += parseFloat(table.getDataAtCell(parseInt(i), 24)); //change
+                        } else if(table.getDataAtCell(parseInt(i), 23) == 'ZPR1'){ //change
+                            fZpruTotal += parseFloat(table.getDataAtCell(parseInt(i), 24)); //change
                         }
                     }
                 }
