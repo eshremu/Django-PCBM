@@ -841,6 +841,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 
         sRevHistory = 'Revision ' + sRev + ':\n' + \
                       oBaseline.revisionhistory_set.get(revision=sRev).history
+
         aLines = sRevHistory.split('\n')
         for i, sLine in enumerate(aLines):
             oSheet['A' + str(iRow)] = sLine
@@ -1080,6 +1081,8 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 
             oSheet['C' + str(iCurrentRow)] = oLineItem.part.product_description
             oSheet['C' + str(iCurrentRow)].border = oBorder
+# S-05816:Fix column within downloaded baseline - Added for wrapping text in product_description column in the downloaded file
+            oSheet['C' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
             if oLineItem == oFirstItem and not oHeader.pick_list:
                 oSheet['C' + str(iCurrentRow)].fill = oFirstRowColor
                 oSheet['C' + str(iCurrentRow)].font = Font(bold=True)
@@ -1190,6 +1193,8 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 
             oSheet['N' + str(iCurrentRow)] = oLineItem.comments
             oSheet['N' + str(iCurrentRow)].border = oBorder
+    # S-05816:Fix column within downloaded baseline - Added for wrapping text in comments column in the downloaded file
+            oSheet['N' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
             if oLineItem == oFirstItem and not oHeader.pick_list:
                 oSheet['N' + str(iCurrentRow)].fill = oFirstRowColor
                 oSheet['N' + str(iCurrentRow)].font = Font(bold=True)
@@ -1198,6 +1203,8 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 
             oSheet['O' + str(iCurrentRow)] = oLineItem.additional_ref
             oSheet['O' + str(iCurrentRow)].border = oBorder
+    # S-05816:Fix column within downloaded baseline - Added for wrapping text in Additional reference column in the downloaded file
+            oSheet['O' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
             if oLineItem == oFirstItem and not oHeader.pick_list:
                 oSheet['O' + str(iCurrentRow)].fill = oFirstRowColor
                 oSheet['O' + str(iCurrentRow)].font = Font(bold=True)
@@ -1254,7 +1261,6 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     # Write Table of Contents tab.  This is last so that we only write ToC data
     # for Header objects still in the array after the previous section
     oSheet = oFile.create_sheet('ToC', 0)
-    # added line 1273, 1274 for fix D-03265-Missing  columns in downloaded baseline files
     dTOCData = {
         3: ['Configuration', 'configuration_designation', 25],
         15: ['Customer Designation', 'customer_designation', 15],

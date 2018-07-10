@@ -40,6 +40,7 @@ def UpdateConfigRevisionData(oHeader):
     :return: None
     """
     oPrev = None
+
     try:
         # If the Header has a linked model that is replaces, compare to that
         if oHeader.model_replaced_link:
@@ -543,7 +544,95 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                     choices=(('', '---------'),) +
                     tuple((obj, obj) for obj in chain.from_iterable(tResults))
                 )
-        # S-06756- added for restricting customer_unit
+
+#S-06166-Shift Header page to new reference table: Added to show the dropdown widget for sales group & populate data
+            oCursor.execute(
+                ('SELECT DISTINCT [sales_g] FROM ps_SalesOffice_SalesGroup '
+                 'WHERE [sales_cu]=%s'),
+                [bytes(oExisting.customer_unit.name, 'ascii') if oExisting else
+                 None]
+            )
+            tResults1 = oCursor.fetchall()
+            headerForm.fields['sales_group'].widget = \
+                forms.widgets.Select(
+                    choices=(('', '---------'),) +
+                            tuple((obj, obj) for obj in chain.from_iterable(tResults1))
+                )
+
+            # oCursor.execute(
+            #     ('SELECT DISTINCT [Sales_o] FROM ps_SalesOffice_SalesGroup '
+            #      'WHERE [sales_cu]=%s'),
+            #     [bytes(oExisting.customer_unit.name, 'ascii') if oExisting else
+            #      None]
+            # )
+            # tResults2 = oCursor.fetchall()
+            # headerForm.fields['sales_office'].widget = \
+            #     forms.widgets.Select(
+            #         choices=(('', '---------'),) +
+            #                 tuple((obj, obj) for obj in chain.from_iterable(tResults2))
+            #     )
+
+            # S-06166-Shift Header page to new reference table: Added to show the dropdown widget for sold_to_party & populate data
+            oCursor.execute(
+                ('SELECT DISTINCT [SoldTo] FROM ps_fas_contracts '
+                 'WHERE [Customer]=%s'),
+                [bytes(oExisting.customer_name, 'ascii') if oExisting else
+                 None]
+            )
+            tResults3 = oCursor.fetchall()
+            headerForm.fields['sold_to_party'].widget = \
+                forms.widgets.Select(
+                    choices=(('', '---------'),) +
+                            tuple((obj, obj) for obj in chain.from_iterable(tResults3))
+                )
+
+            # S-06166-Shift Header page to new reference table: Added to show the dropdown widget for ericsson contract # & populate data
+            oCursor.execute(
+              ('SELECT DISTINCT [Contract] FROM ps_fas_contracts '
+               'WHERE [SoldTo]=%s AND (select convert(varchar(10), getdate(),120))>= [ValidFrom] '
+               'AND (SELECT convert(varchar(10), getdate(),120))<= [ValidTo]'),
+               [oExisting.sold_to_party if oExisting else None])
+
+            tResults4 = oCursor.fetchall()
+            headerForm.fields['ericsson_contract'].widget = \
+                forms.widgets.Select(
+                    choices=(('', '---------'),) +
+                            tuple((obj, obj) for obj in chain.from_iterable(tResults4))
+                )
+
+            # oCursor.execute(
+            #     ('SELECT DISTINCT [BillTo] FROM ps_fas_contracts '
+            #      'WHERE [Contract]=%s'),
+            #     [bytes(oExisting.ericsson_contract, 'ascii') if oExisting else
+            #      None]
+            # )
+            # tResults5 = oCursor.fetchall()
+            # headerForm.fields['bill_to_party'].widget = \
+            #     forms.widgets.Select(
+            #         choices=(('', '---------'),) +
+            #                 tuple((obj, obj) for obj in chain.from_iterable(tResults5))
+            #     )
+
+            # oCursor.execute(
+            #     ('SELECT DISTINCT [PayTerms] FROM ps_fas_contracts '
+            #      'WHERE [Contract]=%s'),
+            #     [bytes(oExisting.ericsson_contract, 'ascii') if oExisting else
+            #      None]
+            # )
+            # tResults6 = oCursor.fetchall()
+            # headerForm.fields['payment_terms'].widget = \
+            #     forms.widgets.Select(
+            #         choices=(('', '---------'),) +
+            #                 tuple((obj, obj) for obj in chain.from_iterable(tResults6))
+            #     )
+
+        sUserId = None
+
+        # Determine user name
+        if oRequest.user.is_authenticated() and oRequest.user.is_active:
+            sUserId = oRequest.user.username
+
+        # S-06166-Shift Header page to new reference table: Added to limit the CU dropdown field as per the loggedin user's CU
         headerForm.fields['customer_unit'].queryset = REF_CUSTOMER.objects.filter(name__in=aAvailableCU)
 
         dContext = {
@@ -756,7 +845,7 @@ def AddConfig(oRequest):
                             del oForm[index]
                             continue
                         else:
-                            for x in range(32):
+                            for x in range(33):
                                 if str(x) not in oForm[index]:
                                     oForm[index][str(x)] = None
                             # end for
@@ -821,21 +910,21 @@ def AddConfig(oRequest):
                                      'mu_flag': dConfigLine['15'],
                                      'x_plant': dConfigLine['16'],
                                      'internal_notes': dConfigLine['17'],
-                                     'higher_level_item': dConfigLine['19'],
-                                     'material_group_5': dConfigLine['20'],
+                                     'higher_level_item': dConfigLine['20'],
+                                     'material_group_5': dConfigLine['21'],
                                      'purchase_order_item_num':
-                                         dConfigLine['21'],
-                                     'condition_type': dConfigLine['22'],
-                                     'amount': dConfigLine['23'] or None,
-                                     'traceability_req': dConfigLine['24'],
-                                     'customer_asset': dConfigLine['25'],
+                                         dConfigLine['22'],
+                                     'condition_type': dConfigLine['23'],
+                                     'amount': dConfigLine['24'] or None,
+                                     'traceability_req': dConfigLine['25'],
+                                     'customer_asset': dConfigLine['26'],
                                      'customer_asset_tagging':
-                                         dConfigLine['26'],
-                                     'customer_number': dConfigLine['27'],
-                                     'sec_customer_number': dConfigLine['28'],
-                                     'vendor_article_number': dConfigLine['29'],
-                                     'comments': dConfigLine['30'],
-                                     'additional_ref': dConfigLine['31'],
+                                         dConfigLine['27'],
+                                     'customer_number': dConfigLine['28'],
+                                     'sec_customer_number': dConfigLine['29'],
+                                     'vendor_article_number': dConfigLine['30'],
+                                     'comments': dConfigLine['31'],
+                                     'additional_ref': dConfigLine['32'],
                                      'config': oConfig,
                                      'part': oPart,
                                      'is_child': bool(
@@ -1573,48 +1662,102 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     '16': str(Line.x_plant).zfill(2) if Line.x_plant else None,
                     '17': Line.internal_notes,
 
-                    '19': Line.higher_level_item,
-                    '20': Line.material_group_5,
-                    '21': Line.purchase_order_item_num,
-                    '22': Line.condition_type,
-                    '23': Line.amount,
-                    '24': Line.traceability_req,
-                    '25': Line.customer_asset,
-                    '26': Line.customer_asset_tagging,
-                    '27': Line.customer_number,
-                    '28': Line.sec_customer_number,
-                    '29': Line.vendor_article_number,
-                    '30': Line.comments,
-                    '31': Line.additional_ref
+                    '20': Line.higher_level_item,
+                    '21': Line.material_group_5,
+                    '22': Line.purchase_order_item_num,
+                    '23': Line.condition_type,
+                    '24': Line.amount,
+                    '25': Line.traceability_req,
+                    '26': Line.customer_asset,
+                    '27': Line.customer_asset_tagging,
+                    '28': Line.customer_number,
+                    '29': Line.sec_customer_number,
+                    '30': Line.vendor_article_number,
+                    '31': Line.comments,
+                    '32': Line.additional_ref
                 }
+# S-05770:-USCC Unit Price functionality - Below case is for new column 'Unit Price' at case no.18,Added to show unit price based on CU,
+    # if USCC,NonPicklist-Line 10 is blank,parts wil have UP; pickList-All lines will have UP
+    # for other CUs, picklist & nonPicklist:- UP will be blank in all lines
+                if oHeader.customer_unit_id == 5:               # 5 is the ID for USCC customer.
+                    if not oHeader.pick_list:
+                        if str(Line.line_number) == '10':
+                            dLine.update({'18': None})
+                            # if oConfig.override_net_value:
+                            #     dLine.update(
+                            #         {'18': str(oConfig.override_net_value)}
+                            #     )
+                            # else:
+                            #     dLine.update({'18': str(oConfig.net_value) if oConfig.net_value is not None else None})
+                                # end if
+                        else:
+                            if GrabValue(Line, 'linepricing.override_price'):
+                                dLine.update(
+                                    {'18': str(Line.linepricing.override_price)}
+                                )
+                            elif GrabValue(Line,
+                                           'linepricing.pricing_object.unit_price'):
+                                dLine.update(
+                                    {
+                                        '18': str(
+                                            Line.linepricing.pricing_object.unit_price)
+                                    }
+                                )
+                            else:
+                                dLine.update({'18': None})
+                                # end if
+                                # end if
+                                # end if
+                    else:
+                        if GrabValue(Line, 'linepricing.override_price'):
+                            dLine.update(
+                                {'18': str(Line.linepricing.override_price)}
+                            )
+                        elif GrabValue(Line,
+                                       'linepricing.pricing_object.unit_price'):
+                            dLine.update(
+                                {
+                                    '18': str(
+                                        Line.linepricing.pricing_object.unit_price)
+                                }
+                            )
+                        else:
+                            dLine.update({'18': None})
+                            # end if
+                            # end if
+                else:
+                    dLine.update({'18': None})
 
+    # S-05770:-USCC Unit Price functionality - The below case is for Net Price functionality,case no. 18 is changed to 19
+    # NonPicklist-Sum of UP of all the parts is shown as NP in line 10
+    # Picklist- All lines will have the price displayed
                 if not oHeader.pick_list:
                     if str(Line.line_number) == '10':
                         if oConfig.override_net_value:
                             dLine.update(
-                                {'18': str(oConfig.override_net_value)}
+                                {'19': str(oConfig.override_net_value)}
                             )
                         else:
-                            dLine.update({'18': str(oConfig.net_value) if oConfig.net_value is not None else None})
+                            dLine.update({'19': str(oConfig.net_value) if oConfig.net_value is not None else None})
                         # end if
                     else:
-                        dLine.update({'18': ''})
+                        dLine.update({'19': ''})
                     # end if
                 else:
                     if GrabValue(Line, 'linepricing.override_price'):
                         dLine.update(
-                            {'18': str(Line.linepricing.override_price)}
+                            {'19': str(Line.linepricing.override_price)}
                         )
                     elif GrabValue(Line,
                                    'linepricing.pricing_object.unit_price'):
                         dLine.update(
                             {
-                                '18': str(
+                                '19': str(
                                     Line.linepricing.pricing_object.unit_price)
                             }
                         )
                     else:
-                        dLine.update({'18': None})
+                        dLine.update({'19': None})
                     # end if
                 # end if
             else:
@@ -1839,7 +1982,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
     # Populate error_matrix with blank information
     for _ in range(len(aData)):
         dummy = []
-        for i in range(32):
+        for i in range(33):
             dummy.append({'value': ''})
         error_matrix.append(dummy)
 
@@ -2027,8 +2170,8 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         # end if
 
         # Vendor Article Number
-        if '29' in aData[index] and aData[index]['29'] in ('', None):
-            aData[index]['29'] = aData[index]['2'].strip('./')
+        if '30' in aData[index] and aData[index]['30'] in ('', None):
+            aData[index]['30'] = aData[index]['2'].strip('./')
 
         # Line number
         # If line number is provided, ensure it is the correct format and track
@@ -2161,15 +2304,15 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         # end if
 
         # Condition Type & Amount Supplied Together
-        NoCondition = '22' not in aData[index] or aData[index]['22'] in ('', None)
-        NoAmount = '23' not in aData[index] or aData[index]['23'] in ('', None)
+        NoCondition = '23' not in aData[index] or aData[index]['23'] in ('', None)
+        NoAmount = '24' not in aData[index] or aData[index]['24'] in ('', None)
         if not bFormatCheckOnly:
             if (NoCondition and not NoAmount) or (NoAmount and not NoCondition):
                 if NoAmount and not NoCondition:
-                    error_matrix[index][23]['value'] += \
+                    error_matrix[index][24]['value'] += \
                         'X - Condition Type provided without Amount.\n'
                 else:
-                    error_matrix[index][22]['value'] += \
+                    error_matrix[index][23]['value'] += \
                         'X - Amount provided without Condition Type.\n'
                 # end if
             # end if
@@ -2326,7 +2469,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     aData[index]['14'] = dPartData[corePartNumber]['RE-Code'][0] or ''
 
                     # Traceability Req
-                    aData[index]['24'] = 'Y' if dPartData[corePartNumber]['Traceability'][0] == 'Z001' else 'N' \
+                    aData[index]['25'] = 'Y' if dPartData[corePartNumber]['Traceability'][0] == 'Z001' else 'N' \
                         if dPartData[corePartNumber]['Traceability'][0] == 'Z002' else ''
 
                     # RE-Code title
@@ -2344,7 +2487,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     # RE-Code
                     aData[index]['14'] = ''
                     # Traceability Req
-                    aData[index]['24'] = ''
+                    aData[index]['25'] = ''
                 # end if
             # end if
 
@@ -2412,7 +2555,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             aData[index]['0'] = 'X'
             error_matrix[index][1]['value'] = 'X - Duplicate line number.\n'
         # end for
-    
+
     return error_matrix
 # end def
 
@@ -2488,6 +2631,7 @@ def ListFill(oRequest):
                 [('i' + str(obj.id), obj.name) for obj in
                  cChildClass.objects.filter(parent=oParent).order_by('name')]
             )
+
         elif oRequest.POST['child'] == 'baseline_impacted':
             cChildClass = Baseline
             result = OrderedDict(
@@ -2518,21 +2662,104 @@ def ListREACTFill(oRequest):
     """
     from itertools import chain
     if oRequest.method == 'POST' and oRequest.POST:
-        iParentID = int(oRequest.POST['id'])
-        cParentClass = Header._meta.get_field(oRequest.POST['parent']).rel.to
+        #S-06166-Shift Header page to new reference table: Added below code for CU dependency change
+        if(oRequest.POST['name'] == '' and oRequest.POST['sold_to'] == '' and oRequest.POST['contract_number'] == ''):
+            iParentID = int(oRequest.POST['id'])
+            cParentClass = Header._meta.get_field(oRequest.POST['parent']).rel.to
+            oParent = cParentClass.objects.get(pk=iParentID)
+        # S-06166-Shift Header page to new reference table: Added below code for CN dependency change
+        if(oRequest.POST['id'] == '' and oRequest.POST['sold_to'] == '' and oRequest.POST['contract_number'] == ''):
+            iParentName = oRequest.POST['name']
 
-        oParent = cParentClass.objects.get(pk=iParentID)
+        # S-06166-Shift Header page to new reference table: Added below code for sold_to_party dependency change
+        if (oRequest.POST['id'] == '' and oRequest.POST['name'] == '' and oRequest.POST['contract_number'] == ''):
+            iParentSoldName = oRequest.POST['sold_to']
+
+        # S-06166-Shift Header page to new reference table: Added below code for contract number dependency change
+        if (oRequest.POST['id'] == '' and oRequest.POST['name'] == '' and oRequest.POST['sold_to'] == '' ):
+            iParentContractName = oRequest.POST['contract_number']
 
         oCursor = connections['REACT'].cursor()
-        oCursor.execute(
-            'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
-            '[CustomerUnit]=%s ORDER BY [Customer]',
-            [bytes(oParent.name, 'ascii')]
-        )
-        tResults = oCursor.fetchall()
-        result = OrderedDict(
-            [(obj, obj) for obj in chain.from_iterable(tResults)]
-        )
+
+        # S-06166-Shift Header page to new reference table: Added below code to fetch data from DB based on CU for CN
+        if oRequest.POST['child'] == 'customer_name':
+            oCursor.execute(
+                'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
+                '[CustomerUnit]=%s ORDER BY [Customer]',
+                [bytes(oParent.name, 'ascii')]
+            )
+            tResults = oCursor.fetchall()
+            result = OrderedDict(
+                [(obj, obj) for obj in chain.from_iterable(tResults)]
+            )
+        # S-06166-Shift Header page to new reference table: Added below code to fetch data from DB based on CN for sales group,sales_office,sold_to_party
+        elif oRequest.POST['child'] == 'sales_group':
+            oCursor.execute(
+                'SELECT DISTINCT [sales_g] FROM ps_SalesOffice_SalesGroup WHERE '
+                '[sales_cu]=%s ORDER BY [sales_g]',
+                [bytes(oParent.name, 'ascii')]
+            )
+            tResults = oCursor.fetchall()
+            result = OrderedDict(
+                [(obj, obj) for obj in chain.from_iterable(tResults)]
+            )
+        elif oRequest.POST['child'] == 'sales_office':
+            oCursor.execute(
+                'SELECT DISTINCT [Sales_o] FROM ps_SalesOffice_SalesGroup WHERE '
+                '[sales_cu]=%s ORDER BY [Sales_o]',
+                [bytes(oParent.name, 'ascii')]
+            )
+            tResults = oCursor.fetchall()
+            result = OrderedDict(
+                [(obj, obj) for obj in chain.from_iterable(tResults)]
+            )
+
+        elif oRequest.POST['child'] == 'sold_to_party':
+            oCursor.execute(
+                'SELECT DISTINCT [SoldTo] FROM ps_fas_contracts WHERE'
+                '[Customer]=%s ORDER BY [SoldTo]',
+                [bytes(iParentName, 'ascii')]
+            )
+            tResults = oCursor.fetchall()
+            result = OrderedDict(
+                [(obj, obj) for obj in chain.from_iterable(tResults)]
+            )
+        # S-06166-Shift Header page to new reference table: Added below code to fetch data from DB based on sold_to for ericsson contract
+        elif oRequest.POST['child'] == 'ericsson_contract':
+            oCursor.execute(
+                'SELECT DISTINCT [Contract] FROM ps_fas_contracts WHERE '
+                '[SoldTo]=%s AND (select convert(varchar(10), getdate(),120))>= [ValidFrom] ' 
+                'AND (SELECT convert(varchar(10), getdate(),120))<= [ValidTo]',
+                [bytes(iParentSoldName, 'ascii')]
+            )
+            tResults = oCursor.fetchall()
+            result = OrderedDict(
+                [(obj, obj) for obj in chain.from_iterable(tResults)]
+            )
+       # S-06166-Shift Header page to new reference table: Added below code to fetch data from DB based on ericsson contract for sold_to,payment_terms
+        elif oRequest.POST['child'] == 'bill_to_party':
+            oCursor.execute(
+                'SELECT DISTINCT [BillTo] FROM ps_fas_contracts WHERE'
+                '[Contract]=%s ORDER BY [BillTo]',
+                [bytes(iParentContractName, 'ascii')]
+            )
+            tResults = oCursor.fetchall()
+            result = OrderedDict(
+                [(obj, obj) for obj in chain.from_iterable(tResults)]
+            )
+        elif oRequest.POST['child'] == 'payment_terms':
+            oCursor.execute(
+                'SELECT DISTINCT [PayTerms] FROM ps_fas_contracts WHERE'
+                '[Contract]=%s ORDER BY [PayTerms]',
+                [bytes(iParentContractName, 'ascii')]
+            )
+            tResults = oCursor.fetchall()
+            result = OrderedDict(
+                [(obj, obj) for obj in chain.from_iterable(tResults)]
+            )
+        else:
+            print('to be added.....')
+
         return JsonResponse(result)
     else:
         raise Http404
@@ -2657,46 +2884,50 @@ def AjaxValidator(oRequest):
         elif int(dData['col']) == 17:
             validate_func = Placeholder
             args = [dData, dResult]
+    #S-05768: Rename Unit price to Net price and Add unit price
         elif int(dData['col']) == 18:
             validate_func = ValidateUnitPrice
             args = [dData, dResult, oHead]
         elif int(dData['col']) == 19:
+            validate_func = ValidateUnitPrice
+            args = [dData, dResult, oHead]
+        elif int(dData['col']) == 20:
             validate_func = ValidateHigherLevel
             args = [dData, dResult]
-        elif int(dData['col']) == 20:
+        elif int(dData['col']) == 21:
             validate_func = ValidateMaterialGroup
             args = [dData, dResult]
-        elif int(dData['col']) == 21:
+        elif int(dData['col']) == 22:
             validate_func = ValidatePurchaseOrderItemNumber
             args = [dData, dResult]
-        elif int(dData['col']) == 22:
+        elif int(dData['col']) == 23:
             validate_func = ValidateCondition
             args = [dData, dResult, oHead]
-        elif int(dData['col']) == 23:
+        elif int(dData['col']) == 24:
             validate_func = ValidateAmount
             args = [dData, dResult]
-        elif int(dData['col']) == 24:
+        elif int(dData['col']) == 25:
             validate_func = ValidateTraceability
             args = [dData, dResult]
-        elif int(dData['col']) == 25:
+        elif int(dData['col']) == 26:
             validate_func = ValidateCustomerAsset
             args = [dData, dResult, oHead, bCanWriteConfig]
-        elif int(dData['col']) == 26:
+        elif int(dData['col']) == 27:
             validate_func = ValidateAssetTagging
             args = [dData, dResult, oHead, bCanWriteConfig]
-        elif int(dData['col']) == 27:
+        elif int(dData['col']) == 28:
             validate_func = ValidateCustomerNumber
             args = [dData, dResult, oHead, bCanWriteConfig]
-        elif int(dData['col']) == 28:
+        elif int(dData['col']) == 29:
             validate_func = ValidateSecCustomerNumber
             args = [dData, dResult, oHead, bCanWriteConfig]
-        elif int(dData['col']) == 29:
+        elif int(dData['col']) == 30:
             validate_func = ValidateVendorNumber
             args = [dData, dResult]
-        elif int(dData['col']) == 30:
+        elif int(dData['col']) == 31:
             validate_func = Placeholder
             args = [dData, dResult]
-        elif int(dData['col']) == 31:
+        elif int(dData['col']) == 32:
             validate_func = Placeholder
             args = [dData, dResult]
         else:
@@ -2789,7 +3020,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 'value': tAllDataInfo[0][7],
                 'chain': True
             }
-            dResult['propagate']['line'][24] = {
+            dResult['propagate']['line'][25] = {
                 'value': 'Y' if tAllDataInfo[0][8] == 'Z001' else 'N' if
                 tAllDataInfo[0][8] == 'Z002' else '',
                 'chain': True
@@ -2837,28 +3068,25 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 active=True)
 
             # if StrToBool(dData['allowChain']):
-            dResult['propagate']['line'][25] = {
+            dResult['propagate']['line'][26] = {
                 'value': 'Y' if oMPNCustMap.customer_asset else 'N' if
                 oMPNCustMap.customer_asset is False else '',
                 'chain': True
             }
-            dResult['propagate']['line'][26] = {
+            dResult['propagate']['line'][27] = {
                 'value': 'Y' if oMPNCustMap.customer_asset_tagging else 'N'
                 if oMPNCustMap.customer_asset_tagging is False else '',
                 'chain': True
             }
-            dResult['propagate']['line'][27] = {
+            dResult['propagate']['line'][28] = {
                 'value': oMPNCustMap.customer_number,
                 'chain': True
             }
-            dResult['propagate']['line'][28] = {
+            dResult['propagate']['line'][29] = {
                 'value': oMPNCustMap.second_customer_number,
                 'chain': True
             }
         except CustomerPartInfo.DoesNotExist:
-            dResult['propagate']['line'][25] = {
-                'value': None,
-                'chain': True}
             dResult['propagate']['line'][26] = {
                 'value': None,
                 'chain': True}
@@ -2866,6 +3094,9 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 'value': None,
                 'chain': True}
             dResult['propagate']['line'][28] = {
+                'value': None,
+                'chain': True}
+            dResult['propagate']['line'][29] = {
                 'value': None,
                 'chain': True}
 # end def

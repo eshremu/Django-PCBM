@@ -119,6 +119,7 @@ $(document).ready(function(){
                 );
                 return false;
             } else {
+                $("#id_sales_group").html($("#id_sales_group").val().match(/^U../));   //Added to save the group code only instead of the whole name
                 save_form();
             }
         } else {
@@ -126,7 +127,7 @@ $(document).ready(function(){
         }
     });
 
-     $('#id_configuration_designation').keyup(function(){
+    $('#id_configuration_designation').keyup(function(){
 //    Commented out below line for fix- D-03195- Model name doesn't change when Clone/Active/New
 //        if(!attached && $('#id_configuration_designation').val() == $('#id_model').val()){
 //            attached = true;
@@ -154,11 +155,28 @@ $(document).ready(function(){
         list_filler('product_area1', 'product_area2');
     });
 
+//S-06166- Shift header page to new reference table:Below added to show the dependency fields on CU change,CN,Sold to,Ericsson Contract
     $('#id_customer_unit').change(function(){
         list_react_filler('customer_unit', 'customer_name');
-        list_filler('customer_unit', 'person_responsible'); //Added for S-06756- added for restricting person_responsible as per logged in user's cu
+        list_react_filler('customer_unit', 'sales_office');
+        list_react_filler('customer_unit', 'sales_group');
         list_filler('customer_unit', 'program');
         list_filler('customer_unit', 'baseline_impacted', 1);
+        list_filler('customer_unit', 'person_responsible');
+    });
+
+    $('#id_customer_name').change(function(){
+        list_react_filler('customer_name', 'sold_to_party');
+    });
+
+    $('#id_sold_to_party').change(function(){
+        list_react_filler('sold_to_party', 'ericsson_contract');
+    });
+
+    $('#id_ericsson_contract').change(function(){
+        list_react_filler('ericsson_contract', 'ericsson_contract_desc');
+        list_react_filler('ericsson_contract', 'bill_to_party');
+        list_react_filler('ericsson_contract', 'payment_terms');
     });
 
     $('#id_baseline_impacted').change(function(){
@@ -248,7 +266,10 @@ function list_filler(parent, child, index){
 function list_react_filler(parent, child, index){
     index = typeof(index) !== 'undefined' ? index : 0;
 
-    if($('#id_' + parent).val() != ''){
+//    if(!isNaN($('#id_' + parent).val()) && $('#id_' + parent).val() != ''){alert('in')
+
+//S-06166- Shift header page to new reference table:Added to show the change based on CU change; name,sold_to,contract_number=''
+    if(parent == 'customer_unit'){
         $.ajax({
             url: listreactfill_url,
             dataType: "json",
@@ -256,7 +277,95 @@ function list_react_filler(parent, child, index){
             data: {
                 parent: parent,
                 id: $('#id_' + parent).val(),
-                child: child
+                child: child,
+                name:'',
+                sold_to:'',
+                contract_number: ''
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+
+                var $child = $('#id_' + child);
+  //S-06166- Shift header page to new reference table:Added to show the value of the sales office field appear in the textbox
+                if(child == 'sales_office'){
+                     for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                             $(salesoffice_id).val(key.match(/^US../));
+                        }
+                     }
+                }
+//                if(child == 'sales_group'){
+//                 var salegrphtml = "<input id='salesgrp' style='' type='textbox'/>";
+//                    $(salesgroup_id).remove();
+//                    $(".salesgrp").append(salegrphtml);
+//                    $("#salesgrp").val(returned.sales_group.match(/^U../));
+//                }
+                $child.find('option:gt(' + index + ')').remove();
+                for (var key in data){
+                    if(data.hasOwnProperty(key)){
+                        $child.append($('<option>',{value:key,text:data[key]}));
+                    }
+                }
+            },
+            error: function(){
+                var $child = $('#id_' + child);
+                $child.find('option:gt(' + index + ')').remove();
+            }
+        });
+    }
+//    else if(isNaN($('#id_' + parent).val()) && $('#id_' + parent).val()!=''){
+//S-06166- Shift header page to new reference table:Added to show the change based on CN change; id,sold_to,contract_number=''
+    else if(parent == 'customer_name'){
+        $.ajax({
+            url: listreactfill_url,
+            dataType: "json",
+            type: "POST",
+            data: {
+                id:'',
+                parent: parent,
+                child: child,
+                name: $('#id_' + parent).val(),
+                sold_to:'',
+                contract_number: ''
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+                var $child = $('#id_' + child);
+                $child.find('option:gt(' + index + ')').remove();
+
+ //S-06166- Shift header page to new reference table:Added to show the value of the sold_to_party field in the textbox field
+                if(child == 'sold_to_party'){
+                    for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                            $child.append($('<option>',{value:key,text:data[key]}));
+                        }
+                     }
+                }
+
+            },
+            error: function(){
+                var $child = $('#id_' + child);
+                $child.find('option:gt(' + index + ')').remove();
+            }
+        });
+    }
+    //S-06166- Shift header page to new reference table:Added to show the change based on sold_to_party change; id,name,contract_number=''
+    else if(parent=='sold_to_party'){
+        $.ajax({
+            url: listreactfill_url,
+            dataType: "json",
+            type: "POST",
+            data: {
+                id:'',
+                parent: parent,
+                child: child,
+                name: '',
+                sold_to:$('#id_' + parent).val(),
+                contract_number: ''
             },
             headers:{
                 'X-CSRFToken': getcookie('csrftoken')
@@ -275,12 +384,72 @@ function list_react_filler(parent, child, index){
                 $child.find('option:gt(' + index + ')').remove();
             }
         });
-    } else {
+    }
+    //S-06166- Shift header page to new reference table:Added to show the change based on Ericsson contract # change; id,name,sold_to=''
+    else if(parent=='ericsson_contract'){
+        $.ajax({
+            url: listreactfill_url,
+            dataType: "json",
+            type: "POST",
+            data: {
+                id: '',
+                parent: parent,
+                child: child,
+                name: '',
+                sold_to:'',
+                contract_number: $('#id_' + parent).val()
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+                var $child = $('#id_' + child);
+
+//                if(child == 'ericsson_contract_desc'){
+//                    ericontractdesc = JSON.stringify(data);
+//                     for (var key in data){
+//                        if(data.hasOwnProperty(key)){
+//                             $(ericssoncontractdesc_id).val(key);
+//                        }
+//                     }
+//                }
+
+ //S-06166- Shift header page to new reference table:Added to show the value of the bill_to_party & payment_terms in the textbox
+                 if(child == 'bill_to_party'){
+                    billtodata = JSON.stringify(data);
+                     for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                             $(billto_id).val(key);
+                        }
+                     }
+                }
+                 if(child == 'payment_terms'){
+                    paytermsdata = JSON.stringify(data);
+                     for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                             $(paymentterms_id).val(key);
+                        }
+                     }
+                }
+
+                $child.find('option:gt(' + index + ')').remove();
+                for (var key in data){
+                    if(data.hasOwnProperty(key)){
+                        $child.append($('<option>',{value:key,text:data[key]}));
+                    }
+                }
+            },
+            error: function(){
+                var $child = $('#id_' + child);
+                $child.find('option:gt(' + index + ')').remove();
+            }
+        });
+    }
+    else {
         var $child = $('#id_' + child);
         $child.find('option:gt(' + index + ')').remove();
     }
 }
-
 function form_resize(){
     var topbuttonheight = $('#action_buttons').height();
     var bottombuttonheight = $('#formbuttons').height();
@@ -295,7 +464,9 @@ function save_form(){
     form_save = true;
     $('[readonly=true]').removeAttr('readonly');
     $('[disabled=true]').removeAttr('disabled');
+
     clean_form = $('#headerform').serialize();
+
 }
 function req_search(){
     if($(reactrequest_id).val() == null || $(reactrequest_id).val() == ''){
@@ -318,18 +489,54 @@ function req_search(){
                 if(typeof returned.req_id === "undefined"){
                     setTimeout(function(){messageToModal('', 'No match found. Please note, you must use a complete REACT request number.', function(){});}, 300);
                 } else {
-                    $(personresponsible_id).val(returned.person_resp);
-                    $(customername_id).val(returned.cust_name);
+  //S-06166- Shift header page to new reference table:Added below to make all the default dropdown fields appear as textbox in case called from react request no. search
+                   var persresphtml = "<input id='personresp' style='' type='textbox'/>";
+                    $(personresponsible_id).remove();
+                    $(".perresp").append(persresphtml);
+                    $("#personresp").val(returned.person_resp);
+
+                     var custnamehtml = "<input id='custname' style='' type='textbox'/>";
+                     $(customername_id).remove();
+                     $(".custName").append(custnamehtml);
+                     $("#custname").val(returned.cust_name);
+
                     $(salesoffice_id).val(returned.sales_office.match(/^US../));
-                    $(salesgroup_id).val(returned.sales_group.match(/^U../));
-                    $(soldto_id).val(returned.sold_to);
+
+                    var salegrphtml = "<input id='salesgrp' style='' type='textbox'/>";
+                    $(salesgroup_id).remove();
+                    $(".salesgrp").append(salegrphtml);
+                    $("#salesgrp").val(returned.sales_group.match(/^U../));
+
+                    var soldtohtml = "<input id='soldto' style='' type='textbox'/>";
+                    $(soldto_id).remove();
+                    $(".soldparty").append(soldtohtml);
+                    $("#soldto").val(returned.sold_to);
+
                     $(shipto_id).val(returned.ship_to);
                     $(billto_id).val(returned.bill_to);
                     $(paymentterms_id).val(returned.terms);
+
                     $(workgroup_id).val(returned.workgroup);
-                    $('#' + customerunit_id + ' option').filter(function(){return $(this).text() === returned.cust}).prop('selected', true);
-                    $(customerunit_id).change();
-                    $(ericssoncontract_id).val(returned.contract.match(/^\d+/));
+
+//                    $('#' + customerunit_id + ' option').filter(function(){return $(this).text() === returned.cust}).prop('selected', true);
+
+                    var custunithtml = "<input id='custunit' style='' type='textbox'/>";
+                    $(customerunit_id).remove();
+                    $(".custUnit").append(custunithtml);
+                    $("#custunit").val(returned.cust);
+
+//                    $(customerunit_id).change();
+
+                    var ericonthtml = "<input id='ericontract' style='' type='textbox'/>";
+                    $(ericssoncontract_id).remove();
+                    $(".ericcont").append(ericonthtml);
+                    $("#ericontract").val(returned.contract.match(/^\d+/));
+
+//                    var ericontdeschtml = "<input id='ericontractdesc' style='width:400px;' type='textbox'/>";
+//                    $(ericssoncontractdesc_id).remove();
+//                    $(".ericcontdesc").append(ericontdeschtml);
+//                    $("#ericontractdesc").val(returned.contract_desc);
+
                     setTimeout(function() {
                         $('#' + customername_id + ' option').filter(function () {
                             return $(this).text() === returned.cust_name

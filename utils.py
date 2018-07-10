@@ -749,6 +749,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
     # Append the formatted string for each Header in aAddedHeaders
     for oHead in aAddedHeaders:
         if oHead.model_replaced:
+
             sNewSummary += '    {} replaces {}\n'.format(
                 oHead.configuration_designation + (
                     ' ({})'.format(oHead.program.name) if oHead.program else ''
@@ -757,6 +758,25 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                         oHead.configuration.get_first_line().customer_number
                     ) if not oHead.pick_list and
                     oHead.configuration.get_first_line().customer_number else ''
+                ) + (
+          # S-05815 : Comment changes to revision tab - Added for Prod-description,comments & add_ref column
+                    '\n  Product Description: {}'.format(
+                        oHead.configuration.get_first_line().part.product_description
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().part.product_description
+                    else ''
+                ) + (
+                    '\n  Comments: {}'.format(
+                        oHead.configuration.get_first_line().comments
+                    ) if not oHead.pick_list and
+                    oHead.configuration.get_first_line().comments
+                    else ''
+                ) + (
+                    '\n  Additional Ref: {}'.format(
+                        oHead.configuration.get_first_line().additional_ref
+                    ) if not oHead.pick_list and
+                    oHead.configuration.get_first_line().additional_ref
+                    else ''
                 ),
 
                 oHead.model_replaced_link.configuration_designation + (
@@ -769,6 +789,27 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                     ) if not oHead.model_replaced_link.pick_list and
                     oHead.model_replaced_link.configuration.get_first_line()
                     .customer_number else ''
+                ) + (
+            # S-05815 : Comment changes to revision tab - Added for Prod-description,comments & add_ref column
+                    '\n  Product Description: {}'.format(
+                        oHead.configuration.get_first_line().part.product_description
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().part.product_description
+                    else ''
+                ) + (
+                    '\n  Comments:{}'.format(
+                        oHead.model_replaced_link.configuration.get_first_line()
+                        .comments
+                    ) if not oHead.model_replaced_link.pick_list and
+                    oHead.model_replaced_link.configuration.get_first_line()
+                    .comments else ''
+                ) + (
+                    '\n  Additional Ref: {}'.format(
+                        oHead.model_replaced_link.configuration.get_first_line()
+                        .additional_ref
+                    ) if not oHead.model_replaced_link.pick_list and
+                    oHead.model_replaced_link.configuration.get_first_line()
+                    .additional_ref else ''
                 ) if oHead.model_replaced_link else oHead.model_replaced
             )
 
@@ -784,6 +825,30 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                     ) if not oHead.model_replaced_link.pick_list and
                     oHead.model_replaced_link.configuration
                     .get_first_line().customer_number else ''
+                )+
+                (
+             # S-05815 : Comment changes to revision tab - Added for Prod-description,comments & add_ref column
+                    '\n  Product Description: {}'.format(
+                        oHead.configuration.get_first_line().part.product_description
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().part.product_description
+                    else ''
+                )+
+                (
+                    '\n  Comments: {}'.format(
+                        oHead.model_replaced_link.configuration.get_first_line()
+                        .comments
+                    ) if not oHead.model_replaced_link.pick_list and
+                    oHead.model_replaced_link.configuration
+                    .get_first_line().comments else ''
+                ) +
+                (
+                    '\n  Additional Ref: {}'.format(
+                        oHead.model_replaced_link.configuration.get_first_line()
+                        .additional_ref
+                    ) if not oHead.model_replaced_link.pick_list and
+                    oHead.model_replaced_link.configuration
+                    .get_first_line().additional_ref else ''
                 ) if oHead.model_replaced_link else oHead.model_replaced,
 
                 oHead.configuration_designation + (
@@ -793,6 +858,26 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                         oHead.configuration.get_first_line().customer_number
                     ) if not oHead.pick_list and oHead.configuration
                     .get_first_line().customer_number else '')
+                + (
+              # S-05815 : Comment changes to revision tab - Added for Prod-description,comments & add_ref column
+                    '\n  Product Description: {}'.format(
+                        oHead.configuration.get_first_line().part.product_description
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().part.product_description
+                    else ''
+                )+(
+                    '\n  Comments: {}'.format(
+                        oHead.configuration.get_first_line().comments
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().comments
+                    else ''
+                ) + (
+                    '\n  Additional Ref: {}'.format(
+                        oHead.configuration.get_first_line().additional_ref
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().additional_ref
+                    else ''
+                )
             )
         else:
             # If a previous revision exists and a matching header exists in
@@ -821,6 +906,25 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                     ) if not oHead.pick_list and
                     oHead.configuration.get_first_line().customer_number
                     else ''
+                ) + (
+     # S-05815 : Comment changes to revision tab - Added for Prod-description,comments & add_ref column
+                    '\n  Product Description: {}'.format(
+                        oHead.configuration.get_first_line().part.product_description
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().part.product_description
+                    else ''
+                )+  (
+                    '\n  Comments: {}'.format(
+                        oHead.configuration.get_first_line().comments
+                    ) if not oHead.pick_list and
+                    oHead.configuration.get_first_line().comments
+                    else ''
+                ) + (
+                    '\n  Additional Ref: {}'.format(
+                        oHead.configuration.get_first_line().additional_ref
+                    ) if not oHead.pick_list and
+                    oHead.configuration.get_first_line().additional_ref
+                    else ''
                 )
             )
         # end if
@@ -838,6 +942,25 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                 ) if not oHead.pick_list and
                 oHead.configuration.get_first_line().customer_number
                 else ''
+            )+ (
+       # S-05815 : Comment changes to revision tab - Added for Prod-description,comments & add_ref column
+                '\n  Product Description: {}'.format(
+                        oHead.configuration.get_first_line().part.product_description
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().part.product_description
+                    else ''
+            )+ (
+                    '\n  Comments: {}'.format(
+                        oHead.configuration.get_first_line().comments
+                    ) if not oHead.pick_list and
+                    oHead.configuration.get_first_line().comments
+                    else ''
+            ) + (
+                    '\n  Additional Ref: {}'.format(
+                        oHead.configuration.get_first_line().additional_ref
+                    ) if not oHead.pick_list and
+                    oHead.configuration.get_first_line().additional_ref
+                    else ''
             )
         )
     # end for
@@ -864,6 +987,27 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                 ) if not oHead.pick_list and
                 oHead.configuration.get_first_line().customer_number
                 else ''
+            )+
+            (
+         # S-05815 : Comment changes to revision tab - Added for Prod-description,comments & add_ref column
+                '\n  Product Description: {}'.format(
+                        oHead.configuration.get_first_line().part.product_description
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().part.product_description
+                    else ''
+            )+
+            (
+                    '\n  Comments: {}'.format(
+                        oHead.configuration.get_first_line().comments
+                    ) if not oHead.pick_list and
+                    oHead.configuration.get_first_line().comments
+                    else ''
+            ) + (
+                    '\n  Additional Ref: {}'.format(
+                        oHead.configuration.get_first_line().additional_ref
+                    ) if not oHead.pick_list and
+                    oHead.configuration.get_first_line().additional_ref
+                    else ''
             )
         )
     # end for
@@ -901,7 +1045,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
         if sTemp:
             oHead.change_notes = sTemp
             oHead.save()
-            sUpdateSummary += '    {}:\n'.format(
+            sUpdateSummary += '   Updated {}:\n'.format(
                 oHead.configuration_designation + (
                     ' ({})'.format(oHead.program) if oHead.program else ''
                 ) + (
@@ -909,6 +1053,25 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
                         oHead.configuration.get_first_line().customer_number
                     ) if not oHead.pick_list and
                     oHead.configuration.get_first_line().customer_number
+                    else ''
+                ) + (
+       # S-05815 : Comment changes to revision tab - Added for Prod-description,comments & add_ref column
+                    '\n  Product Description: {}'.format(
+                        oHead.configuration.get_first_line().part.product_description
+                    ) if not oHead.pick_list and
+                         oHead.configuration.get_first_line().part.product_description
+                    else ''
+                ) + (
+                    '\n  Comments: {}'.format(
+                        oHead.configuration.get_first_line().comments
+                    ) if not oHead.pick_list and
+                    oHead.configuration.get_first_line().comments
+                    else ''
+                ) + (
+                    '\n  Additional Ref: {}'.format(
+                        oHead.configuration.get_first_line().additional_ref
+                    ) if not oHead.pick_list and
+                    oHead.configuration.get_first_line().additional_ref
                     else ''
                 )
             )
