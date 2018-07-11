@@ -68,11 +68,12 @@ def BaselineMgmt(oRequest):
     # A POST was submitted, the user is searching for a baseline, so show single
     # baseline details
     if oRequest.method == 'POST' and oRequest.POST['baseline_title']:
+        # If part is called when the baseline is selected from the baseline dropdown & the page gets reloaded
         form = SubmitForm(oRequest.POST)
         if form.is_valid():
             oBaseline = form.cleaned_data['baseline_title']
             # S-06171: Baseline Restricts CU- This is the queryset that populates based on CU list of logged in user
-            form.fields['baseline_title'].queryset = Baseline.objects.filter(customer__in=aAvailableCU)
+            form.fields['baseline_title'].queryset = Baseline.objects.filter(customer__in=aAvailableCU).exclude(isdeleted=1)
             # First get list of baseline revisions for this baseline a sort them
             # in reverse order
             aRevisions = sorted(
@@ -126,8 +127,10 @@ def BaselineMgmt(oRequest):
     # Otherwise, show current in-process and active revision details for all
     # baselines
     else:
+        #Else part is called when the baseline page loads
         form = SubmitForm()
-        aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
+        form.fields['baseline_title'].queryset = Baseline.objects.filter(customer__in=aAvailableCU).exclude(isdeleted=1)
+        aBaselines = Baseline.objects.filter(customer__in=aAvailableCU).exclude(isdeleted=1)
 
         # For each baseline, get header data for active and in-process
         # Baseline_Revision
