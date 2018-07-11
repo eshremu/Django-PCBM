@@ -369,7 +369,7 @@ class SubmitForm(forms.Form):
     """
 
     baseline_title = BaselineModelChoiceField(
-            queryset=Baseline.objects.exclude(title='').exclude(isdeleted=1),
+            queryset=Baseline.objects.exclude(title='').exclude(title='No Associated Baseline').exclude(isdeleted=1),
             empty_label="-- Show All --",
             required=False,
             label='Baseline')
