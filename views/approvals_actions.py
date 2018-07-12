@@ -756,7 +756,7 @@ def AjaxApprove(oRequest):
             # of the baseline to the correct recipients
             for oBaseline in aBaselinesCompleted:
                 UpRev(oBaseline.baseline)
-                EmailDownload(oBaseline.baseline)
+                EmailDownload( oRequest,oBaseline.baseline) # D-03452: Some emails are not being tagged as test system, added oRequest
             # end for
 
         # Clone the record, then go to the BoM Entry view for the newly cloned
@@ -853,7 +853,7 @@ def AjaxApprove(oRequest):
                              }
                         ), 'text/html')
                         # uncommented below line for D-03232 to send mail for baseline Review and approval
-                        oMessage.send(fail_silently=False)
+                        # oMessage.send(fail_silently=False)
                     # end for
                 # end for
             # end for
