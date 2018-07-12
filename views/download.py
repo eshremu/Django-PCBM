@@ -1396,7 +1396,6 @@ def EmailDownload(oRequest,oBaseline):
 
     # Build email message
     sSubject = envName + 'New revision released: ' + oBaseline.title  # D-03452: Some emails are not being tagged as test system, added envName
-    print(sSubject)
     sMessage = ('Revision {} of {} has been released as of {}.  A copy of the '
                 'baseline has been attached.\nIssues may be addressed with '
                 'Katya Pridgen at Katya.Pridgen@Ericsson.com.\n\n'
@@ -1422,7 +1421,7 @@ def EmailDownload(oRequest,oBaseline):
         [obj.email for obj in oDistroList.users_included.all()] if oDistroList
         else [user.email for user in User.objects.filter(
             groups__name="BOM_PSM_Baseline_Manager")],
-        cc=oDistroList.additional_addresses.split() if oDistroList else None,
+        cc=oDistroList.additional_addresses.split() if oDistroList else None
     )
     oNewMessage.attach_alternative(sMessageHtml, 'text/html')
 
