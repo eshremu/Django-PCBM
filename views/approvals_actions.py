@@ -756,7 +756,7 @@ def AjaxApprove(oRequest):
             # of the baseline to the correct recipients
             for oBaseline in aBaselinesCompleted:
                 UpRev(oBaseline.baseline)
-                EmailDownload(oBaseline.baseline)
+                EmailDownload( oRequest,oBaseline.baseline) # D-03452: Some emails are not being tagged as test system, added oRequest
             # end for
 
         # Clone the record, then go to the BoM Entry view for the newly cloned

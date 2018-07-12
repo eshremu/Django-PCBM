@@ -1365,7 +1365,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 # end def
 
 
-def EmailDownload(oBaseline):
+def EmailDownload(oRequest,oBaseline):
     """
     Function that emails the latest active version of a baseline to all users
     in a DistroList object or all users in the BOM_PSM_Baseline_Manager
@@ -1385,9 +1385,17 @@ def EmailDownload(oBaseline):
     #     oDistroList = DistroList.objects.get(customer_unit=oBaseline.customer)
     # except DistroList.DoesNotExist:
     oDistroList = None
+    # D-03452: Some emails are not being tagged as test system, added below lines
+    if oRequest.POST.get('windowurl') == 'local':
+        envName = 'Local System:'
+    elif oRequest.POST.get('windowurl') == 'test':
+        envName = 'Test System:'
+    else:
+        envName = ''
+
 
     # Build email message
-    sSubject = 'New revision released: ' + oBaseline.title
+    sSubject = envName + 'New revision released: ' + oBaseline.title  # D-03452: Some emails are not being tagged as test system, added envName
     sMessage = ('Revision {} of {} has been released as of {}.  A copy of the '
                 'baseline has been attached.\nIssues may be addressed with '
                 'Katya Pridgen at Katya.Pridgen@Ericsson.com.\n\n'
