@@ -773,12 +773,21 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     get an empty file)
     :return: OpenPyXL file object containing data (file stream)
     """
-    aColumnTitles = ['Line #', 'Product Number', 'Product Description',
-                     'Order Qty', 'UoM', 'HW/SW Ind', 'Net Price',
-                     'Traceability Req. (Serialization)', 'Customer Asset?',
-                     'Customer Asset Tagging Requirement', 'Customer number',
-                     'Second Customer Number', 'Vendor Article Number',
-                     'Comments', 'Additional Reference\n(if required)']
+    #  S-05743: Renaming Baseline columns for USCC Customer added if clause
+    if oBaseline.customer_id == 9 or sCustomer == 'MTW':
+        aColumnTitles = ['Line #', 'Product Number', 'Product Description',
+                         'Order Qty', 'UoM', 'HW/SW Ind', 'Net Price',
+                         'Traceability Req. (Serialization)', 'Customer Asset?',
+                         'In the USCC BOM', 'USCC Article Code FAA',
+                         'USCC Article code ZENG', 'Vendor Article Number',
+                         'Comments', 'Additional Reference\n(if required)']
+    else:
+        aColumnTitles = ['Line #', 'Product Number', 'Product Description',
+                         'Order Qty', 'UoM', 'HW/SW Ind', 'Net Price',
+                         'Traceability Req. (Serialization)', 'Customer Asset?',
+                         'Customer Asset Tagging Requirement', 'Customer number',
+                         'Second Customer Number', 'Vendor Article Number',
+                         'Comments', 'Additional Reference\n(if required)']
 
     # Open workbook object
     oFile = openpyxl.Workbook()
@@ -1261,25 +1270,47 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     # Write Table of Contents tab.  This is last so that we only write ToC data
     # for Header objects still in the array after the previous section
     oSheet = oFile.create_sheet('ToC', 0)
-    dTOCData = {
-        3: ['Configuration', 'configuration_designation', 25],
-        15: ['Customer Designation', 'customer_designation', 15],
-        10: ['Technology', 'technology', 15],
-        1: ['Product Area 1', 'product_area1', 25],
-        2: ['Product Area 2', 'product_area2', 10],
-        4: ['Model', 'model', 25],
-        7: ['Model Description', 'model_description', 50],
-        11: ['What Model is this replacing?', 'model_replaced', 25],
-        9: ['BoM & Inquiry Details', None, 25],
-        12: ['BoM Request Type', 'bom_request_type', 10],
-        8: ['Configuration / Ordering Status', 'configuration_status', 15],
-        13: ['Inquiry', 'inquiry_site_template', 10],
-        14: ['Site Template', 'inquiry_site_template', 10],
-        16: ['Ext Notes', 'external_notes', 50],
-        # D- 03265 - Missing columns in downloaded baseline files -added below two columns
-        5: ['Customer Number', 'configuration.first_line.customer_number', 20],
-        6: ['Second Customer Number', 'configuration.first_line.sec_customer_number', 20]
+    #  S-05743: Renaming Baseline columns for USCC Customer added if clause
+    if oBaseline.customer_id == 9 or sCustomer == 'MTW':
+        dTOCData = {
+            3: ['Configuration', 'configuration_designation', 25],
+            15: ['Customer Designation', 'customer_designation', 15],
+            10: ['Technology', 'technology', 15],
+            1: ['Product Area 1', 'product_area1', 25],
+            2: ['Product Area 2', 'product_area2', 10],
+            4: ['Model', 'model', 25],
+            7: ['Model Description', 'model_description', 50],
+            11: ['What Model is this replacing?', 'model_replaced', 25],
+            9: ['BoM & Inquiry Details', None, 25],
+            12: ['BoM Request Type', 'bom_request_type', 10],
+            8: ['Configuration / Ordering Status', 'configuration_status', 15],
+            13: ['Inquiry', 'inquiry_site_template', 10],
+            14: ['Site Template', 'inquiry_site_template', 10],
+            16: ['Ext Notes', 'external_notes', 50],
+            # D- 03265 - Missing columns in downloaded baseline files -added below two columns
+            5: ['USCC Article Code FAA', 'configuration.first_line.customer_number', 20],
+            6: ['USCC Article code ZENG', 'configuration.first_line.sec_customer_number', 20]
     }
+    else:
+        dTOCData = {
+            3: ['Configuration', 'configuration_designation', 25],
+            15: ['Customer Designation', 'customer_designation', 15],
+            10: ['Technology', 'technology', 15],
+            1: ['Product Area 1', 'product_area1', 25],
+            2: ['Product Area 2', 'product_area2', 10],
+            4: ['Model', 'model', 25],
+            7: ['Model Description', 'model_description', 50],
+            11: ['What Model is this replacing?', 'model_replaced', 25],
+            9: ['BoM & Inquiry Details', None, 25],
+            12: ['BoM Request Type', 'bom_request_type', 10],
+            8: ['Configuration / Ordering Status', 'configuration_status', 15],
+            13: ['Inquiry', 'inquiry_site_template', 10],
+            14: ['Site Template', 'inquiry_site_template', 10],
+            16: ['Ext Notes', 'external_notes', 50],
+            # D- 03265 - Missing columns in downloaded baseline files -added below two columns
+            5: ['Customer Number', 'configuration.first_line.customer_number', 20],
+            6: ['Second Customer Number', 'configuration.first_line.sec_customer_number', 20]
+        }
 
     for iIndex in sorted(dTOCData.keys()):
         oSheet[utils.get_column_letter(iIndex) + '1'].value = \
