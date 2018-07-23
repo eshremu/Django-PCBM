@@ -1,3 +1,4 @@
+
 $('button[value="price_report"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 $(document).ready(function(){
     $(window).load(function(){
@@ -52,7 +53,7 @@ function moneyRenderer(instance, td, row, col, prop, value, cellProperties) {
         }
         var negative = false;
         if(wholeDummy.indexOf('-') != -1){
-            negative = true;
+           negative = true;
             wholeDummy = wholeDummy.slice(wholeDummy.indexOf('-') + 1);
         }
         var start = wholeDummy.length % 3 == 0 ? 3 : wholeDummy.length % 3;
@@ -89,7 +90,8 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties) {
 }
 
 function build_table() {
-    var headers = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)'];
+//# fix for S-05772 Add Valid From and Valid to columns on Pricing->Pricing Overview tab
+    var headers = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid From', 'Valid To'];
     for (var i = headers.length, j=1; i < max_length; i++, j++){
         var temp = new Date();
 
@@ -106,11 +108,9 @@ function build_table() {
         comments: true,
         cells: function(row, col, prop){
             var cellProperties = {};
-
-            cellProperties.readOnly = true;
-            cellProperties.className = 'htCenter';
-            if(col > 4){
-                cellProperties.comment = comment_list[row][col - 5];
+//# fix for S-05772 Add Valid From and Valid to columns on Pricing->Pricing Overview tab(changed col>5 to col>7)
+            if(col > 7){
+                cellProperties.comment = comment_list[row][col - 8];
                 cellProperties.renderer = moneyRenderer;
             } else {
                 cellProperties.renderer = readonlyRenderer;
@@ -119,5 +119,8 @@ function build_table() {
             return cellProperties;
         }
 
+
     });
 }
+
+

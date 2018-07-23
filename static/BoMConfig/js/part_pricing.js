@@ -183,7 +183,8 @@ $(document).ready(function(){
         hot = new Handsontable($('#datatable')[0], {
             data: data,
             minSpareRows: 1,
-            colHeaders: ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid To', 'Valid From', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments'],
+         //S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers
+            colHeaders: ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid From','Valid To', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments'],
             cells: function(row, col, prop){
                 var cellProperties = [];
 
@@ -246,7 +247,7 @@ $(document).ready(function(){
                         cellProperties.validator = /^\d+(.\d+)?$/;
                         cellProperties.renderer = moneyRenderer;
                         break;
-
+//S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers( swapped case 7 to case 6 and viceversa)
                     case 6:
                         cellProperties.type = "date";
                         cellProperties.dateFormat = "MM/DD/YYYY";
@@ -257,7 +258,7 @@ $(document).ready(function(){
                             numberOfMonths: 3,
                             disableDayFn: function(date){
                                 var today = new Date();
-                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()+1); // date.getDay() === 0 || date.getDay() === 6 ||
+                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()); // date.getDay() === 0 || date.getDay() === 6 ||
                             }
                         };
                         cellProperties.validator = function(value, callback){
@@ -279,7 +280,7 @@ $(document).ready(function(){
                             numberOfMonths: 3,
                             disableDayFn: function(date){
                                 var today = new Date();
-                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()); // date.getDay() === 0 || date.getDay() === 6 ||
+                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()+1); // date.getDay() === 0 || date.getDay() === 6 ||
                             }
                         };
                         cellProperties.validator = function(value, callback){
@@ -423,3 +424,4 @@ $(document).ready(function(){
         });
     }
 });
+

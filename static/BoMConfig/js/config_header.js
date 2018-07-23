@@ -119,7 +119,7 @@ $(document).ready(function(){
                 );
                 return false;
             } else {
-                $("#id_sales_group").html($("#id_sales_group").val().match(/^U../));   //Added to save the group code only instead of the whole name
+//                $("#id_sales_group").html($("#id_sales_group").val().match(/^U../));   //Added to save the group code only instead of the whole name
                 save_form();
             }
         } else {
@@ -174,7 +174,7 @@ $(document).ready(function(){
     });
 
     $('#id_ericsson_contract').change(function(){
-        list_react_filler('ericsson_contract', 'ericsson_contract_desc');
+//        list_react_filler('ericsson_contract', 'ericsson_contract_desc');
         list_react_filler('ericsson_contract', 'bill_to_party');
         list_react_filler('ericsson_contract', 'payment_terms');
     });
@@ -288,26 +288,35 @@ function list_react_filler(parent, child, index){
             success: function(data) {
 
                 var $child = $('#id_' + child);
-  //S-06166- Shift header page to new reference table:Added to show the value of the sales office field appear in the textbox
-                if(child == 'sales_office'){
-                     for (var key in data){
-                        if(data.hasOwnProperty(key)){
-                             $(salesoffice_id).val(key.match(/^US../));
-                        }
-                     }
-                }
-//                if(child == 'sales_group'){
-//                 var salegrphtml = "<input id='salesgrp' style='' type='textbox'/>";
-//                    $(salesgroup_id).remove();
-//                    $(".salesgrp").append(salegrphtml);
-//                    $("#salesgrp").val(returned.sales_group.match(/^U../));
-//                }
-                $child.find('option:gt(' + index + ')').remove();
-                for (var key in data){
+                 $child.find('option:gt(' + index + ')').remove();
+
+                if(child == 'customer_name'){
+                  for (var key in data){
                     if(data.hasOwnProperty(key)){
                         $child.append($('<option>',{value:key,text:data[key]}));
                     }
+                  }
                 }
+  //S-06166- Shift header page to new reference table:Added to show the value of the sales office field appear in the textbox
+                if(child == 'sales_office'){
+                    if(Object.keys(data).length!=0){
+                         for (var key in data){
+                            if(data.hasOwnProperty(key)){
+                                 $(salesoffice_id).val(key.match(/^US../));
+                            }
+                         }
+                    }else{
+                         $(salesoffice_id).val('');
+                    }
+                }
+                if(child == 'sales_group'){
+                  for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                            $child.append($('<option>',{value:key.match(/^U../),text:data[key]}));
+                        }
+                     }
+                }
+
             },
             error: function(){
                 var $child = $('#id_' + child);

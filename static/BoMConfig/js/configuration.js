@@ -313,7 +313,7 @@ function determineColumns(readonly, hidden_cols){
         //readonly.push(24); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
         readonly.push(26, 27, 28, 29); //change
         if (!cust_write_auth || (cust_write_auth && configuration_status != 'In Process')) {
-            readonly.push(24);
+            readonly.push(25); //change
         }
 
         $('#viewcust').css('background-color', '#FFFF4D');

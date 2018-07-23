@@ -96,6 +96,7 @@ def PartPricing(oRequest):
                         # Creating a new PriceObject or changing price, erosion,
                         # erosion rate, or cut-over date generates new current
                         # PriceObject
+                        # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(line 110,107,swapped valid to and valid from field)
                         if not oCurrentPriceObj or \
                                 oCurrentPriceObj.unit_price != float(
                                     aRowToSave[5]) or \
@@ -103,10 +104,10 @@ def PartPricing(oRequest):
                                     datetime.datetime.strptime(aRowToSave[6],
                                                                '%m/%d/%Y'
                                                                ).date() !=
-                                    oCurrentPriceObj.valid_to_date) or \
+                                    oCurrentPriceObj.valid_from_date) or \
                                 (aRowToSave[7] and datetime.datetime.strptime(
                                     aRowToSave[7], '%m/%d/%Y').date() !=
-                                    oCurrentPriceObj.valid_from_date) or \
+                                    oCurrentPriceObj.valid_to_date) or \
                                 (aRowToSave[8] and datetime.date.today() <=
                                     datetime.datetime.strptime(aRowToSave[8],
                                                                '%m/%d/%Y'
@@ -119,13 +120,14 @@ def PartPricing(oRequest):
                                          aRowToSave[10])):
 
                             # Mark the previous match as 'inactive'
+    # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed aRowToSave[7] to aRowToSave[6]
                             if oCurrentPriceObj:
                                 oCurrentPriceObj.is_current_active = False
                                 oCurrentPriceObj.valid_to_date = max(
                                     datetime.date.today(),
                                     datetime.datetime.strptime(
-                                        aRowToSave[7],
-                                        '%m/%d/%Y').date() if aRowToSave[7] else
+                                        aRowToSave[6],
+                                        '%m/%d/%Y').date() if aRowToSave[6] else
                                     datetime.date.today()
                                 )
                                 oCurrentPriceObj.save()
@@ -148,11 +150,12 @@ def PartPricing(oRequest):
                                     in ('(None)', '', None, 'null') else None,
                                     is_current_active=True,
                                     unit_price=aRowToSave[5],
-                                    valid_to_date=datetime.datetime.strptime(
+# S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed valid_to_date to aRowToSave[7] and valid_from_date to aRowToSave[6]
+                                    valid_from_date=datetime.datetime.strptime(
                                         aRowToSave[6],
                                         '%m/%d/%Y'
                                     ).date() if aRowToSave[6] else None,
-                                    valid_from_date=datetime.datetime.strptime(
+                                    valid_to_date=datetime.datetime.strptime(
                                         aRowToSave[7],
                                         '%m/%d/%Y'
                                     ).date() if aRowToSave[7] else None,
@@ -240,10 +243,11 @@ def PartPricing(oRequest):
                         getattr(oPriceObj.spud, 'name', '(None)'),
                         getattr(oPriceObj.technology, 'name', '(None)'),
                         oPriceObj.unit_price or '',
-                        oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
-                        oPriceObj.valid_to_date else '',  # Valid-To
+                        # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers
                         oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
                         oPriceObj.valid_from_date else '',  # Valid-from
+                        oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
+                        oPriceObj.valid_to_date else '',  # Valid-To
                         oPriceObj.cutover_date.strftime('%m/%d/%Y') if
                         oPriceObj.cutover_date else '',  # Cut-over
                         str(oPriceObj.price_erosion),  # Erosion
@@ -573,11 +577,9 @@ def PricingOverviewLists(oRequest):
 
     aPricingLines = []
     aComments = []
-
     if aPricingObjectList:
         for oPriceObj in aPricingObjectList:
             aCommentRow = []
-
             # Create row data from PricingObject
             aObj = [
                 oPriceObj.part.product_number,
@@ -586,8 +588,12 @@ def PricingOverviewLists(oRequest):
                 oPriceObj.spud.name if oPriceObj.spud else '(None)',
                 oPriceObj.technology.name if oPriceObj.technology else '(None)',
                 oPriceObj.unit_price,
+                # fix for S-05772 Add Valid From and Valid to columns on Pricing->Pricing Overview tab
+                oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
+                oPriceObj.valid_from_date else '',  # Valid-from
+                oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
+                oPriceObj.valid_to_date else '',  # Valid-To
             ]
-
             # Create comment data from PricingObject
             aCommentRow.append("Valid: {}\nCut-over: {}".format(
                 (oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
