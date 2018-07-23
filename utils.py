@@ -1211,11 +1211,12 @@ def HeaderComparison(oHead, oPrev):
                     if oHead.customer_unit == oATT and not oHead.pick_list and \
                                     sLine != '10':
                         continue
-                    sTemp += ('{} - {} line price changed from {} to {}\n'
+                    sTemp += ('{} - {} line price changed\n'  # S-05747: Remove price from Comments upon baseline file download in revision tab removed,deleted from {} to {} and commented below lines
                               ).format(
-                        sLine, sPart, dPrevious[(sPart, sLine)][1],
-                        dCurrent[(sPart, sLine)][1]
-                    )
+                        sLine, sPart )
+                        # , dPrevious[(sPart, sLine)][1],
+                        # dCurrent[(sPart, sLine)][1]
+
 
         else:
             # if the key is not in dCurrent, we need to find potential matches
@@ -1264,7 +1265,7 @@ def HeaderComparison(oHead, oPrev):
                         if oHead.customer_unit == oATT and not oHead.pick_list \
                                 and sLine != '10':
                             continue
-                        sTemp += ('{} - {} line price changed from {} to {}\n'
+                        sTemp += ('{} - {} line price changed \n' # S-05747: Remove price from Comments upon baseline file download in revision tab removed,deleted from {} to {}
                                   ).format(
                             dPrevious[(sPart, sLine)][3][1], sPart,
                             dPrevious[(sPart, sLine)][1],
