@@ -1676,10 +1676,10 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     '31': Line.comments,
                     '32': Line.additional_ref
                 }
-# S-05770:-USCC Unit Price functionality - Below case is for new column 'Unit Price' at case no.18,Added to show unit price based on CU,
-    # if USCC,NonPicklist-Line 10 is blank,parts wil have UP; pickList-All lines will have UP
+# S-05770:-USCC(now MTW) Unit Price functionality - Below case is for new column 'Unit Price' at case no.18,Added to show unit price based on CU,
+    # if MTW,NonPicklist-Line 10 is blank,parts wil have UP; pickList-All lines will have UP
     # for other CUs, picklist & nonPicklist:- UP will be blank in all lines
-                if oHeader.customer_unit_id == 5:               # 5 is the ID for USCC customer.
+                if oHeader.customer_unit_id == 9:               # 9 is the ID for MTW customer.
                     if not oHeader.pick_list:
                         if str(Line.line_number) == '10':
                             dLine.update({'18': None})

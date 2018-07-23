@@ -525,70 +525,135 @@ def DownloadBaselineMaster(oRequest):
     # oSheet['A1'].font = headerFont
     # oSheet['A1'].alignment = headerAlign
     # oSheet.column_dimensions['A'].width = 10
+    # S-05748-Remove columns in downloaded all Baselines Master file for MTW Customer( added Scustomer=MTW , to have a new baseline download format)(line 528-626)
+    if sCustomer == 'MTW':
+        oSheet['B1'] = 'Baseline'
+        oSheet['B1'].font = headerFont
+        oSheet.column_dimensions['B'].width = 25
 
-    oSheet['B1'] = 'Baseline'
-    oSheet['B1'].font = headerFont
-    oSheet.column_dimensions['B'].width = 10
+        oSheet['C1'] = 'Product Area 2'
+        oSheet['C1'].font = headerFont
+        oSheet['C1'].alignment = headerAlign
+        oSheet.column_dimensions['C'].width = 10
 
-    oSheet['C1'] = 'Product Area 2'
-    oSheet['C1'].font = headerFont
-    oSheet['C1'].alignment = headerAlign
-    oSheet.column_dimensions['C'].width = 10
+        oSheet['D1'] = 'Status'
+        oSheet['D1'].font = headerFont
+        oSheet['D1'].alignment = headerAlign
+        oSheet.column_dimensions['D'].width = 10
 
-    oSheet['D1'] = 'Status'
-    oSheet['D1'].font = headerFont
-    oSheet['D1'].alignment = headerAlign
-    oSheet.column_dimensions['D'].width = 10
+        oSheet['E1'] = 'Article code FAA'
+        oSheet['E1'].font = headerFont
+        oSheet['E1'].alignment = headerAlign
+        oSheet.column_dimensions['E'].width = 20
 
-    oSheet['E1'] = 'Oracle Item No.'
-    oSheet['E1'].font = headerFont
-    oSheet['E1'].alignment = headerAlign
-    oSheet.column_dimensions['E'].width = 20
+        oSheet['F1'] = 'Article code ZENG'
+        oSheet['F1'].font = headerFont
+        oSheet['F1'].alignment = headerAlign
+        oSheet.column_dimensions['F'].width = 20
 
-    oSheet['F1'] = 'Model'
-    oSheet['F1'].font = headerFont
-    oSheet.column_dimensions['F'].width = 30
+        oSheet['G1'] = 'Configuration'
+        oSheet['G1'].font = headerFont
+        oSheet['G1'].alignment = headerAlign
+        oSheet.column_dimensions['G'].width = 30
 
-    oSheet['G1'] = 'Description'
-    oSheet['G1'].font = headerFont
-    oSheet.column_dimensions['G'].width = 40
+        oSheet['H1'] = 'Model/VAN'
+        oSheet['H1'].font = headerFont
+        oSheet.column_dimensions['H'].width = 30
 
-    oSheet['H1'] = 'Current Customer Price'
-    oSheet['H1'].font = headerFont
-    oSheet['H1'].alignment = headerAlign
-    oSheet.column_dimensions['H'].width = 15
+        oSheet['I1'] = 'Description'
+        oSheet['I1'].font = headerFont
+        oSheet.column_dimensions['I'].width = 30
 
-    oSheet['I1'] = 'Price Year'
-    oSheet['I1'].font = headerFont
-    oSheet['I1'].alignment = headerAlign
-    oSheet.column_dimensions['I'].width = 10
+        oSheet['J1'] = 'Current Customer Price'
+        oSheet['J1'].font = headerFont
+        oSheet['J1'].alignment = headerAlign
+        oSheet.column_dimensions['J'].width = 15
 
-    oSheet['J1'] = 'AT&T (or Affiliate) Quotes'
-    oSheet['J1'].font = headerFont
-    oSheet['J1'].alignment = headerAlign
-    oSheet.column_dimensions['J'].width = 15
+        oSheet['K1'] = 'Price Year'
+        oSheet['K1'].font = headerFont
+        oSheet['K1'].alignment = headerAlign
+        oSheet.column_dimensions['K'].width = 10
 
-    oSheet['K1'] = 'KGP Quotes'
-    oSheet['K1'].font = headerFont
-    oSheet['K1'].alignment = headerAlign
-    oSheet.column_dimensions['K'].width = 15
+        oSheet['L1'] = 'Site Template/Inquiry'
+        oSheet['L1'].font = headerFont
+        oSheet['L1'].alignment = headerAlign
+        oSheet.column_dimensions['L'].width = 20
 
-    oSheet['L1'] = 'DTS STs'
-    oSheet['L1'].font = headerFont
-    oSheet['L1'].alignment = headerAlign
-    oSheet.column_dimensions['L'].width = 15
+        oSheet['M1'] = 'Model Replacing'
+        oSheet['M1'].font = headerFont
+        oSheet.column_dimensions['M'].width = 30
 
-    oSheet['M1'] = 'Model Replacing'
-    oSheet['M1'].font = headerFont
-    oSheet.column_dimensions['M'].width = 30
+        oSheet['N1'] = 'Replaced By Model'
+        oSheet['N1'].font = headerFont
+        oSheet.column_dimensions['N'].width = 30
 
-    oSheet['N1'] = 'Replaced By Model'
-    oSheet['N1'].font = headerFont
-    oSheet.column_dimensions['N'].width = 30
+        oSheet['O1'] = 'Comments'
+        oSheet['O1'].font = headerFont
+        oSheet.column_dimensions['O'].width = 30
+    else:
+        oSheet['B1'] = 'Baseline'
+        oSheet['B1'].font = headerFont
+        oSheet.column_dimensions['B'].width = 25
 
-    oSheet['O1'] = 'Comments'
-    oSheet['O1'].font = headerFont
-    oSheet.column_dimensions['O'].width = 50
+        oSheet['C1'] = 'Product Area 2'
+        oSheet['C1'].font = headerFont
+        oSheet['C1'].alignment = headerAlign
+        oSheet.column_dimensions['C'].width = 10
+
+        oSheet['D1'] = 'Status'
+        oSheet['D1'].font = headerFont
+        oSheet['D1'].alignment = headerAlign
+        oSheet.column_dimensions['D'].width = 10
+
+        oSheet['E1'] = 'Oracle Item No.'
+        oSheet['E1'].font = headerFont
+        oSheet['E1'].alignment = headerAlign
+        oSheet.column_dimensions['E'].width = 20
+
+        oSheet['F1'] = 'Model'
+        oSheet['F1'].font = headerFont
+        oSheet.column_dimensions['F'].width = 30
+
+        oSheet['G1'] = 'Description'
+        oSheet['G1'].font = headerFont
+        oSheet.column_dimensions['G'].width = 40
+
+        oSheet['H1'] = 'Current Customer Price'
+        oSheet['H1'].font = headerFont
+        oSheet['H1'].alignment = headerAlign
+        oSheet.column_dimensions['H'].width = 15
+
+        oSheet['I1'] = 'Price Year'
+        oSheet['I1'].font = headerFont
+        oSheet['I1'].alignment = headerAlign
+        oSheet.column_dimensions['I'].width = 10
+
+        oSheet['J1'] = 'AT&T (or Affiliate) Quotes'
+        oSheet['J1'].font = headerFont
+        oSheet['J1'].alignment = headerAlign
+        oSheet.column_dimensions['J'].width = 15
+
+        oSheet['K1'] = 'KGP Quotes'
+        oSheet['K1'].font = headerFont
+        oSheet['K1'].alignment = headerAlign
+        oSheet.column_dimensions['K'].width = 15
+
+        oSheet['L1'] = 'DTS STs'
+        oSheet['L1'].font = headerFont
+        oSheet['L1'].alignment = headerAlign
+        oSheet.column_dimensions['L'].width = 15
+
+        oSheet['M1'] = 'Model Replacing'
+        oSheet['M1'].font = headerFont
+        oSheet.column_dimensions['M'].width = 30
+
+        oSheet['N1'] = 'Replaced By Model'
+        oSheet['N1'].font = headerFont
+        oSheet.column_dimensions['N'].width = 30
+
+        oSheet['O1'] = 'Comments'
+        oSheet['O1'].font = headerFont
+        oSheet.column_dimensions['O'].width = 50
 
     iRow = 2
     for dBaseline in aTable:
@@ -625,124 +690,225 @@ def DownloadBaselineMaster(oRequest):
 
         # Write data for each Header in the baseline
         for oHead in aConfigs:
-            oSheet['C' + str(iRow)] = oHead.product_area2.name if \
-                oHead.product_area2 else ''
-            oSheet['C' + str(iRow)].alignment = centerAlign
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['C' + str(iRow)].font = ipFont
-            else:
-                oSheet['C' + str(iRow)].font = activeFont
+            # added oHead.customer_unit_id!=9 and updated blocks for  S-05748- Remove columns in downloaded all Baselines Master file for MTW Customer(line 693-911)
+            if oHead.customer_unit_id!=9:
+                oSheet['C' + str(iRow)] = oHead.product_area2.name if \
+                    oHead.product_area2 else ''
+                oSheet['C' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['C' + str(iRow)].font = ipFont
+                else:
+                    oSheet['C' + str(iRow)].font = activeFont
 
-            oSheet['D' + str(iRow)] = oHead.configuration_status.name.replace(
-                '/Pending', '').replace('In Process', 'IP')
-            oSheet['D' + str(iRow)].alignment = centerAlign
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['D' + str(iRow)].font = ipFont
-            else:
-                oSheet['D' + str(iRow)].font = activeFont
+                oSheet['D' + str(iRow)] = oHead.configuration_status.name.replace(
+                    '/Pending', '').replace('In Process', 'IP')
+                oSheet['D' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['D' + str(iRow)].font = ipFont
+                else:
+                    oSheet['D' + str(iRow)].font = activeFont
 
-            oSheet['E' + str(iRow)] = getattr(
-                oHead.configuration.first_line, 'customer_number', '')
-            oSheet['E' + str(iRow)].alignment = centerAlign
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['E' + str(iRow)].font = ipFont
-            else:
-                oSheet['E' + str(iRow)].font = activeFont
+                oSheet['E' + str(iRow)] = getattr(
+                    oHead.configuration.first_line, 'customer_number', '')
+                oSheet['E' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['E' + str(iRow)].font = ipFont
+                else:
+                    oSheet['E' + str(iRow)].font = activeFont
 
-            oSheet['F' + str(iRow)] = oHead.configuration_designation
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['F' + str(iRow)].font = ipFont
-            else:
-                oSheet['F' + str(iRow)].font = activeFont
+                oSheet['F' + str(iRow)] = oHead.configuration_designation
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['F' + str(iRow)].font = ipFont
+                else:
+                    oSheet['F' + str(iRow)].font = activeFont
 
-            oSheet['G' + str(iRow)] = oHead.model_description
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['G' + str(iRow)].font = ipFont
-            else:
-                oSheet['G' + str(iRow)].font = activeFont
+                oSheet['G' + str(iRow)] = oHead.model_description
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['G' + str(iRow)].font = ipFont
+                else:
+                    oSheet['G' + str(iRow)].font = activeFont
 
-            oSheet['H' + str(iRow)] = \
-                oHead.configuration.override_net_value or \
-                oHead.configuration.net_value
-            oSheet['H' + str(iRow)].number_format = \
-                '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['H' + str(iRow)].font = ipFont
-            else:
-                oSheet['H' + str(iRow)].font = activeFont
+                oSheet['H' + str(iRow)] = \
+                    oHead.configuration.override_net_value or \
+                    oHead.configuration.net_value
+                oSheet['H' + str(iRow)].number_format = \
+                    '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['H' + str(iRow)].font = ipFont
+                else:
+                    oSheet['H' + str(iRow)].font = activeFont
 
-            oSheet['I' + str(iRow)] = \
-                oHead.headertimetracker_set.first().created_on.strftime('%Y')
-            oSheet['I' + str(iRow)].alignment = centerAlign
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['I' + str(iRow)].font = ipFont
-            else:
-                oSheet['I' + str(iRow)].font = activeFont
+                oSheet['I' + str(iRow)] = \
+                    oHead.headertimetracker_set.first().created_on.strftime('%Y')
+                oSheet['I' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['I' + str(iRow)].font = ipFont
+                else:
+                    oSheet['I' + str(iRow)].font = activeFont
 
-            oSheet['J' + str(iRow)] = (
-                oHead.inquiry_site_template if str(
-                    oHead.inquiry_site_template).startswith('1') else
-                oHead.inquiry_site_template * -1 if
-                oHead.inquiry_site_template and
-                oHead.inquiry_site_template < -1 and
-                str(oHead.inquiry_site_template).startswith('-1') else ''
-            ) if not (oHead.sold_to_party == 626136 or 'KGP' in
+                oSheet['J' + str(iRow)] = (
+                    oHead.inquiry_site_template if str(
+                        oHead.inquiry_site_template).startswith('1') else
+                    oHead.inquiry_site_template * -1 if
+                    oHead.inquiry_site_template and
+                    oHead.inquiry_site_template < -1 and
+                    str(oHead.inquiry_site_template).startswith('-1') else ''
+                ) if not (oHead.sold_to_party == 626136 or 'KGP' in
+                          str(oHead.customer_name).upper()) else ''
+                oSheet['J' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['J' + str(iRow)].font = ipFont
+                else:
+                    oSheet['J' + str(iRow)].font = activeFont
+
+                oSheet['K' + str(iRow)] = (
+                    oHead.inquiry_site_template if
+                    str(oHead.inquiry_site_template).startswith('1') else
+                    oHead.inquiry_site_template * -1 if
+                    oHead.inquiry_site_template and
+                    oHead.inquiry_site_template < -1 and
+                    str(oHead.inquiry_site_template).startswith('-1') else ''
+                ) if (oHead.sold_to_party == 626136 or 'KGP' in
                       str(oHead.customer_name).upper()) else ''
-            oSheet['J' + str(iRow)].alignment = centerAlign
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['J' + str(iRow)].font = ipFont
-            else:
-                oSheet['J' + str(iRow)].font = activeFont
+                oSheet['K' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['K' + str(iRow)].font = ipFont
+                else:
+                    oSheet['K' + str(iRow)].font = activeFont
 
-            oSheet['K' + str(iRow)] = (
-                oHead.inquiry_site_template if
-                str(oHead.inquiry_site_template).startswith('1') else
-                oHead.inquiry_site_template * -1 if
-                oHead.inquiry_site_template and
-                oHead.inquiry_site_template < -1 and
-                str(oHead.inquiry_site_template).startswith('-1') else ''
-            ) if (oHead.sold_to_party == 626136 or 'KGP' in
-                  str(oHead.customer_name).upper()) else ''
-            oSheet['K' + str(iRow)].alignment = centerAlign
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['K' + str(iRow)].font = ipFont
-            else:
-                oSheet['K' + str(iRow)].font = activeFont
+                oSheet['L' + str(iRow)] = oHead.inquiry_site_template if \
+                    str(oHead.inquiry_site_template).startswith('4') else \
+                    oHead.inquiry_site_template * -1 if \
+                    oHead.inquiry_site_template and \
+                    oHead.inquiry_site_template < -1 and \
+                    str(oHead.inquiry_site_template).startswith('-4') else ''
+                oSheet['L' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['L' + str(iRow)].font = ipFont
+                else:
+                    oSheet['L' + str(iRow)].font = activeFont
 
-            oSheet['L' + str(iRow)] = oHead.inquiry_site_template if \
-                str(oHead.inquiry_site_template).startswith('4') else \
-                oHead.inquiry_site_template * -1 if \
-                oHead.inquiry_site_template and \
-                oHead.inquiry_site_template < -1 and \
-                str(oHead.inquiry_site_template).startswith('-4') else ''
-            oSheet['L' + str(iRow)].alignment = centerAlign
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['L' + str(iRow)].font = ipFont
-            else:
-                oSheet['L' + str(iRow)].font = activeFont
+                oSheet['M' + str(iRow)] = getattr(
+                    oHead.model_replaced_link, 'configuration_designation', None
+                ) or oHead.model_replaced or 'N/A'
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['M' + str(iRow)].font = ipFont
+                else:
+                    oSheet['M' + str(iRow)].font = activeFont
 
-            oSheet['M' + str(iRow)] = getattr(
-                oHead.model_replaced_link, 'configuration_designation', None
-            ) or oHead.model_replaced or 'N/A'
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['M' + str(iRow)].font = ipFont
-            else:
-                oSheet['M' + str(iRow)].font = activeFont
+                oSheet['N' + str(iRow)] = getattr(
+                    oHead.replaced_by_model.exclude(
+                        bom_request_type__name='Discontinue').first(),
+                    'configuration_designation', 'N/A')
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['N' + str(iRow)].font = ipFont
+                else:
+                    oSheet['N' + str(iRow)].font = activeFont
 
-            oSheet['N' + str(iRow)] = getattr(
-                oHead.replaced_by_model.exclude(
-                    bom_request_type__name='Discontinue').first(),
-                'configuration_designation', 'N/A')
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['N' + str(iRow)].font = ipFont
+                oSheet['O' + str(iRow)] = oHead.change_comments
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['O' + str(iRow)].font = ipFont
+                else:
+                    oSheet['O' + str(iRow)].font = activeFont
             else:
-                oSheet['N' + str(iRow)].font = activeFont
+                oSheet['C' + str(iRow)] = oHead.product_area2.name if \
+                    oHead.product_area2 else ''
+                oSheet['C' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['C' + str(iRow)].font = ipFont
+                else:
+                    oSheet['C' + str(iRow)].font = activeFont
 
-            oSheet['O' + str(iRow)] = oHead.change_comments
-            if 'In Process' in oHead.configuration_status.name:
-                oSheet['O' + str(iRow)].font = ipFont
-            else:
-                oSheet['O' + str(iRow)].font = activeFont
+                oSheet['D' + str(iRow)] = oHead.configuration_status.name.replace(
+                    '/Pending', '').replace('In Process', 'IP')
+                oSheet['D' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['D' + str(iRow)].font = ipFont
+                else:
+                    oSheet['D' + str(iRow)].font = activeFont
+
+                oSheet['E' + str(iRow)] = getattr(
+                    oHead.configuration.first_line, 'customer_number', '')
+                oSheet['E' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['E' + str(iRow)].font = ipFont
+                else:
+                    oSheet['E' + str(iRow)].font = activeFont
+
+                oSheet['F' + str(iRow)] = getattr(
+                    oHead.configuration.first_line, 'sec_customer_number', '')
+                oSheet['F' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['F' + str(iRow)].font = ipFont
+                else:
+                    oSheet['F' + str(iRow)].font = activeFont
+
+                oSheet['G' + str(iRow)] = oHead.configuration_designation
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['G' + str(iRow)].font = ipFont
+                else:
+                    oSheet['G' + str(iRow)].font = activeFont
+
+                oSheet['H' + str(iRow)] = oHead.inquiry_site_template if \
+                    oHead.inquiry_site_template else oHead.configuration_designation
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['H' + str(iRow)].font = ipFont
+                else:
+                    oSheet['H' + str(iRow)].font = activeFont
+
+                oSheet['I' + str(iRow)] = oHead.model_description
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['I' + str(iRow)].font = ipFont
+                else:
+                    oSheet['I' + str(iRow)].font = activeFont
+
+                oSheet['J' + str(iRow)] = \
+                    oHead.configuration.override_net_value or \
+                    oHead.configuration.net_value
+                oSheet['J' + str(iRow)].number_format = \
+                    '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['J' + str(iRow)].font = ipFont
+                else:
+                    oSheet['J' + str(iRow)].font = activeFont
+
+                oSheet['K' + str(iRow)] = \
+                    oHead.headertimetracker_set.first().created_on.strftime('%Y')
+                oSheet['K' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['K' + str(iRow)].font = ipFont
+                else:
+                    oSheet['K' + str(iRow)].font = activeFont
+
+                oSheet['L' + str(iRow)] = oHead.inquiry_site_template if \
+                    oHead.inquiry_site_template else ''
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['L' + str(iRow)].font = ipFont
+                else:
+                    oSheet['L' + str(iRow)].font = activeFont
+
+                oSheet['M' + str(iRow)] = getattr(
+                    oHead.model_replaced_link, 'configuration_designation', None
+                ) or oHead.model_replaced or 'N/A'
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['M' + str(iRow)].font = ipFont
+                else:
+                    oSheet['M' + str(iRow)].font = activeFont
+
+                oSheet['N' + str(iRow)] = getattr(
+                    oHead.replaced_by_model.exclude(
+                        bom_request_type__name='Discontinue').first(),
+                    'configuration_designation', 'N/A')
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['N' + str(iRow)].font = ipFont
+                else:
+                    oSheet['N' + str(iRow)].font = activeFont
+
+                oSheet['O' + str(iRow)] = oHead.change_comments
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['O' + str(iRow)].font = ipFont
+                else:
+                    oSheet['O' + str(iRow)].font = activeFont
 
             iRow += 1
         # end for
@@ -773,21 +939,13 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     get an empty file)
     :return: OpenPyXL file object containing data (file stream)
     """
-    #  S-05743: Renaming Baseline columns for USCC Customer added if clause
-    if oBaseline.customer_id == 9 or sCustomer == 'MTW':
-        aColumnTitles = ['Line #', 'Product Number', 'Product Description',
-                         'Order Qty', 'UoM', 'HW/SW Ind', 'Net Price',
-                         'Traceability Req. (Serialization)', 'Customer Asset?',
-                         'In the USCC BOM', 'USCC Article Code FAA',
-                         'USCC Article code ZENG', 'Vendor Article Number',
-                         'Comments', 'Additional Reference\n(if required)']
-    else:
-        aColumnTitles = ['Line #', 'Product Number', 'Product Description',
-                         'Order Qty', 'UoM', 'HW/SW Ind', 'Net Price',
-                         'Traceability Req. (Serialization)', 'Customer Asset?',
-                         'Customer Asset Tagging Requirement', 'Customer number',
-                         'Second Customer Number', 'Vendor Article Number',
-                         'Comments', 'Additional Reference\n(if required)']
+
+    aColumnTitles = ['Line #', 'Product Number', 'Product Description',
+                     'Order Qty', 'UoM', 'HW/SW Ind','Net Price',
+                     'Traceability Req. (Serialization)', 'Customer Asset?',
+                     'Customer Asset Tagging Requirement', 'Customer number',
+                     'Second Customer Number', 'Vendor Article Number',
+                     'Comments', 'Additional Reference\n(if required)']
 
     # Open workbook object
     oFile = openpyxl.Workbook()
@@ -958,9 +1116,15 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             oSheet.sheet_properties.tabColor = '0062FF'
 
         iCurrentRow = 2
-        aColumnWidths = [9, 23, 58, 12, 6, 15, 18, 18, 18, 13, 16, 22, 22, 23,
-                         67, 83]
-        aDynamicWidths = [0]*16
+        if(oHeader.customer_unit_id==9):
+            aColumnWidths = [9, 23, 58, 12, 6, 15, 18,18, 18, 18, 13, 16, 22, 22, 23,
+                             67, 83]
+            aDynamicWidths = [0]*17
+        else:
+            aColumnWidths = [9, 23, 58, 12, 6, 15, 18, 18, 18, 13, 16, 22, 22, 23,
+                             67, 83]
+            aDynamicWidths = [0] * 16
+
 
         # Write record to sheet
         sTitle = str(oHeader.configuration_designation)
@@ -1008,257 +1172,563 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             oSheet.sheet_properties.tabColor = 'FF0000'
 
         # Build Header row
-        for iIndex in range(len(aColumnTitles)):
-            oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'] = \
-                aColumnTitles[iIndex]
-            oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].font = Font(
-                bold=True)
-            oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].border = \
-                Border(
-                    left=Side(color=colors.BLACK,
-                              border_style=borders.BORDER_THIN),
-                    right=Side(color=colors.BLACK,
-                               border_style=borders.BORDER_THIN),
-                    top=Side(color=colors.BLACK,
-                             border_style=borders.BORDER_THIN),
-                    bottom=Side(color=colors.BLACK,
-                                border_style=borders.BORDER_MEDIUM)
-                )
-            oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].alignment = \
-                Alignment(horizontal='center', vertical='center', wrapText=True)
+        if(oHeader.customer_unit_id == 9):
+#  S-05743: Renaming Baseline columns for USCC Customer added if clause
+            aColumnTitles = ['Line #', 'Product Number', 'Product Description',
+                             'Order Qty', 'UoM', 'HW/SW Ind', 'Unit Price', 'Net Price',
+                             'Traceability Req. (Serialization)', 'Customer Asset?',
+                             'In the USCC BOM', 'USCC Article Code FAA',
+                         	 'USCC Article code ZENG', 'Vendor Article Number',
+                             'Comments', 'Additional Reference\n(if required)']
+            for iIndex in range(len(aColumnTitles)):
+                oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'] = \
+                    aColumnTitles[iIndex]
+                oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].font = Font(
+                    bold=True)
+                oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].border = \
+                    Border(
+                        left=Side(color=colors.BLACK,
+                                  border_style=borders.BORDER_THIN),
+                        right=Side(color=colors.BLACK,
+                                   border_style=borders.BORDER_THIN),
+                        top=Side(color=colors.BLACK,
+                                 border_style=borders.BORDER_THIN),
+                        bottom=Side(color=colors.BLACK,
+                                    border_style=borders.BORDER_MEDIUM)
+                    )
+                oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].alignment = \
+                    Alignment(horizontal='center', vertical='center', wrapText=True)
 
-            # oSheet.column_dimensions[
-            #     str(utils.get_column_letter(iIndex + 1))
-            # ].width = aColumnWidths[iIndex]
+                # oSheet.column_dimensions[
+                #     str(utils.get_column_letter(iIndex + 1))
+                # ].width = aColumnWidths[iIndex]
 
-            if iIndex in (6,):
-                oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].fill = \
-                    GradientFill(
-                        type='linear',
-                        stop=[Color(colors.GREEN), Color(colors.GREEN)])
-            else:
-                oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].fill = \
-                    GradientFill(
-                        type='linear',
-                        stop=[Color('fcd5b4'), Color('fcd5b4')])
-        # end for
-
-        oSheet.row_dimensions[1].height = 72.5
-        oSheet.sheet_view.showGridLines = False
-        oSheet.sheet_view.zoomScale = 60
-
-        oBorder = Border(
-            left=Side(color=colors.BLACK, border_style=borders.BORDER_THIN),
-            right=Side(color=colors.BLACK, border_style=borders.BORDER_THIN),
-            top=Side(color=colors.BLACK, border_style=borders.BORDER_THIN),
-            bottom=Side(color=colors.BLACK, border_style=borders.BORDER_THIN)
-        )
-
-        oFirstRowColor = GradientFill(
-            type='linear', stop=[Color('77b6e3'), Color('77b6e3')])
-        oOffRowColor = GradientFill(
-            type='linear', stop=[Color('e6e6e6'), Color('e6e6e6')])
-
-        # Add line items (ordered by line number)
-        aLineItems = oHeader.configuration.configline_set.all().order_by(
-            'line_number')
-        aLineItems = sorted(
-            aLineItems,
-            key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')]
-        )
-        oFirstItem = aLineItems[0] if len(aLineItems) > 0 else None
-        for oLineItem in aLineItems:
-            oSheet['A' + str(iCurrentRow)] = oLineItem.line_number
-            oSheet['A' + str(iCurrentRow)].alignment = oCentered
-            oSheet['A' + str(iCurrentRow)].border = oBorder
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['A' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['A' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['A' + str(iCurrentRow)].fill = oOffRowColor
-
-            oSheet['B' + str(iCurrentRow)] = \
-                ('..' if oLineItem.is_grandchild else '.' if
-                 oLineItem.is_child else '') + \
-                oLineItem.part.base.product_number
-            oSheet['B' + str(iCurrentRow)].border = oBorder
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['B' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['B' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['B' + str(iCurrentRow)].fill = oOffRowColor
-
-            oSheet['C' + str(iCurrentRow)] = oLineItem.part.product_description
-            oSheet['C' + str(iCurrentRow)].border = oBorder
-# S-05816:Fix column within downloaded baseline - Added for wrapping text in product_description column in the downloaded file
-            oSheet['C' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['C' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['C' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['C' + str(iCurrentRow)].fill = oOffRowColor
-
-            oSheet['D' + str(iCurrentRow)] = oLineItem.order_qty
-            oSheet['D' + str(iCurrentRow)].alignment = oCentered
-            oSheet['D' + str(iCurrentRow)].border = oBorder
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['D' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['D' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['D' + str(iCurrentRow)].fill = oOffRowColor
-
-            oSheet['E' + str(iCurrentRow)] = oLineItem.part.base.unit_of_measure
-            oSheet['E' + str(iCurrentRow)].alignment = oCentered
-            oSheet['E' + str(iCurrentRow)].border = oBorder
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['E' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['E' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['E' + str(iCurrentRow)].fill = oOffRowColor
-
-            oSheet['F' + str(iCurrentRow)] = oLineItem.commodity_type
-            oSheet['F' + str(iCurrentRow)].alignment = oCentered
-            oSheet['F' + str(iCurrentRow)].border = oBorder
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['F' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['F' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['F' + str(iCurrentRow)].fill = oOffRowColor
-
-            if oHeader.pick_list:
-                if GrabValue(oLineItem,
-                             'linepricing.override_price') is not None:
-                    oSheet['G' + str(iCurrentRow)] = \
-                        GrabValue(oLineItem, 'linepricing.override_price')
+                if iIndex in (7,):                  #S-05744: change from 6 to 7, since index of Net Price is now 7
+                    oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].fill = \
+                        GradientFill(
+                            type='linear',
+                            stop=[Color(colors.GREEN), Color(colors.GREEN)])
                 else:
-                    oSheet['G' + str(iCurrentRow)] = \
-                        GrabValue(oLineItem,
-                                  'linepricing.pricing_object.unit_price')
-            else:
-                oSheet['G' + str(iCurrentRow)] = ''
+                    oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].fill = \
+                        GradientFill(
+                            type='linear',
+                            stop=[Color('fcd5b4'), Color('fcd5b4')])
+            # end for
 
-            oSheet['G' + str(iCurrentRow)].number_format = \
-                '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
-            oSheet['G' + str(iCurrentRow)].border = oBorder
+            oSheet.row_dimensions[1].height = 72.5
+            oSheet.sheet_view.showGridLines = False
+            oSheet.sheet_view.zoomScale = 60
 
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['G' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['G' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['G' + str(iCurrentRow)].fill = oOffRowColor
+            oBorder = Border(
+                left=Side(color=colors.BLACK, border_style=borders.BORDER_THIN),
+                right=Side(color=colors.BLACK, border_style=borders.BORDER_THIN),
+                top=Side(color=colors.BLACK, border_style=borders.BORDER_THIN),
+                bottom=Side(color=colors.BLACK, border_style=borders.BORDER_THIN)
+            )
 
-            oSheet['H' + str(iCurrentRow)] = oLineItem.traceability_req
-            oSheet['H' + str(iCurrentRow)].alignment = oCentered
-            oSheet['H' + str(iCurrentRow)].border = oBorder
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['H' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['H' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['H' + str(iCurrentRow)].fill = oOffRowColor
+            oFirstRowColor = GradientFill(
+                type='linear', stop=[Color('77b6e3'), Color('77b6e3')])
+            oOffRowColor = GradientFill(
+                type='linear', stop=[Color('e6e6e6'), Color('e6e6e6')])
 
-            oSheet['I' + str(iCurrentRow)] = oLineItem.customer_asset
-            oSheet['I' + str(iCurrentRow)].alignment = oCentered
-            oSheet['I' + str(iCurrentRow)].border = oBorder
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['I' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['I' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['I' + str(iCurrentRow)].fill = oOffRowColor
+            # Add line items (ordered by line number)
+            aLineItems = oHeader.configuration.configline_set.all().order_by(
+                'line_number')
+            aLineItems = sorted(
+                aLineItems,
+                key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')]
+            )
+            oFirstItem = aLineItems[0] if len(aLineItems) > 0 else None
+            for oLineItem in aLineItems:
+                oSheet['A' + str(iCurrentRow)] = oLineItem.line_number
+                oSheet['A' + str(iCurrentRow)].alignment = oCentered
+                oSheet['A' + str(iCurrentRow)].border = oBorder
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['A' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['A' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['A' + str(iCurrentRow)].fill = oOffRowColor
 
-            oSheet['J' + str(iCurrentRow)] = oLineItem.customer_asset_tagging
-            oSheet['J' + str(iCurrentRow)].alignment = oCentered
-            oSheet['J' + str(iCurrentRow)].border = oBorder
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['J' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['J' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['J' + str(iCurrentRow)].fill = oOffRowColor
+                oSheet['B' + str(iCurrentRow)] = \
+                    ('..' if oLineItem.is_grandchild else '.' if
+                     oLineItem.is_child else '') + \
+                    oLineItem.part.base.product_number
+                oSheet['B' + str(iCurrentRow)].border = oBorder
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['B' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['B' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['B' + str(iCurrentRow)].fill = oOffRowColor
 
-            oSheet['K' + str(iCurrentRow)] = oLineItem.customer_number
-            oSheet['K' + str(iCurrentRow)].alignment = oCentered
-            oSheet['K' + str(iCurrentRow)].border = oBorder
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['K' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['K' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['K' + str(iCurrentRow)].fill = oOffRowColor
+                oSheet['C' + str(iCurrentRow)] = oLineItem.part.product_description
+                oSheet['C' + str(iCurrentRow)].border = oBorder
+    # S-05816:Fix column within downloaded baseline - Added for wrapping text in product_description column in the downloaded file
+                oSheet['C' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['C' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['C' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['C' + str(iCurrentRow)].fill = oOffRowColor
 
-            oSheet['L' + str(iCurrentRow)] = oLineItem.sec_customer_number
-            oSheet['L' + str(iCurrentRow)].alignment = oCentered
-            oSheet['L' + str(iCurrentRow)].border = oBorder
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['L' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['L' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['L' + str(iCurrentRow)].fill = oOffRowColor
+                oSheet['D' + str(iCurrentRow)] = oLineItem.order_qty
+                oSheet['D' + str(iCurrentRow)].alignment = oCentered
+                oSheet['D' + str(iCurrentRow)].border = oBorder
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['D' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['D' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['D' + str(iCurrentRow)].fill = oOffRowColor
 
-            oSheet['M' + str(iCurrentRow)] = oLineItem.vendor_article_number
-            oSheet['M' + str(iCurrentRow)].border = oBorder
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['M' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['M' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['M' + str(iCurrentRow)].fill = oOffRowColor
+                oSheet['E' + str(iCurrentRow)] = oLineItem.part.base.unit_of_measure
+                oSheet['E' + str(iCurrentRow)].alignment = oCentered
+                oSheet['E' + str(iCurrentRow)].border = oBorder
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['E' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['E' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['E' + str(iCurrentRow)].fill = oOffRowColor
 
-            oSheet['N' + str(iCurrentRow)] = oLineItem.comments
-            oSheet['N' + str(iCurrentRow)].border = oBorder
-    # S-05816:Fix column within downloaded baseline - Added for wrapping text in comments column in the downloaded file
-            oSheet['N' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['N' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['N' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['N' + str(iCurrentRow)].fill = oOffRowColor
+                oSheet['F' + str(iCurrentRow)] = oLineItem.commodity_type
+                oSheet['F' + str(iCurrentRow)].alignment = oCentered
+                oSheet['F' + str(iCurrentRow)].border = oBorder
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['F' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['F' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['F' + str(iCurrentRow)].fill = oOffRowColor
+                #
+                if not oHeader.pick_list:
+                    if  oLineItem == oFirstItem :
+                        oSheet['G' + str(iCurrentRow)] = ''
+                    else:
+                        if GrabValue(oLineItem, 'linepricing.override_price'):
+                            oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.override_price')
+                        elif GrabValue(oLineItem,'linepricing.pricing_object.unit_price'):
+                            oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.pricing_object.unit_price')
+                        else:
+                            oSheet['G' + str(iCurrentRow)] = ''
+                            # end if
+                            # end if
+                            # end if
+                else:
+                    if GrabValue(oLineItem, 'linepricing.override_price'):
+                        oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.override_price')
+                    elif GrabValue(oLineItem, 'linepricing.pricing_object.unit_price'):
+                        oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.pricing_object.unit_price')
+                    else:
+                        oSheet['G' + str(iCurrentRow)] = ''
 
-            oSheet['O' + str(iCurrentRow)] = oLineItem.additional_ref
-            oSheet['O' + str(iCurrentRow)].border = oBorder
-    # S-05816:Fix column within downloaded baseline - Added for wrapping text in Additional reference column in the downloaded file
-            oSheet['O' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
-            if oLineItem == oFirstItem and not oHeader.pick_list:
-                oSheet['O' + str(iCurrentRow)].fill = oFirstRowColor
-                oSheet['O' + str(iCurrentRow)].font = Font(bold=True)
-            elif iCurrentRow % 2 == 0:
-                oSheet['O' + str(iCurrentRow)].fill = oOffRowColor
+                # oSheet['G' + str(iCurrentRow)] = ''
+                oSheet['G' + str(iCurrentRow)].number_format = \
+                    '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+                oSheet['G' + str(iCurrentRow)].border = oBorder
 
-            # Guesstimate the width of the data entered, so that we can try to
-            # make the cell wide enough to show the entire value
-            for idx in range(16):
-                if len(str(oSheet[utils.get_column_letter(idx+1) +
-                                  str(iCurrentRow)
-                                  ].value)) > aDynamicWidths[idx]:
-                    aDynamicWidths[idx] = \
-                        len(str(oSheet[utils.get_column_letter(idx+1) +
-                                       str(iCurrentRow)].value))
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['G' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['G' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['G' + str(iCurrentRow)].fill = oOffRowColor
 
-            # Determine and mark each changed value for the row
-            aChangeCols = []
-            if oLineItem.line_number in dHistory:
-                for sChange in dHistory[oLineItem.line_number]:
-                    if 'quantity' in sChange:
-                        aChangeCols.append(4)
 
-                    if 'line price' in sChange:
-                        aChangeCols.append(7)
 
-                    if 'added' in sChange:
-                        aChangeCols.extend(list(range(1, 16)))
+                if oHeader.pick_list:
+                    if GrabValue(oLineItem,
+                                 'linepricing.override_price') is not None:
+                        oSheet['H' + str(iCurrentRow)] = \
+                            GrabValue(oLineItem, 'linepricing.override_price')
+                    else:
+                        oSheet['H' + str(iCurrentRow)] = \
+                            GrabValue(oLineItem,
+                                      'linepricing.pricing_object.unit_price')
+                else:
+                    if oLineItem == oFirstItem:
+                        if GrabValue(oLineItem,
+                                     'linepricing.override_price') is not None:
+                            oSheet['H' + str(iCurrentRow)] = \
+                                GrabValue(oLineItem, 'linepricing.override_price')
+                        else:
+                            oSheet['H' + str(iCurrentRow)] = \
+                                GrabValue(oLineItem,
+                                          'linepricing.pricing_object.unit_price')
+                    else:
+                        oSheet['H' + str(iCurrentRow)] = ''
 
-                    if 'replaced' in sChange:
-                        aChangeCols.extend(list(range(2, 16)))
+                oSheet['H' + str(iCurrentRow)].number_format = \
+                    '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+                oSheet['H' + str(iCurrentRow)].border = oBorder
 
-                aChangeCols = list(set(aChangeCols))
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['H' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['H' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['H' + str(iCurrentRow)].fill = oOffRowColor
 
-            for iCol in aChangeCols:
-                oSheet[
-                    str(utils.get_column_letter(iCol)) + str(iCurrentRow)
-                ].fill = GradientFill(
-                    type='linear', stop=[Color('e0fa2e'), Color('e0fa2e')])
 
-            iCurrentRow += 1
-        # end for
-        if not oHeader.pick_list:
-            oSheet['G2'] = oHeader.configuration.override_net_value or \
-                           oHeader.configuration.net_value or ''
+                oSheet['I' + str(iCurrentRow)] = oLineItem.traceability_req
+                oSheet['I' + str(iCurrentRow)].alignment = oCentered
+                oSheet['I' + str(iCurrentRow)].border = oBorder
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['I' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['I' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['I' + str(iCurrentRow)].fill = oOffRowColor
+
+                oSheet['J' + str(iCurrentRow)] = oLineItem.customer_asset
+                oSheet['J' + str(iCurrentRow)].alignment = oCentered
+                oSheet['J' + str(iCurrentRow)].border = oBorder
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['J' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['J' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['J' + str(iCurrentRow)].fill = oOffRowColor
+
+                oSheet['K' + str(iCurrentRow)] = oLineItem.customer_asset_tagging
+                oSheet['K' + str(iCurrentRow)].alignment = oCentered
+                oSheet['K' + str(iCurrentRow)].border = oBorder
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['K' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['K' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['K' + str(iCurrentRow)].fill = oOffRowColor
+
+                oSheet['L' + str(iCurrentRow)] = oLineItem.customer_number
+                oSheet['L' + str(iCurrentRow)].alignment = oCentered
+                oSheet['L' + str(iCurrentRow)].border = oBorder
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['L' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['L' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['L' + str(iCurrentRow)].fill = oOffRowColor
+
+                oSheet['M' + str(iCurrentRow)] = oLineItem.sec_customer_number
+                oSheet['M' + str(iCurrentRow)].alignment = oCentered
+                oSheet['M' + str(iCurrentRow)].border = oBorder
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['M' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['M' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['M' + str(iCurrentRow)].fill = oOffRowColor
+
+                oSheet['N' + str(iCurrentRow)] = oLineItem.vendor_article_number
+                oSheet['N' + str(iCurrentRow)].border = oBorder
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['N' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['N' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['N' + str(iCurrentRow)].fill = oOffRowColor
+
+                oSheet['O' + str(iCurrentRow)] = oLineItem.comments
+                oSheet['O' + str(iCurrentRow)].border = oBorder
+        # S-05816:Fix column within downloaded baseline - Added for wrapping text in comments column in the downloaded file
+                oSheet['O' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['O' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['O' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['O' + str(iCurrentRow)].fill = oOffRowColor
+
+                oSheet['P' + str(iCurrentRow)] = oLineItem.additional_ref
+                oSheet['P' + str(iCurrentRow)].border = oBorder
+        # S-05816:Fix column within downloaded baseline - Added for wrapping text in Additional reference column in the downloaded file
+                oSheet['P' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
+                if oLineItem == oFirstItem and not oHeader.pick_list:
+                    oSheet['P' + str(iCurrentRow)].fill = oFirstRowColor
+                    oSheet['P' + str(iCurrentRow)].font = Font(bold=True)
+                elif iCurrentRow % 2 == 0:
+                    oSheet['P' + str(iCurrentRow)].fill = oOffRowColor
+
+
+                # Guesstimate the width of the data entered, so that we can try to
+                # make the cell wide enough to show the entire value
+                for idx in range(17):
+                    if len(str(oSheet[utils.get_column_letter(idx+1) +
+                                      str(iCurrentRow)
+                                      ].value)) > aDynamicWidths[idx]:
+                        aDynamicWidths[idx] = \
+                            len(str(oSheet[utils.get_column_letter(idx+1) +
+                                           str(iCurrentRow)].value))
+
+                # Determine and mark each changed value for the row
+                aChangeCols = []
+                if oLineItem.line_number in dHistory:
+                    for sChange in dHistory[oLineItem.line_number]:
+                        if 'quantity' in sChange:
+                            aChangeCols.append(4)
+
+                        if 'line price' in sChange:
+                            aChangeCols.append(7)
+
+                        if 'added' in sChange:
+                            aChangeCols.extend(list(range(1, 16)))
+
+                        if 'replaced' in sChange:
+                            aChangeCols.extend(list(range(2, 16)))
+
+                    aChangeCols = list(set(aChangeCols))
+
+                for iCol in aChangeCols:
+                    oSheet[
+                        str(utils.get_column_letter(iCol)) + str(iCurrentRow)
+                    ].fill = GradientFill(
+                        type='linear', stop=[Color('e0fa2e'), Color('e0fa2e')])
+
+                iCurrentRow += 1
+            # end for
+            if not oHeader.pick_list:
+                oSheet['H2'] = oHeader.configuration.override_net_value or \
+                               oHeader.configuration.net_value or ''
+        else:
+              for iIndex in range(len(aColumnTitles)):
+                  oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'] = \
+                      aColumnTitles[iIndex]
+                  oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].font = Font(
+                      bold=True)
+                  oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].border = \
+                      Border(
+                          left=Side(color=colors.BLACK,
+                                    border_style=borders.BORDER_THIN),
+                          right=Side(color=colors.BLACK,
+                                     border_style=borders.BORDER_THIN),
+                          top=Side(color=colors.BLACK,
+                                   border_style=borders.BORDER_THIN),
+                          bottom=Side(color=colors.BLACK,
+                                      border_style=borders.BORDER_MEDIUM)
+                      )
+                  oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].alignment = \
+                      Alignment(horizontal='center', vertical='center', wrapText=True)
+
+                  # oSheet.column_dimensions[
+                  #     str(utils.get_column_letter(iIndex + 1))
+                  # ].width = aColumnWidths[iIndex]
+
+                  if iIndex in (6,):
+                      oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].fill = \
+                          GradientFill(
+                              type='linear',
+                              stop=[Color(colors.GREEN), Color(colors.GREEN)])
+                  else:
+                      oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].fill = \
+                          GradientFill(
+                              type='linear',
+                              stop=[Color('fcd5b4'), Color('fcd5b4')])
+              # end for
+
+              oSheet.row_dimensions[1].height = 72.5
+              oSheet.sheet_view.showGridLines = False
+              oSheet.sheet_view.zoomScale = 60
+
+              oBorder = Border(
+                  left=Side(color=colors.BLACK, border_style=borders.BORDER_THIN),
+                  right=Side(color=colors.BLACK, border_style=borders.BORDER_THIN),
+                  top=Side(color=colors.BLACK, border_style=borders.BORDER_THIN),
+                  bottom=Side(color=colors.BLACK, border_style=borders.BORDER_THIN)
+              )
+
+              oFirstRowColor = GradientFill(
+                  type='linear', stop=[Color('77b6e3'), Color('77b6e3')])
+              oOffRowColor = GradientFill(
+                  type='linear', stop=[Color('e6e6e6'), Color('e6e6e6')])
+
+              # Add line items (ordered by line number)
+              aLineItems = oHeader.configuration.configline_set.all().order_by(
+                  'line_number')
+              aLineItems = sorted(
+                  aLineItems,
+                  key=lambda x: [int(y) for y in getattr(x, 'line_number').split('.')]
+              )
+              oFirstItem = aLineItems[0] if len(aLineItems) > 0 else None
+              for oLineItem in aLineItems:
+                  oSheet['A' + str(iCurrentRow)] = oLineItem.line_number
+                  oSheet['A' + str(iCurrentRow)].alignment = oCentered
+                  oSheet['A' + str(iCurrentRow)].border = oBorder
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['A' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['A' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['A' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['B' + str(iCurrentRow)] = \
+                      ('..' if oLineItem.is_grandchild else '.' if
+                      oLineItem.is_child else '') + \
+                      oLineItem.part.base.product_number
+                  oSheet['B' + str(iCurrentRow)].border = oBorder
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['B' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['B' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['B' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['C' + str(iCurrentRow)] = oLineItem.part.product_description
+                  oSheet['C' + str(iCurrentRow)].border = oBorder
+                  # S-05816:Fix column within downloaded baseline - Added for wrapping text in product_description column in the downloaded file
+                  oSheet['C' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['C' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['C' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['C' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['D' + str(iCurrentRow)] = oLineItem.order_qty
+                  oSheet['D' + str(iCurrentRow)].alignment = oCentered
+                  oSheet['D' + str(iCurrentRow)].border = oBorder
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['D' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['D' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['D' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['E' + str(iCurrentRow)] = oLineItem.part.base.unit_of_measure
+                  oSheet['E' + str(iCurrentRow)].alignment = oCentered
+                  oSheet['E' + str(iCurrentRow)].border = oBorder
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['E' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['E' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['E' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['F' + str(iCurrentRow)] = oLineItem.commodity_type
+                  oSheet['F' + str(iCurrentRow)].alignment = oCentered
+                  oSheet['F' + str(iCurrentRow)].border = oBorder
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['F' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['F' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['F' + str(iCurrentRow)].fill = oOffRowColor
+
+                  if oHeader.pick_list:
+                      if GrabValue(oLineItem,
+                                   'linepricing.override_price') is not None:
+                          oSheet['G' + str(iCurrentRow)] = \
+                              GrabValue(oLineItem, 'linepricing.override_price')
+                      else:
+                          oSheet['G' + str(iCurrentRow)] = \
+                              GrabValue(oLineItem,
+                                        'linepricing.pricing_object.unit_price')
+                  else:
+                      oSheet['G' + str(iCurrentRow)] = ''
+
+                  oSheet['G' + str(iCurrentRow)].number_format = \
+                      '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+                  oSheet['G' + str(iCurrentRow)].border = oBorder
+
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['G' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['G' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['G' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['H' + str(iCurrentRow)] = oLineItem.traceability_req
+                  oSheet['H' + str(iCurrentRow)].alignment = oCentered
+                  oSheet['H' + str(iCurrentRow)].border = oBorder
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['H' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['H' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['H' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['I' + str(iCurrentRow)] = oLineItem.customer_asset
+                  oSheet['I' + str(iCurrentRow)].alignment = oCentered
+                  oSheet['I' + str(iCurrentRow)].border = oBorder
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['I' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['I' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['I' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['J' + str(iCurrentRow)] = oLineItem.customer_asset_tagging
+                  oSheet['J' + str(iCurrentRow)].alignment = oCentered
+                  oSheet['J' + str(iCurrentRow)].border = oBorder
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['J' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['J' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['J' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['K' + str(iCurrentRow)] = oLineItem.customer_number
+                  oSheet['K' + str(iCurrentRow)].alignment = oCentered
+                  oSheet['K' + str(iCurrentRow)].border = oBorder
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['K' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['K' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['K' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['L' + str(iCurrentRow)] = oLineItem.sec_customer_number
+                  oSheet['L' + str(iCurrentRow)].alignment = oCentered
+                  oSheet['L' + str(iCurrentRow)].border = oBorder
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['L' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['L' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['L' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['M' + str(iCurrentRow)] = oLineItem.vendor_article_number
+                  oSheet['M' + str(iCurrentRow)].border = oBorder
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['M' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['M' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['M' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['N' + str(iCurrentRow)] = oLineItem.comments
+                  oSheet['N' + str(iCurrentRow)].border = oBorder
+                  # S-05816:Fix column within downloaded baseline - Added for wrapping text in comments column in the downloaded file
+                  oSheet['N' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['N' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['N' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['N' + str(iCurrentRow)].fill = oOffRowColor
+
+                  oSheet['O' + str(iCurrentRow)] = oLineItem.additional_ref
+                  oSheet['O' + str(iCurrentRow)].border = oBorder
+                  # S-05816:Fix column within downloaded baseline - Added for wrapping text in Additional reference column in the downloaded file
+                  oSheet['O' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
+                  if oLineItem == oFirstItem and not oHeader.pick_list:
+                      oSheet['O' + str(iCurrentRow)].fill = oFirstRowColor
+                      oSheet['O' + str(iCurrentRow)].font = Font(bold=True)
+                  elif iCurrentRow % 2 == 0:
+                      oSheet['O' + str(iCurrentRow)].fill = oOffRowColor
+
+                  # Guesstimate the width of the data entered, so that we can try to
+                  # make the cell wide enough to show the entire value
+                  for idx in range(16):
+                      if len(str(oSheet[utils.get_column_letter(idx + 1) +
+                              str(iCurrentRow)
+                                 ].value)) > aDynamicWidths[idx]:
+                          aDynamicWidths[idx] = \
+                              len(str(oSheet[utils.get_column_letter(idx + 1) +
+                                             str(iCurrentRow)].value))
+
+                  # Determine and mark each changed value for the row
+                  aChangeCols = []
+                  if oLineItem.line_number in dHistory:
+                      for sChange in dHistory[oLineItem.line_number]:
+                          if 'quantity' in sChange:
+                                  aChangeCols.append(4)
+
+                          if 'line price' in sChange:
+                                  aChangeCols.append(7)
+
+                          if 'added' in sChange:
+                                  aChangeCols.extend(list(range(1, 16)))
+
+                          if 'replaced' in sChange:
+                                  aChangeCols.extend(list(range(2, 16)))
+
+                      aChangeCols = list(set(aChangeCols))
+
+                  for iCol in aChangeCols:
+                      oSheet[
+                              str(utils.get_column_letter(iCol)) + str(iCurrentRow)
+                              ].fill = GradientFill(
+                              type='linear', stop=[Color('e0fa2e'), Color('e0fa2e')])
+
+                  iCurrentRow += 1
+              # end for
+              if not oHeader.pick_list:
+                   oSheet['G2'] = oHeader.configuration.override_net_value or \
+                                  oHeader.configuration.net_value or ''
 
         # Update cell widths
         for iIndex in range(len(aColumnTitles)):

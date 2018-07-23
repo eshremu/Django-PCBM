@@ -232,38 +232,43 @@ class HeaderForm(forms.ModelForm):
 
         # Check customer unit corresponds to sales office and sales group
         # provided
-        oCursor = connections['BCAMDB'].cursor()
-        sQuery = ("SELECT [Sales Office Description], t1.[Sales Office], [Sales Group]"
-                  " FROM dbo.REF_SALES_OFFICE t1 INNER JOIN dbo.REF_SALES_GROUP t2"
-                  " ON t1.[Sales Office] = t2.[Sales Office]"
-                  " WHERE [Sales Office Description] = %s")
+        # oCursor = connections['BCAMDB'].cursor()
+        # sQuery = ("SELECT [Sales Office Description], t1.[Sales Office], [Sales Group]"
+        #           " FROM dbo.REF_SALES_OFFICE t1 INNER JOIN dbo.REF_SALES_GROUP t2"
+        #           " ON t1.[Sales Office] = t2.[Sales Office]"
+        #           " WHERE [Sales Office Description] = %s")
 
-        if 'customer_unit' in data and data['customer_unit']:
-            oCursor.execute(sQuery, [bytes(REF_CUSTOMER.objects.get(
-                name=data['customer_unit']).name, 'ascii')])
-            oResults = oCursor.fetchall()
-            if 'sales_office' in data and data['sales_office']:
-                if (
-                        REF_CUSTOMER.objects.get(
-                        name=data['customer_unit']).name, data['sales_office']
-                        ) not in [(obj[0], obj[1]) for obj in oResults]:
-                    self.add_error(
-                        'sales_office',
-                        forms.ValidationError(
-                            'No such sales office for customer unit. Make sure to only use "US##" values'))
-            if 'sales_group' in data and data['sales_group']:
-                if (
-                        REF_CUSTOMER.objects.get(
-                        name=data['customer_unit']).name, data['sales_group']
-                        ) not in [(obj[0], obj[2]) for obj in oResults]:
-                    self.add_error(
-                        'sales_group',
-                        forms.ValidationError(
-                            'No such sales group for customer unit. Make sure to only use group code'))
-            # end if
-        # end if
-
-        oCursor.close()
+        # oCursor = connections['REACT'].cursor()
+        # sQuery =('SELECT [Sales_o],[sales_g] FROM ps_SalesOffice_SalesGroup '
+        #          'WHERE [sales_cu]=%s')
+        #
+        # if 'customer_unit' in data and data['customer_unit']:
+        #     oCursor.execute(sQuery, [bytes(REF_CUSTOMER.objects.get(
+        #         name=data['customer_unit']).name, 'ascii')])
+        #     oResults = oCursor.fetchall()
+        #
+        #     if 'sales_office' in data and data['sales_office']:
+        #         if (
+        #                 REF_CUSTOMER.objects.get(
+        #                 name=data['customer_unit']).name, data['sales_office']
+        #                 ) not in [(obj[0], obj[1]) for obj in oResults]:
+        #             self.add_error(
+        #                 'sales_office',
+        #                 forms.ValidationError(
+        #                     'No such sales office for customer unit. Make sure to only use "US##" values'))
+        #     if 'sales_group' in data and data['sales_group']:
+        #         if (
+        #                 REF_CUSTOMER.objects.get(
+        #                 name=data['customer_unit']).name, data['sales_group']
+        #                 ) not in [(obj[0], obj[2]) for obj in oResults]:
+        #             self.add_error(
+        #                 'sales_group',
+        #                 forms.ValidationError(
+        #                     'No such sales group for customer unit. Make sure to only use group code'))
+        #     # end if
+        # # end if
+        #
+        # oCursor.close()
 
         # Set readiness complete value
         self.data._mutable = True
