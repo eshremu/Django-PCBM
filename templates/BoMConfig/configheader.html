@@ -7,93 +7,24 @@
     <script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-ui.min.js' %}"></script>
     <script type="text/javascript" src="{% static 'BoMConfig/js/config_header.js' %}"></script>
     <form id="headerform" method="POST" autocomplete="off">
-        {% csrf_token %}
-        <input id="formaction" type="hidden" name="formaction" value=""/>
-        <div id="headerformtable">
-            {% for field in headerForm %}
-            <table>
-                <tbody>
-                <tr>
-                    {% if field.label != 'Model replaced link' %}
-                    <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</td>
-                    {% endif %}
-                    {% if field.errors %}
-                    <td class="errorbox">
-                    {% else %}
-                    <td>
-                    {% endif %}
-                    {{ field }}
-                    </td>
-                    {% if field.label == 'REACT Request' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
-                        <td>
-                            &nbsp;&nbsp;
-                            <input id="searchSubmit" class="btn" type="button" value="Search"/>
-                            &nbsp;&nbsp;&nbsp;&nbsp;
-                        </td>
-                    <!--S-06166- Shift header page to new reference table:Added below to make all the default dropdown fields appear as textbox in case called from react request no. search-->
-                    {% elif field.label == 'Baseline Impacted' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
-                        <td>
-                            &nbsp;&nbsp;
-                            <input id="new_baseline" type="text" name="new_baseline" placeholder="Baseline Name" style="display:none;"/>
-                            &nbsp;&nbsp;&nbsp;&nbsp;
-                        </td>
-                    {% elif field.label == 'Person responsible' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
-                        <td class="perresp" style="">
-                      &nbsp;
-                        </td>
-                    {% elif field.label == 'Customer Name' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
-                        <td class="custName" style="">
-                      &nbsp;
-                        </td>
-                    {% elif field.label == 'Customer Unit' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
-                        <td class="custUnit" style="">
-                      &nbsp;
-                        </td>
-                    {% elif field.label == 'Sales Group' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
-                        <td class="salesgrp" style="">
-                      &nbsp;
-                        </td>
-                    {% elif field.label == 'Sold-to Party' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
-                        <td class="soldparty" style="">
-                      &nbsp;
-                        </td>
-                    {% elif field.label == 'Ericsson Contract #' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
-                        <td class="ericcont" style="">
-                      &nbsp;
-                        </td>
-                    {% elif field.label == 'Configuration/Ordering Status' and headerForm.configuration_status.value == 4 %}
-                        <td>
-                            <input type="text" style="border: none" value="({{ headerForm.instance.old_configuration_status.name }})" readonly/>
-                        </td>
-                    {% endif %}
-                    {% for error in field.errors %}
-                        <td>{{ error }}</td>
-                    {% empty %}
-                    {% endfor %}
-                </tr>
-                {% if field.label in break_list %}
-                    <tr><td><h3></h3></td></tr>
-                {% endif %}
-                </tbody>
-            </table>
-            {% endfor %}
-        </div>
+        <br />
+      <!--S-05787-Re-alignment of Header tab of BOM Entry page for All Customers - Added below div of buttons to show on top -->
         <div id="formbuttons">
-            <input id="cancelForm" class="btn" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close();{% else %}window.location.href='{% url 'bomconfig:index' %}';{% endif %}"/>
+            <input id="cancelForm" class="btn" style="width:60px; height:30px; padding:unset; background-color:#d7e6f4; color:slateblue;" type="button" value="Cancel" onclick="{% if frame_readonly %}window.close();{% else %}window.location.href='{% url 'bomconfig:index' %}';{% endif %}"/>
             {% if header_write_authorized and not frame_readonly %}
-            <input id="saveexitForm" class="btn" type="button" value="Save & Exit"/>
-            <input id="saveForm" class="btn" type="button" value="Save"/>
+            <input id="saveexitForm" class="btn" type="button" style="width:80px; height:30px; padding:unset; background-color:#d7e6f4; color:slateblue;" value="Save & Exit"/>
+            <input id="saveForm" class="btn" type="button" style="width:50px; height:30px; padding:unset; background-color:#d7e6f4; color:slateblue;" value="Save"/>
             {% endif %}
-            {% if can_continue %}<input id="nextForm" class="btn" type="button" value="Next"/>{% endif %}
-            <span><span style="color: red;font-size:14pt;">*</span> = Required</span>
+            {% if can_continue %}<input id="nextForm" class="btn" type="button" style="width:50px; height:30px; padding:unset; background-color:#d7e6f4; color:slateblue;" value="Next"/>{% endif %}
+            <span  style="color: slateblue;"><span style="color: red;font-size:14pt;">*</span> = Required</span>
             {% if headerForm.instance.pk %}
             {% if not frame_readonly or user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_BPMA_Architect" %}
-            <input id="download" class="btn" type="button" value="Download"/>
+            <input id="download" class="btn" type="button" style="width:65px; height:30px; padding:unset; background-color:#d7e6f4; color:slateblue;" value="Download"/>
             {% endif %}
             {% endif %}
             {% if header.configuration_status.name not in non_clonable %}
             {% if user|has_group:"BOM_PSM_" or user|has_group:"BOM_BPMA_Architect" %}
-            <input id="clone" class="btn" type="button" value="Clone" onclick="cloneHeader({{ header.id }});"/>
+            <input id="clone" class="btn" type="button" value="Clone" style="width:55px; height:30px;  padding:unset; background-color:#d7e6f4; color:slateblue;" onclick="cloneHeader({{ header.id }});"/>
             {% endif %}
             {% endif %}
             {% if status_message %}
@@ -105,6 +36,304 @@
             </script>
             {% endif %}
         </div>
+        {% csrf_token %}
+        <input id="formaction" type="hidden" name="formaction" value=""/>
+        <div id="headerformtable" style="font-size:12px;">
+            <!--S-05787-Re-alignment of Header tab of BOM Entry page for All Customers - Added below div to add the headings for the 3 columns-->
+            <div style="width:100%; ">
+                <h5 style="width:25%;margin-left:25px; font-weight:bold;">REACT & Customer Information</h5>
+                <h5 style="float:left; margin-left:42%; margin-top:-25px; font-weight:bold; width:25%;">Configuration Information</h5>
+                <h5 style="float:right; margin-top:-25px; font-weight:bold; width:25%;">Additional Information</h5>
+            </div>
+            {% for field in headerForm %}
+            <table>
+                <tbody>
+                <tr>
+                    <!--S-05787-Re-alignment of Header tab of BOM Entry page for All Customers - Added below to show all the fields aligned in the 1st(Left) column-->
+                    {% if field.label == 'REACT Request' or field.label == 'BoM Request Type' or field.label == 'Customer Unit' or field.label == 'Person responsible' or field.label == 'Person Responsible' or field.label == 'Customer Name' or field.label == 'Sales Office' or field.label == 'Sales Group' or field.label == 'Sold-to Party' or field.label == 'Ship-to Party' or field.label == 'Ericsson Contract #' or field.label == 'Bill-to Party' or field.label == 'Payment Terms' or field.label == 'No ZipRouting' or field.label == 'Shipping Condition' or field.label == 'Complete Delivery' %}
+                        <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</td>
+                        {% if field.errors %}
+                        <td >
+                            <div style="margin-left:-958px; border: 2px solid red; max-width:154px; font-size:10px;">
+                                {{ field }} {{ field.errors }}
+                            </div>
+                        </td>
+                        {% else %}
+                        <td>
+                            <div style="margin-left:-958px;">
+                            {{ field }}
+                            </div>
+                        </td>
+                        {% endif %}
+                    {% endif %}
+                     <!--S-05787-Re-alignment of Header tab of BOM Entry page for All Customers - Added below to show all the fields aligned in the 2nd(Middle) column-->
+                    {% if field.label == 'Configuration' %}
+                        <td><div style="margin-left:510px; margin-top:-410px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td>
+                            <div style="margin-left:-420px; font-size:9px; margin-top:-420px; border: 2px solid red; max-width:130px;">
+                             {{ field }} {{ field.errors }}
+                            </div>
+                        </td>
+                        {% else %}
+                        <td>
+                            <div style="margin-left:-420px; margin-top:-410px;">
+                                {{ field }}
+                            </div>
+                        </td>
+                        {% endif %}
+                    {% endif %}
+                    {% if field.label == 'Program' %}
+                        <td><div style="margin-left:510px; margin-top:-375px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-375px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Customer Designation' %}
+                        <td><div style="margin-left:510px; margin-top:-350px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-350px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Technology' %}
+                        <td><div style="margin-left:510px; margin-top:-325px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-325px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Product Area 1' %}
+                        <td><div style="margin-left:510px; margin-top:-300px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-300px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Product Area 2' %}
+                        <td><div style="margin-left:510px; margin-top:-275px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-275px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Radio Frequency' %}
+                        <td><div style="margin-left:510px; margin-top:-250px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-250px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Radio Band' %}
+                        <td><div style="margin-left:510px; margin-top:-225px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-225px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Inquiry/Site Template #' %}
+                        <td><div style="margin-left:510px; margin-top:-200px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-200px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Valid-from Date' %}
+                        <td><div style="margin-left:510px; margin-top:-170px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-170px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Valid-to Date' %}
+                        <td><div style="margin-left:510px; margin-top:-140px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-140px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Optional Free Text Field 1' %}
+                        <td><div style="margin-left:510px; margin-top:-110px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-110px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Optional Free Text Field 2' %}
+                        <td><div style="margin-left:510px; margin-top:-85px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-85px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}{% if field.label == 'Optional Free Text Field 3' %}
+                        <td><div style="margin-left:510px; margin-top:-60px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:-420px; margin-top:-60px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    <!--S-05787-Re-alignment of Header tab of BOM Entry page for All Customers - Added below to show all the fields aligned in the 3rd(Right) column-->
+                    {% if field.label == 'Baseline Impacted' %}
+                        <td><div style="margin-left:900px; margin-top:-430px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:10px; margin-top:-430px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Model' %}
+                        <td><div style="margin-left:900px; margin-top:-410px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:10px; margin-top:-410px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Model Description' %}
+                        <td><div style="margin-left:900px; margin-top:-375px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:10px; margin-top:-375px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'What Model is this replacing?' %}
+                        <td><div style="margin-left:900px; margin-top:-345px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:10px; margin-top:-345px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Initial Revision' %}
+                        <td><div style="margin-left:900px; margin-top:-315px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:10px; margin-top:-315px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Configuration/Ordering Status' %}
+                        <td><div style="margin-left:900px; margin-top:-285px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:10px; margin-top:-280px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Readiness Complete (%)' %}
+                        <td><div style="margin-left:900px; margin-top:-275px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:10px; margin-top:-275px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Pick list' %}
+                        <td><div style="margin-left:900px; margin-top:-250px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:10px; margin-top:-250px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'Projected Cut-over Date' %}
+                        <td><div style="margin-left:900px; margin-top:-225px;">{{ field.label_tag }}{% if field.field.required %}<span style="color:red; font-size:14pt;">*</span>{% endif %}</div></td>
+                        {% if field.errors %}
+                        <td class="errorbox">
+                        {% else %}
+                        <td><div style="margin-left:10px; margin-top:-225px;">
+                        {% endif %}
+                        {{ field }}</div>
+                        </td>
+                    {% endif %}
+                    {% if field.label == 'REACT Request' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
+                        <td>
+                            &nbsp;&nbsp;
+                            <input id="searchSubmit" class="btn" type="button" style="margin-left:-780px; width:60px; height:30px; padding:unset;" value="Search"/>
+                            &nbsp;&nbsp;&nbsp;&nbsp;
+                        </td>
+                    <!--S-06166- Shift header page to new reference table:Added below to make all the default dropdown fields appear as textbox in case called from react request no. search-->
+                    {% elif field.label == 'Baseline Impacted' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
+                        <td>
+                            &nbsp;&nbsp;
+                            <input id="new_baseline" type="text" name="new_baseline" placeholder="Baseline Name" style="display:none;"/>
+                            &nbsp;&nbsp;&nbsp;&nbsp;
+                        </td>
+                    {% elif field.label == 'Configuration/Ordering Status' and headerForm.configuration_status.value == 4 %}
+                        <td>
+                            <input type="text" style="border: none" value="({{ headerForm.instance.old_configuration_status.name }})" readonly/>
+                        </td>
+                    {% endif %}
+                    <!--{% for error in field.errors %}-->
+                        <!--<td >{{ error }}</td>-->
+                    <!--{% empty %}-->
+                    <!--{% endfor %}-->
+                </tr>
+                {% if field.label in break_list %}
+                    <tr><td><h3></h3></td></tr>
+                {% endif %}
+                </tbody>
+            </table>
+            {% endfor %}
+        </div>
+
     </form>
 </div>
 
@@ -138,6 +367,9 @@
     var customerunit_id = "#{{ headerForm.customer_unit.auto_id }}";
     var ericssoncontract_id = "#{{ headerForm.ericsson_contract.auto_id }}";
     var alreadyDiscontinued = {{ discontinuation_done }};
+<!--S-07112 - Change dropdown selection view and value:- Added below 2 variables to fetch the existing sales_group & ericsson contract # for the opened configuration-->
+    var headerformsalesgroup = "{{ header.sales_group }}";
+    var headerformericssoncontract = "{{ header.ericsson_contract }}";
 </script>
 {% else %}
 <div>
@@ -145,3 +377,4 @@
 </div>
 {% endif %}
 {% endblock %}
+

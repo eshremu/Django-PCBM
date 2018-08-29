@@ -587,10 +587,11 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 )
 
             # S-06166-Shift Header page to new reference table: Added to show the dropdown widget for ericsson contract # & populate data
+            # S-07112 - Change dropdown selection view and value - Changed the query to fetch the contract no. and description concatenated to show in UI
             oCursor.execute(
-              ('SELECT DISTINCT [Contract] FROM ps_fas_contracts '
-               'WHERE [SoldTo]=%s AND (select convert(varchar(10), getdate(),120))>= [ValidFrom] '
-               'AND (SELECT convert(varchar(10), getdate(),120))<= [ValidTo]'),
+              ("SELECT DISTINCT ([Contract] + '-' + [Description]) as [contract-desc] FROM ps_fas_contracts "
+               "WHERE [SoldTo]=%s AND (select convert(varchar(10), getdate(),120))>= [ValidFrom] "
+               "AND (SELECT convert(varchar(10), getdate(),120))<= [ValidTo]"),
                [oExisting.sold_to_party if oExisting else None])
 
             tResults4 = oCursor.fetchall()
@@ -2583,6 +2584,9 @@ def ReactSearch(oRequest):
 
     if oResults:
         oUser = User.objects.filter(email__iexact=oResults[0][1]).first()
+ # D-03595-Problem saving new configuration when using REACT data:- Declared the below variable to send the ID of the customer unit so that can be
+ #  used in the UI when an existing configuration is opened and saved
+        oCustName = REF_CUSTOMER.objects.get(name=oResults[0][10])
 
         dReturnData.update({
             'req_id': oResults[0][0],
@@ -2597,7 +2601,10 @@ def ReactSearch(oRequest):
             'terms': oResults[0][8].split()[0],
             'workgroup': oResults[0][9],
             'cust': oResults[0][10],
-            'contract': oResults[0][11]
+            'contract': oResults[0][11],
+ # D-03595-Problem saving new configuration when using REACT data:- Added below attribute to send the ID of the customer unit so that can be
+ # used in the UI when an existing configuration is opened and saved
+            'cust_val': oCustName.id
         })
     # end if
 
@@ -2726,12 +2733,11 @@ def ListREACTFill(oRequest):
             )
         # S-06166-Shift Header page to new reference table: Added below code to fetch data from DB based on sold_to for ericsson contract
         elif oRequest.POST['child'] == 'ericsson_contract':
-            oCursor.execute(
-                'SELECT DISTINCT [Contract] FROM ps_fas_contracts WHERE '
-                '[SoldTo]=%s AND (select convert(varchar(10), getdate(),120))>= [ValidFrom] ' 
-                'AND (SELECT convert(varchar(10), getdate(),120))<= [ValidTo]',
-                [bytes(iParentSoldName, 'ascii')]
-            )
+           # S-07112 - Change dropdown selection view and value - Changed the query to fetch the contract no. and description concatenated to show in UI
+            oCursor.execute("SELECT DISTINCT ([Contract] + '-' + [Description]) as [contract-desc] FROM [React].[dbo].[ps_fas_contracts] WHERE "
+                "[SoldTo]=%s AND (select convert(varchar(10), getdate(),120))>= [ValidFrom] "
+                "AND (SELECT convert(varchar(10), getdate(),120))<= [ValidTo]",
+                [bytes(iParentSoldName, 'ascii')])
             tResults = oCursor.fetchall()
             result = OrderedDict(
                 [(obj, obj) for obj in chain.from_iterable(tResults)]

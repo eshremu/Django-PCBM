@@ -66,7 +66,8 @@ class HeaderForm(forms.ModelForm):
             '-webkit-appearance:none;'
 
         self.fields['react_request'].widget.attrs['size'] = 25
-        self.fields['model_description'].widget.attrs['size'] = 45
+# S-05787 - Realignment of Header tab of BOM Entry page for All Customers - Changed the below field size from 45 to 20 to match with the rest of the field box sizes
+        self.fields['model_description'].widget.attrs['size'] = 20
 
         # if inquiry/site template change is in-progress, make field readonly
         if self.instance.inquiry_site_template and \
