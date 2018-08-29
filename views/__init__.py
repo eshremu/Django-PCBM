@@ -21,7 +21,8 @@ from BoMConfig.views.download import Download, DownloadBaseline, \
     DownloadSearchResults
 from BoMConfig.views.approvals_actions import Approval, Action, AjaxApprove, \
     ApprovalData, AjaxApprovalForm, ChangePart, CreateDocument
-from BoMConfig.views.admin import MailingAdmin, MailingChange, UserAdmin, \
+# S-07204 Refine User Admin page added UserDelete logic  in user admin page
+from BoMConfig.views.admin import MailingAdmin, MailingChange, UserAdmin,UserDelete, \
     AdminLanding, UserAdd, UserChange, ApprovalAdmin, ApprovalChange
 from BoMConfig.views.customer_audit import CustomerAuditTableValidate, \
     CustomerAudit, CustomerAuditLand, CustomerAuditUpload

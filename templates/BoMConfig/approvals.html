@@ -133,12 +133,21 @@
                                 {% with record.latesttracker.next_approval as next_level %}
                                 {% if next_level != 'brd' %}
                                 <h5>Notify:</h5>
-                                <select data-index="{{ record.pk }}">
+                                <!--# added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list-->
+                                {# onchange="if(this.value=='0'){$(this).parent().find('input').show().css('visibility','visible');}else{$(this).parent().next('td').find('input').css('visibility','hidden');}" #}
+                                <select data-index="{{ record.pk }}"
+                                onchange="if(this.value=='0'){$(this).parent().find('input').show().trigger('afterShow');}else{$(this).parent().find('input').hide().trigger('afterHide');}"
+                                >
                                     <option value="">--------</option>
                                 {% for user in notify_users|getkeyvalue:next_level %}
                                     <option value="{{ user.id }}">{{ user.get_full_name }}</option>
                                 {% endfor %}
+                                    <!--# added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list-->
+                                    <option value="0">Custom</option>
                                 </select>
+                                <!--# added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list-->
+                                {# style="visibility: hidden;" #}
+                                <input id="text1" type="email" data-index="{{ record.pk }}" name="{{ record.pk }}-email" style="display:none" />
                                 {% elif record.inquiry_site_template and record.inquiry_site_template > 0 %}
                                 <br/>
                                 <p style="color:red; font-style: italic; font-weight: bold;">WARNING:</p>
@@ -240,6 +249,39 @@
 </div>
 {% if user.is_authenticated %}
     <script>
+<!--# added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list-->
+    $('#messageModal').on('keyup afterShow change', 'input[name$="-email"]', function(event){
+        var test = event.target.value;
+        alert(test);
+        var email_regex = /^[-a-z0-9~!$%^&*_=+}{\'?]+(\.[-a-z0-9~!$%^&*_=+}{\'?]+)*@([a-z0-9_][-a-z0-9_]*(\.[-a-z0-9_]+)*\.(aero|arpa|biz|com|coop|edu|gov|info|int|mil|museum|name|net|org|pro|travel|mobi|[a-z][a-z])|([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}))(:[0-9]{1,5})?$/i
+
+        if (!email_regex.test(test)){
+            $(event.target).addClass('input-invalid');
+        } else {
+            $(event.target).removeClass('input-invalid');
+        }
+
+        if($('#messageModal .input-invalid').length > 0){
+            $('.modal_submit.btn.btn-primary').attr('disabled','disabled');
+        } else {
+            $('.modal_submit.btn.btn-primary').removeAttr('disabled');
+        }
+    });
+
+    $('#messageModal').on('afterHide', 'input[name$="-email"]', function(event){
+        $(event.target).removeClass('input-invalid');
+
+        if($('#messageModal .input-invalid').length > 0){
+            $('.modal_submit.btn.btn-primary').attr('disabled','disabled');
+        } else {
+            $('.modal_submit.btn.btn-primary').removeAttr('disabled');
+        }
+    });
+
+   $('#messageModal').on('hidden.bs.modal', function(){
+        $('.modal_submit.btn.btn-primary').removeAttr('disabled');
+    });
+
         $('a.headtitle:contains("Approvals")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
         var xhr;
 
@@ -344,6 +386,8 @@
             var records = [];
             var comments = [];
             var destination = [];
+            <!--# added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list-->
+            var customemail = [];
 
             $('.pending:checked').each(function (index, element) {
                 var dataindex = element.dataset.index;
@@ -357,7 +401,12 @@
                 if (action === 'disapprove') {
                     destination.push($('.disapprove-form select[data-index="' + dataindex + '"]').val());
                 } else if (action === 'approve') {
+
                     destination.push($('.approve-form select[data-index="' + dataindex + '"]').val());
+                    <!--# added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list-->
+                    if($('.approve-form input[data-index="' + dataindex + '"]').val()!=''){
+                     customemail.push($('.approve-form input[data-index="' + dataindex + '"]').val());
+                    }
                 }
             });
     <!--S-05766:Identify Emails from Test System-&#45;&#45;Added to check the window URL-->
@@ -379,7 +428,7 @@
                     data: JSON.stringify(records),
                     comments: JSON.stringify(comments),
                     destinations: JSON.stringify(destination),
-
+                    customemailid: JSON.stringify(customemail)  <!--# added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list-->
                 },
                 headers:{
                     'X-CSRFToken': getcookie('csrftoken'),
@@ -393,6 +442,8 @@
                 }
             });
         }
+
+
 
         $(document).ready(function(){
             $('.action_button').click(function(){

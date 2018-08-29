@@ -1449,14 +1449,24 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                                            str(iCurrentRow)].value))
 
                 # Determine and mark each changed value for the row
+                #S-07841 Highlighting for fields in baseline download(added for description, add_ref, comments)
                 aChangeCols = []
                 if oLineItem.line_number in dHistory:
                     for sChange in dHistory[oLineItem.line_number]:
+                        if 'description' in sChange:
+                            aChangeCols.append(3)
+
                         if 'quantity' in sChange:
                             aChangeCols.append(4)
 
                         if 'line price' in sChange:
-                            aChangeCols.append(7)
+                            aChangeCols.append(8)
+
+                        if 'comments' in sChange:
+                            aChangeCols.append(14)
+
+                        if 'Additional Reference' in sChange:
+                            aChangeCols.append(15)
 
                         if 'added' in sChange:
                             aChangeCols.extend(list(range(1, 16)))
@@ -1701,20 +1711,30 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                                              str(iCurrentRow)].value))
 
                   # Determine and mark each changed value for the row
+                  # S-07841 Highlighting for fields in baseline download(added for description, add_ref, comments)
                   aChangeCols = []
                   if oLineItem.line_number in dHistory:
                       for sChange in dHistory[oLineItem.line_number]:
+                          if 'description' in sChange:
+                              aChangeCols.append(3)
+
                           if 'quantity' in sChange:
-                                  aChangeCols.append(4)
+                              aChangeCols.append(4)
 
                           if 'line price' in sChange:
-                                  aChangeCols.append(7)
+                              aChangeCols.append(7)
+
+                          if 'comments' in sChange:
+                              aChangeCols.append(14)
+
+                          if 'Additional Reference' in sChange:
+                              aChangeCols.append(15)
 
                           if 'added' in sChange:
-                                  aChangeCols.extend(list(range(1, 16)))
+                              aChangeCols.extend(list(range(1, 16)))
 
                           if 'replaced' in sChange:
-                                  aChangeCols.extend(list(range(2, 16)))
+                              aChangeCols.extend(list(range(2, 16)))
 
                       aChangeCols = list(set(aChangeCols))
 

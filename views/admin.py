@@ -8,6 +8,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.db import connections, IntegrityError
+from django.http import HttpResponse, Http404
+import json
 
 from BoMConfig.models import DistroList, ApprovalList, User_Customer, Header, REF_CUSTOMER
 from BoMConfig.forms import DistroForm, UserForm, UserAddForm, CustomerApprovalLevelForm
@@ -84,6 +87,8 @@ def UserAdmin(oRequest):
     :return: HTML response via Default function
     """
 
+
+
     dContext = {
         'users': set(
             get_user_model().objects.filter(groups__name__startswith='BOM_').exclude(groups__name__startswith='BOM_BPMA')
@@ -99,9 +104,29 @@ def UserAdmin(oRequest):
 
     }
     # print(dContext)
+    # print('usercu')
     return Default(oRequest, 'BoMConfig/adminuser.html', dContext)
 # end def
 
+# S-07204 Refine User Admin page added delete button logic  in user admin page
+@login_required
+def UserDelete(oRequest):
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        # When deleting a user, we don't actually remove the user from
+        # the system, because they may have access to multiple tools.
+        # Instead, we just remove the user from any groups that have
+        # access permissions to this tool
+        for record in json.loads(oRequest.POST.get('data')):
+            oUser = get_user_model().objects.get(username=record)
+            oUser.groups.remove(*tuple(Group.objects.filter(name__startswith='BOM_')))
+            oRequest.session['errors'] = ['User deleted successfully']
+            oRequest.session['message_is_error'] = False
+
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
 
 @login_required
 def UserAdd(oRequest):
@@ -240,6 +265,7 @@ def UserChange(oRequest, iUserId=''):
                 # the system, because they may have access to multiple tools.
                 # Instead, we just remove the user from any groups that have
                 # access permissions to this tool
+                print(oUser)
                 oUser.groups.remove(*tuple(Group.objects.filter(name__startswith='BOM_')))
                 oRequest.session['errors'] = ['User deleted successfully']
                 oRequest.session['message_is_error'] = False
