@@ -72,10 +72,7 @@
                     <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.latesttracker.next_approval|default:'' }} config">
                         {% if tracker == record.get_all_trackers.first %}
                         <td><input class="pending" type="checkbox" data-index="{{ record.id }}"/><span>&nbsp;&nbsp;</span></td>
-                        <!--<td><a onclick="window.open('../search?link={{ record.pk|searchscramble }}&readonly=1', '{{ record.configuration_designation }}', 'left=100,top=100,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no')">{{ record.configuration_designation }}</a></td>-->
-                 <!--S-05787-Re-alignment of Header tab of BOM Entry page for All Customers:- Commented above line and added the line below to stop
-                    showing the opened configuration in a new small sized window rather in a new tab to avoid distortion in new minimized window-->
-                        <td><a onclick="window.open('../search?link={{ record.pk|searchscramble }}&readonly=1', '{{ record.configuration_designation }}')">{{ record.configuration_designation }}</a></td>
+                        <td><a onclick="window.open('../search?link={{ record.pk|searchscramble }}&readonly=1', '{{ record.configuration_designation }}', 'left=100,top=100,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no')">{{ record.configuration_designation }}</a></td>
                         <td></td>
                         <td>{{ record.program|default:"------" }}</td>
                         <td></td>

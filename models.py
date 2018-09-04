@@ -476,14 +476,6 @@ class Header(models.Model):
     payment_terms = models.CharField(max_length=50,
                                      verbose_name='Payment Terms', blank=True,
                                      null=True)
-    no_zip_routing = models.BooleanField(default=False,
-                                         verbose_name='No ZipRouting')
-    shipping_condition = models.CharField(max_length=50,
-                                          verbose_name='Shipping Condition',
-                                          blank=True, null=True, default='71')
-    complete_delivery = models.BooleanField(verbose_name='Complete Delivery',
-                                            default=True)
-
     configuration_designation = models.CharField(max_length=50,
                                                  verbose_name='Configuration')
     program = models.ForeignKey(REF_PROGRAM, verbose_name='Program', blank=True,
@@ -512,17 +504,13 @@ class Header(models.Model):
                                        blank=True, null=True)
     valid_to_date = models.DateField(verbose_name='Valid-to Date', blank=True,
                                      null=True)
-
-    optional_free_text1 = models.CharField(max_length=50,
-                                           verbose_name='Optional Free Text Field 1',
-                                           blank=True, null=True)
-    optional_free_text2 = models.CharField(max_length=50,
-                                           verbose_name='Optional Free Text Field 2',
-                                           blank=True, null=True)
-    optional_free_text3 = models.CharField(max_length=50,
-                                           verbose_name='Optional Free Text Field 3',
-                                           blank=True, null=True)
-
+    complete_delivery = models.BooleanField(verbose_name='Complete Delivery',
+                                            default=True)
+    no_zip_routing = models.BooleanField(default=False,
+                                         verbose_name='No ZipRouting')
+    shipping_condition = models.CharField(max_length=50,
+                                          verbose_name='Shipping Condition',
+                                          blank=True, null=True, default='71')
 
     baseline_impacted = models.CharField(max_length=50,
                                          verbose_name='Baseline Impacted',
@@ -550,6 +538,16 @@ class Header(models.Model):
     pick_list = models.BooleanField(default=False, blank=True)
     projected_cutover = models.DateField(verbose_name='Projected Cut-over Date',
                                          blank=True, null=True)
+
+    optional_free_text1 = models.CharField(max_length=50,
+                                           verbose_name='Optional Free Text Field 1',
+                                           blank=True, null=True)
+    optional_free_text2 = models.CharField(max_length=50,
+                                           verbose_name='Optional Free Text Field 2',
+                                           blank=True, null=True)
+    optional_free_text3 = models.CharField(max_length=50,
+                                           verbose_name='Optional Free Text Field 3',
+                                           blank=True, null=True)
 
     model_replaced_link = models.ForeignKey('Header',
                                             related_name='replaced_by_model',

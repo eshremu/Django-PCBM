@@ -80,10 +80,7 @@
                         <!--<td class="body_dummy2"></td>-->
                         {% with header.configuration.get_first_line as firstline %}
 
-                        <!--<td><a onclick="window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes')" style="cursor: pointer">{{ header.configuration_designation|default:'None' }}</a></td>-->
-            <!--S-05787-Re-alignment of Header tab of BOM Entry page for All Customers:- Commented above line and added the line below to stop
-                    showing the opened configuration in a new small sized window rather in a new tab to avoid distortion in new minimized window-->
-                        <td><a onclick="window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '_blank')" style="cursor: pointer">{{ header.configuration_designation|default:'None' }}</a></td>
+                        <td><a onclick="window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes')" style="cursor: pointer">{{ header.configuration_designation|default:'None' }}</a></td>
                         <td>{{ header.product_area2|default:'' }}</td>
                         <td>{{ header.configuration_status|default:'' }}</td>
                         <td>{{ header.bom_request_type }}</td>
