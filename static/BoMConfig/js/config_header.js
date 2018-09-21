@@ -5,8 +5,20 @@ var attached = true;
 var model_replace_changed = false;
 var model_replace_initial;
 var model_replace_override = false;
+// D-03595 - Problem saving new configuration when using REACT data:- Added below variable to change to true only when the REACT data is getting saved
+var reactsearch = false;
+
 
 $(document).ready(function(){
+// S-07112 - Change dropdown selection view and value:-Added below code to show the option selected in the sales_group & ericsson contract dropdown
+// when an existing configuration is opened (since only the code is fetched from DB and the code with description is present in UI)
+    if(headerformsalesgroup!='' || headerformericssoncontract!='' ){
+         var $salegchild = $('#id_sales_group');
+         $salegchild.find("option:contains('"+headerformsalesgroup+"')").attr("selected","selected");
+
+         var $ericchild = $('#id_ericsson_contract');
+         $ericchild.find("option:contains('"+headerformericssoncontract+"')").attr("selected","selected");
+    }
     var max = 0;
     $('tr td:first-child').each(function(idx, elem){max = Math.max(max, $(elem).width())});
     $('tr td:first-child').each(function(idx, elem){$(elem).width(max)});
@@ -118,8 +130,13 @@ $(document).ready(function(){
                     }
                 );
                 return false;
-            } else {
-//                $("#id_sales_group").html($("#id_sales_group").val().match(/^U../));   //Added to save the group code only instead of the whole name
+            }
+    // D-03595 - Problem saving new configuration when using REACT data:- Added below condition to hit only when the REACT data is getting saved
+    // i.e if value of reactsearch variable found true
+            else if(reactsearch){
+                save_react_form();
+            }
+            else {
                 save_form();
             }
         } else {
@@ -346,7 +363,7 @@ function list_react_filler(parent, child, index){
                 var $child = $('#id_' + child);
                 $child.find('option:gt(' + index + ')').remove();
 
- //S-06166- Shift header page to new reference table:Added to show the value of the sold_to_party field in the textbox field
+//S-06166- Shift header page to new reference table:Added to show the value of the sold_to_party field in the textbox field
                 if(child == 'sold_to_party'){
                     for (var key in data){
                         if(data.hasOwnProperty(key)){
@@ -380,11 +397,15 @@ function list_react_filler(parent, child, index){
                 'X-CSRFToken': getcookie('csrftoken')
             },
             success: function(data) {
-                var $child = $('#id_' + child);
+               var $child = $('#id_' + child);
+
+//     S-07112- Change drop down selection view and value - Added below code to show the code & description in the UI but save only the code when sent to DB
+               var contractnum=0;
                 $child.find('option:gt(' + index + ')').remove();
                 for (var key in data){
                     if(data.hasOwnProperty(key)){
-                        $child.append($('<option>',{value:key,text:data[key]}));
+                        contractnum = key.split('-');
+                        $child.append($('<option>',{value:contractnum[0],text:data[key]}));
                     }
                 }
             },
@@ -423,7 +444,7 @@ function list_react_filler(parent, child, index){
 //                     }
 //                }
 
- //S-06166- Shift header page to new reference table:Added to show the value of the bill_to_party & payment_terms in the textbox
+//S-06166- Shift header page to new reference table:Added to show the value of the bill_to_party & payment_terms in the textbox
                  if(child == 'bill_to_party'){
                     billtodata = JSON.stringify(data);
                      for (var key in data){
@@ -469,15 +490,47 @@ function form_resize(){
     $('#headerformtable').css("height", tableheight);
     $('#headerformtable').css("overflow", 'auto');
 }
-function save_form(){
-    form_save = true;
-    $('[readonly=true]').removeAttr('readonly');
-    $('[disabled=true]').removeAttr('disabled');
+function save_form(){
+    form_save = true;
+    $('[readonly=true]').removeAttr('readonly');
+    $('[disabled=true]').removeAttr('disabled');
 
-    clean_form = $('#headerform').serialize();
+// S-07112 - Change dropdown selection view and value:- Added below block to fetch the code of sales_group & ericsson contract # and then save it to DB
+     var salesval = $('#id_sales_group').val().match(/^U../);
+     var eric_cont = document.getElementById('id_ericsson_contract').value;
+     var actval=''; var splitval=0;
+     if(eric_cont.indexOf('-')!= -1){
+            splitval = eric_cont.split('-');
+            actval = splitval[0];
+     }else{
+            actval = eric_cont;
+     }
+
+    clean_form = $('#headerform').serialize();
+// S-07112 - Change dropdown selection view and value:- Added below block to explicitly change the dropdown to textfield when clicked on save
+// button so that the code value can be set and saved to DB
+    $(salesgroup_id).replaceWith("<input id='id_sales_group' type='text' name='sales_group'  sales_val='"+salesval+"'>");
+    $("#id_sales_group").val($("#id_sales_group").attr("sales_val"));
+
+    $(ericssoncontract_id).replaceWith("<input id='id_ericsson_contract' type='text' name='ericsson_contract'  cont_val='"+actval+"'>");
+    $("#id_ericsson_contract").val($("#id_ericsson_contract").attr("cont_val"));
 
 }
+
+// D-03595 - Problem saving new configuration when using REACT data:- Added below function to hit only when the REACT data is getting saved
+ function save_react_form(){
+    form_save = true;
+    $('[readonly=true]').removeAttr('readonly');
+    $('[disabled=true]').removeAttr('disabled');
+
+    clean_form = $('#headerform').serialize();
+    $("#id_customer_unit").val($("#id_customer_unit").attr("cust_val"));
+    clean_form = $('#headerform').serialize();
+}
+
 function req_search(){
+ // D-03595 - Problem saving new configuration when using REACT data:- set the value of reactsearch to true when the react search button is clicked
+    reactsearch = true;
     if($(reactrequest_id).val() == null || $(reactrequest_id).val() == ''){
         messageToModal('', 'Please provide a REACT request number', function(){})
     } else {
@@ -499,27 +552,21 @@ function req_search(){
                     setTimeout(function(){messageToModal('', 'No match found. Please note, you must use a complete REACT request number.', function(){});}, 300);
                 } else {
   //S-06166- Shift header page to new reference table:Added below to make all the default dropdown fields appear as textbox in case called from react request no. search
-                   var persresphtml = "<input id='personresp' style='' type='textbox'/>";
-                    $(personresponsible_id).remove();
-                    $(".perresp").append(persresphtml);
-                    $("#personresp").val(returned.person_resp);
 
-                     var custnamehtml = "<input id='custname' style='' type='textbox'/>";
-                     $(customername_id).remove();
-                     $(".custName").append(custnamehtml);
-                     $("#custname").val(returned.cust_name);
+//D-03595- Problem saving new configuration when using REACT data:- Removed the custom fields added earlier below in S-06166 and used "replaceWith" instead
+                    $(personresponsible_id).replaceWith("<input id='id_person_responsible' type='text' name='person_responsible'>");
+                    $("#id_person_responsible").val(returned.person_resp);
+
+                    $(customername_id).replaceWith("<input id='id_customer_name' type='text' name='customer_name'>");
+                    $("#id_customer_name").val(returned.cust_name);
 
                     $(salesoffice_id).val(returned.sales_office.match(/^US../));
 
-                    var salegrphtml = "<input id='salesgrp' style='' type='textbox'/>";
-                    $(salesgroup_id).remove();
-                    $(".salesgrp").append(salegrphtml);
-                    $("#salesgrp").val(returned.sales_group.match(/^U../));
+                    $(salesgroup_id).replaceWith("<input id='id_sales_group' type='text' name='sales_group'>");
+                    $("#id_sales_group").val(returned.sales_group.match(/^U../));
 
-                    var soldtohtml = "<input id='soldto' style='' type='textbox'/>";
-                    $(soldto_id).remove();
-                    $(".soldparty").append(soldtohtml);
-                    $("#soldto").val(returned.sold_to);
+                    $(soldto_id).replaceWith("<input id='id_sold_to_party' type='text' name='sold_to_party'>");
+                    $("#id_sold_to_party").val(returned.sold_to);
 
                     $(shipto_id).val(returned.ship_to);
                     $(billto_id).val(returned.bill_to);
@@ -529,17 +576,14 @@ function req_search(){
 
 //                    $('#' + customerunit_id + ' option').filter(function(){return $(this).text() === returned.cust}).prop('selected', true);
 
-                    var custunithtml = "<input id='custunit' style='' type='textbox'/>";
-                    $(customerunit_id).remove();
-                    $(".custUnit").append(custunithtml);
-                    $("#custunit").val(returned.cust);
+                    $(customerunit_id).replaceWith("<input id='id_customer_unit' type='text' name='customer_unit' cust='"+returned.cust+"' cust_val='"+returned.cust_val+"'>");
+                    $("#id_customer_unit").val(returned.cust);
+//                    $("#id_customer_unit").val($("#id_customer_unit").attr("cust_val"));
 
 //                    $(customerunit_id).change();
 
-                    var ericonthtml = "<input id='ericontract' style='' type='textbox'/>";
-                    $(ericssoncontract_id).remove();
-                    $(".ericcont").append(ericonthtml);
-                    $("#ericontract").val(returned.contract.match(/^\d+/));
+                    $(ericssoncontract_id).replaceWith("<input id='id_ericsson_contract' type='text' name='ericsson_contract'>");
+                    $("#id_ericsson_contract").val(returned.contract.match(/^\d+/));
 
 //                    var ericontdeschtml = "<input id='ericontractdesc' style='width:400px;' type='textbox'/>";
 //                    $(ericssoncontractdesc_id).remove();
@@ -593,3 +637,4 @@ function cloneHeader(headerId){
         }
     });
 }
+

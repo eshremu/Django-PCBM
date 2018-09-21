@@ -346,6 +346,12 @@ def AjaxApprove(oRequest):
                 record for record in json.loads(
                     oRequest.POST.get('destinations', None)
                 )]
+        # added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list
+        if 'customemailid' in oRequest.POST:
+            aCustomEmail = [
+                record for record in json.loads(
+                    oRequest.POST.get('customemailid', None)
+                )]
 
         dEmailRecipients = {}
 
@@ -459,8 +465,10 @@ def AjaxApprove(oRequest):
         # Approval actions (approve, disapprove, skip)
         elif sAction in ('approve', 'disapprove', 'skip'):
             from BoMConfig.views.download import EmailDownload
+
             aChain = HeaderTimeTracker.approvals()
             aBaselinesCompleted = []
+            aRecipients = []
             for index in range(len(aRecords)):
                 # For each item in aRecords, get the corresponding Header, and
                 # that Header's most recently created HeaderTimeTracker object
@@ -484,6 +492,7 @@ def AjaxApprove(oRequest):
 
                 # If so, approve, disapprove, or skip as requested
                 if bCanApprove:
+
                     if sAction == 'approve':
                         # Set HeaderTimeTracker's name, date, and comments
                         # fields for the needed approval level
@@ -496,10 +505,13 @@ def AjaxApprove(oRequest):
 
                         # Determine the list of recipients that should be
                         # notified of this records approval
-                        aRecipients = []
-                        if aDestinations[index]:
+
+                        if aDestinations[index]!='0':
                             aRecipients.append(User.objects.get(
                                 id=aDestinations[index]).email)
+                        # added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list
+                        if index < len(aCustomEmail) and aCustomEmail[index]!='':
+                            aRecipients.append(aCustomEmail[index])
 
                         sNotifyLevel = oLatestTracker.next_approval
                         if sNotifyLevel != 'brd':

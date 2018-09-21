@@ -443,6 +443,9 @@ class Header(models.Model):
     Model for Header objects.
     Each Bill of Materials (BoM) is comprised of a Header and a Configuration
     """
+
+ # S-05787: Re-alignment of Header tab of BOM Entry page for All Customers:- changed the order of the fields in the Headerform as per the mockup provided
+
     react_request = models.CharField(max_length=25,
                                      verbose_name='REACT Request', blank=True,
                                      null=True)
@@ -473,12 +476,10 @@ class Header(models.Model):
     payment_terms = models.CharField(max_length=50,
                                      verbose_name='Payment Terms', blank=True,
                                      null=True)
-    projected_cutover = models.DateField(verbose_name='Projected Cut-over Date',
-                                         blank=True, null=True)
-    program = models.ForeignKey(REF_PROGRAM, verbose_name='Program', blank=True,
-                                null=True, db_constraint=False)
     configuration_designation = models.CharField(max_length=50,
                                                  verbose_name='Configuration')
+    program = models.ForeignKey(REF_PROGRAM, verbose_name='Program', blank=True,
+                                null=True, db_constraint=False)
     customer_designation = models.CharField(max_length=50,
                                             verbose_name='Customer Designation',
                                             blank=True, null=True)
@@ -496,30 +497,21 @@ class Header(models.Model):
                                         db_constraint=False)
     radio_band = models.ForeignKey(REF_RADIO_BAND, verbose_name='Radio Band',
                                    blank=True, null=True, db_constraint=False)
-    optional_free_text1 = models.CharField(max_length=50,
-                                           verbose_name='Optional Free Text Field 1',
-                                           blank=True, null=True)
-    optional_free_text2 = models.CharField(max_length=50,
-                                           verbose_name='Optional Free Text Field 2',
-                                           blank=True, null=True)
-    optional_free_text3 = models.CharField(max_length=50,
-                                           verbose_name='Optional Free Text Field 3',
-                                           blank=True, null=True)
+
     inquiry_site_template = models.IntegerField(verbose_name='Inquiry/Site Template #',
                                                 blank=True, null=True)
-    readiness_complete = models.IntegerField(verbose_name='Readiness Complete (%)',
-                                             blank=True, null=False, default=0)
-    complete_delivery = models.BooleanField(verbose_name='Complete Delivery',
-                                            default=True)
-    no_zip_routing = models.BooleanField(default=False,
-                                         verbose_name='No ZipRouting')
     valid_from_date = models.DateField(verbose_name='Valid-from Date',
                                        blank=True, null=True)
     valid_to_date = models.DateField(verbose_name='Valid-to Date', blank=True,
                                      null=True)
+    complete_delivery = models.BooleanField(verbose_name='Complete Delivery',
+                                            default=True)
+    no_zip_routing = models.BooleanField(default=False,
+                                         verbose_name='No ZipRouting')
     shipping_condition = models.CharField(max_length=50,
                                           verbose_name='Shipping Condition',
                                           blank=True, null=True, default='71')
+
     baseline_impacted = models.CharField(max_length=50,
                                          verbose_name='Baseline Impacted',
                                          blank=True, null=True)
@@ -531,17 +523,36 @@ class Header(models.Model):
     model_replaced = models.CharField(max_length=50,
                                       verbose_name='What Model is this replacing?',
                                       blank=True, null=True)
-    model_replaced_link = models.ForeignKey('Header',
-                                            related_name='replaced_by_model',
-                                            blank=True, null=True)
     initial_revision = models.CharField(max_length=50,
                                         verbose_name='Initial Revision',
                                         blank=True,
                                         null=True)  # This is the root model
+
     configuration_status = models.ForeignKey(REF_STATUS,
                                              verbose_name='Configuration/Ordering Status',
                                              default=1, db_index=False,
                                              db_constraint=False, unique=False)
+    readiness_complete = models.IntegerField(verbose_name='Readiness Complete (%)',
+                                             blank=True, null=False, default=0)
+
+    pick_list = models.BooleanField(default=False, blank=True)
+    projected_cutover = models.DateField(verbose_name='Projected Cut-over Date',
+                                         blank=True, null=True)
+
+    optional_free_text1 = models.CharField(max_length=50,
+                                           verbose_name='Optional Free Text Field 1',
+                                           blank=True, null=True)
+    optional_free_text2 = models.CharField(max_length=50,
+                                           verbose_name='Optional Free Text Field 2',
+                                           blank=True, null=True)
+    optional_free_text3 = models.CharField(max_length=50,
+                                           verbose_name='Optional Free Text Field 3',
+                                           blank=True, null=True)
+
+    model_replaced_link = models.ForeignKey('Header',
+                                            related_name='replaced_by_model',
+                                            blank=True, null=True)
+
     old_configuration_status = models.ForeignKey(REF_STATUS, default=None,
                                                  related_name='old_status',
                                                  db_index=False,
@@ -552,7 +563,7 @@ class Header(models.Model):
                                  blank=True, null=True)
     name = models.CharField(max_length=50, verbose_name='Name', blank=True,
                             null=True)
-    pick_list = models.BooleanField(default=False, blank=True)
+
     internal_notes = models.TextField(blank=True, null=True)
     external_notes = models.TextField(blank=True, null=True)
 
