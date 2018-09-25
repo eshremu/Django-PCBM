@@ -109,6 +109,7 @@ class REF_TECHNOLOGY(models.Model):
     # end class
 
     name = models.CharField(max_length=50)
+    is_inactive = models.BooleanField(default=0)    #S-05905 : Edit drop down option for BoM Entry Header - Technology: Added new field
 
     objects = OrderedManager()
 
@@ -127,6 +128,7 @@ class REF_PRODUCT_AREA_1(models.Model):
     # end class
 
     name = models.CharField(max_length=50)
+    is_inactive = models.BooleanField(default=0) #S-05906 : Edit drop down option for BoM Entry Header - Product Area 1: Added new field
 
     objects = OrderedManager()
 
@@ -147,6 +149,7 @@ class REF_PRODUCT_AREA_2(models.Model):
 
     name = models.CharField(max_length=50)
     parent = models.ForeignKey(REF_PRODUCT_AREA_1)
+    is_inactive = models.BooleanField(default=0) #S-05907 : Edit drop down option for BoM Entry Header - Product Area 2: Added new field
 
     objects = OrderedManager()
 
@@ -191,6 +194,7 @@ class REF_PROGRAM(models.Model):
 
     name = models.CharField(max_length=50)
     parent = models.ForeignKey(REF_CUSTOMER)
+    is_inactive = models.BooleanField(default=0) #S-05903 :Edit drop down option for BoM Entry Header - Program: Added new field
 
     objects = OrderedManager()
 
@@ -263,6 +267,7 @@ class REF_SPUD(models.Model):
     # end class
 
     name = models.CharField(max_length=50)
+    is_inactive = models.BooleanField(default=0) #S-05909 : Edit drop down option for BoM Entry Header - SPUD: Added new field
 
     objects = OrderedManager()
 
@@ -281,6 +286,7 @@ class REF_RADIO_BAND(models.Model):
     # end class
 
     name = models.CharField(max_length=50)
+    is_inactive = models.BooleanField(default=0) #S-05908 : Edit drop down option for BoM Entry Header - Radio Frequency / Band : Added new field
 
     def __str__(self):
         return self.name
@@ -298,6 +304,7 @@ class REF_RADIO_FREQUENCY(models.Model):
     # end class
 
     name = models.CharField(max_length=50)
+    is_inactive = models.BooleanField(default=0) #S-05908 : Edit drop down option for BoM Entry Header - Radio Frequency / Band : Added new field
 
     def __str__(self):
         return self.name

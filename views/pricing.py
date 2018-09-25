@@ -259,9 +259,9 @@ def PartPricing(oRequest):
                     'customer_list': [
                         oCust.name for oCust in aAvailableCU], # S-05923: Pricing - Restrict View to allowed CU's based on permissions added aAvailableCU
                     'spud_list': [
-                        oSpud.name for oSpud in REF_SPUD.objects.all()],
+                        oSpud.name for oSpud in REF_SPUD.objects.filter(is_inactive=0)], # S-05909 : Edit drop down option for BoM Entry Header - SPUD: Added to filter dropdown data in pricing page
                     'tech_list': [
-                        oTech.name for oTech in REF_TECHNOLOGY.objects.all()]
+                        oTech.name for oTech in REF_TECHNOLOGY.objects.filter(is_inactive=0)] # S-05905 : Edit drop down option for BoM Entry Header - Technology: Added to filter dropdown data in pricing page
                 })
             except (PartBase.DoesNotExist,):
                 status_message = 'ERROR: Part number not found'

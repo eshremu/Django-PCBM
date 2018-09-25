@@ -1,0 +1,269 @@
+{% extends "BoMConfig/adminlanding.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+
+        <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+        <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
+
+{% if user.is_authenticated %}
+ <div id="main-body">
+     {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" %}
+     <br>
+     <button id="addtechnology" class="btn btn-primary" type="button" name="add" value="add" >New technology</button>
+     <h3 id="title"><u>Select a technology to edit </u></h3>
+     {% if errors %}
+    <div style="height:50px;" class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">
+    {% for error in errors %}
+    <p style="margin-top:-15px;">{{ error }}</p>
+    {% endfor %}
+    </div>
+    {% endif %}
+     <table id="tabletechnology">
+        <thead>
+                <tr>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody id="admin_technology">
+                {% for s in technology %}
+                <tr>
+                     <td><div onclick="messageToModal1('Change technology',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'{{ s.name }}','{{ s.id }}')">{{ s.name }}</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+     </table>
+
+     <div class="modal fade" id="mynewModal" role="dialog" data-backdrop="static" data-keyboard="false">
+         <div class="modal-dialog">
+               <div class="modal-content" style="background: none; box-shadow: none; border: none">
+                    <div class="modal-body">
+                        <p align="middle"><img src="{% static 'BoMConfig/ajax-loader.gif' %}" align="middle"/></p>
+                    </div>
+                </div>
+            </div>
+         <div id="messageModal1" class="modal fade"  role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                         <h4></h4>
+                    </div>
+                    <div class="modal-body">
+                         <label>Name: </label><input id ="technology" class="headertechnology" type="text" />
+                    </div>
+                <div class="modal_footer" style="text-align: right;padding: 10px;">
+                        <button id="btndelete" class="modal_delete btn  btn-danger" style="display:none; float:left; margin-left:10px;">Delete</button>
+                        <button id="btnsave" class="modal_submit btn btn-primary" disabled>Save</button>
+                        <button class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+            </div>
+        </div>
+
+
+     <script type="text/javascript">
+
+     $('#addtechnology').click(function(){
+            document.getElementById('btndelete').style.display ='none';
+            document.getElementById("btnsave").disabled = true;
+
+                    messageToModal1('Add technology',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'','');
+                    document.getElementById('technology').value = '';
+
+     });
+
+     function messageToModal1(title, message, callback, technologyname, technologyid){
+            var params = [];
+            for(var i = 3; i < arguments.length; i++){
+                params.push(arguments[i]);
+            }
+            if(technologyname){
+              document.getElementById('technology').value = technologyname;
+              document.getElementById('btndelete').style.display ='block';
+              document.getElementById("btnsave").disabled = true;
+            }
+            $('#messageModal1 .modal-header h4').text(title);
+            $('#messageModal1 .modal-body').html(message);
+            $('#messageModal1 .modal-body .headertechnology').html(technologyname);
+
+             $('#technology').keyup(function(){
+              document.getElementById("btnsave").disabled = false;
+              document.getElementById("btndelete").disabled = false;
+              if($('#technology').val()==''){
+                 document.getElementById("btnsave").disabled = true;
+                 document.getElementById("btndelete").disabled = true;
+              }
+            });
+
+            $('.modal_submit').off('click');
+            $('.modal_submit').click(function(){
+                    if(technologyname == ''){      //for add
+                        process(1,'');
+                    }else{                     //for edit
+                        process(2,technologyid);
+                    }
+                $('#messageModal1').modal('hide');
+                if(callback != undefined) {
+                    callback.apply(this, params);
+                }
+            });
+            $('.modal_delete').click(function(){
+
+                        process(3,technologyid);
+
+                $('#messageModal1').modal('hide');
+                if(callback != undefined) {
+                    callback.apply(this, params);
+                }
+            });
+            $('#messageModal1').modal('show');
+     }
+
+     function process(operval,technologyid){
+       var technologyval = document.getElementById("technology").value;
+            $('#myModal').modal('show');
+            if(operval == '1'){
+                $.ajax({
+                    url: addtechnology_url,
+                    type: "POST",
+                    data: {
+                        data:technologyval
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }else if(operval == '2'){
+                 $.ajax({
+                    url: edittechnology_url,
+                    type: "POST",
+                    data: {
+                        data : technologyval,
+                        technologyid : technologyid
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }else{
+                 $.ajax({
+                    url: deletetechnology_url,
+                    type: "POST",
+                    data: {
+                        data : technologyval,
+                        technologyid : technologyid
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }
+     }
+       var addtechnology_url = "{% url 'bomconfig:addtechnology' %}";
+       var edittechnology_url = "{% url 'bomconfig:changetechnology' %}";
+       var deletetechnology_url = "{% url 'bomconfig:deletetechnology' %}";
+
+             $(function() {
+                function reposition() {
+                    var modal = $(this),
+                            dialog = modal.find('.modal-dialog');
+                    modal.css('display', 'block');
+                    dialog.css("margin-top", Math.max(0, ($(window).height() - dialog.height()) / 2));
+                    dialog.css("margin-left", Math.max(0, ($(window).width() - dialog.width()) / 2));
+
+                }
+                $('.modal').on('show.bs.modal', reposition);
+                $(window).on('resize', function() {
+                    $('.modal:visible').each(reposition);
+                });
+            });
+
+        $(document).ready(function(){
+            var bodyHeight = $('#main-body').height();
+            var max_available = bodyHeight - 1000 ;
+
+         $('#tabletechnology').DataTable({
+            lengthChange: false,
+            scrollY: max_available,
+            scrollCollapse: true,
+            pageLength: 6,
+        });
+      });
+
+        function form_resize(){
+            var topbuttonheight = $('#action_buttons').height();
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + 2);
+
+            $('#tabletechnology').css("height", tableheight);
+            $('#tabletechnology').css("overflow", 'auto');
+        }
+
+    </script>
+     {% endif %}
+ </div>
+<style>
+#tabletechnology {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    width: 40%;
+}
+
+#tabletechnology td, #tabletechnology th {
+    padding: 5px;
+}
+
+#tabletechnology tr:nth-child(odd){background-color: #f2f2f2;}
+
+#tabletechnology tr:hover {background-color: #ddd;}
+
+#tabletechnology th {
+    text-align: left;
+    background-color: white;
+    color: black;
+}
+</style>
+
+{% endif %}
+{% endblock %}

@@ -1116,15 +1116,19 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             oSheet.sheet_properties.tabColor = '0062FF'
 
         iCurrentRow = 2
+
+    # D-03942:Column width error on baseline download:- Changed the 2nd,8th,10th,13th width value in the array aColumnWidths below from (23,22,18,22) to (30,30,40,30) to increase the size of column(B,H,J,M)
+    # Product Number(B),Traceability Req. (Serialization)(H),Customer Asset Tagging Requirement(J),VAN (M) in the downloaded excel
+    # Also for UoM(E),USCC Article Code FAA(K) ,USCC Article code ZENG(L) from (6,18,18) to (10,25,25) for MTW
+
         if(oHeader.customer_unit_id==9):
-            aColumnWidths = [9, 23, 58, 12, 6, 15, 18,18, 18, 18, 13, 16, 22, 22, 23,
+            aColumnWidths = [9, 30, 58, 12, 10, 15, 18, 30, 30, 25, 25, 25, 30, 22, 23,
                              67, 83]
             aDynamicWidths = [0]*17
         else:
-            aColumnWidths = [9, 23, 58, 12, 6, 15, 18, 18, 18, 13, 16, 22, 22, 23,
+            aColumnWidths = [9, 30, 58, 12, 10, 15, 18, 30, 18, 40, 16, 22, 30, 23,
                              67, 83]
             aDynamicWidths = [0] * 16
-
 
         # Write record to sheet
         sTitle = str(oHeader.configuration_designation)
@@ -1174,9 +1178,11 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
         # Build Header row
         if(oHeader.customer_unit_id == 9):
 #  S-05743: Renaming Baseline columns for USCC Customer added if clause
+# S-08087: Change to Customer Asset? and Customer Asset tagging rename "Customer Asset?":- Removed Customer Asset Tagging Requirement column & renamed
+# Customer Asset column to "in the USCC BOM"
             aColumnTitles = ['Line #', 'Product Number', 'Product Description',
                              'Order Qty', 'UoM', 'HW/SW Ind', 'Unit Price', 'Net Price',
-                             'Traceability Req. (Serialization)', 'Customer Asset?',
+                             'Traceability Req. (Serialization)',
                              'In the USCC BOM', 'USCC Article Code FAA',
                          	 'USCC Article code ZENG', 'Vendor Article Number',
                              'Comments', 'Additional Reference\n(if required)']
@@ -1203,7 +1209,8 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                 #     str(utils.get_column_letter(iIndex + 1))
                 # ].width = aColumnWidths[iIndex]
 
-                if iIndex in (7,):                  #S-05744: change from 6 to 7, since index of Net Price is now 7
+    #S-08088: Highlight Unit price Header:- Added column no. 6 with 7 to show the unit price column highlighted
+                if iIndex in (6,7):                  #S-05744: change from 6 to 7, since index of Net Price is now 7
                     oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'].fill = \
                         GradientFill(
                             type='linear',
@@ -1382,7 +1389,9 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                 elif iCurrentRow % 2 == 0:
                     oSheet['J' + str(iCurrentRow)].fill = oOffRowColor
 
-                oSheet['K' + str(iCurrentRow)] = oLineItem.customer_asset_tagging
+# S-08087: Change to Customer Asset? and Customer Asset tagging rename "Customer Asset?":- Removed Customer Asset Tagging Requirement column(K)
+# & rearranged the Excel sheet columns accordingly
+                oSheet['K' + str(iCurrentRow)] = oLineItem.customer_number
                 oSheet['K' + str(iCurrentRow)].alignment = oCentered
                 oSheet['K' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem and not oHeader.pick_list:
@@ -1391,7 +1400,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                 elif iCurrentRow % 2 == 0:
                     oSheet['K' + str(iCurrentRow)].fill = oOffRowColor
 
-                oSheet['L' + str(iCurrentRow)] = oLineItem.customer_number
+                oSheet['L' + str(iCurrentRow)] = oLineItem.sec_customer_number
                 oSheet['L' + str(iCurrentRow)].alignment = oCentered
                 oSheet['L' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem and not oHeader.pick_list:
@@ -1400,8 +1409,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                 elif iCurrentRow % 2 == 0:
                     oSheet['L' + str(iCurrentRow)].fill = oOffRowColor
 
-                oSheet['M' + str(iCurrentRow)] = oLineItem.sec_customer_number
-                oSheet['M' + str(iCurrentRow)].alignment = oCentered
+                oSheet['M' + str(iCurrentRow)] = oLineItem.vendor_article_number
                 oSheet['M' + str(iCurrentRow)].border = oBorder
                 if oLineItem == oFirstItem and not oHeader.pick_list:
                     oSheet['M' + str(iCurrentRow)].fill = oFirstRowColor
@@ -1409,33 +1417,25 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                 elif iCurrentRow % 2 == 0:
                     oSheet['M' + str(iCurrentRow)].fill = oOffRowColor
 
-                oSheet['N' + str(iCurrentRow)] = oLineItem.vendor_article_number
+                oSheet['N' + str(iCurrentRow)] = oLineItem.comments
                 oSheet['N' + str(iCurrentRow)].border = oBorder
+        # S-05816:Fix column within downloaded baseline - Added for wrapping text in comments column in the downloaded file
+                oSheet['N' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
                 if oLineItem == oFirstItem and not oHeader.pick_list:
                     oSheet['N' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['N' + str(iCurrentRow)].font = Font(bold=True)
                 elif iCurrentRow % 2 == 0:
                     oSheet['N' + str(iCurrentRow)].fill = oOffRowColor
 
-                oSheet['O' + str(iCurrentRow)] = oLineItem.comments
+                oSheet['O' + str(iCurrentRow)] = oLineItem.additional_ref
                 oSheet['O' + str(iCurrentRow)].border = oBorder
-        # S-05816:Fix column within downloaded baseline - Added for wrapping text in comments column in the downloaded file
+        # S-05816:Fix column within downloaded baseline - Added for wrapping text in Additional reference column in the downloaded file
                 oSheet['O' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
                 if oLineItem == oFirstItem and not oHeader.pick_list:
                     oSheet['O' + str(iCurrentRow)].fill = oFirstRowColor
                     oSheet['O' + str(iCurrentRow)].font = Font(bold=True)
                 elif iCurrentRow % 2 == 0:
                     oSheet['O' + str(iCurrentRow)].fill = oOffRowColor
-
-                oSheet['P' + str(iCurrentRow)] = oLineItem.additional_ref
-                oSheet['P' + str(iCurrentRow)].border = oBorder
-        # S-05816:Fix column within downloaded baseline - Added for wrapping text in Additional reference column in the downloaded file
-                oSheet['P' + str(iCurrentRow)].alignment = Alignment(wrap_text=True)
-                if oLineItem == oFirstItem and not oHeader.pick_list:
-                    oSheet['P' + str(iCurrentRow)].fill = oFirstRowColor
-                    oSheet['P' + str(iCurrentRow)].font = Font(bold=True)
-                elif iCurrentRow % 2 == 0:
-                    oSheet['P' + str(iCurrentRow)].fill = oOffRowColor
 
 
                 # Guesstimate the width of the data entered, so that we can try to
