@@ -18,6 +18,7 @@
             color: rgb(31, 73, 125);
         }
     </style>
+
 </head>
 <body>
     <p>Hello {{ recipient }},</p>
@@ -26,7 +27,28 @@
     <ol>
         {% for record in records %}
         <li>{{ record.header.configuration_designation }} - {{ record.header.baseline_impacted|default:"<em>(No baseline)</em>" }}{% if action == 'approve' %} - <em>{{ record.last_approval_comment|default:"(No comments)" }}</em>{% elif action == 'disapprove' %} - <em>{{ record.last_disapproval_comment }}</em>{% endif %} - {{ record.header.react_request|default:"<em>(No REACT request)</em>" }}</li>
+        <ul type="disc">
+ <!--S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added below loop to print the
+  revision comments in the email content-- 1st the appended configuration name is checked with the
+  'record.header.configuration_designation'(which comes from the upper loop) and then shed off from the revision comments-->
+          {% for i in revision %}
+            {% if i != '' %}
+              {% with record.header.configuration_designation|safe|length as configlen %}
+                  {% with ':'|add:configlen as sliceval  %}
+                        {% with i|slice:sliceval as compval  %}
+                            {% if compval == record.header.configuration_designation %}
+                                 {% with record.header.configuration_designation|length|safe|add:':' as slicevarlen  %}
+                                     <li>{{i|slice:slicevarlen}}</li>
+                                 {% endwith %}
+                            {% endif %}
+                        {% endwith %}
+                  {% endwith %}
+              {% endwith %}
+            {% endif %}
+          {% endfor %}
+        </ul>
         {% endfor %}
+
     </ol>
 
     <p>To approve, check the <em>Configuration(s)</em> box{% if level == 'psm_config' %} under Actions{% endif %} and select {% if level == 'psm_config' %}"Submit for Approval"{% else %}"Approve"{% endif %}{% if level != 'blm' %}.  The <em>Configuration(s)</em> will be submitted to the next required approver{% else %} if submitting to the customer{% endif %}.{% if level != 'psm_config' %}  If the <em>Configuration(s)</em> requires any changes or updates, "Disapprove" and select the appropriate approval team and include detailed <em>Comments</em>.{% endif %}</p>
@@ -51,5 +73,6 @@
     {% else %}
          <p>PCBM Link: <a>https://rnamsupply.internal.ericsson.com/pcbm/</a></p>
     {% endif %}
+
 </body>
 </html>

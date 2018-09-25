@@ -583,23 +583,25 @@ def Search(oRequest, advanced=False):
         aHeaders = list(aHeaders)[-10:]
     # end if
 
+# S-05903,S-05905, S-05906, S-05907, S-05908:-  Added Below-  .exclude(is_inactive=1)/filter(is_inactive=0) to filter the dropdowns of Program, Technology, PA1, PA2, RF/RB
     dContext = {
         'header_list': aHeaders.extend(oCu for oCu in aAvailableCU if oCu in aAvailableCU), # added  for S-06169 Search and Adv. Search restrict view to CU
         'request_list': REF_REQUEST.objects.all(),
         'cust_list': aAvailableCU, # added aAvailableCU for S-06169 Search and Adv. Search restrict view to CU
         'status_list': REF_STATUS.objects.all(),
-        'prog_list': sorted(list(set(REF_PROGRAM.objects.filter(parent_id__in=aAvailableCU).values_list(
+        'prog_list': sorted(list(set(REF_PROGRAM.objects.filter(parent_id__in=aAvailableCU).filter(is_inactive=0).values_list(
             'name', flat=True)))), # added aAvailableCU for S-06169 Search and Adv. Search restrict view to CU
-        'tech_list': REF_TECHNOLOGY.objects.all(),
+        'tech_list': REF_TECHNOLOGY.objects.all().exclude(is_inactive=1),
         'baseline_list': Baseline.objects.all().order_by('title').exclude(isdeleted=1).filter(customer_id__in=aAvailableCU), # added aAvailableCU for S-06169 Search and Adv. Search restrict view to CU
+        # added for S-05906,S-05907 Edit drop down option for BoM Entry Header -  Product Area 1, Product Area2 (exclude deleted prodarea1,prodarea2)
         'prod1_list': sorted(list(set(
-            REF_PRODUCT_AREA_1.objects.all().values_list('name', flat=True)))),
+            REF_PRODUCT_AREA_1.objects.all().exclude(is_inactive=1).values_list('name', flat=True)))),
         'prod2_list': sorted(list(set(
-            REF_PRODUCT_AREA_2.objects.all().values_list('name', flat=True))),
+            REF_PRODUCT_AREA_2.objects.all().exclude(is_inactive=1).values_list('name', flat=True))),
             key=lambda x: str(x).upper()),
-        'band_list': REF_RADIO_BAND.objects.all().order_by('name'),
+        'band_list': REF_RADIO_BAND.objects.all().exclude(is_inactive=1).order_by('name'),
         'freq_list': sorted(list(set(
-            REF_RADIO_FREQUENCY.objects.all().values_list('name', flat=True))))
+            REF_RADIO_FREQUENCY.objects.all().exclude(is_inactive=1).values_list('name', flat=True))))
     }
     return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def

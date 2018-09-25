@@ -17,8 +17,8 @@ from django.conf import settings
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER,\
     REF_REQUEST, SecurityPermission, HeaderTimeTracker, REF_STATUS, \
     ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, \
-    LinePricing, DocumentRequest,User_Customer
-from BoMConfig.utils import UpRev, GrabValue, StrToBool
+    LinePricing, DocumentRequest,User_Customer,RevisionHistory
+from BoMConfig.utils import UpRev, GrabValue, StrToBool,GenerateRevisionSummary,RevisionCompare,HeaderComparison, TitleShorten
 from BoMConfig.views.landing import Unlock, Default
 from django.contrib.auth.models import User
 
@@ -298,6 +298,170 @@ def ApprovalData(oRequest):
     else:
         raise Http404()
 
+# S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added below function to write the revision comments
+def WriteRevisionToFile(record,oRequest):
+
+        oHeader = Header.objects.get(id=record)
+# S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added 'confname' to append the
+#          configuration name to each revision comments so that the comments can be recognised in the HTML email content
+        confname = oHeader.configuration_designation
+        sAvailBase = Baseline.objects.filter(title=oHeader.baseline.title)
+
+        for version in sAvailBase:
+            sPrevious = version.current_active_version
+            sCurrent = version.current_inprocess_version
+
+            for config in sCurrent:
+
+                oDiscontinued = Q(configuration_status__name='Discontinued')
+                oToDiscontinue = Q(bom_request_type__name='Discontinue')
+
+
+                # aDiscontinuedHeaders = [oHead for oHead in Header.objects.get]
+                aDiscontinuedHeaders = [oHead for oHead in Header.objects.filter(id=oHeader.id).filter(
+                    bom_request_type__name='Discontinue')]
+
+
+                aAddedHeaders = [oHead for oHead in Header.objects.filter(id=oHeader.id).filter(
+                    bom_request_type__name__in=('New', 'Legacy'))]
+
+                aUpdatedHeaders = [oHead for oHead in Header.objects.filter(id=oHeader.id).filter(
+                    bom_request_type__name='Update')]
+
+
+
+
+                aCurrButNotPrev = []
+                for oHead in aUpdatedHeaders:
+                    try:
+                        Baseline_Revision.objects.get(baseline=sAvailBase,
+                                                      version=sPrevious).header_set.get(
+                            configuration_designation=oHead.configuration_designation,
+                            program=oHead.program)
+
+                        # This check never fails because aDiscontinuedHeaders contains
+                        # headers not tuples, and aPrevHeaders never gets used
+                        # if not (obj.configuration_designation, obj.program) in \
+                        #         aDiscontinuedHeaders:
+                        #     aPrevHeaders.append(obj)
+                        # else:
+                        #     aPrevButNotCurrent.append(obj)
+                        # # end if
+                    except (Header.DoesNotExist, Baseline_Revision.DoesNotExist):
+                        aCurrButNotPrev.append(oHead)
+                        # end try
+
+                sNewSummary = confname+'Added'
+                sRemovedSummary = confname + 'Discontinued'
+
+                # Append the formatted string for each Header in aAddedHeaders
+                for oHead in aAddedHeaders:
+                    if oHead.model_replaced:
+
+                        sNewSummary += '\n'.format(
+                            oHead.configuration_designation,
+                            oHead.model_replaced_link.configuration_designation\
+                            if oHead.model_replaced_link else oHead.model_replaced
+                        )
+
+                    else:
+                        # If a previous revision exists and a matching header exists in
+                        # previous revision and the Header has a time tracker without a
+                        # completed date or disapproved date, but is not In-Process, then
+                        # the Header must have been carried forward from a previous
+                        # revision, and therefore is not ACTUALLY New / Added
+                        if Baseline_Revision.objects.filter(baseline=sAvailBase,
+                                                            version=sPrevious) and \
+                                Baseline_Revision.objects.get(
+                                    baseline=sAvailBase,
+                                    version=sPrevious).header_set.filter(
+                                    configuration_designation=oHead.configuration_designation,
+                                    program=oHead.program
+                                ) and not oHead.configuration_status.name == \
+                                'In Process/Pending' and oHead.headertimetracker_set.filter(
+                            completed_on=None, disapproved_on=None):
+                            continue
+
+                        sNewSummary += '\n'.format(oHead.configuration_designation)
+
+                # Add a line for each Header that is an "Update" but has not previous record
+                # in the previous revision
+                for oHead in aCurrButNotPrev:
+                    sNewSummary += '\n'.format(
+                        oHead.configuration_designation)
+                # end for
+
+                # Add a line for each discontinued Header. Skip headers that have been
+                # replaced and that replacement is in aAddedHeaders, since we have already
+                # added a description of that transaction earlier
+                for oHead in aDiscontinuedHeaders:
+                    if (oHead.model_replaced_link and any(
+                            [obj in oHead.model_replaced_link.replaced_by_model.all() for
+                             obj in aAddedHeaders if hasattr(oHead.model_replaced_link,
+                                                             'replaced_by_model')]
+                    )) or any(
+                        [obj in oHead.replaced_by_model.all() for obj in aAddedHeaders if
+                         hasattr(oHead, 'replaced_by_model')]):
+                        continue
+
+                    sRemovedSummary += '\n'.format(
+                        oHead.configuration_designation
+                    )
+                # end for
+
+                # Calculate and add changes for updated headers
+                sUpdateSummary = confname + 'Updated:\n'
+                sUpdateSummary = confname + 'Updated:\n'
+                for oHead in aUpdatedHeaders:
+                    try:
+                        oPrev = oHead.model_replaced_link or Header.objects.get(
+                            configuration_designation=oHead.configuration_designation,
+                            program=oHead.program,
+                            baseline_version=sPrevious
+                        )
+
+                        sTemp = HeaderComparison(oHead, oPrev)
+                    except Header.DoesNotExist:
+                        sTemp = ''
+                    # end try
+
+                    if sTemp:
+                        oHead.change_notes = sTemp
+                        oHead.save()
+                        sUpdateSummary += '\n'.format(
+                            oHead.configuration_designation + (
+                                ' ({})'.format(oHead.program) if oHead.program else ''
+                            ) + (
+                                '  {}'.format(
+                                    oHead.configuration.get_first_line().customer_number
+                                ) if not oHead.pick_list and
+                                     oHead.configuration.get_first_line().customer_number
+                                else ''
+                            )
+                        )
+
+                        for sLine in sTemp.split('\n'):
+                            sUpdateSummary += confname + (' ' * 8) + sLine + '\n'
+                            # end if
+                # end for
+
+                sHistory = ''
+
+                if sNewSummary != confname+'Added':
+                    sHistory += sNewSummary
+                if sRemovedSummary != confname+'Discontinued':
+                    sHistory += sRemovedSummary
+                if sUpdateSummary != confname + 'Updated:\n':
+                    sHistory += sUpdateSummary
+
+                # Save revision history
+
+                (oNew, _) = RevisionHistory.objects.get_or_create(baseline=sAvailBase,
+                                                                  revision=sCurrent)
+                oNew.history = sHistory
+                oNew.save()
+
+        return oNew.history
 
 @transaction.atomic
 def AjaxApprove(oRequest):
@@ -805,8 +969,15 @@ def AjaxApprove(oRequest):
         # dictionary.  Message is determined by level and action.
         for key in dEmailRecipients.keys():
             for approval in dEmailRecipients[key]:
-                for level in dEmailRecipients[key][approval]:
-                    for baseline in dEmailRecipients[key][approval][level]:
+               for level in dEmailRecipients[key][approval]:
+                   for baseline in dEmailRecipients[key][approval][level]:
+ #S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added below 6 lines to get the comments of each config under selected baselines
+                        svar = ''
+                        for iRecord in aRecords:
+                            oHeader = Header.objects.get(pk=iRecord)
+                            svar =  svar +  WriteRevisionToFile(iRecord, oRequest)
+
+                        aLines = svar.split('\n')[:-1]
                         oMessage = EmailMultiAlternatives(
                             # S-05766:Identify Emails from Test System:-- Concatenated envName to frame the Email subject as per the environment
                             subject= envName+ ((baseline or '(No baseline)') +
@@ -820,7 +991,9 @@ def AjaxApprove(oRequest):
                                      email=key).first().first_name if
                                  User.objects.filter(email=key) else key,
                                  'level': level,
-                                 'action': approval
+                                 'action': approval,
+# S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added below send the comments in 'ALines' to HTML
+                                 'revision': aLines,
                                  }
                             ),
                             from_email='pcbm.admin@ericsson.com',
@@ -861,7 +1034,9 @@ def AjaxApprove(oRequest):
                              'level': level,
                              'action': approval,
                              # S-05766:Identify Emails from Test System:-- Added this parameter to send the appropriate environment name to the email HTML content
-                             'windowURL': oRequest.POST.get('windowurl')
+                             'windowURL': oRequest.POST.get('windowurl'),
+# S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added below send the comments in 'ALines' to HTML
+                             'revision': aLines
                              }
                         ), 'text/html')
                         # uncommented below line for D-03232 to send mail for baseline Review and approval

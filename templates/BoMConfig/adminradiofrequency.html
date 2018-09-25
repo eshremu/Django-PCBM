@@ -1,0 +1,353 @@
+{% extends "BoMConfig/adminlanding.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+
+        <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+        <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
+
+{% if user.is_authenticated %}
+ <div id="main-body">
+     {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" %}
+     <br>
+     <button id="addradiofreqband" class="btn btn-primary" type="button" name="add" value="add" >New Radio Frequency/Band</button>
+     <h3 id="title"><u>Select a Radio Frequency/Band to edit </u></h3>
+
+     {% if errors %}
+        <div style="height:50px;" class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">
+        {% for error in errors %}
+        <p style="margin-top:-15px;">{{ error }}</p>
+        {% endfor %}
+        </div>
+    {% endif %}
+    <div id="containerdiv">
+    <br>
+    <div id="radiofreqcont" class="container" style="width: 50%; float: left;">
+     <table id="tableradiofreq" class="display" style="width: 100%">
+        <thead>
+                <tr>
+                   <th>Radio Frequency</th>
+                </tr>
+            </thead>
+            <tbody id="admin_radiofreq">
+                {% for rf in radio_freq %}
+                <tr>
+                     <td>
+
+                         <div id="rf{{ rf.id }}" value='{{rf.name}}' onclick="messageToModalAdmin('Change Radio Frequency/Band',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'{{ rf.name }}','{{ rf.id }}','')">{{ rf.name }}</div>
+
+                     </td>
+                </tr>
+            {% endfor %}
+
+            </tbody>
+     </table>
+    </div>
+    <div id="radiobandcont" class="container" style=" width: 50%; float: left;">
+     <table id="tableradioband" width="50%;" style="float:left;" >
+        <thead>
+                <tr>
+                   <th>Radio Band</th>
+                </tr>
+            </thead>
+            <tbody id="admin_radioband">
+                {% for rb in radio_band %}
+                <tr>
+                     <td>
+                         <div id="rb{{ rb.id }}" value='{{rb.name}}' onclick="messageToModalAdmin('Change Radio Frequency/Band',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'','{{ rb.id }}','{{ rb.name }}')">{{ rb.name }}</div>
+
+                     </td>
+                </tr>
+            {% endfor %}
+
+            </tbody>
+     </table>
+    </div>
+    </div>
+
+     <div class="modal fade" id="mynewModal" role="dialog" data-backdrop="static" data-keyboard="false">
+         <div class="modal-dialog">
+            <!-- Modal content-->
+                <div class="modal-content" style="background: none; box-shadow: none; border: none">
+                    <div class="modal-body">
+                        <p align="middle"><img src="{% static 'BoMConfig/ajax-loader.gif' %}" align="middle"/></p>
+                    </div>
+                </div>
+            </div>
+         <div id="messageModalAdmin" class="modal fade"  role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                         <h4></h4>
+                    </div>
+                    <div class="modal-body">
+                        <label>Radio Frequency: </label>
+                        <input id ="radiofreq" class="headerradiofreqband" type="text" />
+                        <br>
+                        <br>
+                        <label style="padding-left: 35px"> Radio Band: </label>
+                        <input id ="radioband" class="headerradiofreqband" type="text" />
+                    </div>
+                    <div class="modal_footer" style="text-align: right;padding: 10px; padding-top: 25px">
+                        <button id="btndelete" class="modal_delete btn btn-danger" style="display:none; float:left; margin-left:10px;">Delete</button>
+                        <button id="btnsave" class="modal_submit btn btn-primary" disabled>Save</button>
+                        <button class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+        </div>
+
+     <script type="text/javascript">
+     $('#addradiofreqband').click(function(){
+        document.getElementById("btnsave").disabled = true;
+        document.getElementById('btndelete').style.display ='none';
+                    messageToModalAdmin('Add Radio Frequency/Band',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'','','');
+                    document.getElementById('radiofreq').value = '';
+                    document.getElementById('radioband').value = '';
+     });
+     function messageToModalAdmin(title, message, callback, radiofreqnameval, radiofreqbandid, radiobandnameval){
+
+            if(radiofreqnameval){      //For Edit: If clicked from Radio Frequency table
+                document.getElementById('btndelete').style.display ='block';
+                document.getElementById("btnsave").disabled = true;
+
+                if(radiofreqbandid){
+                    radiobandname = document.getElementById('rb'+radiofreqbandid).getAttribute('value');
+                    if(radiobandname){
+                      document.getElementById('radioband').value = radiobandname;
+                    }
+                }
+                  document.getElementById('radiofreq').value = radiofreqnameval;
+            }
+
+            if(radiobandnameval){      //For Edit: If clicked from Radio Band table
+                document.getElementById('btndelete').style.display ='block';
+                document.getElementById("btnsave").disabled = true;
+
+                if(radiofreqbandid){
+                    radiofreqname = document.getElementById('rf'+radiofreqbandid).getAttribute('value');
+                    if(radiofreqname){
+                      document.getElementById('radiofreq').value = radiofreqname;
+                    }
+                }
+                  document.getElementById('radioband').value = radiobandnameval;
+            }
+
+            $('#messageModalAdmin .modal-header h4').text(title);
+            $('#messageModalAdmin .modal-body').html(message);
+            <!--$('#messageModalAdmin .modal-body .headerradiofreqband').html(radiofreqnameval);-->
+            $('.modal_submit').off('click');
+
+            $('#radiofreq').keyup(function(){
+              document.getElementById("btnsave").disabled = false;
+              document.getElementById("btndelete").disabled = false;
+              if($('#radiofreq').val()=='' || $('#radioband').val()=='' ){
+                 document.getElementById("btnsave").disabled = true;
+                 document.getElementById("btndelete").disabled = true;
+              }
+            });
+             $('#radioband').keyup(function(){
+              document.getElementById("btnsave").disabled = false;
+              document.getElementById("btndelete").disabled = false;
+              if($('#radiofreq').val()=='' || $('#radioband').val()=='' ){
+                 document.getElementById("btnsave").disabled = true;
+                 document.getElementById("btndelete").disabled = true;
+              }
+            });
+
+            $('.modal_submit').click(function(){
+                if(radiofreqnameval == '' && radiobandnameval == ''){      //for add
+                        process(1,'');
+                }else{                     //for edit
+                        process(2,radiofreqbandid);
+                }
+                $('#messageModalAdmin').modal('hide');
+
+            });
+            $('.modal_delete').click(function(){
+                     process(3,radiofreqbandid);
+                $('#messageModalAdmin').modal('hide');
+                if(callback != undefined) {
+                    callback.apply(this, params);
+                }
+            });
+            $('#messageModalAdmin').modal('show');
+     }
+
+     function process(operval,radiofreqbandid){
+       var radiofreqval = document.getElementById("radiofreq").value;
+       var radiobandval = document.getElementById("radioband").value;
+            $('#myModal').modal('show');
+
+            if(operval == '1'){
+                $.ajax({
+                    url: addradiofreqband_url,
+                    type: "POST",
+                    data: {
+                        radiofreq:radiofreqval,
+                        radioband:radiobandval,
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }else if(operval == '2'){
+                 $.ajax({
+                    url: editradiofreqband_url,
+                    type: "POST",
+                    data: {
+                        radiofreq : radiofreqval,
+                        radioband : radiobandval,
+                        radiofreqbandid : radiofreqbandid
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }else{
+                 $.ajax({
+                    url: deleteradiofreqband_url,
+                    type: "POST",
+                    data: {
+                        radiofreqbandid : radiofreqbandid
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }
+     }
+       var addradiofreqband_url = "{% url 'bomconfig:radiofrequencybandadd' %}";
+       var editradiofreqband_url = "{% url 'bomconfig:radiofrequencybandedit' %}";
+       var deleteradiofreqband_url = "{% url 'bomconfig:radiofrequencybanddelete' %}";
+
+             $(function() {
+                function reposition() {
+                    var modal = $(this),
+                            dialog = modal.find('.modal-dialog');
+                    modal.css('display', 'block');
+                    dialog.css("margin-top", Math.max(0, ($(window).height() - dialog.height()) / 2));
+                    dialog.css("margin-left", Math.max(0, ($(window).width() - dialog.width()) / 2));
+
+                }
+                $('.modal').on('show.bs.modal', reposition);
+                $(window).on('resize', function() {
+                    $('.modal:visible').each(reposition);
+                });
+            });
+
+        $(document).ready(function(){
+            var bodyHeight = $('#main-body').height();
+            var max_available = bodyHeight - 1000 ;
+
+             $('#tableradiofreq,#tableradioband').DataTable({
+                lengthChange: false,
+                scrollY: max_available,
+                scrollCollapse: true,
+                pageLength: 7,
+
+            });
+
+               $(".form-control" ).on( "keyup", function() {
+                if( $(this).attr("aria-controls") == 'tableradioband' ){
+                    if( !$( "input[aria-controls='tableradioband']" ).val()){
+                        $( "input[aria-controls='tableradiofreq']" ).attr("readonly", false);
+                    }
+                    else
+                        $( "input[aria-controls='tableradiofreq']" ).attr("readonly", true);
+                }
+                if( $(this).attr("aria-controls") == 'tableradiofreq' ){
+                    if( !$( "input[aria-controls='tableradiofreq']" ).val()){
+                        $( "input[aria-controls='tableradioband']" ).attr("readonly", false);
+                    }
+                    else
+                        $( "input[aria-controls='tableradioband']" ).attr("readonly", true);
+                }
+            });
+        });
+
+        function form_resize(){
+            var topbuttonheight = $('#action_buttons').height();
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + 2);
+
+            $('#tableradiofreq','#tableradioband').css("height", tableheight);
+            $('#tableradiofreq','#tableradioband').css("display", inline-block);
+
+        }
+
+    </script>
+     {% endif %}
+ </div>
+<style>
+#tableradiofreq, #tableradioband {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    width: 50%;
+}
+
+#tableradiofreq td, #tableradiofreq th, #tableradioband td,#tableradioband th{
+    padding: 5px;
+}
+
+#tableradiofreq tr:nth-child(odd){background-color: #f2f2f2;}
+
+#tableradioband tr:nth-child(odd){background-color: #f2f2f2;}
+
+#tableradiofreq tr:hover {background-color: #ddd;}
+
+#tableradioband tr:hover {background-color: #ddd;}
+
+#tableradiofreq th,#tableradioband th {
+    text-align: left;
+    background-color: white;
+    color: black;
+}
+</style>
+
+{% endif %}
+{% endblock %}

@@ -10,9 +10,11 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db import connections, IntegrityError
 from django.http import HttpResponse, Http404
+
 import json
 
-from BoMConfig.models import DistroList, ApprovalList, User_Customer, Header, REF_CUSTOMER
+from BoMConfig.models import DistroList, ApprovalList, User_Customer, Header,  REF_CUSTOMER, REF_PRODUCT_AREA_1, REF_SPUD, REF_PROGRAM,\
+    REF_RADIO_BAND, REF_RADIO_FREQUENCY, REF_PRODUCT_AREA_1, REF_PRODUCT_AREA_2, REF_TECHNOLOGY
 from BoMConfig.forms import DistroForm, UserForm, UserAddForm, CustomerApprovalLevelForm
 from BoMConfig.views.landing import Default
 
@@ -22,6 +24,604 @@ def AdminLanding(oRequest):
     return Default(oRequest, 'BoMConfig/adminlanding.html')
 # end def
 
+# Added below function for S-07533 New sub-tab drop-down admin base template creation
+@login_required
+def DropDownAdmin(oRequest):
+    """
+    Landing view for administration of dropdowns
+    related items
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    return Default(oRequest, 'BoMConfig/admindropdown.html')
+# end def
+
+
+# S-05909 : Edit dropdown option for BoM Entry Header - SPUD :Added below for the landing page of Spud
+@login_required
+def SpudAdmin(oRequest):
+    """
+    Landing view for administration of users
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    dContext = {
+            'spud': REF_SPUD.objects.filter(is_inactive=0),
+            'errors': oRequest.session.pop('errors', None),
+            'message_type_is_error': oRequest.session.pop('message_is_error',False)
+    }
+
+    return Default(oRequest, 'BoMConfig/adminspud.html', dContext)
+# end def
+
+# S-05909 : Edit dropdown option for BoM Entry Header - SPUD :Added below for the Adding a new Spud
+@login_required
+def SpudAdd(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    ospud = REF_SPUD()
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        if not REF_SPUD.objects.filter(name=oRequest.POST.get('data'),is_inactive=0):
+            ospud = REF_SPUD(name=oRequest.POST.get('data'))
+            ospud.save()
+            oRequest.session['errors'] = ['Spud Added successfully']
+            oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Spud with same name already exists. Please choose different name']
+            oRequest.session['message_type_is_error'] = True
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05909 : Edit dropdown option for BoM Entry Header - SPUD :Added below for the Editing Spud
+@login_required
+def SpudEdit(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    ospud = REF_SPUD()
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        if not REF_SPUD.objects.filter(name=oRequest.POST.get('data'),is_inactive=0):
+            REF_SPUD.objects.filter(pk=oRequest.POST.get('spudid')).update(
+                    name=oRequest.POST.get('data'))
+            oRequest.session['errors'] = ['Spud Changed successfully']
+            oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Spud with same name already exists. Please choose different name']
+            oRequest.session['message_type_is_error'] = True
+
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05909 : Edit dropdown option for BoM Entry Header - SPUD :Added below for the Deleting a Spud
+@login_required
+def SpudDelete(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    ospud = REF_SPUD()
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        REF_SPUD.objects.filter(pk=oRequest.POST.get('spudid')).update(
+                is_inactive=1)
+        oRequest.session['errors'] = ['Spud Deleted successfully']
+        oRequest.session['message_type_is_error'] = False
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05903 : Edit drop down option for BoM Entry Header - Program : Added below for landing page of Program
+@login_required
+def ProgramAdmin(oRequest):
+    """
+    Landing view for administration of users
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    # to find all the CUs
+    aAvailableCU = REF_CUSTOMER.objects.all()
+
+    dContext = {
+        'program': REF_PROGRAM.objects.filter(is_inactive=0),
+        'culist' : aAvailableCU,
+        'errors': oRequest.session.pop('errors', None),
+        'message_type_is_error': oRequest.session.pop('message_is_error', False)
+    }
+
+    return Default(oRequest, 'BoMConfig/adminprogram.html', dContext)
+
+# end def
+
+# S-05903 : Edit drop down option for BoM Entry Header - Program: Added below for Adding a new Program
+@login_required
+def ProgramAdd(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    ospud = REF_PROGRAM()
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        if not REF_PROGRAM.objects.filter(name=oRequest.POST.get('data'),parent_id=oRequest.POST.get('cuval'),is_inactive=0):
+            ospud = REF_PROGRAM(name=oRequest.POST.get('data'), parent_id=oRequest.POST.get('cuval'))
+            ospud.save()
+            oRequest.session['errors'] = ['Program Added successfully']
+            oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Program with same name already exists. Please choose different name']
+            oRequest.session['message_type_is_error'] = True
+
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05903 : Edit drop down option for BoM Entry Header - Program: Added below for Editing a new Program
+@login_required
+def ProgramEdit(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    ospud = REF_PROGRAM()
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        # int(record) for record in json.loads(oRequest.POST.get('data'))
+        if not REF_PROGRAM.objects.filter(name=oRequest.POST.get('data'), parent_id=oRequest.POST.get('cuid'),is_inactive=0):
+            REF_PROGRAM.objects.filter(pk=oRequest.POST.get('progid')).update(
+                name=oRequest.POST.get('data'), parent_id=oRequest.POST.get('cuid'))
+            oRequest.session['errors'] = ['Program Changed successfully']
+            oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Program with same name already exists. Please choose different name']
+            oRequest.session['message_type_is_error'] = True
+
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05903 : Edit drop down option for BoM Entry Header - Program: Added below for Deleting a new Program
+@login_required
+def ProgramDelete(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    oprog = REF_SPUD()
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        REF_PROGRAM.objects.filter(pk=oRequest.POST.get('progid')).update(
+                is_inactive=1)
+        oRequest.session['errors'] = ['Program Deleted successfully']
+        oRequest.session['message_type_is_error'] = False
+
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05906 : Edit drop down option for BoM Entry Header - Product Area 1: Added below for Adding a new Product Area 1
+@login_required
+def ProductArea1Admin(oRequest):
+    """
+    Landing view for administration of users
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    dContext = {
+        'productarea1': REF_PRODUCT_AREA_1.objects.filter(is_inactive=0),
+        'errors': oRequest.session.pop('errors', None),
+        'message_type_is_error': oRequest.session.pop('message_is_error', False)
+    }
+    return Default(oRequest, 'BoMConfig/adminproductarea1.html', dContext)
+# end def
+
+# S-05906 : Edit drop down option for BoM Entry Header - Product Area 1: Added below for Editing Product Area 1
+@login_required
+def ProductArea1Add(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    oproductarea1 = REF_PRODUCT_AREA_1()
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        if not REF_PRODUCT_AREA_1.objects.filter(name=oRequest.POST.get('data'),is_inactive=0):
+            oproductarea1 = REF_PRODUCT_AREA_1(name=oRequest.POST.get('data'))
+            oproductarea1.save()
+            oRequest.session['errors'] = ['Product Area 1 Added successfully']
+            oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Product Area 1 with same name already exists.Please choose new name']
+            oRequest.session['message_type_is_error'] = True
+
+        return HttpResponse()
+    else:
+         raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05906 : Edit drop down option for BoM Entry Header - Product Area 1: Added below for Editing a Product Area 1
+@login_required
+def ProductArea1Edit(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    oproductarea1 = REF_PRODUCT_AREA_1()
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        # int(record) for record in json.loads(oRequest.POST.get('data'))
+        if not REF_PRODUCT_AREA_1.objects.filter(name=oRequest.POST.get('data'),is_inactive=0):
+            REF_PRODUCT_AREA_1.objects.filter(pk=oRequest.POST.get('productarea1id')).update(
+                    name=oRequest.POST.get('data'))
+            oRequest.session['errors'] = ['Product Area 1 Changed successfully']
+            oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Product Area 1 with same this name already exists. Please choose different name']
+            oRequest.session['message_type_is_error'] = True
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05906 : Edit drop down option for BoM Entry Header - Product Area 1: Added below for Deleting a Product Area 1
+@login_required
+def ProductArea1Delete(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        if not REF_PRODUCT_AREA_2.objects.filter(parent_id=oRequest.POST.get('productarea1id')):
+                REF_PRODUCT_AREA_1.objects.filter(pk=oRequest.POST.get('productarea1id')).update(
+                        is_inactive=1)
+                oRequest.session['errors'] = ['Product Area 1 Deleted successfully']
+                oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Selected Product Area 1 is associated with multiple Product Area2. So could not proceed with deletion']
+            oRequest.session['message_type_is_error'] = True
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05907 : Edit drop down option for BoM Entry Header - Product Area 2: Added below for the landing page of Product Area 2
+@login_required
+def ProductArea2Admin(oRequest):
+    """
+    Landing view for administration of users
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    dContext = {
+        'productarea2': REF_PRODUCT_AREA_2.objects.filter(is_inactive=0),
+        'productarea1': REF_PRODUCT_AREA_1.objects.filter(is_inactive=0),
+        'errors': oRequest.session.pop('errors', None),
+        'message_type_is_error': oRequest.session.pop('message_is_error',False)
+    }
+    return Default(oRequest, 'BoMConfig/adminproductarea2.html', dContext)
+# end def
+
+# S-05907 : Edit drop down option for BoM Entry Header - Product Area 2: Added below for Adding a new Product Area 2
+@login_required
+def ProductArea2Add(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    oproductarea2 = REF_PRODUCT_AREA_2()
+    if oRequest.method == 'POST' and oRequest.POST:
+
+        if not REF_PRODUCT_AREA_2.objects.filter(name=oRequest.POST.get('data'), parent_id=oRequest.POST.get('prodlist'), is_inactive=0):
+            oproductarea2 = REF_PRODUCT_AREA_2(name=oRequest.POST.get('data'),parent_id=oRequest.POST.get('prodlist'))
+            oproductarea2.save()
+            oRequest.session['errors'] = ['Product Area 2 Added successfully']
+            oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Product Area 2 with same name already exists. Please choose different name']
+            oRequest.session['message_type_is_error'] = True
+
+        return HttpResponse()
+    else:
+         raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05907 : Edit drop down option for BoM Entry Header - Product Area 2: Added below for Editing a Product Area 2
+@login_required
+def ProductArea2Edit(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    if oRequest.method == 'POST' and oRequest.POST:
+        if not REF_PRODUCT_AREA_2.objects.filter(name=oRequest.POST.get('data'),is_inactive=0):
+            REF_PRODUCT_AREA_2.objects.filter(pk=oRequest.POST.get('productarea2id')).update(
+                    name=oRequest.POST.get('data'))
+            oRequest.session['errors'] = ['Product Area 2 Changed successfully']
+            oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Product Area 2 with same name already exists. Please choose different name.']
+            oRequest.session['message_type_is_error'] = True
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05907 : Edit drop down option for BoM Entry Header - Product Area 2: Added below for Deleting a Product Area 2
+@login_required
+def ProductArea2Delete(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    if oRequest.method == 'POST' and oRequest.POST:
+        REF_PRODUCT_AREA_2.objects.filter(pk=oRequest.POST.get('productarea2id')).update(
+                is_inactive=1)
+        oRequest.session['errors'] = ['Product Area 2 Deleted successfully']
+        oRequest.session['message_type_is_error'] = False
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05905 : Edit drop down option for BoM Entry Header - Technology: Added below for the landing page of Technology
+@login_required
+def TechnologyAdmin(oRequest):
+    """
+    Landing view for administration of users
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    dContext = {
+        'technology': REF_TECHNOLOGY.objects.filter(is_inactive=0),
+        'errors': oRequest.session.pop('errors', None),
+        'message_type_is_error': oRequest.session.pop('message_is_error', False)
+    }
+
+    return Default(oRequest, 'BoMConfig/admintechnology.html', dContext)
+# end def
+
+# S-05905 : Edit drop down option for BoM Entry Header - Technology: Added below for the Adding a new Technology
+@login_required
+def TechnologyAdd(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    otechnology = REF_TECHNOLOGY()
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        if not REF_TECHNOLOGY.objects.filter(name=oRequest.POST.get('data'),is_inactive=0):
+            otechnology = REF_TECHNOLOGY(name=oRequest.POST.get('data'))
+            otechnology.save()
+            oRequest.session['errors'] = ['Technology Added successfully']
+            oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Technology with same name already exists. Please choose different name']
+            oRequest.session['message_type_is_error'] = True
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05905 : Edit drop down option for BoM Entry Header - Technology: Added below for the Editing of Technology
+@login_required
+def TechnologyEdit(oRequest):
+    """
+    Landing view for administration to edit technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    otechnology = REF_TECHNOLOGY()
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        if not REF_TECHNOLOGY.objects.filter(name=oRequest.POST.get('data'),is_inactive=0):
+            REF_TECHNOLOGY.objects.filter(pk=oRequest.POST.get('technologyid')).update(
+                name=oRequest.POST.get('data'))
+            oRequest.session['errors'] = ['Technology Changed successfully']
+            oRequest.session['message_type_is_error'] = False
+
+        else:
+            oRequest.session['errors'] = ['Technology with same name already exists. Please choose different name']
+            oRequest.session['message_type_is_error'] = True
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05905 : Edit drop down option for BoM Entry Header - Technology: Added below for Deleting of Technology
+@login_required
+def TechnologyDelete(oRequest):
+    """
+    Landing view for administration to delete technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    otechnology = REF_TECHNOLOGY()
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        REF_TECHNOLOGY.objects.filter(pk=oRequest.POST.get('technologyid')).update(
+                is_inactive=1)
+        oRequest.session['errors'] = ['Technology Deleted successfully']
+        oRequest.session['message_type_is_error'] = False
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05908 : Edit drop down option for BoM Entry Header - Radio Frequency / Band: Added below for the landing page of Radio Frequency/Band
+@login_required
+def RFAdmin(oRequest):
+    """
+    Landing view for administration of users
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    dContext = {
+        'radio_freq': REF_RADIO_FREQUENCY.objects.filter(is_inactive=0),
+        'radio_band': REF_RADIO_BAND.objects.filter(is_inactive=0),
+        'errors': oRequest.session.pop('errors', None),
+        'message_type_is_error': oRequest.session.pop('message_is_error', False)
+    }
+
+    return Default(oRequest, 'BoMConfig/adminradiofrequency.html', dContext)
+# end def
+
+# S-05908 : Edit drop down option for BoM Entry Header - Radio Frequency / Band: Added below for Adding of RF/RB
+@login_required
+def RFAdd(oRequest):
+    """
+    Landing view for administration to add radio frequencies/band
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        if not REF_RADIO_BAND.objects.filter(name=oRequest.POST.get('radioband'), is_inactive=0) :
+            ofreq = REF_RADIO_FREQUENCY(name=oRequest.POST.get('radiofreq'))
+            oband = REF_RADIO_BAND(name=oRequest.POST.get('radioband'))
+            ofreq.save()
+            oband.save()
+            oRequest.session['errors'] = ['Radio Frequency/Band Added successfully']
+            oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Radio Band with same name already exists. Please choose different name']
+            oRequest.session['message_type_is_error'] = True
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05908 : Edit drop down option for BoM Entry Header - Radio Frequency / Band: Added below for Editing of RF/RB
+@login_required
+def RFEdit(oRequest):
+    """
+    Landing view for administration to edit radio frequencies/band
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        if not REF_RADIO_BAND.objects.filter(name=oRequest.POST.get('radioband'), is_inactive=0):
+            REF_RADIO_FREQUENCY.objects.filter(pk=oRequest.POST.get('radiofreqbandid')).update(
+                name=oRequest.POST.get('radiofreq'))
+            REF_RADIO_BAND.objects.filter(pk=oRequest.POST.get('radiofreqbandid')).update(
+                name=oRequest.POST.get('radioband'))
+            oRequest.session['errors'] = ['Radio Frequency/Band Changed successfully']
+            oRequest.session['message_type_is_error'] = False
+        else:
+            oRequest.session['errors'] = ['Radio Band with same name already exists. Please choose different name']
+            oRequest.session['message_type_is_error'] = True
+
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
+
+# S-05908 : Edit drop down option for BoM Entry Header - Radio Frequency / Band: Added below for Deleting of RF/RB
+@login_required
+def RFDelete(oRequest):
+    """
+    Landing view for administration to delete radio frequencies/band
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        # int(record) for record in json.loads(oRequest.POST.get('data'))
+        REF_RADIO_FREQUENCY.objects.filter(pk=oRequest.POST.get('radiofreqbandid')).update(
+                is_inactive=1)
+        REF_RADIO_BAND.objects.filter(pk=oRequest.POST.get('radiofreqbandid')).update(
+            is_inactive=1)
+        oRequest.session['errors'] = ['Radio Frequency/Band Deleted successfully']
+        oRequest.session['message_type_is_error'] =False
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end if
+# end def
 
 @login_required
 def MailingAdmin(oRequest):
@@ -87,8 +687,6 @@ def UserAdmin(oRequest):
     :return: HTML response via Default function
     """
 
-
-
     dContext = {
         'users': set(
             get_user_model().objects.filter(groups__name__startswith='BOM_').exclude(groups__name__startswith='BOM_BPMA')
@@ -104,29 +702,9 @@ def UserAdmin(oRequest):
 
     }
     # print(dContext)
-    # print('usercu')
     return Default(oRequest, 'BoMConfig/adminuser.html', dContext)
 # end def
 
-# S-07204 Refine User Admin page added delete button logic  in user admin page
-@login_required
-def UserDelete(oRequest):
-
-    if oRequest.method == 'POST' and oRequest.POST:
-        # When deleting a user, we don't actually remove the user from
-        # the system, because they may have access to multiple tools.
-        # Instead, we just remove the user from any groups that have
-        # access permissions to this tool
-        for record in json.loads(oRequest.POST.get('data')):
-            oUser = get_user_model().objects.get(username=record)
-            oUser.groups.remove(*tuple(Group.objects.filter(name__startswith='BOM_')))
-            oRequest.session['errors'] = ['User deleted successfully']
-            oRequest.session['message_is_error'] = False
-
-        return HttpResponse()
-    else:
-        raise Http404()
-    # end if
 
 @login_required
 def UserAdd(oRequest):
@@ -265,7 +843,6 @@ def UserChange(oRequest, iUserId=''):
                 # the system, because they may have access to multiple tools.
                 # Instead, we just remove the user from any groups that have
                 # access permissions to this tool
-                print(oUser)
                 oUser.groups.remove(*tuple(Group.objects.filter(name__startswith='BOM_')))
                 oRequest.session['errors'] = ['User deleted successfully']
                 oRequest.session['message_is_error'] = False

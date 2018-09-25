@@ -15,6 +15,10 @@
         {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
         <button class="btn" type="button" name="action" value="approval" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:approvaladmin' %}'>Approval</button>
         {% endif %}
+        <!--Added below line for S-07533 New sub-tab drop-down admin base template creation-->
+         {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
+        <button class="btn" type="button" name="action" value="dropdown" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:dropdownadmin' %}'>Dropdowns</button>
+        {% endif %}
 	</div>
     {% block subcontent %}{% endblock %}
     {% else %}

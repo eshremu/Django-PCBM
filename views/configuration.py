@@ -16,7 +16,7 @@ from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Part, Configuration, ConfigLine, PartBase,\
     Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, \
-    SecurityPermission, REF_PRODUCT_AREA_2, REF_PROGRAM, REF_CONDITION, \
+    SecurityPermission,REF_PRODUCT_AREA_1, REF_PRODUCT_AREA_2, REF_TECHNOLOGY, REF_RADIO_FREQUENCY, REF_RADIO_BAND,REF_PROGRAM, REF_CONDITION, \
     REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_REQUEST, PricingObject, \
     CustomerPartInfo, HeaderTimeTracker,User_Customer
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
@@ -635,7 +635,13 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 
         # S-06166-Shift Header page to new reference table: Added to limit the CU dropdown field as per the loggedin user's CU
         headerForm.fields['customer_unit'].queryset = REF_CUSTOMER.objects.filter(name__in=aAvailableCU)
-
+        # added for S-05906 Edit drop down option for BoM Entry Header -  Product Area 1(exclude deleted prodarea1)
+        headerForm.fields['product_area1'].queryset = REF_PRODUCT_AREA_1.objects.filter(is_inactive=0)
+        # S-05905 : Edit drop down option for BoM Entry Header - Technology: Added to filter dropdown data in BOM entry page
+        headerForm.fields['technology'].queryset = REF_TECHNOLOGY.objects.filter(is_inactive=0)
+        # S-05908 : Edit drop down option for BoM Entry Header - Radio Frequency / Band: Added to filter dropdown data in BOM entry page
+        headerForm.fields['radio_frequency'].queryset = REF_RADIO_FREQUENCY.objects.filter(is_inactive=0)
+        headerForm.fields['radio_band'].queryset = REF_RADIO_BAND.objects.filter(is_inactive=0)
         dContext = {
             'header': oExisting,
             'headerForm': headerForm,
@@ -1097,7 +1103,7 @@ def AddConfig(oRequest):
         'material_group_list': [obj.name for obj in
                                 REF_MATERIAL_GROUP.objects.all()],
         'product_pkg_list': [obj.name for obj in REF_PRODUCT_PKG.objects.all()],
-        'spud_list': [obj.name for obj in REF_SPUD.objects.all()],
+        'spud_list': [obj.name for obj in REF_SPUD.objects.filter(is_inactive=0)], # S-05909 : Edit drop down option for BoM Entry Header - SPUD: Added to filter dropdown data in configuration page
 
         'base_template': 'BoMConfig/frame_template.html' if bFrameReadOnly else
         'BoMConfig/template.html',
@@ -2631,12 +2637,12 @@ def ListFill(oRequest):
         userculist = User_Customer.objects.filter(customer_name=oParent)
         ausers = []
         ausers = userculist.values_list('user_id')
-
-        if oRequest.POST['child'] == 'program':
+        # added for S-05907 Edit drop down option for BoM Entry Header -  Product Area 2(exclude deleted prodarea2)
+        if oRequest.POST['child'] == 'program' or oRequest.POST['child'] == 'product_area2' :
             cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
             result = OrderedDict(
                 [('i' + str(obj.id), obj.name) for obj in
-                 cChildClass.objects.filter(parent=oParent).order_by('name')]
+                 cChildClass.objects.filter(parent=oParent).order_by('name').exclude(is_inactive=1)]
             )
 
         elif oRequest.POST['child'] == 'baseline_impacted':

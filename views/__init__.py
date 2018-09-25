@@ -22,8 +22,13 @@ from BoMConfig.views.download import Download, DownloadBaseline, \
 from BoMConfig.views.approvals_actions import Approval, Action, AjaxApprove, \
     ApprovalData, AjaxApprovalForm, ChangePart, CreateDocument
 # S-07204 Refine User Admin page added UserDelete logic  in user admin page
-from BoMConfig.views.admin import MailingAdmin, MailingChange, UserAdmin,UserDelete, \
-    AdminLanding, UserAdd, UserChange, ApprovalAdmin, ApprovalChange
+# S-07533 DropDownAdmin added for New sub-tab drop-down admin base template creation
+# S-05903, S-05905, S-05906, S-05907, S-05908,S-05909:- Added From ProductArea1Admin to RFDelete for Admin dropdown functionalities
+from BoMConfig.views.admin import MailingAdmin, MailingChange, UserAdmin, \
+    AdminLanding, UserAdd, UserChange, ApprovalAdmin, ApprovalChange, DropDownAdmin, ProductArea1Admin, ProductArea1Add, SpudAdmin, SpudAdd, SpudEdit, SpudDelete, \
+    ProgramAdmin, ProgramAdd, ProgramEdit, ProgramDelete, ProductArea1Admin, ProductArea1Add, ProductArea1Edit, ProductArea1Delete, \
+    ProductArea2Admin, ProductArea2Add, ProductArea2Edit, ProductArea2Delete, TechnologyAdmin, \
+    TechnologyAdd, TechnologyEdit, TechnologyDelete, RFAdmin, RFAdd, RFEdit, RFDelete
 from BoMConfig.views.customer_audit import CustomerAuditTableValidate, \
     CustomerAudit, CustomerAuditLand, CustomerAuditUpload
 from BoMConfig.views.maintenance import Maintenance
