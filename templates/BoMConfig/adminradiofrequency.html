@@ -288,24 +288,19 @@
                 lengthChange: false,
                 scrollY: max_available,
                 scrollCollapse: true,
-                pageLength: 7,
-
+                pageLength: 7
             });
 
-               $(".form-control" ).on( "keyup", function() {
+            $('.form-control').keyup(function(){
                 if( $(this).attr("aria-controls") == 'tableradioband' ){
-                    if( !$( "input[aria-controls='tableradioband']" ).val()){
-                        $( "input[aria-controls='tableradiofreq']" ).attr("readonly", false);
+                    if($("input[aria-controls='tableradioband']").val()){
+                         $('#tableradiofreq').dataTable().fnFilter('');
                     }
-                    else
-                        $( "input[aria-controls='tableradiofreq']" ).attr("readonly", true);
                 }
                 if( $(this).attr("aria-controls") == 'tableradiofreq' ){
-                    if( !$( "input[aria-controls='tableradiofreq']" ).val()){
-                        $( "input[aria-controls='tableradioband']" ).attr("readonly", false);
+                    if($("input[aria-controls='tableradiofreq']").val()){
+                        $('#tableradioband').dataTable().fnFilter('');
                     }
-                    else
-                        $( "input[aria-controls='tableradioband']" ).attr("readonly", true);
                 }
             });
         });
