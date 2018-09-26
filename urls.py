@@ -109,6 +109,8 @@ urlpatterns = patterns(
     url(r'^admin/dropdown/radiofrequencyband/delete$', views.RFDelete, name='radiofrequencybanddelete'),
     url(r'^admin/user/$', views.UserAdmin, name='useradmin'),
     url(r'^admin/user/add/$', views.UserAdd, name='useradd'),
+# S-07204 Refine User Admin page added delete button logic  in user admin page
+    url(r'^admin/user/delete/$', views.UserDelete, name='userdelete'),
     url(r'^admin/user/changeuser/(?P<iUserId>\d+)/$', views.UserChange,
         name='userchange'),
     url(r'^admin/$', views.AdminLanding, name='adminlanding'),
