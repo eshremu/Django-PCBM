@@ -704,7 +704,25 @@ def UserAdmin(oRequest):
     # print(dContext)
     return Default(oRequest, 'BoMConfig/adminuser.html', dContext)
 # end def
+# S-07204 Refine User Admin page added delete button logic  in user admin page
+@login_required
+def UserDelete(oRequest):
 
+    if oRequest.method == 'POST' and oRequest.POST:
+        # When deleting a user, we don't actually remove the user from
+        # the system, because they may have access to multiple tools.
+        # Instead, we just remove the user from any groups that have
+        # access permissions to this tool
+        for record in json.loads(oRequest.POST.get('data')):
+            oUser = get_user_model().objects.get(username=record)
+            oUser.groups.remove(*tuple(Group.objects.filter(name__startswith='BOM_')))
+            oRequest.session['errors'] = ['User deleted successfully']
+            oRequest.session['message_is_error'] = False
+
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
 
 @login_required
 def UserAdd(oRequest):
