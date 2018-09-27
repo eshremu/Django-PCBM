@@ -29,16 +29,16 @@
         <li>{{ record.header.configuration_designation }} - {{ record.header.baseline_impacted|default:"<em>(No baseline)</em>" }}{% if action == 'approve' %} - <em>{{ record.last_approval_comment|default:"(No comments)" }}</em>{% elif action == 'disapprove' %} - <em>{{ record.last_disapproval_comment }}</em>{% endif %} - {{ record.header.react_request|default:"<em>(No REACT request)</em>" }}</li>
         <ul type="disc">
  <!--S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added below loop to print the
-  revision comments in the email content-- 1st the appended configuration name is checked with the
-  'record.header.configuration_designation'(which comes from the upper loop) and then shed off from the revision comments-->
+  revision comments in the email content-- 1st the appended configuration ID is checked with the
+  'record.header.id'(which comes from the upper loop) and then shed off from the revision comments-->
           {% for i in revision %}
             {% if i != '' %}
-              {% with record.header.configuration_designation|safe|length as configlen %}
-                  {% with ':'|add:configlen as sliceval  %}
+              {% with record.header.id|stringformat:'i'|safe|length as configlen %}
+                 {% with ':'|add:configlen as sliceval  %}
                         {% with i|slice:sliceval as compval  %}
-                            {% if compval == record.header.configuration_designation %}
-                                 {% with record.header.configuration_designation|length|safe|add:':' as slicevarlen  %}
-                                     <li>{{i|slice:slicevarlen}}</li>
+                            {% if compval == record.header.id|stringformat:'i' %}
+                                 {% with record.header.id|stringformat:'i'|length|safe|add:':' as slicevarlen  %}
+                                    <li>{{i|slice:slicevarlen}} </li>
                                  {% endwith %}
                             {% endif %}
                         {% endwith %}

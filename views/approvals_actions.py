@@ -302,9 +302,9 @@ def ApprovalData(oRequest):
 def WriteRevisionToFile(record,oRequest):
 
         oHeader = Header.objects.get(id=record)
-# S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added 'confname' to append the
-#          configuration name to each revision comments so that the comments can be recognised in the HTML email content
-        confname = oHeader.configuration_designation
+# S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added 'confid' to append the
+#          configuration ID to each revision comments so that the comments can be recognised in the HTML email content
+        confid = str(oHeader.id)
         sAvailBase = Baseline.objects.filter(title=oHeader.baseline.title)
 
         for version in sAvailBase:
@@ -351,8 +351,8 @@ def WriteRevisionToFile(record,oRequest):
                         aCurrButNotPrev.append(oHead)
                         # end try
 
-                sNewSummary = confname+'Added'
-                sRemovedSummary = confname + 'Discontinued'
+                sNewSummary = confid+'Added'
+                sRemovedSummary = confid + 'Discontinued'
 
                 # Append the formatted string for each Header in aAddedHeaders
                 for oHead in aAddedHeaders:
@@ -410,8 +410,8 @@ def WriteRevisionToFile(record,oRequest):
                 # end for
 
                 # Calculate and add changes for updated headers
-                sUpdateSummary = confname + 'Updated:\n'
-                sUpdateSummary = confname + 'Updated:\n'
+                sUpdateSummary = confid + 'Updated:\n'
+                sUpdateSummary = confid + 'Updated:\n'
                 for oHead in aUpdatedHeaders:
                     try:
                         oPrev = oHead.model_replaced_link or Header.objects.get(
@@ -441,17 +441,17 @@ def WriteRevisionToFile(record,oRequest):
                         )
 
                         for sLine in sTemp.split('\n'):
-                            sUpdateSummary += confname + (' ' * 8) + sLine + '\n'
+                            sUpdateSummary += confid + (' ' * 8) + sLine + '\n'
                             # end if
                 # end for
 
                 sHistory = ''
 
-                if sNewSummary != confname+'Added':
+                if sNewSummary != confid+'Added':
                     sHistory += sNewSummary
-                if sRemovedSummary != confname+'Discontinued':
+                if sRemovedSummary != confid+'Discontinued':
                     sHistory += sRemovedSummary
-                if sUpdateSummary != confname + 'Updated:\n':
+                if sUpdateSummary != confid + 'Updated:\n':
                     sHistory += sUpdateSummary
 
                 # Save revision history

@@ -78,7 +78,7 @@ $(document).ready(function(){
     $('#headerform').submit(function(){
         if(!model_replace_override){
             var $model_replaced = $('#id_model_replaced');
-            if(model_replace_changed) {
+           if(model_replace_changed) {
                 $('#id_model_replaced_link').val($('#list_header_list [value="' + $model_replaced.val() + '"]').data('value'));
                 var aMatch = String($model_replaced.val()).match(/\s\(.+\)/);
                 if (aMatch && aMatch.length > 0) {
@@ -247,6 +247,16 @@ function cleanDataCheck(link){
 function list_filler(parent, child, index){
     index = typeof(index) !== 'undefined' ? index : 0;
 
+// D-04026: Baseline dropdown not populated when starting config with REACT info: Added below to populate Program & Baseline Impacted
+// dropdown based on populated CU on react search
+    if(reactsearch){
+        if(parent == 'customer_unit'){
+            parentval = $("#id_customer_unit").attr("cust_val");    // to send the ID of CU if parent is CU & done through React search
+        }
+    }else{
+        parentval = $('#id_' + parent).val();
+    }
+
     if($('#id_' + parent).val() != ''){
         $.ajax({
             url: listfill_url,
@@ -254,7 +264,7 @@ function list_filler(parent, child, index){
             type: "POST",
             data: {
                 parent: parent,
-                id: $('#id_' + parent).val(),
+                id: parentval,
                 child: child
             },
             headers:{
@@ -475,7 +485,7 @@ function list_react_filler(parent, child, index){
             }
         });
     }
-    else {
+   else {
         var $child = $('#id_' + child);
         $child.find('option:gt(' + index + ')').remove();
     }
@@ -491,7 +501,7 @@ function form_resize(){
     $('#headerformtable').css("overflow", 'auto');
 }
 function save_form(){
-    form_save = true;
+   form_save = true;
     $('[readonly=true]').removeAttr('readonly');
     $('[disabled=true]').removeAttr('disabled');
 
@@ -518,7 +528,7 @@ function save_form(){
 }
 
 // D-03595 - Problem saving new configuration when using REACT data:- Added below function to hit only when the REACT data is getting saved
- function save_react_form(){
+function save_react_form(){
     form_save = true;
     $('[readonly=true]').removeAttr('readonly');
     $('[disabled=true]').removeAttr('disabled');
@@ -529,7 +539,7 @@ function save_form(){
 }
 
 function req_search(){
- // D-03595 - Problem saving new configuration when using REACT data:- set the value of reactsearch to true when the react search button is clicked
+// D-03595 - Problem saving new configuration when using REACT data:- set the value of reactsearch to true when the react search button is clicked
     reactsearch = true;
     if($(reactrequest_id).val() == null || $(reactrequest_id).val() == ''){
         messageToModal('', 'Please provide a REACT request number', function(){})
@@ -585,6 +595,11 @@ function req_search(){
                     $(ericssoncontract_id).replaceWith("<input id='id_ericsson_contract' type='text' name='ericsson_contract'>");
                     $("#id_ericsson_contract").val(returned.contract.match(/^\d+/));
 
+// D-04026: Baseline dropdown not populated when starting config with REACT info: Added below to populate Program & Baseline Impacted
+// dropdown based on populated CU on react search
+                    list_filler('customer_unit', 'program');
+                    list_filler('customer_unit', 'baseline_impacted', 1);
+
 //                    var ericontdeschtml = "<input id='ericontractdesc' style='width:400px;' type='textbox'/>";
 //                    $(ericssoncontractdesc_id).remove();
 //                    $(".ericcontdesc").append(ericontdeschtml);
@@ -637,4 +652,3 @@ function cloneHeader(headerId){
         }
     });
 }
-
