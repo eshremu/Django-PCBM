@@ -323,7 +323,7 @@ def WriteRevisionToFile(record,oRequest):
 
 
                 aAddedHeaders = [oHead for oHead in Header.objects.filter(id=oHeader.id).filter(
-                    bom_request_type__name__in=('New', 'Legacy'))]
+                    bom_request_type__name__in=('New', 'Legacy', 'Preliminary'))]
 
                 aUpdatedHeaders = [oHead for oHead in Header.objects.filter(id=oHeader.id).filter(
                     bom_request_type__name='Update')]
@@ -339,14 +339,6 @@ def WriteRevisionToFile(record,oRequest):
                             configuration_designation=oHead.configuration_designation,
                             program=oHead.program)
 
-                        # This check never fails because aDiscontinuedHeaders contains
-                        # headers not tuples, and aPrevHeaders never gets used
-                        # if not (obj.configuration_designation, obj.program) in \
-                        #         aDiscontinuedHeaders:
-                        #     aPrevHeaders.append(obj)
-                        # else:
-                        #     aPrevButNotCurrent.append(obj)
-                        # # end if
                     except (Header.DoesNotExist, Baseline_Revision.DoesNotExist):
                         aCurrButNotPrev.append(oHead)
                         # end try
@@ -356,61 +348,24 @@ def WriteRevisionToFile(record,oRequest):
 
                 # Append the formatted string for each Header in aAddedHeaders
                 for oHead in aAddedHeaders:
-                    if oHead.model_replaced:
-
-                        sNewSummary += '\n'.format(
-                            oHead.configuration_designation,
-                            oHead.model_replaced_link.configuration_designation\
-                            if oHead.model_replaced_link else oHead.model_replaced
-                        )
-
-                    else:
-                        # If a previous revision exists and a matching header exists in
-                        # previous revision and the Header has a time tracker without a
-                        # completed date or disapproved date, but is not In-Process, then
-                        # the Header must have been carried forward from a previous
-                        # revision, and therefore is not ACTUALLY New / Added
-                        if Baseline_Revision.objects.filter(baseline=sAvailBase,
-                                                            version=sPrevious) and \
-                                Baseline_Revision.objects.get(
-                                    baseline=sAvailBase,
-                                    version=sPrevious).header_set.filter(
-                                    configuration_designation=oHead.configuration_designation,
-                                    program=oHead.program
-                                ) and not oHead.configuration_status.name == \
-                                'In Process/Pending' and oHead.headertimetracker_set.filter(
-                            completed_on=None, disapproved_on=None):
-                            continue
-
-                        sNewSummary += '\n'.format(oHead.configuration_designation)
+            # D-04019: Internal Server Error (500) on multiple actions
+                    sNewSummary += '\n'.format(oHead.configuration_designation)
 
                 # Add a line for each Header that is an "Update" but has not previous record
                 # in the previous revision
                 for oHead in aCurrButNotPrev:
-                    sNewSummary += '\n'.format(
-                        oHead.configuration_designation)
+                    sNewSummary += '\n'.format(oHead.configuration_designation)
                 # end for
 
                 # Add a line for each discontinued Header. Skip headers that have been
                 # replaced and that replacement is in aAddedHeaders, since we have already
                 # added a description of that transaction earlier
                 for oHead in aDiscontinuedHeaders:
-                    if (oHead.model_replaced_link and any(
-                            [obj in oHead.model_replaced_link.replaced_by_model.all() for
-                             obj in aAddedHeaders if hasattr(oHead.model_replaced_link,
-                                                             'replaced_by_model')]
-                    )) or any(
-                        [obj in oHead.replaced_by_model.all() for obj in aAddedHeaders if
-                         hasattr(oHead, 'replaced_by_model')]):
-                        continue
-
-                    sRemovedSummary += '\n'.format(
-                        oHead.configuration_designation
-                    )
+            # D-04019: Internal Server Error (500) on multiple actions
+                    sRemovedSummary += '\n'.format(oHead.configuration_designation)
                 # end for
 
                 # Calculate and add changes for updated headers
-                sUpdateSummary = confid + 'Updated:\n'
                 sUpdateSummary = confid + 'Updated:\n'
                 for oHead in aUpdatedHeaders:
                     try:
@@ -455,13 +410,13 @@ def WriteRevisionToFile(record,oRequest):
                     sHistory += sUpdateSummary
 
                 # Save revision history
+            # D-04019: Internal Server Error (500) on multiple actions - commented the below lines
+                # (oNew, _) = RevisionHistory.objects.get_or_create(baseline=sAvailBase,
+                #                                                   revision=sCurrent)
+                # oNew.history = sHistory
+                # oNew.save()
 
-                (oNew, _) = RevisionHistory.objects.get_or_create(baseline=sAvailBase,
-                                                                  revision=sCurrent)
-                oNew.history = sHistory
-                oNew.save()
-
-        return oNew.history
+        return sHistory
 
 @transaction.atomic
 def AjaxApprove(oRequest):
