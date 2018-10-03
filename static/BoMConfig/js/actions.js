@@ -22,11 +22,34 @@ function cleanDataCheck(link){
 function cust_filter(customer){
     if(customer !== 'All') {
         $('#cu_filter').html(customer +" <span class=\"caret\"></span>");
+// D-04023-Customer filter on Actions issue for Admin users :- Added baselineonselectcu() to populate baseline dropdown based on selected CU
+        baselineonselectcu();
     } else {
         $('#cu_filter').html('Customer <span class="caret"></span>');
     }
     updateFilters();
 }
+// D-04023-Customer filter on Actions issue for Admin users :- Added baselineonselectcu() to populate baseline dropdown based on selected CU
+function baselineonselectcu(){
+            var cu=  $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+            $.ajax({
+            url: action_inprocess_customer_url,
+            type: "POST",
+            data: {
+                data: cu
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+            alert('success')
+            },
+            error: function(xhr, status, error){
+                $('#myModal').modal('hide');
+                console.log('Error returned from list call', status, error);
+            }
+        });
+ }
 
 function request_filter(request){
     if(request !== "All"){
