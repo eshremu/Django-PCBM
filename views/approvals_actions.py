@@ -158,6 +158,69 @@ def Approval(oRequest):
                    dContext=dContext)
 # end def
 
+# D-04023-Customer filter on Actions issue for Admin users :- Added ActionCustomer to populate baseline dropdown based on selected CU
+@login_required
+def ActionCustomer(oRequest, iCustId=''):
+    """
+       View for actions on records in various states (In process, active, on-hold,
+       etc.)
+       :param oRequest: Django request object
+       :param kwargs: Dictionary of keyword arguments passed to the function
+       :return: HTML response via Default function
+       """
+    # # S-067172 :Actions -Resctrict view to logged in users CU:- Added to get the logged in user's CU list
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+    customer = REF_CUSTOMER.objects.filter(id=iCustId)
+
+    # Unlock any record previously held
+    if 'existing' in oRequest.session:
+        try:
+            Unlock(oRequest, oRequest.session['existing'])
+        except Header.DoesNotExist:
+            pass
+        # end try
+
+        del oRequest.session['existing']
+    # end if
+
+    dContext = {
+        'in_process': Header.objects.filter(
+            configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
+            customer_unit=customer),
+        'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
+        'baselines': sorted(list(
+            set(
+                [str(obj.baseline) if
+                 obj.baseline.title != 'No Associated Baseline' else
+                 "(Not baselined)" for obj in Header.objects.filter(
+                    configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
+                    customer_unit=customer)]))),
+        'active': [obj for obj in Header.objects.filter(
+            configuration_status__name='In Process/Pending', ) if
+                   HeaderTimeTracker.approvals().index(
+                       obj.latesttracker.next_approval) >
+                   HeaderTimeTracker.approvals().index('acr')],
+        'on_hold': Header.objects.filter(configuration_status__name='On Hold').filter(customer_unit=customer),
+        'selectedcustomer': customer,
+        'customer_list': ['All'] + aAvailableCU,
+        'viewauthorized': bool(oRequest.user.groups.filter(
+            name__in=['BOM_BPMA_Architect', 'BOM_PSM_Product_Supply_Manager',
+                      'BOM_PSM_Baseline_Manager'])),
+        'approval_seq': HeaderTimeTracker.approvals(),
+        'deaddate': timezone.datetime(1900, 1, 1),
+        'namelist': ['SCM #1', 'SCM #2', 'CSR', 'Comm. Price Mgmt.', 'ACR',
+                     'PSM Baseline Mgmt.', 'Customer #1', 'Customer #2',
+                     'Customer Warehouse', 'Ericsson VAR',
+                     'Baseline Release & Dist.'],
+    }
+
+    return Default(oRequest, 'BoMConfig/actions_inprocess_customer.html', dContext)
+
+# end def
 
 @login_required
 def Action(oRequest, **kwargs):

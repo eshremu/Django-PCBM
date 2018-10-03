@@ -6,15 +6,18 @@
         <div id="hintBox"></div>
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
-                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
+<!--D-04023-Customer filter on Actions issue for Admin users :- Added below to show the selected CU in the dropdown title-->
+                {% for customer in selectedcustomer %}
+                    <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown" >{{customer}}<span class="caret"></span></button>
+                {% endfor %}
                 <ul class="dropdown-menu">
                     {% for customer in customer_list %}
-<!--D-04023-Customer filter on Actions issue for Admin users :- Added below to check if the CU is not 'All' then the href will have the customer ID to
- redirect to the respective inprocess customer page else if it is 'All' then it will stay in the same page(url ending with #)-->
+<!-- D-04023-Customer filter on Actions issue for Admin users :- Added below to check if the CU is not 'All' then the href will have the customer ID to
+ redirect to the respective inprocess customer page else if it is 'All' then it will redirect to the inprocess page-->
                       {% if customer != 'All' %}
                         <li><a  href="{% url 'bomconfig:action_inprocess_customer' customer.id %}" onclick="cust_filter('{{ customer }}');">{{ customer }}</a></li>
                       {% else %}
-                        <li><a  href="#" onclick="cust_filter('{{ customer }}');">{{ customer }}</a></li>
+                        <li><a  href="{% url 'bomconfig:action_inprocess' %}" onclick="cust_filter('{{ customer }}');">{{ customer }}</a></li>
                       {% endif %}
                     {% endfor %}
                 </ul>

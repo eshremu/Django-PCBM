@@ -40,6 +40,8 @@ urlpatterns = patterns(
     url(r'^actions/$', views.Action, name='action'),
     url(r'^actions/inprocess/$', views.Action, {'type':'inprocess'},
         name='action_inprocess'),
+ # D-04023-Customer filter on Actions issue for Admin users :- Added below url to redirect to this page based on selected CU
+    url(r'^actions/inprocess/customer/(?P<iCustId>\d+)/$', views.ActionCustomer, name='action_inprocess_customer'),
     url(r'^actions/active/$', views.Action, {'type':'active'},
         name='action_active'),
     url(r'^actions/hold/$', views.Action, {'type':'hold'}, name='action_hold'),
@@ -111,7 +113,7 @@ urlpatterns = patterns(
     url(r'^admin/user/add/$', views.UserAdd, name='useradd'),
 # S-07204 Refine User Admin page added delete button logic  in user admin page
     url(r'^admin/user/delete/$', views.UserDelete, name='userdelete'),
-    url(r'^admin/user/changeuser/(?P<iUserId>\d+)/$', views.UserChange,
+    url(r'^admin/user/changeuser/(?P<iUserId>\d+)$', views.UserChange,
         name='userchange'),
     url(r'^admin/$', views.AdminLanding, name='adminlanding'),
     url(r'^admin/approval/$', views.ApprovalAdmin, name='approvaladmin'),
