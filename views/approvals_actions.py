@@ -688,12 +688,15 @@ def AjaxApprove(oRequest):
                         # Determine the list of recipients that should be
                         # notified of this records approval
 
-                        if aDestinations[index]!='0':
-                            aRecipients.append(User.objects.get(
-                                id=aDestinations[index]).email)
-                        # added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list
-                        if index < len(aCustomEmail) and aCustomEmail[index]!='':
-                            aRecipients.append(aCustomEmail[index])
+                        if aDestinations[index]:
+# D-04088- Approvals incorrectly require notify field to be selected: Added below if & else to separate the aRecipients in case of custom & normal notify fields.
+                            if int(aDestinations[index]) == 0:      # for custom
+   # added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list
+                                if index < len(aCustomEmail) and aCustomEmail[index] != '':
+                                    aRecipients.append(aCustomEmail[index])
+                            else:                                   # normal notify fields
+                                aRecipients.append(User.objects.get(
+                                    id=aDestinations[index]).email)
 
                         sNotifyLevel = oLatestTracker.next_approval
                         if sNotifyLevel != 'brd':
