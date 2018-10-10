@@ -192,6 +192,19 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 
             # If this request is for POSTing data
             if oRequest.method == 'POST' and oRequest.POST:
+# D-03994-Manual override pricing fix:
+# When cloning a config, we should copy all manual override pricing from the previous config
+# When status of that config (non-picklist) is changed to "New", then manual override pricing on line 10 should be removed
+# When status of a picklist is changed to "New", no change should occur to the manual override pricing
+# When status of a config (non-picklist) is changed to "Discontinue", no change should occur to the manual override pricing
+# Added line 202 to 208 to update the override price to null in line 10 while saving a cloned config with status New
+                if 'headerID' in oRequest.POST:
+                    configuration_id = Configuration.objects.filter(header=oRequest.POST.get('headerID'))
+                    configline = ConfigLine.objects.filter(config=configuration_id).filter(line_number=10)
+                    linepricing = LinePricing.objects.get(config_line=configline)
+                    linepriceid = str(linepricing.id)
+                    LinePricing.objects.filter(pk=linepriceid).update(
+                    override_price = None)
                 # If this is a new header, build a form from the posted data
                 # (for saving)
                 if not oExisting or 'configuration_status' not in oRequest.POST:

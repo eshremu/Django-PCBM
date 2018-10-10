@@ -7,9 +7,13 @@ var model_replace_initial;
 var model_replace_override = false;
 // D-03595 - Problem saving new configuration when using REACT data:- Added below variable to change to true only when the REACT data is getting saved
 var reactsearch = false;
-
+//D-03994-Manual override pricing fix: Added below old conf name and new conf name to distinguish between clone and normal config
+var old_conf_name;
+var new_conf_name;
 
 $(document).ready(function(){
+//D-03994-Manual override pricing fix: Added below old conf name  to distinguish between clone and normal config
+old_conf_name = $('#id_configuration_designation').val();
 // S-07112 - Change dropdown selection view and value:-Added below code to show the option selected in the sales_group & ericsson contract dropdown
 // when an existing configuration is opened (since only the code is fetched from DB and the code with description is present in UI)
     if(headerformsalesgroup!='' || headerformericssoncontract!='' ){
@@ -61,6 +65,37 @@ $(document).ready(function(){
     });
 
     $('#saveForm').click(function(){
+
+//D-03994-Manual override pricing fix:
+//When cloning a config, we should copy all manual override pricing from the previous config
+//When status of that config (non-picklist) is changed to "New", then manual override pricing on line 10 should be removed
+//When status of a picklist is changed to "New", no change should occur to the manual override pricing
+//When status of a config (non-picklist) is changed to "Discontinue", no change should occur to the manual override pricing
+//Added line 73-97
+new_conf_name = $('#id_configuration_designation').val();
+var status_type = $('#id_bom_request_type').val();
+
+if(!($("#id_pick_list").is(':checked'))){
+ if(old_conf_name.indexOf('_______CLONE')!= -1 && status_type== 1 ){
+   if(new_conf_name.indexOf('_______CLONE')== -1){
+           $.ajax({
+            url: checkclone_url,
+            dataType: "json",
+            type: "POST",
+            data: {
+                headerID : header_id
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+            },
+            error: function(){
+            }
+        });
+    }
+ }
+}
         $('#formaction').val('save');
         $('#headerform').submit();
     });
@@ -444,15 +479,6 @@ function list_react_filler(parent, child, index){
             },
             success: function(data) {
                 var $child = $('#id_' + child);
-
-//                if(child == 'ericsson_contract_desc'){
-//                    ericontractdesc = JSON.stringify(data);
-//                     for (var key in data){
-//                        if(data.hasOwnProperty(key)){
-//                             $(ericssoncontractdesc_id).val(key);
-//                        }
-//                     }
-//                }
 
 //S-06166- Shift header page to new reference table:Added to show the value of the bill_to_party & payment_terms in the textbox
                  if(child == 'bill_to_party'){

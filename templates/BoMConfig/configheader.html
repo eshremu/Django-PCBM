@@ -94,7 +94,7 @@
                         <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</td>
                         {% if field.errors %}
                         <td >
-                            <div style=" border: 2px solid red; max-width:154px; font-size:10px;  max-height:35px;">
+                            <div style=" border: 2px solid red; max-width:215px; font-size:10px;  max-height:50px;">
                                 {{ field }} {{ field.errors }}
                             </div>
                         </td>
@@ -176,6 +176,9 @@
     var reactsearch_url = "{% url 'bomconfig:reactsearch' %}";
     var listfill_url = "{% url 'bomconfig:list_fill' %}";
     var listreactfill_url = "{% url 'bomconfig:list_react_fill' %}";
+    <!--D-03994-Manual override pricing fix: Added headerid and ckeck clone url-->
+    var header_id = "{{ header.id }}";
+    var checkclone_url = "{% url 'bomconfig:configheader' %}";
     var clone_url = "{% url 'bomconfig:configclone' %}";
     var download_url = '{% url 'bomconfig:download' %}'{% if frame_readonly %}+ '?download={{ header.id|searchscramble }}'{% endif %};
     var reactrequest_id = "#{{ headerForm.react_request.auto_id }}";

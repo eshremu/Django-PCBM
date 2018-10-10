@@ -651,6 +651,7 @@ def AjaxApprove(oRequest):
             aChain = HeaderTimeTracker.approvals()
             aBaselinesCompleted = []
             aRecipients = []
+            ctr = 0
             for index in range(len(aRecords)):
                 # For each item in aRecords, get the corresponding Header, and
                 # that Header's most recently created HeaderTimeTracker object
@@ -692,12 +693,12 @@ def AjaxApprove(oRequest):
 # D-04088- Approvals incorrectly require notify field to be selected: Added below if & else to separate the aRecipients in case of custom & normal notify fields.
                             if int(aDestinations[index]) == 0:      # for custom
    # added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list
-                                if index < len(aCustomEmail) and aCustomEmail[index] != '':
-                                    aRecipients.append(aCustomEmail[index])
+                                 if aCustomEmail[ctr] != '':
+                                    aRecipients.append(aCustomEmail[ctr])
+                                    ctr = ctr + 1
                             else:                                   # normal notify fields
                                 aRecipients.append(User.objects.get(
                                     id=aDestinations[index]).email)
-
                         sNotifyLevel = oLatestTracker.next_approval
                         if sNotifyLevel != 'brd':
                             if hasattr(oLatestTracker,
@@ -1158,7 +1159,8 @@ def CloneHeader(oHeader):
         if hasattr(oConfigLine, 'linepricing'):
             oNewPrice = copy.deepcopy(oConfigLine.linepricing)
             oNewPrice.pk = None
-            oNewPrice.override_price = None
+            # D-03994-Manual override pricing fix: When cloning a config, we should copy all manual override pricing from the previous config
+            oNewPrice.override_price = copy.deepcopy(oConfigLine.linepricing.override_price)
             oNewPrice.config_line = oNewLine
             oNewPrice.pricing_object = PricingObject.getClosestMatch(oNewLine)
             oNewPrice.save()
