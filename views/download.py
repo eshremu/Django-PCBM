@@ -1100,20 +1100,35 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 
         # Records are separated by Product Area 2 value, so each new Product
         # area 2 value encountered needs to be written as a new separation tab
-        if oHeader.product_area2 and oHeader.product_area2.name not in \
+        # S-08413: Adjust category tab name based on Product Area 2 name for picklists:added not oHeader.pick_list
+        if not oHeader.pick_list and oHeader.product_area2 and oHeader.product_area2.name not in \
                 oFile.sheetnames:
             oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]:\'\?/]', '_',
                                                      oHeader.product_area2.name)
                                         )
             oSheet.sheet_properties.tabColor = '0062FF'
-        elif not oHeader.product_area2 and 'None' not in \
+        # S-08413: Adjust category tab name based on Product Area 2 name for picklists:added not oHeader.pick_list
+        elif not oHeader.pick_list and not oHeader.product_area2 and 'None' not in \
                 oFile.sheetnames:
             oSheet = oFile.create_sheet(title="None")
             oSheet.sheet_properties.tabColor = '0062FF'
-        elif oHeader.pick_list and 'Pick Lists' not in oFile.sheetnames \
-                and 'Optional Hardware' not in oFile.sheetnames:
-            oSheet = oFile.create_sheet(title="Pick Lists")
-            oSheet.sheet_properties.tabColor = '0062FF'
+        # S-08413: Adjust category tab name based on Product Area 2 name for picklists: Commented line 1114 to 1117 and
+        #  Added below lines from 1118 to 1132
+        # elif oHeader.pick_list and 'Pick Lists' not in oFile.sheetnames \
+        #         and 'Optional Hardware' not in oFile.sheetnames:
+        #     oSheet = oFile.create_sheet(title="Pick Lists")
+        #     oSheet.sheet_properties.tabColor = '0062FF'
+        elif oHeader.pick_list:
+            if not oHeader.product_area2 and 'None (Opt HW)' not in oFile.sheetnames:
+                oSheet = oFile.create_sheet(title="None (Opt HW)")
+                oSheet.sheet_properties.tabColor = '0062FF'
+            elif oHeader.product_area2 and oHeader.product_area2.name == 'Optional Hardware' \
+                    and 'Optional Hardware' not in oFile.sheetnames:
+                oSheet = oFile.create_sheet(title="Optional Hardware")
+                oSheet.sheet_properties.tabColor = '0062FF'
+            elif oHeader.product_area2 and oHeader.product_area2.name != 'Optional Hardware':
+                oSheet = oFile.create_sheet(title=oHeader.product_area2.name+'(Opt HW)')
+                oSheet.sheet_properties.tabColor = '0062FF'
 
         iCurrentRow = 2
 

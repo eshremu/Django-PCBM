@@ -55,7 +55,9 @@
                     </div>
                     <div class="modal-body">
                          <label style="padding-left:55px;">Name: </label><input id ="productarea2" class="headerproductarea2" type="text" /><br>
-                         <br>
+                         <!--S-08414: Adjust admin for Product Area 2 to limit text to 22 characters: Added below line-->
+                        <p id="pa2error" style="color:red; padding-left: 90px; display:none; " >* Maximum 22 Characters Allowed</p>
+                        <br>
                          <label>Product Area1: </label><select id="productarea1"><option value="">-------</option>{% for p in productarea1 %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select>
                          <p id="pa1error" style="color:red; padding-left: 90px; display:none; " >* Please select a Product Area 1</p>
                     </div>
@@ -71,6 +73,8 @@
      <script type="text/javascript">
 
      $('#addproductarea2').click(function(){
+     <!--S-08414: Adjust admin for Product Area 2 to limit text to 22 characters: added $("#pa2error").hide(); -->
+                    $("#pa2error").hide();
                     document.getElementById("btnsave").disabled = true;
                     document.getElementById('btndelete').style.display ='none';
                     messageToModalAdmin('Add Product Area 2',
@@ -113,6 +117,8 @@
 
             $('#productarea1').change(function(){
                 $("#pa1error").hide();
+                <!--S-08414: Adjust admin for Product Area 2 to limit text to 22 characters: added $("#pa2error").hide(); -->
+                $("#pa2error").hide();
             });
 
             $('.modal_submit').off('click');
@@ -121,11 +127,23 @@
                          if(document.getElementById("productarea1").value == ''){
                                 $("#pa1error").show();
                                 return;
+                         }
+                         <!--S-08414: Adjust admin for Product Area 2 to limit text to 22 characters: added if clause to show message -->
+                         if(document.getElementById("productarea2").value.length >= 22){
+                                $("#pa2error").show();
+                                return;
                          }else{
-                            process(1,'');
+                                 process(1,'');
                          }
                     }else{                     //for edit
-                        process(2,productarea2id);
+                        <!--S-08414: Adjust admin for Product Area 2 to limit text to 22 characters: added if clause to show message -->
+                        if(document.getElementById("productarea2").value.length >= 22){
+                                $("#pa2error").show();
+                                return;
+                         }else{
+                                 process(2,productarea2id);
+                         }
+
                     }
                 $('#messageModalAdmin').modal('hide');
                 if(callback != undefined) {
