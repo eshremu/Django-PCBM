@@ -1127,7 +1127,8 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                 oSheet = oFile.create_sheet(title="Optional Hardware")
                 oSheet.sheet_properties.tabColor = '0062FF'
             elif oHeader.product_area2 and oHeader.product_area2.name != 'Optional Hardware':
-                oSheet = oFile.create_sheet(title=oHeader.product_area2.name+'(Opt HW)')
+                oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]:\'\?/]', '_',
+                                                     oHeader.product_area2.name)+'(Opt HW)')
                 oSheet.sheet_properties.tabColor = '0062FF'
 
         iCurrentRow = 2
