@@ -378,7 +378,12 @@ function list_react_filler(parent, child, index){
                         }
                      }
                 }
-
+// S-08412:-Override pay-term selection for AT&T only with z180: Added below to populate the field with 'z180' when AT&T gets selected
+                if($("#id_customer_unit").val() == 1){
+                    $(paymentterms_id).val('z180');
+                }else{
+                    $(paymentterms_id).val('');
+                }
             },
             error: function(){
                 var $child = $('#id_' + child);
@@ -490,12 +495,15 @@ function list_react_filler(parent, child, index){
                      }
                 }
                  if(child == 'payment_terms'){
+// S-08412:-Override pay-term selection for AT&T only with z180: Added below to populate the field with  payterm value only when AT&T is not selected
+                 if($("#id_customer_unit").val() != 1){
                     paytermsdata = JSON.stringify(data);
                      for (var key in data){
                         if(data.hasOwnProperty(key)){
                              $(paymentterms_id).val(key);
                         }
                      }
+                 }
                 }
 
                 $child.find('option:gt(' + index + ')').remove();
