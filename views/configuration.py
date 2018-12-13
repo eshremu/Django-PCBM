@@ -865,7 +865,7 @@ def AddConfig(oRequest):
                             del oForm[index]
                             continue
                         else:
-                            for x in range(33):
+                            for x in range(36):
                                 if str(x) not in oForm[index]:
                                     oForm[index][str(x)] = None
                             # end for
@@ -926,25 +926,30 @@ def AddConfig(oRequest):
                                      'spud': REF_SPUD.objects.get(
                                          name=dConfigLine['13']
                                      ) if dConfigLine['13'] else None,
-                                     'REcode': dConfigLine['14'],
-                                     'mu_flag': dConfigLine['15'],
-                                     'x_plant': dConfigLine['16'],
-                                     'internal_notes': dConfigLine['17'],
-                                     'higher_level_item': dConfigLine['20'],
-                                     'material_group_5': dConfigLine['21'],
+    # S-08473: Adjust configuration table to include new columns:-Added below portfolio code at no.14
+                                     'current_portfolio_code': dConfigLine['14'],
+                                     'REcode': dConfigLine['15'],
+                                     'mu_flag': dConfigLine['16'],
+                                     'x_plant': dConfigLine['17'],
+    # S-08473: Adjust configuration table to include new columns:-Added below plant_specific_material_status & distribution_change_specific_material_status at no.18 & 19 respectively
+                                     'plant_specific_material_status': dConfigLine['18'],
+                                     'distribution_chain_specific_material_status': dConfigLine['19'],
+                                     'internal_notes': dConfigLine['20'],
+                                     'higher_level_item': dConfigLine['23'],
+                                     'material_group_5': dConfigLine['24'],
                                      'purchase_order_item_num':
-                                         dConfigLine['22'],
-                                     'condition_type': dConfigLine['23'],
-                                     'amount': dConfigLine['24'] or None,
-                                     'traceability_req': dConfigLine['25'],
-                                     'customer_asset': dConfigLine['26'],
+                                         dConfigLine['25'],
+                                     'condition_type': dConfigLine['26'],
+                                     'amount': dConfigLine['27'] or None,
+                                     'traceability_req': dConfigLine['28'],
+                                     'customer_asset': dConfigLine['29'],
                                      'customer_asset_tagging':
-                                         dConfigLine['27'],
-                                     'customer_number': dConfigLine['28'],
-                                     'sec_customer_number': dConfigLine['29'],
-                                     'vendor_article_number': dConfigLine['30'],
-                                     'comments': dConfigLine['31'],
-                                     'additional_ref': dConfigLine['32'],
+                                         dConfigLine['30'],
+                                     'customer_number': dConfigLine['31'],
+                                     'sec_customer_number': dConfigLine['32'],
+                                     'vendor_article_number': dConfigLine['33'],
+                                     'comments': dConfigLine['34'],
+                                     'additional_ref': dConfigLine['35'],
                                      'config': oConfig,
                                      'part': oPart,
                                      'is_child': bool(
@@ -1677,24 +1682,29 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     '11': Line.commodity_type,
                     '12': Line.package_type,
                     '13': str(Line.spud) if Line.spud else None,
-                    '14': Line.REcode,
-                    '15': Line.mu_flag,
-                    '16': str(Line.x_plant).zfill(2) if Line.x_plant else None,
-                    '17': Line.internal_notes,
+ # S-08473: Adjust configuration table to include new columns:-Added below portfolio code at no.14; this is responsible to show the saved value on page load
+                    '14': Line.current_portfolio_code,
+                    '15': Line.REcode,
+                    '16': Line.mu_flag,
+                    '17': str(Line.x_plant).zfill(2) if Line.x_plant else None,
+ # S-08473: Adjust configuration table to include new columns:-Added below plant_specific_material_status & distribution_change_specific_material_status at no.18 & 19 respectively; this is responsible to show the saved value on page load
+                   '18': Line.plant_specific_material_status,
+                    '19': Line.distribution_chain_specific_material_status,
+                    '20': Line.internal_notes,
 
-                    '20': Line.higher_level_item,
-                    '21': Line.material_group_5,
-                    '22': Line.purchase_order_item_num,
-                    '23': Line.condition_type,
-                    '24': Line.amount,
-                    '25': Line.traceability_req,
-                    '26': Line.customer_asset,
-                    '27': Line.customer_asset_tagging,
-                    '28': Line.customer_number,
-                    '29': Line.sec_customer_number,
-                    '30': Line.vendor_article_number,
-                    '31': Line.comments,
-                    '32': Line.additional_ref
+                    '23': Line.higher_level_item,
+                    '24': Line.material_group_5,
+                    '25': Line.purchase_order_item_num,
+                    '26': Line.condition_type,
+                    '27': Line.amount,
+                    '28': Line.traceability_req,
+                    '29': Line.customer_asset,
+                    '30': Line.customer_asset_tagging,
+                    '31': Line.customer_number,
+                    '32': Line.sec_customer_number,
+                    '33': Line.vendor_article_number,
+                    '34': Line.comments,
+                    '35': Line.additional_ref
                 }
 # S-05770:-USCC(now MTW) Unit Price functionality - Below case is for new column 'Unit Price' at case no.18,Added to show unit price based on CU,
     # if MTW,NonPicklist-Line 10 is blank,parts wil have UP; pickList-All lines will have UP
@@ -1702,51 +1712,51 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                 if oHeader.customer_unit_id == 9:               # 9 is the ID for MTW customer.
                     if not oHeader.pick_list:
                         if str(Line.line_number) == '10':
-                            dLine.update({'18': None})
+                            dLine.update({'21': None})
                             # if oConfig.override_net_value:
                             #     dLine.update(
-                            #         {'18': str(oConfig.override_net_value)}
+                            #         {'21': str(oConfig.override_net_value)}
                             #     )
                             # else:
-                            #     dLine.update({'18': str(oConfig.net_value) if oConfig.net_value is not None else None})
+                            #     dLine.update({'21': str(oConfig.net_value) if oConfig.net_value is not None else None})
                                 # end if
                         else:
                             if GrabValue(Line, 'linepricing.override_price'):
                                 dLine.update(
-                                    {'18': str(Line.linepricing.override_price)}
+                                    {'21': str(Line.linepricing.override_price)}
                                 )
                             elif GrabValue(Line,
                                            'linepricing.pricing_object.unit_price'):
                                 dLine.update(
                                     {
-                                        '18': str(
+                                        '21': str(
                                             Line.linepricing.pricing_object.unit_price)
                                     }
                                 )
                             else:
-                                dLine.update({'18': None})
+                                dLine.update({'21': None})
                                 # end if
                                 # end if
                                 # end if
                     else:
                         if GrabValue(Line, 'linepricing.override_price'):
                             dLine.update(
-                                {'18': str(Line.linepricing.override_price)}
+                                {'21': str(Line.linepricing.override_price)}
                             )
                         elif GrabValue(Line,
                                        'linepricing.pricing_object.unit_price'):
                             dLine.update(
                                 {
-                                    '18': str(
+                                    '21': str(
                                         Line.linepricing.pricing_object.unit_price)
                                 }
                             )
                         else:
-                            dLine.update({'18': None})
+                            dLine.update({'21': None})
                             # end if
                             # end if
                 else:
-                    dLine.update({'18': None})
+                    dLine.update({'21': None})
 
     # S-05770:-USCC Unit Price functionality - The below case is for Net Price functionality,case no. 18 is changed to 19
     # NonPicklist-Sum of UP of all the parts is shown as NP in line 10
@@ -1755,29 +1765,29 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     if str(Line.line_number) == '10':
                         if oConfig.override_net_value:
                             dLine.update(
-                                {'19': str(oConfig.override_net_value)}
+                                {'22': str(oConfig.override_net_value)}
                             )
                         else:
-                            dLine.update({'19': str(oConfig.net_value) if oConfig.net_value is not None else None})
+                            dLine.update({'22': str(oConfig.net_value) if oConfig.net_value is not None else None})
                         # end if
                     else:
-                        dLine.update({'19': ''})
+                        dLine.update({'22': ''})
                     # end if
                 else:
                     if GrabValue(Line, 'linepricing.override_price'):
                         dLine.update(
-                            {'19': str(Line.linepricing.override_price)}
+                            {'22': str(Line.linepricing.override_price)}
                         )
                     elif GrabValue(Line,
                                    'linepricing.pricing_object.unit_price'):
                         dLine.update(
                             {
-                                '19': str(
+                                '22': str(
                                     Line.linepricing.pricing_object.unit_price)
                             }
                         )
                     else:
-                        dLine.update({'19': None})
+                        dLine.update({'22': None})
                     # end if
                 # end if
             else:
@@ -2002,25 +2012,26 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
     # Populate error_matrix with blank information
     for _ in range(len(aData)):
         dummy = []
-        for i in range(33):
+        for i in range(36):
             dummy.append({'value': ''})
         error_matrix.append(dummy)
 
+# S-08474:Pull BCAMDB on Part addition/validation : Changed the query to fetch the values for 3 new columns on page load
     if not bFormatCheckOnly:
         # Collect data from database(s)
         oCursor = connections['BCAMDB'].cursor()
         oCursor.execute(
             """
-            SELECT   bmps.[Material], bmps.[Material Description],bmps.[Base Unit of Measure],
+            SELECT bmps.[Material], bmps.[Material Description], bmps.[Base Unit of Measure],
                   bmps.Plant, zmard.SLoc,zmvke.[Item Category],pcode_fcode.[Description] AS [P-Code Description],
                   pcode_fcode.[Commodity],bmps.[MTyp],bmps.[PRIM RE Code],recode.[Title],
                   recode.[Description],bmps.[MU-Flag],bmps.[X-Plant Status],
-                  xplantstatus.[Description] AS [X-Plant Description],gmdm.[PRIM Traceability]
+                  xplantstatus.[Description] AS [X-Plant Description],gmdm.[PRIM Traceability],bmps.[Current Portfolio Code],zmarc.[MS],zmvke.[Material Status]
             FROM dbo.BI_MATERIAL_PLANT_SUMMARY AS bmps
             LEFT JOIN dbo.SAP_ZQR_GMDM AS gmdm
                 ON bmps.Material=gmdm.[Material Number] AND bmps.Plant = gmdm.Plant
-            LEFT JOIN (SELECT [Material],[Plant], MAX([Item Category]) AS [Item Category]
-                 FROM [BCAMDB].[dbo].[SAP_ZMVKE]  WHERE [Item Category] <> 'NORM' GROUP BY  [Material],[Plant] ) zmvke
+            LEFT JOIN (SELECT [Material],[Plant], MAX([Item Category]) AS [Item Category],[Material Status]
+                 FROM [BCAMDB].[dbo].[SAP_ZMVKE]  WHERE [Item Category] <> 'NORM' GROUP BY  [Material],[Plant],[Material Status] ) zmvke
                  ON bmps.Material=zmvke.Material AND bmps.Plant=zmvke.Plant
             LEFT JOIN SAP_ZMARD AS zmard
                 ON bmps.Material=zmard.Material AND bmps.Plant=zmard.Plant
@@ -2030,6 +2041,8 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                 ON gmdm.[PRIM RE Code]=recode.[Status Code]
             LEFT JOIN dbo.REF_X_PLANT_STATUS_DESCRIPTIONS AS xplantstatus
                 ON bmps.[X-Plant Status]=xplantstatus.[X-Plant Status Code]
+            LEFT JOIN dbo.SAP_ZMARC zmarc
+                ON  bmps.[Material] =zmarc.Material and bmps.Plant=zmarc.Plant
             WHERE bmps.[Plant] IN ('2685','2666','2392')
                   AND bmps.[Material] IN %s
                   ORDER BY  bmps.[Material]       
@@ -2092,7 +2105,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         dPartData = {}
         for row in tAllData:
             if row[0] in dPartData:
-                # Add row data to existing entry
+                 # Add row data to existing entry
                 if row[1] not in dPartData[row[0]]['Description']:
                     dPartData[row[0]]['Description'].append(row[1])
 
@@ -2134,6 +2147,16 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
 
                 if row[15] not in dPartData[row[0]]['Traceability']:
                     dPartData[row[0]]['Traceability'].append(row[15])
+
+# S-08474:Pull BCAMDB on Part addition/validation : Added below 3 conditions to fetch the value from DB on page load after save
+                if row[16] not in dPartData[row[0]]['Current Portfolio Code']:
+                    dPartData[row[0]]['Current Portfolio Code'].append(row[16])
+
+                if row[17] not in dPartData[row[0]]['Plant Specific Material Status']:
+                    dPartData[row[0]]['Plant Specific Material Status'].append(row[17])
+
+                if row[18] not in dPartData[row[0]]['Distribution Chain Specific Material Status']:
+                    dPartData[row[0]]['Distribution Chain Specific Material Status'].append(row[18])
             else:
                 # Create new entry
                 dPartData[row[0]] = {
@@ -2150,7 +2173,11 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     'MU-Flag': [row[12]],
                     'X-Plant': [row[13]],
                     'X-Plant Desc': [row[14]],
-                    'Traceability': [row[15]]
+                    'Traceability': [row[15]],
+ # S-08474:Pull BCAMDB on Part addition/validation : Added below 3 lines to fetch the value from DB on page load after save
+                    'Current Portfolio Code': [row[16]],
+                    'Plant Specific Material Status': [row[17]],
+                    'Distribution Chain Specific Material Status': [row[18]]
                 }
             # end if
         # end for
@@ -2190,8 +2217,8 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         # end if
 
         # Vendor Article Number
-        if '30' in aData[index] and aData[index]['30'] in ('', None):
-            aData[index]['30'] = aData[index]['2'].strip('./')
+        if '33' in aData[index] and aData[index]['33'] in ('', None):
+            aData[index]['33'] = aData[index]['2'].strip('./')
 
         # Line number
         # If line number is provided, ensure it is the correct format and track
@@ -2324,15 +2351,15 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         # end if
 
         # Condition Type & Amount Supplied Together
-        NoCondition = '23' not in aData[index] or aData[index]['23'] in ('', None)
-        NoAmount = '24' not in aData[index] or aData[index]['24'] in ('', None)
+        NoCondition = '26' not in aData[index] or aData[index]['26'] in ('', None)
+        NoAmount = '27' not in aData[index] or aData[index]['27'] in ('', None)
         if not bFormatCheckOnly:
             if (NoCondition and not NoAmount) or (NoAmount and not NoCondition):
                 if NoAmount and not NoCondition:
-                    error_matrix[index][24]['value'] += \
+                    error_matrix[index][27]['value'] += \
                         'X - Condition Type provided without Amount.\n'
                 else:
-                    error_matrix[index][23]['value'] += \
+                    error_matrix[index][26]['value'] += \
                         'X - Amount provided without Condition Type.\n'
                 # end if
             # end if
@@ -2368,10 +2395,20 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                         aData[index]['3'] = dPartData[corePartNumber]['Description'][0] or ''
 
                     # MU-Flag
-                    aData[index]['15'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
+                    aData[index]['16'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
 
                     # X-Plant
-                    aData[index]['16'] = dPartData[corePartNumber]['X-Plant'][0] or ''
+                    aData[index]['17'] = dPartData[corePartNumber]['X-Plant'][0] or ''
+
+# S-08476: Adjust save process to preserve new columns:-Added below 3 lines to show the saved value of 3 new columns on page load
+                    # Current Portfolio-Code
+                    aData[index]['14'] = dPartData[corePartNumber]['Current Portfolio Code'][0] or ''
+
+                    # Plant Specific Material Status
+                    aData[index]['18'] = dPartData[corePartNumber]['Plant Specific Material Status'][0] or ''
+
+                    # Distribution Chain Specific Material Status
+                    aData[index]['19'] = dPartData[corePartNumber]['Distribution Chain Specific Material Status'][0] or ''
 
                     # UoM
                     aData[index]['5'] = dPartData[corePartNumber]['UOM'][0] or ''
@@ -2395,10 +2432,17 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     elif dPartData[corePartNumber]['M-Type'][0] == 'ZEDY':
                         aData[index]['12'] = 'Dynamic Product Package (DPP)'
 
+
+ # S-08475: Adjust validation process to flag parts with non-green portfolio code : Added below condition to show the warning message on the cell if the color value is not green
+                    # Portfolio Code
+                    if dPartData[corePartNumber]['Current Portfolio Code'][0] != 'Green':
+                        error_matrix[index][14]['value'] += '! - Portfolio code is Non-Green.' + '\n'
+                    # end if
+
                     # X-Plant Description
                     if dPartData[corePartNumber]['X-Plant Desc'][0]\
-                            and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][16]['value']:
-                        error_matrix[index][16]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
+                            and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][17]['value']:
+                        error_matrix[index][17]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
                     # end if
                 # end if
             else:
@@ -2409,6 +2453,9 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     aData[index]['14'] = ''
                     aData[index]['15'] = ''
                     aData[index]['16'] = ''
+                    aData[index]['17'] = ''
+                    aData[index]['18'] = ''
+                    aData[index]['19'] = ''
             # end def
 
             # P-Code, Fire Code, Description & HW/SW Indicator
@@ -2423,6 +2470,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     aData[index]['11'] = dPartData[corePartNumber]['Commodity'][0]
                 else:
                     aData[index]['11'] = aData[index]['11'] or ''
+
                 # end if
             else:  # P-Code is populated (but may not be a valid value)
                 # If P-Code is valid, extract the P-Code portion
@@ -2485,29 +2533,32 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             if oHead.configuration_status.name == 'In Process':
 
                 if corePartNumber in dPartData.keys():
+                    # # Current Portfolio-Code
+                    # aData[index]['14'] = dPartData[corePartNumber]['Current Portfolio Code'][0] or ''
+
                     # RE-Code
-                    aData[index]['14'] = dPartData[corePartNumber]['RE-Code'][0] or ''
+                    aData[index]['15'] = dPartData[corePartNumber]['RE-Code'][0] or ''
 
                     # Traceability Req
-                    aData[index]['25'] = 'Y' if dPartData[corePartNumber]['Traceability'][0] == 'Z001' else 'N' \
+                    aData[index]['28'] = 'Y' if dPartData[corePartNumber]['Traceability'][0] == 'Z001' else 'N' \
                         if dPartData[corePartNumber]['Traceability'][0] == 'Z002' else ''
 
                     # RE-Code title
-                    if aData[index]['17']:
-                        if dPartData[corePartNumber]['RE-Code Title'][0] and dPartData[corePartNumber]['RE-Code Title'][0] not in aData[index]['17']:
-                            aData[index]['17'] = aData[index]['17'] + '; ' + \
+                    if aData[index]['20']:
+                        if dPartData[corePartNumber]['RE-Code Title'][0] and dPartData[corePartNumber]['RE-Code Title'][0] not in aData[index]['20']:
+                            aData[index]['20'] = aData[index]['20'] + '; ' + \
                                                  dPartData[corePartNumber]['RE-Code Title'][0]
                     else:
-                        aData[index]['17'] = dPartData[corePartNumber]['RE-Code Title'][0] or ''
+                        aData[index]['20'] = dPartData[corePartNumber]['RE-Code Title'][0] or ''
 
                     # RE-Code description
-                    if dPartData[corePartNumber]['RE-Code Desc'][0] and dPartData[corePartNumber]['RE-Code Desc'][0] not in error_matrix[index][14]['value']:
-                        error_matrix[index][14]['value'] += dPartData[corePartNumber]['RE-Code Desc'][0] + '\n'
+                    if dPartData[corePartNumber]['RE-Code Desc'][0] and dPartData[corePartNumber]['RE-Code Desc'][0] not in error_matrix[index][15]['value']:
+                        error_matrix[index][15]['value'] += dPartData[corePartNumber]['RE-Code Desc'][0] + '\n'
                 else:
                     # RE-Code
-                    aData[index]['14'] = ''
+                    aData[index]['15'] = ''
                     # Traceability Req
-                    aData[index]['25'] = ''
+                    aData[index]['28'] = ''
                 # end if
             # end if
 
@@ -2897,62 +2948,74 @@ def AjaxValidator(oRequest):
         elif int(dData['col']) == 13:
             validate_func = ValidateSPUD
             args = [dData, dResult]
-        # elif int(dData['col']) == 14:
+# S-08474:Pull BCAMDB on Part addition/validation : Added below to validate the portfolio code column
+        elif int(dData['col']) == 14:
+            validate_func = ValidateCurrentPortfolioCode
+            args = [dData, dResult]
+        # elif int(dData['col']) == 15:
         #     validate_func = ValidateRECode
         #     args = [dData, dResult]
-        elif int(dData['col']) == 15:
+        elif int(dData['col']) == 16:
             validate_func = ValidateMUFlag
             args = [dData, dResult]
-        # elif int(dData['col']) == 16:
+        # elif int(dData['col']) == 17:
         #     validate_func = ValidateXPlant
         #     args = [dData, dResult]
-        elif int(dData['col']) == 17:
+  # S-08474:Pull BCAMDB on Part addition/validation : Added below to validate the Plant Specific Material Status column
+        elif int(dData['col']) == 18:
+            validate_func = ValidatePlantSpecificMaterialStatus
+            args = [dData, dResult]
+  # S-08474:Pull BCAMDB on Part addition/validation : Added below to validate the Distribution Chain Specific Material Status
+        elif int(dData['col']) == 19:
+            validate_func = ValidateDistributionChainSpecificMaterialStatus
+            args = [dData, dResult]
+        elif int(dData['col']) == 20:
             validate_func = Placeholder
             args = [dData, dResult]
     #S-05768: Rename Unit price to Net price and Add unit price
-        elif int(dData['col']) == 18:
+        elif int(dData['col']) == 21:
             validate_func = ValidateUnitPrice
             args = [dData, dResult, oHead]
-        elif int(dData['col']) == 19:
+        elif int(dData['col']) == 22:
             validate_func = ValidateUnitPrice
             args = [dData, dResult, oHead]
-        elif int(dData['col']) == 20:
+        elif int(dData['col']) == 23:
             validate_func = ValidateHigherLevel
             args = [dData, dResult]
-        elif int(dData['col']) == 21:
+        elif int(dData['col']) == 24:
             validate_func = ValidateMaterialGroup
             args = [dData, dResult]
-        elif int(dData['col']) == 22:
+        elif int(dData['col']) == 25:
             validate_func = ValidatePurchaseOrderItemNumber
             args = [dData, dResult]
-        elif int(dData['col']) == 23:
+        elif int(dData['col']) == 26:
             validate_func = ValidateCondition
             args = [dData, dResult, oHead]
-        elif int(dData['col']) == 24:
+        elif int(dData['col']) == 27:
             validate_func = ValidateAmount
             args = [dData, dResult]
-        elif int(dData['col']) == 25:
+        elif int(dData['col']) == 28:
             validate_func = ValidateTraceability
             args = [dData, dResult]
-        elif int(dData['col']) == 26:
+        elif int(dData['col']) == 29:
             validate_func = ValidateCustomerAsset
             args = [dData, dResult, oHead, bCanWriteConfig]
-        elif int(dData['col']) == 27:
+        elif int(dData['col']) == 30:
             validate_func = ValidateAssetTagging
             args = [dData, dResult, oHead, bCanWriteConfig]
-        elif int(dData['col']) == 28:
+        elif int(dData['col']) == 31:
             validate_func = ValidateCustomerNumber
             args = [dData, dResult, oHead, bCanWriteConfig]
-        elif int(dData['col']) == 29:
+        elif int(dData['col']) == 32:
             validate_func = ValidateSecCustomerNumber
             args = [dData, dResult, oHead, bCanWriteConfig]
-        elif int(dData['col']) == 30:
+        elif int(dData['col']) == 33:
             validate_func = ValidateVendorNumber
             args = [dData, dResult]
-        elif int(dData['col']) == 31:
+        elif int(dData['col']) == 34:
             validate_func = Placeholder
             args = [dData, dResult]
-        elif int(dData['col']) == 32:
+        elif int(dData['col']) == 35:
             validate_func = Placeholder
             args = [dData, dResult]
         else:
@@ -3004,25 +3067,33 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
 
     oCursor = connections['BCAMDB'].cursor()
 
+# S-08474:Pull BCAMDB on Part addition/validation : Changed the query to fetch the values for 3 new columns on adding part number
     oCursor.execute(
         """
-        SELECT TOP 1 [Material Description],[MU-Flag],[X-Plant Status]+','+ REFSTATUS.[Description] xplantdesc,[Base Unit of Measure],
-        AP.[Description],[MTyp],[ZMVKE Item Category],[PRIM RE Code]+','+RE.[Description] ErrorDescription,
-        [PRIM Traceability],AP.[Commodity],RE.[Title] FROM dbo.BI_MM_ALL_DATA 
-        LEFT JOIN dbo.SAP_ZQR_GMDM 
-        ON [Material Number]=[Material] 
+        SELECT TOP 1 T1.[Material Description],T1.[MU-Flag], T1.[X-Plant Status]+','+ REFSTATUS.[Description] xplantdesc,T1.[Base Unit of Measure],
+        AP.[Description],T1.[MTyp],T1.[ZMVKE Item Category],T2.[PRIM RE Code]+','+RE.[Description] ErrorDescription,
+        T2.[PRIM Traceability],AP.[Commodity],RE.[Title],BPS.[Current Portfolio Code],ZM.MS,ZV.[Material Status] FROM dbo.BI_MM_ALL_DATA T1
+        LEFT JOIN dbo.SAP_ZQR_GMDM T2
+        ON T2.[Material Number]=T1.Material 
         LEFT JOIN dbo.REF_PCODE_FCODE AP
-        ON [P Code]=AP.PCODE 
+        ON T1.[P Code]=AP.[PCODE ]
         LEFT JOIN dbo.REF_PRODUCT_STATUS_CODES RE 
-        ON [PRIM RE Code]=RE.[Status Code] 
+        ON T2.[PRIM RE Code]=RE.[Status Code] 
         LEFT JOIN dbo.REF_X_PLANT_STATUS_DESCRIPTIONS REFSTATUS 
-        ON [X-Plant Status]=REFSTATUS.[X-Plant Status Code] 
-        WHERE [ZMVKE Item Category]<>'NORM' and [Material] = %s
+        ON T1.[X-Plant Status]=REFSTATUS.[X-Plant Status Code] 
+        LEFT JOIN dbo.BI_MATERIAL_PLANT_SUMMARY BPS
+        ON T1.[Material]=BPS.Material and T1.Plant=BPS.Plant 
+        LEFT JOIN dbo.SAP_ZMARC ZM
+        ON T1.[Material] =ZM.Material and T1.Plant=ZM.Plant 
+        LEFT JOIN dbo.SAP_ZMVKE ZV
+        ON T1.[Material] =ZV.Material and T1.Plant=ZV.Plant
+        WHERE [ZMVKE Item Category]<>'NORM' and T1.Material = %s and T1.[Plant] IN ('2685','2666','2392')
         """
         ,
         [bytes(dResult['value'].strip('.'), 'ascii')])
 
     tAllDataInfo = oCursor.fetchall()
+
     if tAllDataInfo:
         if StrToBool(dData['allowChain']):
             dResult['propagate']['line'][3] = {
@@ -3033,19 +3104,27 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 'value': tAllDataInfo[0][6], 'chain': True}
             dResult['propagate']['line'][10] = {
                 'value': tAllDataInfo[0][4], 'chain': True}
-            dResult['propagate']['line'][15] = {
+            dResult['propagate']['line'][14] = {
                 'value': tAllDataInfo[0][1], 'chain': True}
             dResult['propagate']['line'][16] = {
+                'value': tAllDataInfo[0][1], 'chain': True}
+            dResult['propagate']['line'][17] = {
                 'value': tAllDataInfo[0][2], 'chain': True}
             dResult['propagate']['line'][11] = {
                 'value': tAllDataInfo[0][9], 'chain': True}
-            dResult['propagate']['line'][17] = {
+            dResult['propagate']['line'][20] = {
                 'value': tAllDataInfo[0][10], 'chain': True}
+
             dResult['propagate']['line'][14] = {
-                'value': tAllDataInfo[0][7],
-                'chain': True
-            }
-            dResult['propagate']['line'][25] = {
+                'value': tAllDataInfo[0][11], 'chain': True}
+            dResult['propagate']['line'][18] = {
+                'value': tAllDataInfo[0][12], 'chain': True}
+            dResult['propagate']['line'][19] = {
+                'value': tAllDataInfo[0][13], 'chain': True}
+
+            dResult['propagate']['line'][15] = {
+                'value': tAllDataInfo[0][7],  'chain': True}
+            dResult['propagate']['line'][28] = {
                 'value': 'Y' if tAllDataInfo[0][8] == 'Z001' else 'N' if
                 tAllDataInfo[0][8] == 'Z002' else '',
                 'chain': True
@@ -3093,35 +3172,35 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
                 active=True)
 
             # if StrToBool(dData['allowChain']):
-            dResult['propagate']['line'][26] = {
+            dResult['propagate']['line'][29] = {
                 'value': 'Y' if oMPNCustMap.customer_asset else 'N' if
                 oMPNCustMap.customer_asset is False else '',
                 'chain': True
             }
-            dResult['propagate']['line'][27] = {
+            dResult['propagate']['line'][30] = {
                 'value': 'Y' if oMPNCustMap.customer_asset_tagging else 'N'
                 if oMPNCustMap.customer_asset_tagging is False else '',
                 'chain': True
             }
-            dResult['propagate']['line'][28] = {
+            dResult['propagate']['line'][31] = {
                 'value': oMPNCustMap.customer_number,
                 'chain': True
             }
-            dResult['propagate']['line'][29] = {
+            dResult['propagate']['line'][32] = {
                 'value': oMPNCustMap.second_customer_number,
                 'chain': True
             }
         except CustomerPartInfo.DoesNotExist:
-            dResult['propagate']['line'][26] = {
-                'value': None,
-                'chain': True}
-            dResult['propagate']['line'][27] = {
-                'value': None,
-                'chain': True}
-            dResult['propagate']['line'][28] = {
-                'value': None,
-                'chain': True}
             dResult['propagate']['line'][29] = {
+                'value': None,
+                'chain': True}
+            dResult['propagate']['line'][30] = {
+                'value': None,
+                'chain': True}
+            dResult['propagate']['line'][31] = {
+                'value': None,
+                'chain': True}
+            dResult['propagate']['line'][32] = {
                 'value': None,
                 'chain': True}
 # end def
@@ -3329,6 +3408,17 @@ def ValidateSPUD(dData, dResult):
     return
 # end def
 
+# S-08474:Pull BCAMDB on Part addition/validation : Added below function to validate the portfolio code column
+def ValidateCurrentPortfolioCode(dData, dResult):
+    """
+    Function to validate line number
+    :param dData: Dictionary of input data
+    :param dResult: Dictionary of output data
+    :return: dictionary
+    """
+
+    return
+# end def
 
 def ValidateRECode(dData, dResult):
     """
@@ -3352,7 +3442,7 @@ def ValidateRECode(dData, dResult):
             sNote = tRECode[0][0]
 
         if StrToBool(dData['allowChain']):
-            dResult['propagate']['line'][17] = {'value': sNote,
+            dResult['propagate']['line'][20] = {'value': sNote,
                                                 'chain': False}
         dResult['error']['value'] = tRECode[0][1] + '\n'
         dResult['status'] = 'OK'
@@ -3395,6 +3485,29 @@ def ValidateXPlant(dData, dResult):
     # end if
 # end def
 
+# S-08474:Pull BCAMDB on Part addition/validation : Added below to validate the Plant Specific Material Status column
+def ValidatePlantSpecificMaterialStatus(dData, dResult):
+    """
+    Function to validate line number
+    :param dData: Dictionary of input data
+    :param dResult: Dictionary of output data
+    :return: dictionary
+    """
+
+    return
+# end def
+
+# S-08474:Pull BCAMDB on Part addition/validation : Added below to validate the Distribution Chain Specific Material Status column
+def ValidateDistributionChainSpecificMaterialStatus(dData, dResult):
+    """
+    Function to validate line number
+    :param dData: Dictionary of input data
+    :param dResult: Dictionary of output data
+    :return: dictionary
+    """
+
+    return
+# end def
 
 def ValidateUnitPrice(dData, dResult, oHead):
     """

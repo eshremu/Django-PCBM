@@ -1344,9 +1344,14 @@ class ConfigLine(models.Model):
     pcode = models.CharField(max_length=100, blank=True, null=True)
     commodity_type = models.CharField(max_length=50, blank=True, null=True)
     package_type = models.CharField(max_length=50, blank=True, null=True)
+    # S-08473: Adjust configuration table to include new columns:- Added below 1 column
+    current_portfolio_code = models.CharField(max_length=50, blank=True, null=True)
     REcode = models.CharField(max_length=50, blank=True, null=True)
     mu_flag = models.CharField(max_length=50, blank=True, null=True)
     x_plant = models.CharField(max_length=50, blank=True, null=True)
+    # S-08473: Adjust configuration table to include new columns:- Added below 2 columns
+    plant_specific_material_status = models.CharField(max_length=50, blank=True, null=True)
+    distribution_chain_specific_material_status = models.CharField(max_length=50, blank=True, null=True)
     traceability_req = models.CharField(max_length=50, blank=True,
                                         null=True)  # TODO: Use CustomerPartInfo
     last_updated = models.DateTimeField(blank=True, null=True)
