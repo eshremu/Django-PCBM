@@ -81,7 +81,7 @@ def PartPricing(oRequest):
                             oCurrentPriceObj = PricingObject.objects.get(
                                 part__product_number__iexact=aRowToSave[0] or
                                 oRequest.POST.get('initial', None),
-                                customer__name=aRowToSave[1] if aRowToSave[1] in aAvailableCU else None , # S-05923: Pricing - Restrict View to allowed CU's based on permissions: added if
+                                customer__name=aRowToSave[1], # D-04625: New row populated when editing data in Unit Price Management removed if aRowToSave[1] in aAvailableCU else None
                                 sold_to=aRowToSave[2] if aRowToSave[2] not in
                                 ('', '(None)') else None,
                                 spud__name=aRowToSave[3] if aRowToSave[3] not in

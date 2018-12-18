@@ -284,9 +284,9 @@ function determineColumns(readonly, hidden_cols){
         {
             readonly.push( 14, 15, 16, 17, 18, 19, 21, 22);  //  [added]
         } else if (attr_write_auth) {
-            readonly.push(11, 12, 14, 15, 16, 17, 18, 19, 21, 22);   //  [added]
+            readonly.push(11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22);   //  [added]
         } else {
-            readonly.push(11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22);   //  [added]
+            readonly.push(11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22);   //  [added]
         }
 
         // readonly.push(15, 16, 17); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
