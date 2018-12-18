@@ -20,8 +20,10 @@ from BoMConfig.views.download import Download, DownloadBaseline, \
     PriceOverviewDownload, PartPriceDownload, ErosionDownload, \
     DownloadSearchResults
  # D-04023-Customer filter on Actions issue for Admin users :- Added ActionCustomer to populate baseline dropdown based on selected CU
+# S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+    #  added ApprovalHold,HoldApprove
 from BoMConfig.views.approvals_actions import Approval, Action, AjaxApprove, \
-    ApprovalData, AjaxApprovalForm, ChangePart, CreateDocument,ActionCustomer
+    ApprovalData, AjaxApprovalForm, ChangePart, CreateDocument,ActionCustomer,ApprovalHold,HoldApprove
 # S-07204 Refine User Admin page added UserDelete logic  in user admin page
 # S-07533 DropDownAdmin added for New sub-tab drop-down admin base template creation
 # S-05903, S-05905, S-05906, S-05907, S-05908,S-05909:- Added From ProductArea1Admin to RFDelete for Admin dropdown functionalities

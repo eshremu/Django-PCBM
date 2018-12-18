@@ -37,6 +37,7 @@ urlpatterns = patterns(
         name='erosiondownload'),
     url(r'^reporting/$', views.Report, name='reporting'),
     url(r'^approvals/$', views.Approval, name='approval'),
+    url(r'^approvals/hold/$', views.ApprovalHold, name='approval_hold'),
     url(r'^actions/$', views.Action, name='action'),
     url(r'^actions/inprocess/$', views.Action, {'type':'inprocess'},
         name='action_inprocess'),
@@ -74,6 +75,9 @@ urlpatterns = patterns(
     url(r'^list_fill/$', views.ListFill, name='list_fill'),
     url(r'^list_react_fill/$', views.ListREACTFill, name='list_react_fill'),
     url(r'^approve/$', views.AjaxApprove, name='approve'),
+# S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+    #  added below url
+    url(r'^approve/hold/$', views.HoldApprove, name='approve_hold'),
     url(r'^approval_data/$', views.ApprovalData, name='approve_info'),
     url(r'^approval_list/$', views.AjaxApprovalForm, name='approve_list'),
     url(r'^password_change/$', auth_views.password_change,

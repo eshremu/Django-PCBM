@@ -1624,74 +1624,87 @@ class HeaderTimeTracker(models.Model):
 
     submitted_for_approval = models.DateTimeField(blank=True, null=True)
     psm_config_approver = models.CharField(max_length=50, blank=True, null=True)
-
+    # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+    #  added _hold_approval for each level,hold_on
     scm1_approver = models.CharField(max_length=50, blank=True, null=True)
     scm1_denied_approval = models.DateTimeField(blank=True, null=True)
     scm1_approved_on = models.DateTimeField(blank=True, null=True)
+    scm1_hold_approval = models.DateTimeField(blank=True, null=True)
     scm1_comments = models.TextField(blank=True, null=True)
     scm1_notify = models.TextField(blank=True, null=True)
 
     scm2_approver = models.CharField(max_length=50, blank=True, null=True)
     scm2_denied_approval = models.DateTimeField(blank=True, null=True)
     scm2_approved_on = models.DateTimeField(blank=True, null=True)
+    scm2_hold_approval = models.DateTimeField(blank=True, null=True)
     scm2_comments = models.TextField(blank=True, null=True)
     scm2_notify = models.TextField(blank=True, null=True)
 
     csr_approver = models.CharField(max_length=50, blank=True, null=True)
     csr_denied_approval = models.DateTimeField(blank=True, null=True)
     csr_approved_on = models.DateTimeField(blank=True, null=True)
+    csr_hold_approval = models.DateTimeField(blank=True, null=True)
     csr_comments = models.TextField(blank=True, null=True)
     csr_notify = models.TextField(blank=True, null=True)
 
     cpm_approver = models.CharField(max_length=50, blank=True, null=True)
     cpm_denied_approval = models.DateTimeField(blank=True, null=True)
     cpm_approved_on = models.DateTimeField(blank=True, null=True)
+    cpm_hold_approval = models.DateTimeField(blank=True, null=True)
     cpm_comments = models.TextField(blank=True, null=True)
     cpm_notify = models.TextField(blank=True, null=True)
 
     acr_approver = models.CharField(max_length=50, blank=True, null=True)
     acr_denied_approval = models.DateTimeField(blank=True, null=True)
     acr_approved_on = models.DateTimeField(blank=True, null=True)
+    acr_hold_approval = models.DateTimeField(blank=True, null=True)
     acr_comments = models.TextField(blank=True, null=True)
     acr_notify = models.TextField(blank=True, null=True)
 
     blm_approver = models.CharField(max_length=50, blank=True, null=True)
     blm_denied_approval = models.DateTimeField(blank=True, null=True)
     blm_approved_on = models.DateTimeField(blank=True, null=True)
+    blm_hold_approval = models.DateTimeField(blank=True, null=True)
     blm_comments = models.TextField(blank=True, null=True)
     blm_notify = models.TextField(blank=True, null=True)
 
     cust1_approver = models.CharField(max_length=50, blank=True, null=True)
     cust1_denied_approval = models.DateTimeField(blank=True, null=True)
     cust1_approved_on = models.DateTimeField(blank=True, null=True)
+    cust1_hold_approval = models.DateTimeField(blank=True, null=True)
     cust1_comments = models.TextField(blank=True, null=True)
     cust1_notify = models.TextField(blank=True, null=True)
 
     cust2_approver = models.CharField(max_length=50, blank=True, null=True)
     cust2_denied_approval = models.DateTimeField(blank=True, null=True)
     cust2_approved_on = models.DateTimeField(blank=True, null=True)
+    cust2_hold_approval = models.DateTimeField(blank=True, null=True)
     cust2_comments = models.TextField(blank=True, null=True)
     cust2_notify = models.TextField(blank=True, null=True)
 
     cust_whse_approver = models.CharField(max_length=50, blank=True, null=True)
     cust_whse_denied_approval = models.DateTimeField(blank=True, null=True)
     cust_whse_approved_on = models.DateTimeField(blank=True, null=True)
+    cust_whse_hold_approval = models.DateTimeField(blank=True, null=True)
     cust_whse_comments = models.TextField(blank=True, null=True)
     cust_whse_notify = models.TextField(blank=True, null=True)
 
     evar_approver = models.CharField(max_length=50, blank=True, null=True)
     evar_denied_approval = models.DateTimeField(blank=True, null=True)
     evar_approved_on = models.DateTimeField(blank=True, null=True)
+    evar_hold_approval = models.DateTimeField(blank=True, null=True)
     evar_comments = models.TextField(blank=True, null=True)
     evar_notify = models.TextField(blank=True, null=True)
 
     brd_approver = models.CharField(max_length=50, blank=True, null=True)
     brd_denied_approval = models.DateTimeField(blank=True, null=True)
     brd_approved_on = models.DateTimeField(blank=True, null=True)
+    brd_hold_approval = models.DateTimeField(blank=True, null=True)
     brd_comments = models.TextField(blank=True, null=True)
 
     completed_on = models.DateTimeField(blank=True, null=True)
     disapproved_on = models.DateTimeField(blank=True, null=True)
+    hold_on = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return str(self.header)
@@ -1705,7 +1718,7 @@ class HeaderTimeTracker(models.Model):
         completed_on value if it exists
         :return: DateTime / None
         """
-        return self.disapproved_on or self.completed_on
+        return self.disapproved_on or self.completed_on or self.hold_on
 
     # end def
 
@@ -1762,6 +1775,21 @@ class HeaderTimeTracker(models.Model):
                     return level
         else:
             return None
+    # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+    #  added def
+    @property
+    def hold_level(self):
+        """
+        Returns the approval level that contains a valid denied_approval value
+        :return: str / None
+        """
+        if self.hold_on:
+            for level in self.__class__.approvals():
+                if hasattr(self, level + '_hold_approval') and \
+                        getattr(self, level + '_hold_approval'):
+                    return level
+        else:
+            return None
 
     @property
     def last_approval_comment(self):
@@ -1770,7 +1798,8 @@ class HeaderTimeTracker(models.Model):
         this record that contains a valid approved_on value.
         :return: str / None
         """
-        if not self.disapproved_on:
+        if not self.disapproved_on or not self.hold_on: # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+    #  added _hold_on
             levels = self.__class__.approvals()
             levels.reverse()
             for level in levels:
@@ -1791,6 +1820,19 @@ class HeaderTimeTracker(models.Model):
         """
         if self.disapproved_on:
             return getattr(self, self.disapproved_level + '_comments')
+        else:
+            return None
+    # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+    #  added _hold_approval for each level
+    @property
+    def last_hold_comment(self):
+        """
+        Returns the comment(s) stored for the last possible approval level for
+        this record that contains a valid denied_approval value.
+        :return: str / None
+        """
+        if self.hold_on:
+            return getattr(self, self.hold_level + '_comments')
         else:
             return None
 

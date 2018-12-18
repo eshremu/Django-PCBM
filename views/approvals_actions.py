@@ -157,6 +157,63 @@ def Approval(oRequest):
     return Default(oRequest, sTemplate='BoMConfig/approvals.html',
                    dContext=dContext)
 # end def
+# S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+#  added below function
+@login_required
+def ApprovalHold(oRequest):
+    """
+    View for viewing and interacting with records pending approval and which is on hold
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
+    if 'existing' in oRequest.session:
+        try:
+            Unlock(oRequest, oRequest.session['existing'])
+        except Header.DoesNotExist:
+            pass
+        # end try
+
+        del oRequest.session['existing']
+    # end if
+
+    dContext = {
+        'on_hold': Header.objects.filter(
+            configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU),
+        'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
+        'baselines': ['All'] + sorted(list(
+            set(
+                [str(obj.baseline.title) if
+                 obj.baseline.title != 'No Associated Baseline' else
+                 "(Not baselined)" for obj in Header.objects.filter(
+                    configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU)]))),
+        'customer_list': ['All'] + aAvailableCU,
+        'approval_seq': HeaderTimeTracker.approvals(),
+        'deaddate': timezone.datetime(1900, 1, 1),
+        'namelist': ['PSM Configuration Mgr.', 'SCM #1', 'SCM #2', 'CSR',
+                     'Comm. Price Mgmt.', 'ACR', 'PSM Baseline Mgmt.',
+                     'Customer #1', 'Customer #2', 'Customer Warehouse',
+                     'Ericsson VAR', 'Baseline Release & Dist.'],
+        'viewauthorized': SecurityPermission.objects.filter(
+            title__iregex='^.*Approval.*$').filter(
+            user__in=oRequest.user.groups.all()),
+        'removehold_authorized': HeaderTimeTracker.next_approval,
+        'available_levels': ",.".join(
+            [''] + [sLevel for sLevel in HeaderTimeTracker.approvals() if
+                    bool(SecurityPermission.objects.filter(
+                        title__in=HeaderTimeTracker.permission_entry(sLevel)
+                    ).filter(user__in=oRequest.user.groups.all()))])[1:],
+    }
+    return Default(oRequest, sTemplate='BoMConfig/approvals_hold.html',
+                   dContext=dContext)
+# end def
+
 
 # D-04023-Customer filter on Actions issue for Admin users :- Added ActionCustomer to populate baseline dropdown based on selected CU
 @login_required
@@ -351,6 +408,15 @@ def ApprovalData(oRequest):
                     oRequest.POST['level'] + "_denied_approval"
                 ).strftime('%m/%d/%Y')
                 dResult['type'] = 'D'
+            # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+            #  added below elif block
+            elif getattr(oHeadTracker,
+                         oRequest.POST['level'] + "_hold_approval"):
+                dResult['date'] = getattr(
+                    oHeadTracker,
+                    oRequest.POST['level'] + "_hold_approval"
+                ).strftime('%m/%d/%Y')
+                dResult['type'] = 'H'
         else:
             dResult['type'] = 'A'
             dResult['date'] = oHeadTracker.submitted_for_approval.strftime(
@@ -971,13 +1037,74 @@ def AjaxApprove(oRequest):
             Header.objects.filter(pk__in=aRecords).update(
                 configuration_status__name='Cancelled')             # __(double underscore means join)
         elif sAction in ('hold', 'unhold'):
-            for iRecord in aRecords:
-                oHeader = Header.objects.get(pk=iRecord)
-                # Toggle the Header's configuration's on-hold status.
-                oHeader.configuration.PSM_on_hold = not oHeader.configuration.\
-                    PSM_on_hold
-                oHeader.configuration.save()
+            # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+            #  changed below elif block and commented earlier code
+            #
+            #     for iRecord in aRecords:
+            #         oHeader = Header.objects.get(pk=iRecord)
+            #         # Toggle the Header's configuration's on-hold status.
+            #         oHeader.configuration.PSM_on_hold = not oHeader.configuration.\
+            #             PSM_on_hold
+            #         oHeader.configuration.save()
+
             # end for
+            aChain = HeaderTimeTracker.approvals()
+
+
+            for index in range(len(aRecords)):
+                # For each item in aRecords, get the corresponding Header, and
+                # that Header's most recently created HeaderTimeTracker object
+                oHeader = Header.objects.get(pk=aRecords[index])
+                oLatestTracker = oHeader.headertimetracker_set.order_by(
+                    '-submitted_for_approval').first()
+                # Determine the next approval level needed on the record
+                sNeededLevel = oLatestTracker.next_approval
+
+                # Determine if the user making the request has permission to
+                # perform the requested action on this record
+                aNames = HeaderTimeTracker.permission_entry(sNeededLevel)
+                try:
+                    bCanHold = bool(SecurityPermission.objects.filter(
+                        title__in=aNames).filter(
+                        user__in=oRequest.user.groups.all()))
+                except ValueError:
+                    bCanHold = False
+                # end if
+
+                # If so, hold or unhold as requested
+                if bCanHold and sNeededLevel != 'brd':
+                    if sAction == 'hold' and sNeededLevel != 'psm_config':
+                        # Set HeaderTimeTracker's name, date, and comments
+                        # # fields for the needed approval level
+                        setattr(oLatestTracker, sNeededLevel + '_approver',
+                                oRequest.user.username) if oLatestTracker else ''
+                        setattr(oLatestTracker, sNeededLevel + '_hold_approval',
+                                timezone.now()) if oLatestTracker else ''
+                        setattr(oLatestTracker, sNeededLevel + '_comments',
+                                aComments[index])if oLatestTracker else ''
+                        oLatestTracker.hold_on = timezone.now()
+                        oLatestTracker.save()
+                        # oHeader.configuration.PSM_on_hold = not oHeader.configuration.PSM_on_hold
+                        # oHeader.configuration.save()
+
+                        oHeader.configuration_status = REF_STATUS.objects.get(name='On Hold')
+                        oHeader.save()
+                    elif sAction == 'unhold':
+                        for iRecord in aRecords:
+                            oHeader = Header.objects.get(pk=iRecord)
+                            # Toggle the Header's configuration's on-hold status.
+                            oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
+                                PSM_on_hold
+                            oHeader.configuration.save()
+                            # end for
+                    else:
+                        for iRecord in aRecords:
+                            oHeader = Header.objects.get(pk=iRecord)
+                            # Toggle the Header's configuration's on-hold status.
+                            oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
+                                PSM_on_hold
+                            oHeader.configuration.save()
+
         # end if
         # S-05766:Identify Emails from Test System:-- Added to frame the Email content/subject as per the environment
         if oRequest.POST.get('windowurl') == 'local':
@@ -1072,6 +1199,49 @@ def AjaxApprove(oRequest):
     else:
         raise Http404()
 # end def
+
+# S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+ #  added below def
+
+def HoldApprove(oRequest):
+    if oRequest.method == 'POST' and oRequest.POST:
+        # Disallow requests with unsupported actions or no action
+        if oRequest.POST.get('action', None) not in ('unhold'):
+            raise Http404
+
+        # Collect the list of record ids, comments, and destinations supplied
+        # with the request, if any.
+        sAction = oRequest.POST.get('action')
+        aRecords = [
+            int(record) for record in json.loads(oRequest.POST.get('data'))]
+
+        if sAction =='unhold':
+            for index in range(len(aRecords)):
+        # For each item in aRecords, get the corresponding Header, and
+        # that Header's most recently created HeaderTimeTracker object
+                oHeader = Header.objects.get(pk=aRecords[index])
+                oLatestTracker = oHeader.headertimetracker_set.order_by(
+                    '-submitted_for_approval').first()
+                # Determine the next approval level needed on the record
+                sNeededLevel = oLatestTracker.next_approval
+
+                # Determine if the user making the request has permission to
+                # perform the requested action on this record
+                aNames = HeaderTimeTracker.permission_entry(sNeededLevel)
+                try:
+                    bCanHold = bool(SecurityPermission.objects.filter(
+                        title__in=aNames).filter(
+                        user__in=oRequest.user.groups.all()))
+                except ValueError:
+                    bCanHold = False
+                # end if
+
+                # If so, approve, disapprove, or skip as requested
+                if bCanHold and sNeededLevel != 'psm_config':
+                    oHeader.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
+                    oHeader.save()
+
+    return HttpResponse()
 
 
 def CloneHeader(oHeader):

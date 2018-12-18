@@ -1126,8 +1126,9 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                     and 'Optional Hardware' not in oFile.sheetnames:
                 oSheet = oFile.create_sheet(title="Optional Hardware")
                 oSheet.sheet_properties.tabColor = '0062FF'
-            elif oHeader.product_area2 and oHeader.product_area2.name != 'Optional Hardware':
-                oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]:\'\?/]', '_',
+            elif oHeader.product_area2 and oHeader.product_area2.name != 'Optional Hardware' \
+                    and (oHeader.product_area2.name + '(Opt HW)') not in oFile.sheetnames: # D-04626: Picklist tab names for Opt HW are generating duplicate tabs added 2nd and part
+                oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]:\'\?/]', '_', # D-04403: Unable to download Baseline file
                                                      oHeader.product_area2.name)+'(Opt HW)')
                 oSheet.sheet_properties.tabColor = '0062FF'
 
