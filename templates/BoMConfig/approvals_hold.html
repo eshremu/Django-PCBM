@@ -1,0 +1,401 @@
+{% extends "BoMConfig/template.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block content %}
+<div id="main-body">
+    {% if user.is_authenticated %}
+        {% if viewauthorized %}
+        <div id="hintBox"></div>
+        <ul class="btn" style="border: none; padding: 5px 0 0 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for customer in customer_list %}
+                    <li><a onclick="cust_filter('{{ customer }}');">{{ customer }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+        <ul class="btn" style="border: none; padding: 5px 0 0 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Baseline <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for baseline in baselines %}
+                    <li><a href="#" onclick="baseline_filter('{{ baseline }}');">{{ baseline }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+        <ul class="btn" style="border: none; padding: 5px 0 0 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="request_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Request Type <span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    {% for request in requests %}
+                    <li><a href="#" onclick="request_filter('{{ request }}');">{{ request }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
+        <ul class="btn" style="border: none; padding: 5px 0 0 0;">
+                <button class="btn" type="button"
+                        onclick="cleanDataCheck(this)" data-href="{% url 'bomconfig:approval' %}">Show In Process/Pending</button>
+        </ul>
+
+        <h4>On Hold</h4>
+            {% if on_hold %}
+            <form id="hold_approve" onsubmit="return false;">
+                {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" or removehold_authorized%}
+                <button id="unhold" class="btn" value="unhold">Remove from hold</button>
+                {% endif %}
+                <table id="hold_approval_records">
+                    <thead>
+                        <tr> {# class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}" #}
+                            <th style="height: 160px;vertical-align: bottom;"></th>
+                            <th style="height: 160px;vertical-align: bottom;">Configuration</th>
+                            <th style="width:25px;"></th>
+                            <th style="height: 160px;vertical-align: bottom;">Program</th>
+                            <th style="width:25px;"></th>
+                            <th style="height: 160px;vertical-align: bottom;">Baseline</th>
+                            <th style="width:25px;"></th>
+                            <th style="height: 160px;vertical-align: bottom;">BoM Request Type</th>
+                            {% for name in namelist %}
+                            <th class="rotate"><div><span>{{ name }}</span></div></th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for record in on_hold %}
+                        {% for tracker in record.get_all_trackers.all %}
+
+                        <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.latesttracker.next_approval|default:'' }} config">
+                            {% if tracker == record.get_all_trackers.first %}
+
+                            <td><input class="pending" type="checkbox" data-index="{{ record.id }}"/><span>&nbsp;&nbsp;</span></td>
+                            <td>{{ record.configuration_designation }}</td>
+                            <td></td>
+                            <td>{{ record.program|default:"------" }}</td>
+                            <td></td>
+                            <td>{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
+                            <td></td>
+                            <td>{{ record.bom_request_type }}</td>
+                            {% else %}
+                            <td></td><td></td><td></td><td></td><td></td>
+                            <td style="visibility: hidden">{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
+                            <td></td>
+                            <td style="visibility: hidden">{{ record.bom_request_type }}</td>
+                            {% endif %}
+                            {% for level in approval_seq %}
+                            <td class="approval"><div data-id="{{ tracker.id }}" data-level="{{ level }}">
+                                {% with level|add:'_approver' as approver%}
+                                {% with level|add:'_approved_on' as approvedate%}
+                                {% with level|add:'_denied_approval' as disapprovedate%}
+                                {% with level|add:'_hold_approval' as holdapprovedate%}
+                                {% if tracker|getattr:disapprovedate %}
+                                <span class="glyphicon glyphicon-remove" style="color:#DD0000;"></span>
+                                {% elif tracker|getattr:approvedate|date:"Y-M-D" == deaddate|date:"Y-M-D" %}
+                                <span class="glyphicon glyphicon-minus"></span>
+                                {% elif tracker|getattr:holdapprovedate %}
+                                <span class="glyphicon glyphicon-flag" style="color:#FF8C00;"></span>
+                                {% elif tracker|getattr:approver %}
+                                <span class="glyphicon glyphicon-ok" style="color:#00AA00;"></span>
+
+                                {% else %}
+                                <span style="color:#FFFFFF">_</span>
+                                {% endif %}
+                                {% endwith %}
+                                {% endwith %}
+                                {% endwith %}
+                                {% endwith %}
+                            </div></td>
+                            {% endfor %}
+                            {% if tracker.disapproved_on %}
+                            <td class="approval">&nbsp;&nbsp;&nbsp;Disapproved on:&nbsp;&nbsp;{{ tracker.disapproved_on }}</td>
+                            {% endif %}
+                            {% if tracker.hold_on %}
+                            <td class="approval">&nbsp;&nbsp;&nbsp;Hold on:&nbsp;&nbsp;{{ tracker.hold_on }}</td>
+                            {% endif %}
+
+                        </tr>
+
+                        {% endfor %}
+                        <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.latesttracker.next_approval|default:'' }} config" style="height:10px;">
+                            <td></td><td></td><td></td><td></td><td></td>
+                            <td style="visibility: hidden">{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
+                            <td></td>
+                            <td style="visibility: hidden">{{ record.bom_request_type }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </form>
+            {% else %}
+                <h5>NO ON-HOLD RECORDS</h5>
+            {% endif %}
+        {% else %}
+        <h4>You do not have sufficient permissions to view this asset.</h4>
+        {% endif %}
+    {% else %}
+    <h4>You must log in to use this function</h4>
+    {% endif %}
+</div>
+{% if user.is_authenticated %}
+    <script>
+
+    function cleanDataCheck(link){
+            if (link.target == "_blank"){
+                window.open(link.dataset.href);
+            } else {
+                window.location.href = link.dataset.href;
+            }
+
+        }
+    function cust_filter(customer){
+            if(customer !== 'All') {
+                $('#cu_filter').html(customer +" <span class=\"caret\"></span>");
+            } else {
+                $('#cu_filter').html('Customer <span class="caret"></span>');
+            }
+            updateFilters();
+        }
+
+        function request_filter(request){
+            if(request !== "All"){
+                $("#request_filter").html(request + "&nbsp;<span class='caret'></span>");
+            }
+            else{
+                $("#request_filter").html("Request Type" + "&nbsp;<span class='caret'></span>");
+            }
+            updateFilters();
+        }
+
+        function baseline_filter(baseline){
+            if(baseline !== "All"){
+                $("#baseline_filter").html(baseline + "&nbsp;<span class='caret'></span>");
+            }
+            else{
+                $("#baseline_filter").html("Baseline" + "&nbsp;<span class='caret'></span>");
+            }
+            updateFilters();
+        }
+
+        function updateFilters(){
+            var customer = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+            var request = $("#request_filter").text().trim();
+            var baseline = $("#baseline_filter").text().trim();
+
+
+
+            $('tbody tr').show();
+
+            var rows = $('#hold_approval_records tbody tr').toArray();
+
+            for (var row in rows) {
+                let hide = false;
+                if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
+                    hide = true;
+                }
+
+                if(baseline !== "Baseline"){
+                    var baseline_row = $(rows[row]).find('td:nth-of-type(6):contains("' + baseline + '")');
+                    if (!(baseline_row.length !== 0 && $(baseline_row[0]).text() == baseline)){
+                        hide = true;
+                    }
+                }
+
+                if(request !== "Request Type"){
+                    var request_row = $(rows[row]).find('td:nth-of-type(8):contains("' + request + '")');
+                    if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
+                        hide = true;
+                    }
+                }
+
+                if (hide){
+                    $(rows[row]).hide();
+                    $(rows[row]).find('input').removeAttr('checked');
+                }
+            }
+        }
+
+        function form_check($form){
+            var valid = true;
+            var $required_fields = $form.find('.required');
+
+            $required_fields.each(function(idx, elem){
+                if($(elem).val() == undefined || $(elem).val() == null || $(elem).val() == ""){
+                    $(elem).toggleClass('invalid_field', true);
+                    valid = false;
+                } else {
+                    $(elem).toggleClass('invalid_field', false);
+                }
+            });
+
+            return valid;
+        }
+
+
+         function process(action){
+            var records = [];
+
+            if (action === 'unhold'){
+                $('.pending:checked').each(function (index, element) {
+                    records.push(element.dataset.index);
+                });
+            }
+
+
+                $.ajax({
+                    url: "{% url 'bomconfig:approve_hold' %}",
+                    type: "POST",
+                    data: {
+                        action: action,
+                        data: JSON.stringify(records)
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        location.reload(true);
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+
+        }
+        $(document).ready(function(){
+            $('input.pending').change(function(){
+                var index = $(this)[0].dataset.index;
+                $('div[data-index="' + index + '"]').toggle();
+            });
+
+            $('#unhold').click(function(){
+                if($('.pending:checked').length > 0) {
+                    messageToModal('Confirm hold release','Are you sure you wish to release the selected records from hold?', function(source){
+                        $('#myModal').modal('show');
+                        process($(source).val());
+                    }, this);
+                } else {
+                    messageToModal('Error','Please select at least 1 record to release from hold.', function(){});
+                }
+            });
+
+            $('.approval div').mouseenter(function(e) {
+                var hovertext ='';
+                if($(this).find('.glyphicon').length > 0){
+                    xhr = $.ajax({
+                        url: "{% url 'bomconfig:approve_info' %}",
+                        type: "POST",
+                        data: {
+                            id: this.dataset.id,
+                            level: this.dataset.level
+                        },
+                        headers:{
+                            'X-CSRFToken': getcookie('csrftoken')
+                        },
+                        success: function(data) {
+                            hovertext = 'By: ' + data.person + "<br/>";
+
+                            if(data.type != 'S'){
+                                hovertext += "On: " + data.date + "<br/>";
+                                hovertext += 'Comments: ' + data.comments + "<br/>";
+                                if(data.type == 'A'){
+                                    $('#hintBox').css('background-color', 'rgba(0,150,0,0.9)');
+                                }else if(data.type == 'D')  {
+                                    $('#hintBox').css('background-color', 'rgba(150,0,0,0.9)');
+                                }else if(data.type == 'H'){
+                                    $('#hintBox').css('background-color', 'rgba(255,165,0,1)');
+                                 }
+
+                            } else {
+                                $('#hintBox').css('background-color', 'rgba(0,0,0,0.9)');
+                            }
+                            xhr = undefined;
+                            $('#hintBox').html(hovertext).show();
+                            var y_location;
+                            if(e.clientY + 20 + $('#hintBox').outerHeight() > $(window).height()){
+                                y_location = e.pageY - 10 - $('#hintBox').outerHeight();
+                            } else {
+                                y_location = e.pageY + 20;
+                            }
+                            $('#hintBox').css('top', y_location).css('left', e.pageX-210);
+                        },
+                        error: function(){
+                            hovertext = '<span>Could not find</span>';
+                            $('#hintBox').css('background-color', 'rgba(0,0,0,0.9)');
+                        }
+                    });
+                }
+
+{#                if (hovertext != '') {#}
+{#                    $('#hintBox').html(hovertext).show();#}
+{#                    $('#hintBox').css('top', e.pageY+20).css('left', e.pageX-210);#}
+{#                }#}
+            }).mousemove(function(e){
+                var y_location;
+                if(e.clientY + 20 + $('#hintBox').outerHeight() > $(window).height()){
+                    y_location = e.pageY - 10 - $('#hintBox').outerHeight();
+                } else {
+                    y_location = e.pageY + 20;
+                }
+                $('#hintBox').css('top', y_location).css('left', e.pageX-210);
+            }).mouseleave(function() {
+                $('#hintBox').hide();
+                if (xhr !== undefined){
+                    xhr.abort();
+                    xhr = undefined;
+                }
+            });
+
+        });
+    </script>
+    <style>
+        #hintBox {
+            display: none;
+            position: absolute;
+            font-size: 10pt;
+            width: 200px;
+            background-color: rgba(0,0,0,0.9);
+            color: rgba(255,255,255,1);
+            border: 1px solid grey;
+            padding: 8px;
+            border-radius: 10px;
+            z-index: 999;
+
+        }
+
+        table#hold_approval_records td, table#hold_approval_records th{
+
+            }
+
+            table#hold_approval_records td.approval{
+                transform:
+                    translate(25px)
+            }
+            table#hold_approval_records td.approval > div{
+                border: 1px black solid;
+                text-align: center;
+            }
+            th.rotate {
+                height:20px;
+                white-space: nowrap;
+                vertical-align: bottom;
+            }
+            th.rotate > div {
+                width:40px;
+                transform:
+                    rotate(-45deg)
+                    translate(45px, 25px)
+            }
+            th.rotate > div > span {
+                border-bottom: 1px solid black;
+                padding: 5px 0px;
+            }
+
+            .invalid_field {
+                border: 2px solid red;
+            }
+    </style>
+{% endif %}
+{% endblock %}
