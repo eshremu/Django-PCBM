@@ -1514,44 +1514,12 @@ class PricingObject(models.Model):
             customer=oConfigLine.config.header.customer_unit,
             part=oConfigLine.part.base,
             is_current_active=True)
+ # Fix for D-04415- SPUD pricing in not pulled in for configs(SPUD pricing should not consider any other fields except for part number and SPUD. This will mean that we need
+ #  to remove the filter by Sold To or any other conditions).Removed all the condition and made it base only on SPUD. If part no
+ #        is entered without any spud then latest changed unit price without spud will be shown.)
+
         oPriceObj = aPricingList.filter(
-            sold_to=oConfigLine.config.header.sold_to_party,
-            spud=oConfigLine.spud,
-            technology=oConfigLine.config.header.technology).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(
-                sold_to=oConfigLine.config.header.sold_to_party,
-                spud=oConfigLine.spud,
-                technology=None).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(
-                sold_to=oConfigLine.config.header.sold_to_party, spud=None,
-                technology=oConfigLine.config.header.technology).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(sold_to=None, spud=oConfigLine.spud,
-                                            technology=oConfigLine.config.header
-                                            .technology).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(
-                sold_to=oConfigLine.config.header.sold_to_party, spud=None,
-                technology=None).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(sold_to=None, spud=oConfigLine.spud,
-                                            technology=None).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(sold_to=None, spud=None,
-                                            technology=oConfigLine.config.header
-                                            .technology).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(sold_to=None, spud=None,
-                                            technology=None).first()
+            spud=oConfigLine.spud).last()
 
         return oPriceObj
     # end def
