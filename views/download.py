@@ -1078,14 +1078,23 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     # aHeaders.sort(key=lambda inst: inst.baseline_version, reverse=True)
     aHeaders.sort(
         key=lambda inst: (
-            int(inst.pick_list),
+            # int(inst.pick_list), Added sorting of picklist later for D-04368,  D-04484
             str(inst.product_area2.name).upper() if inst.product_area2 else
             'ZZZZ',
             str(inst.configuration_designation),
             -(char_to_num(inst.baseline_version))
         )
     )
-
+    # Added below two sorting block for D-04368, D-04484: PA2 incorrect on baseline download.
+    aHeaders.sort(
+        key=lambda inst: (
+            str(inst.configuration_status)
+        ), reverse=True
+    )
+    aHeaders.sort(
+        key=lambda inst: (
+            int(inst.pick_list))
+    )
     for oHeader in list(aHeaders):
         if sCustomer:
             # Skip records for the wrong customers
