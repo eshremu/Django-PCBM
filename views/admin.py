@@ -12,6 +12,8 @@ from django.db import connections, IntegrityError
 from django.http import HttpResponse, Http404
 
 import json
+import itertools
+from itertools import chain
 
 from BoMConfig.models import DistroList, ApprovalList, User_Customer, Header,  REF_CUSTOMER, REF_PRODUCT_AREA_1, REF_SPUD, REF_PROGRAM,\
     REF_RADIO_BAND, REF_RADIO_FREQUENCY, REF_PRODUCT_AREA_1, REF_PRODUCT_AREA_2, REF_TECHNOLOGY
@@ -530,10 +532,18 @@ def RFAdmin(oRequest):
     :param oRequest: Django request object
     :return: HTML response via Default function
     """
+    # D-04685-Error with Band/Frequency:- Changed the logic below from sending data for 2 different tables to combining the 2 different datasets
+    # into 1 and send the resultset as a whole
+    rf = REF_RADIO_FREQUENCY.objects.filter(is_inactive=0)
+    rb = REF_RADIO_BAND.objects.filter(is_inactive=0)
+
+    resulttable =[]
+    # D-04685-Error with Band/Frequency:- Forms a tuple with data from both radioband and radio frequency table and sends the same in dContext
+    for i in range(0,len(rf)):
+        resulttable.append((rf[i],rb[i]))
 
     dContext = {
-        'radio_freq': REF_RADIO_FREQUENCY.objects.filter(is_inactive=0),
-        'radio_band': REF_RADIO_BAND.objects.filter(is_inactive=0),
+        'radio_freq_band': resulttable,
         'errors': oRequest.session.pop('errors', None),
         'message_type_is_error': oRequest.session.pop('message_is_error', False)
     }
@@ -579,16 +589,27 @@ def RFEdit(oRequest):
     """
 
     if oRequest.method == 'POST' and oRequest.POST:
-        if not REF_RADIO_BAND.objects.filter(name=oRequest.POST.get('radioband'), is_inactive=0):
-            REF_RADIO_FREQUENCY.objects.filter(pk=oRequest.POST.get('radiofreqbandid')).update(
-                name=oRequest.POST.get('radiofreq'))
-            REF_RADIO_BAND.objects.filter(pk=oRequest.POST.get('radiofreqbandid')).update(
-                name=oRequest.POST.get('radioband'))
-            oRequest.session['errors'] = ['Radio Frequency/Band Changed successfully']
-            oRequest.session['message_type_is_error'] = False
-        else:
-            oRequest.session['errors'] = ['Radio Band with same name already exists. Please choose different name']
-            oRequest.session['message_type_is_error'] = True
+        # D-04685-Error with Band/Frequency:- picked out the below 3 lines from the if condition below that checks if the same radio band name exists or not.
+        # As radio frequency can be same for different band names, so it need not be under the if condition
+        REF_RADIO_FREQUENCY.objects.filter(pk=oRequest.POST.get('radiofreqbandid')).update(
+            name=oRequest.POST.get('radiofreq'))
+        oRequest.session['errors'] = ['Radio Frequency/Band Changed successfully']
+        oRequest.session['message_type_is_error'] = False
+
+        # How to get the name from the object -:Ex:- [<REF_RADIO_BAND: rb3/21>] = to = rb3/21
+        for obj in REF_RADIO_BAND.objects.filter(pk=oRequest.POST.get('radiofreqbandid')):
+          currentbandname = obj.name
+
+        if currentbandname != oRequest.POST.get('radioband') :
+            if not REF_RADIO_BAND.objects.filter(name=oRequest.POST.get('radioband'), is_inactive=0):
+
+                REF_RADIO_BAND.objects.filter(pk=oRequest.POST.get('radiofreqbandid')).update(
+                    name=oRequest.POST.get('radioband'))
+                oRequest.session['errors'] = ['Radio Frequency/Band Changed successfully']
+                oRequest.session['message_type_is_error'] = False
+            else:
+                oRequest.session['errors'] = ['Radio Band with same name already exists. Please choose different name']
+                oRequest.session['message_type_is_error'] = True
 
         return HttpResponse()
     else:
