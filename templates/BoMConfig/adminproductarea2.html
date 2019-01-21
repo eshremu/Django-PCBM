@@ -54,9 +54,11 @@
                          <h4></h4>
                     </div>
                     <div class="modal-body">
-                         <label style="padding-left:55px;">Name: </label><input id ="productarea2" class="headerproductarea2" type="text" /><br>
+                         <label style="padding-left:55px;">Name: </label><input id ="productarea2" class="headerproductarea2" type="text" name="inputproductarea2"/><br>
                          <!--S-08414: Adjust admin for Product Area 2 to limit text to 22 characters: Added below line-->
                         <p id="pa2error" style="color:red; padding-left: 90px; display:none; " >* Maximum 22 Characters Allowed</p>
+                        <!--D-05732: PA2 needs to disallow restricted characters--->
+                        <p id="pa2error1" style="color:red; padding-left: 90px; display:none; " >( \  /  *  [  ]  :  ? ) Characters not Allowed</p>
                         <br>
                          <label>Product Area1: </label><select id="productarea1"><option value="">-------</option>{% for p in productarea1 %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select>
                          <p id="pa1error" style="color:red; padding-left: 90px; display:none; " >* Please select a Product Area 1</p>
@@ -75,6 +77,8 @@
      $('#addproductarea2').click(function(){
      <!--S-08414: Adjust admin for Product Area 2 to limit text to 22 characters: added $("#pa2error").hide(); -->
                     $("#pa2error").hide();
+     <!--D-05732: PA2 needs to disallow restricted characters: added $("#pa2error1").hide();--->
+                    $("#pa2error1").hide();
                     document.getElementById("btnsave").disabled = true;
                     document.getElementById('btndelete').style.display ='none';
                     messageToModalAdmin('Add Product Area 2',
@@ -85,6 +89,12 @@
                     document.getElementById('productarea1').value = '';
                     $('#productarea1').attr("disabled", false);
      });
+
+     <!--D-04685-Error with Band/Frequency:- Added below function to remove space at the beginning of the string(left trim)-->
+     function ltrim(str) {
+          if(str == null) return str;
+          return str.replace(/^\s+/g, '');
+     }
 
      function messageToModalAdmin(title, message, callback, productarea2name, productarea2id, productarea1id){
             var params = [];
@@ -107,9 +117,14 @@
             $('#messageModalAdmin .modal-body .headerproductarea2').html(productarea2name,productarea1id);
 
              $('#productarea2').keyup(function(){
+<!--D-05732: PA2 needs to disallow restricted characters: added if condition--->
+                if(!( /[\*\\\[\]:\'\?/]/.test(document.getElementById("productarea2").value))){
+                                $("#pa2error1").hide();
+                                }
               document.getElementById("btnsave").disabled = false;
               document.getElementById("btndelete").disabled = false;
-              if($('#productarea2').val()==''){
+             <!--D-04685-Error with Band/Frequency:- Added last condition to check and disable the buttons if space is present in the textfield -->
+              if($('#productarea2').val()=='' || $('#productarea2').val()==' ' ){
                  document.getElementById("btnsave").disabled = true;
                  document.getElementById("btndelete").disabled = true;
               }
@@ -119,6 +134,8 @@
                 $("#pa1error").hide();
                 <!--S-08414: Adjust admin for Product Area 2 to limit text to 22 characters: added $("#pa2error").hide(); -->
                 $("#pa2error").hide();
+                <!--D-05732: PA2 needs to disallow restricted characters: added $("#pa2error1").hide();--->
+                $("#pa2error1").hide();
             });
 
             $('.modal_submit').off('click');
@@ -132,17 +149,29 @@
                          if(document.getElementById("productarea2").value.length >= 22){
                                 $("#pa2error").show();
                                 return;
+                         }
+                         <!--D-05732: PA2 needs to disallow restricted characters: added below block to show error message--->
+                         else if( /[\*\\\[\]:\'\?/]/.test(document.getElementById("productarea2").value)){
+                                $("#pa2error1").show();
+                                return;
                          }else{
                                  process(1,'');
                          }
+
                     }else{                     //for edit
                         <!--S-08414: Adjust admin for Product Area 2 to limit text to 22 characters: added if clause to show message -->
                         if(document.getElementById("productarea2").value.length >= 22){
                                 $("#pa2error").show();
                                 return;
+                         }
+                         <!--D-05732: PA2 needs to disallow restricted characters: added below block to show error message--->
+                         else if( /[\*\\\[\]:\'\?/]/.test(document.getElementById("productarea2").value)){
+                                $("#pa2error1").show();
+                                return;
                          }else{
                                  process(2,productarea2id);
                          }
+
 
                     }
                 $('#messageModalAdmin').modal('hide');

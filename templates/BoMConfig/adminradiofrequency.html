@@ -22,53 +22,36 @@
     {% endif %}
     <div id="containerdiv">
     <br>
-    <div id="radiofreqcont" class="container" style="width: 50%; float: left;">
-     <table id="tableradiofreq" class="display" style="width: 100%">
+<!--D-04685-Error with Band/Frequency:- Changed the width from 50% to 100% since combined both tables into one -->
+    <div id="radiofreqcont" class="container" style="width: 100%; float: left;">
+     <table id="tableradiofreqband" class="display" style="width: 100%">
         <thead>
+        <!--D-04685-Error with Band/Frequency:- Added Radio Band as a column too as it is a single table now -->
                 <tr>
                    <th>Radio Frequency</th>
-                </tr>
-            </thead>
-            <tbody id="admin_radiofreq">
-                {% for rf in radio_freq %}
-                <tr>
-                     <td>
-
-                         <div id="rf{{ rf.id }}" value='{{rf.name}}' onclick="messageToModalAdmin('Change Radio Frequency/Band',
-                     function(source){
-                        $('#mynewModal').modal('show');
-                    },this,'{{ rf.name }}','{{ rf.id }}','')">{{ rf.name }}</div>
-
-                     </td>
-                </tr>
-            {% endfor %}
-
-            </tbody>
-     </table>
-    </div>
-    <div id="radiobandcont" class="container" style=" width: 50%; float: left;">
-     <table id="tableradioband" width="50%;" style="float:left;" >
-        <thead>
-                <tr>
                    <th>Radio Band</th>
                 </tr>
             </thead>
-            <tbody id="admin_radioband">
-                {% for rb in radio_band %}
+            <tbody id="admin_radiofreq">
+                {% for rf,rb in radio_freq_band %}
                 <tr>
                      <td>
-                         <div id="rb{{ rb.id }}" value='{{rb.name}}' onclick="messageToModalAdmin('Change Radio Frequency/Band',
+                         <div value='{{rf}}' onclick="messageToModalAdmin('Change Radio Frequency/Band',
                      function(source){
                         $('#mynewModal').modal('show');
-                    },this,'','{{ rb.id }}','{{ rb.name }}')">{{ rb.name }}</div>
-
+                    },this,'{{ rf }}','{{ rb }}','{{rb.id}}')">{{ rf }} </div>
                      </td>
+                     <td><div value='{{rb}}' onclick="messageToModalAdmin('Change Radio Frequency/Band',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'{{ rf }}','{{ rb }}','{{rb.id}}')">{{rb}}</div></td>
                 </tr>
-            {% endfor %}
+                {% endfor %}
 
             </tbody>
      </table>
     </div>
+
     </div>
 
      <div class="modal fade" id="mynewModal" role="dialog" data-backdrop="static" data-keyboard="false">
@@ -88,11 +71,11 @@
                     </div>
                     <div class="modal-body">
                         <label>Radio Frequency: </label>
-                        <input id ="radiofreq" class="headerradiofreqband" type="text" />
+                        <input id ="radiofreq" class="headerradiofreqband" type="text" name="inputradiofreq" />
                         <br>
                         <br>
                         <label style="padding-left: 35px"> Radio Band: </label>
-                        <input id ="radioband" class="headerradiofreqband" type="text" />
+                        <input id ="radioband" class="headerradiofreqband" type="text" name="inputradioband" />
                     </div>
                     <div class="modal_footer" style="text-align: right;padding: 10px; padding-top: 25px">
                         <button id="btndelete" class="modal_delete btn btn-danger" style="display:none; float:left; margin-left:10px;">Delete</button>
@@ -113,32 +96,25 @@
                     document.getElementById('radiofreq').value = '';
                     document.getElementById('radioband').value = '';
      });
-     function messageToModalAdmin(title, message, callback, radiofreqnameval, radiofreqbandid, radiobandnameval){
+
+<!--D-04685-Error with Band/Frequency:- Added below function to remove space at the beginning of the string(left trim)-->
+     function ltrim(str) {
+          if(str == null) return str;
+          return str.replace(/^\s+/g, '');
+     }
+
+     function messageToModalAdmin(title, message, callback, radiofreqnameval, radiobandnameval, radiofreqbandid){
 
             if(radiofreqnameval){      //For Edit: If clicked from Radio Frequency table
                 document.getElementById('btndelete').style.display ='block';
                 document.getElementById("btnsave").disabled = true;
-
-                if(radiofreqbandid){
-                    radiobandname = document.getElementById('rb'+radiofreqbandid).getAttribute('value');
-                    if(radiobandname){
-                      document.getElementById('radioband').value = radiobandname;
-                    }
-                }
-                  document.getElementById('radiofreq').value = radiofreqnameval;
+                document.getElementById('radiofreq').value = radiofreqnameval;
             }
 
             if(radiobandnameval){      //For Edit: If clicked from Radio Band table
                 document.getElementById('btndelete').style.display ='block';
                 document.getElementById("btnsave").disabled = true;
-
-                if(radiofreqbandid){
-                    radiofreqname = document.getElementById('rf'+radiofreqbandid).getAttribute('value');
-                    if(radiofreqname){
-                      document.getElementById('radiofreq').value = radiofreqname;
-                    }
-                }
-                  document.getElementById('radioband').value = radiobandnameval;
+                document.getElementById('radioband').value = radiobandnameval;
             }
 
             $('#messageModalAdmin .modal-header h4').text(title);
@@ -147,24 +123,31 @@
             $('.modal_submit').off('click');
 
             $('#radiofreq').keyup(function(){
-              document.getElementById("btnsave").disabled = false;
-              document.getElementById("btndelete").disabled = false;
-              if($('#radiofreq').val()=='' || $('#radioband').val()=='' ){
-                 document.getElementById("btnsave").disabled = true;
-                 document.getElementById("btndelete").disabled = true;
-              }
+  <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in radio frequency input field -->
+                  $('#radiofreq').val(ltrim($('input[name="inputradiofreq"]').val()));
+                  document.getElementById("btnsave").disabled = false;
+                  document.getElementById("btndelete").disabled = false;
+  <!--D-04685-Error with Band/Frequency:- Added last 2 conditions to check and disable the buttons if space is present in the textfield-->
+                  if($('#radiofreq').val()=='' || $('#radioband').val()=='' || $('#radiofreq').val()==' ' || $('#radioband').val()==' '  ){
+                     document.getElementById("btnsave").disabled = true;
+                     document.getElementById("btndelete").disabled = true;
+                  }
             });
+
              $('#radioband').keyup(function(){
-              document.getElementById("btnsave").disabled = false;
-              document.getElementById("btndelete").disabled = false;
-              if($('#radiofreq').val()=='' || $('#radioband').val()=='' ){
-                 document.getElementById("btnsave").disabled = true;
-                 document.getElementById("btndelete").disabled = true;
-              }
+  <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in radio band input field -->
+                  $('#radioband').val(ltrim($('input[name="inputradioband"]').val()));
+                  document.getElementById("btnsave").disabled = false;
+                  document.getElementById("btndelete").disabled = false;
+  <!--D-04685-Error with Band/Frequency:- Added last 2 conditions to check and disable the buttons if space is present in the textfield-->
+                  if($('#radiofreq').val()=='' || $('#radioband').val()=='' || $('#radiofreq').val()==' ' || $('#radioband').val()==' '){
+                     document.getElementById("btnsave").disabled = true;
+                     document.getElementById("btndelete").disabled = true;
+                  }
             });
 
             $('.modal_submit').click(function(){
-                if(radiofreqnameval == '' && radiobandnameval == ''){      //for add
+                if(radiofreqnameval == '' && radiobandnameval == '' ){      //for add
                         process(1,'');
                 }else{                     //for edit
                         process(2,radiofreqbandid);
@@ -284,24 +267,12 @@
             var bodyHeight = $('#main-body').height();
             var max_available = bodyHeight - 1000 ;
 
-             $('#tableradiofreq,#tableradioband').DataTable({
+             $('#tableradiofreqband').DataTable({
                 lengthChange: false,
                 scrollY: max_available,
                 scrollCollapse: true,
-                pageLength: 7
-            });
+                pageLength: 7,
 
-            $('.form-control').keyup(function(){
-                if( $(this).attr("aria-controls") == 'tableradioband' ){
-                    if($("input[aria-controls='tableradioband']").val()){
-                         $('#tableradiofreq').dataTable().fnFilter('');
-                    }
-                }
-                if( $(this).attr("aria-controls") == 'tableradiofreq' ){
-                    if($("input[aria-controls='tableradiofreq']").val()){
-                        $('#tableradioband').dataTable().fnFilter('');
-                    }
-                }
             });
         });
 
@@ -311,8 +282,8 @@
 
             var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + 2);
 
-            $('#tableradiofreq','#tableradioband').css("height", tableheight);
-            $('#tableradiofreq','#tableradioband').css("display", inline-block);
+            $('#tableradiofreqband').css("height", tableheight);
+            $('#tableradiofreqband').css("display", inline-block);
 
         }
 
@@ -320,24 +291,20 @@
      {% endif %}
  </div>
 <style>
-#tableradiofreq, #tableradioband {
+#tableradiofreqband {
     font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
     width: 50%;
 }
 
-#tableradiofreq td, #tableradiofreq th, #tableradioband td,#tableradioband th{
+#tableradiofreqband td, #tableradiofreqband th{
     padding: 5px;
 }
 
-#tableradiofreq tr:nth-child(odd){background-color: #f2f2f2;}
+#tableradiofreqband tr:nth-child(odd){background-color: #f2f2f2;}
 
-#tableradioband tr:nth-child(odd){background-color: #f2f2f2;}
+#tableradiofreqband tr:hover {background-color: #ddd;}
 
-#tableradiofreq tr:hover {background-color: #ddd;}
-
-#tableradioband tr:hover {background-color: #ddd;}
-
-#tableradiofreq th,#tableradioband th {
+#tableradiofreqband th {
     text-align: left;
     background-color: white;
     color: black;

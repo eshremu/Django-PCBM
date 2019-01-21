@@ -52,7 +52,7 @@
                          <h4></h4>
                     </div>
                     <div class="modal-body">
-                         <label>Name: </label><input id ="technology" class="headertechnology" type="text" />
+                         <label>Name: </label><input id ="technology" class="headertechnology" type="text" name="inputtechnology" />
                     </div>
                 <div class="modal_footer" style="text-align: right;padding: 10px;">
                         <button id="btndelete" class="modal_delete btn  btn-danger" style="display:none; float:left; margin-left:10px;">Delete</button>
@@ -77,6 +77,12 @@
 
      });
 
+     <!--D-04685-Error with Band/Frequency:- Added below function to remove space at the beginning of the string(left trim)-->
+     function ltrim(str) {
+          if(str == null) return str;
+          return str.replace(/^\s+/g, '');
+     }
+
      function messageToModal1(title, message, callback, technologyname, technologyid){
             var params = [];
             for(var i = 3; i < arguments.length; i++){
@@ -92,9 +98,12 @@
             $('#messageModal1 .modal-body .headertechnology').html(technologyname);
 
              $('#technology').keyup(function(){
+             <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in radio frequency input field -->
+              $('#technology').val(ltrim($('input[name="inputtechnology"]').val()));
               document.getElementById("btnsave").disabled = false;
               document.getElementById("btndelete").disabled = false;
-              if($('#technology').val()==''){
+             <!--D-04685-Error with Band/Frequency:- Added last condition to check and disable the buttons if space is present in the textfield -->
+             if($('#technology').val()=='' || $('#technology').val()==' '){
                  document.getElementById("btnsave").disabled = true;
                  document.getElementById("btndelete").disabled = true;
               }

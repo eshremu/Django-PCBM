@@ -55,7 +55,7 @@
                          <h4></h4>
                     </div>
                     <div class="modal-body">
-                         <label>Name:  </label><input id ="program" class="headerprogram" type="text" /><br /><br />
+                         <label>Name:  </label><input id ="program" class="headerprogram" type="text" name="inputprogram"/><br /><br />
                          <label style="padding-left: 20px">CU:  </label><select id="programcu" name="program" >
                                 <option value="">-------</option>
                                 {% for cu in culist %}
@@ -88,6 +88,12 @@
                     document.getElementById('programcu').value = '';
      });
 
+     <!--D-04685-Error with Band/Frequency:- Added below function to remove space at the beginning of the string(left trim)-->
+     function ltrim(str) {
+          if(str == null) return str;
+          return str.replace(/^\s+/g, '');
+     }
+
      function messageToModalAdmin(title, message, callback, programname, programid, cuid){
             var params = [];
             for(var i = 3; i < arguments.length; i++){
@@ -107,9 +113,12 @@
             $('#messageModalAdmin .modal-body .headerprogram').html(programname);
 
             $('#program').keyup(function(){
+            <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in radio frequency input field -->
+              $('#program').val(ltrim($('input[name="inputprogram"]').val()));
               document.getElementById("btnsave").disabled = false;
               document.getElementById("btndelete").disabled = false;
-              if($('#program').val()==''){
+            <!--D-04685-Error with Band/Frequency:- Added last condition to check and disable the buttons if space is present in the textfield -->
+               if($('#program').val()=='' || $('#program').val()==' '){
                  document.getElementById("btnsave").disabled = true;
                  document.getElementById("btndelete").disabled = true;
               }
