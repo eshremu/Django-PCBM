@@ -121,6 +121,8 @@
                 if(!( /[\*\\\[\]:\'\?/]/.test(document.getElementById("productarea2").value))){
                                 $("#pa2error1").hide();
                                 }
+              <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in productarea2 input field -->
+              $('#productarea2').val(ltrim($('input[name="inputproductarea2"]').val()));
               document.getElementById("btnsave").disabled = false;
               document.getElementById("btndelete").disabled = false;
              <!--D-04685-Error with Band/Frequency:- Added last condition to check and disable the buttons if space is present in the textfield -->

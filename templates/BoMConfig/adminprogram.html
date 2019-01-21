@@ -113,7 +113,7 @@
             $('#messageModalAdmin .modal-body .headerprogram').html(programname);
 
             $('#program').keyup(function(){
-            <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in radio frequency input field -->
+            <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in program input field -->
               $('#program').val(ltrim($('input[name="inputprogram"]').val()));
               document.getElementById("btnsave").disabled = false;
               document.getElementById("btndelete").disabled = false;
