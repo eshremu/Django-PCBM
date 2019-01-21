@@ -99,7 +99,7 @@
             $('#messageModalAdmin .modal-body .headerproductarea1').html(productarea1name);
 
              $('#productarea1').keyup(function(){
-              <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in radio frequency input field -->
+              <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in productarea1 input field -->
               $('#productarea1').val(ltrim($('input[name="inputproductarea1"]').val()));
               document.getElementById("btnsave").disabled = false;
               document.getElementById("btndelete").disabled = false;

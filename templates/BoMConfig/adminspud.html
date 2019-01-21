@@ -101,7 +101,7 @@
             $('#messageModalAdmin .modal-body .headerspud').html(spudname);
 
             $('#spud').keyup(function(){
-             <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in radio frequency input field -->
+             <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in spud input field -->
               $('#spud').val(ltrim($('input[name="inputspud"]').val()));
               document.getElementById("btnsave").disabled = false;
               document.getElementById("btndelete").disabled = false;
