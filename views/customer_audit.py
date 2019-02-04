@@ -931,8 +931,9 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
  # S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:- Added seccust and customer attribute in the data block to be sent
  #        to GenerateEmailMessage and also the email body
         # Send discrepancy email
+# S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
         subject = 'Customer Part Number upload discrepancies'
-        from_email = 'pcbm.admin@ericsson.com'
+        from_email = 'acc.admin@ericsson.com'
         text_message = GenerateEmailMessage(
             **{
                 'cust': aDuplicateCust,
