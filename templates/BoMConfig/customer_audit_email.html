@@ -18,71 +18,153 @@
     <p>Hello {{ user.first_name }},</p>
 
     <p>The following errors were found while uploading {{ filename }} ({% if type == 1 %}BOM Report{% elif type == 2 %}IM Report{% endif %}):</p>
-
+ <!--S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:- Added if else block to check the customer
+  in each discrepancy block to build respective titles-->
     {% if inactive %}
     <h4>Attempted to change priority Customer Number/MPN mapping</h4>
-    <table>
-        <thead>
-            <tr><th>Customer Part Number</th><th>MPN</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
-        </thead>
-        <tbody>
-        {% for map in inactive %}
-            <tr><td>{{ map.0 }}</td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
+         {% if customer == 'AT&T' %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number</th><th>MPN</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
+                </thead>
+                <tbody>
+                {% for map in inactive %}
+                    <tr><td>{{ map.0 }}</td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number </th><th> MPN </th><th> Second Customer Number </th><th> Customer Asset</th></tr>
+                </thead>
+                <tbody>
+                {% for map in inactive %}
+                    <tr><td>{{ map.0 }} </td><td>{{ map.3 }}</td><td>{{map.1}}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
     {% endif %}
     {% if tag %}
     <h4>Matches priority Customer Number/MPN mapping with different customer asset information</h4>
-    <table>
-        <thead>
-            <tr><th>Customer Part Number</th><th>MPN</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
-        </thead>
-        <tbody>
-        {% for map in tag %}
-            <tr><td>{{ map.0 }}</td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
+        {% if customer == 'AT&T' %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number</th><th>MPN</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
+                </thead>
+                <tbody>
+                {% for map in tag %}
+                    <tr><td>{{ map.0 }}</td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number </th><th> MPN </th><th> Second Customer Number </th><th> Customer Asset</th></tr>
+                </thead>
+                <tbody>
+                {% for map in tag %}
+                    <tr><td>{{ map.0 }} </td><td>{{ map.3 }}</td><td>{{map.1}}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
     {% endif %}
     {% if mpn %}
     <h4>MPN priority mapped to different Customer number</h4>
-    <table>
-        <thead>
-            <tr><th>MPN</th><th>Customer Part Number</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
-        </thead>
-        <tbody>
-        {% for map in mpn %}
-            <tr><td>{{ map.3 }}</td><td>{{ map.0 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
+        {% if customer == 'AT&T' %}
+            <table>
+                <thead>
+                    <tr><th>MPN</th><th>Customer Part Number</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
+                </thead>
+                <tbody>
+                {% for map in mpn %}
+                    <tr><td>{{ map.3 }}</td><td>{{ map.0 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number </th><th> MPN </th><th> Second Customer Number </th><th> Customer Asset</th></tr>
+                </thead>
+                <tbody>
+                {% for map in mpn %}
+                    <tr><td>{{ map.0 }} </td><td>{{ map.3 }}</td><td>{{map.1}}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endif %}
+ <!--S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:- Added below block to check MPN with
+  different second customer number-->
+    {% if seccust %}
+    <h4>MPN priority mapped to different Second Customer number</h4>
+        <table>
+            <thead>
+                <tr><th>MPN</th><th>Customer Part Number</th><th>Second Customer Number</th><th>Customer Asset</th></tr>
+            </thead>
+            <tbody>
+            {% for map in seccust %}
+                <tr><td>{{ map.3 }}</td><td>{{ map.0 }}</td><td>{{ map.1 }}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
     {% endif %}
     {% if cust %}
     <h4>Customer Number priority mapped to different MPN</h4>
-    <table>
-        <thead>
-            <tr><th>Customer Part Number</th><th>MPN</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
-        </thead>
-        <tbody>
-        {% for map in cust %}
-            <tr><td>{{ map.0 }}</td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
+        {% if customer == 'AT&T' %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number</th><th>MPN</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
+                </thead>
+                <tbody>
+                {% for map in cust %}
+                    <tr><td>{{ map.0 }}</td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number </th><th> MPN </th><th> Second Customer Number </th><th> Customer Asset</th></tr>
+                </thead>
+                <tbody>
+                {% for map in cust %}
+                    <tr><td>{{ map.0 }} </td><td>{{ map.3 }}</td><td>{{map.1}}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
     {% endif %}
+
     {% if invalid %}
     <h4>Customer Number and/or MPN is invalid</h4>
-    <table>
-        <thead>
-            <tr><th>Customer Part Number</th><th>MPN</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
-        </thead>
-        <tbody>
-        {% for map in invalid %}
-            <tr><td>{{ map.0 }}</td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
+        {% if customer == 'AT&T' %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number</th><th>MPN</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
+                </thead>
+                <tbody>
+                {% for map in invalid %}
+                    <tr><td>{{ map.0 }} </td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number </th><th> MPN </th><th> Second Customer Number </th><th> Customer Asset</th></tr>
+                </thead>
+                <tbody>
+                {% for map in invalid %}
+                    <tr><td>{{ map.0 }} </td><td>{{ map.3 }}</td><td>{{map.1}}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
     {% endif %}
 </body>
 </html>
