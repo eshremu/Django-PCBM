@@ -357,7 +357,6 @@ def CustomerAuditUpload(oRequest):
                    dContext=dContext)
 # end def
 
-
 def ProcessUpload(oStream, iFileType, oCustomer, oUser):
     """
     Function to parse information from a data stream provided in oStream into
@@ -369,23 +368,34 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
     :param oUser: User object creating entries
     :return: Boolean indicating if any erroneous data was encountered
     """
-    # Based on file type, determine what sheet name and column titles are
+    # S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:-
+    # Based on customer and file type, determine what sheet name and column titles are
     # expected in the file
-    if iFileType == 1:
-        sSheetName = "Ericsson BOM Report"
-        aColumns = [[2, 3, 4, 5, 6, 8], [9, 10, 11, 12, 13, 16]]
-        aHeaders = ['Oracle Parent', 'Parent Barcode', 'Parent EADC',
-                    'Parent MPN', 'Parent Description', 'Parent Status',
-                    'Oracle Child', 'Child Barcode', 'Child EADC', 'Child MPN',
-                    'Child Description', 'Child Item Status']
-    elif iFileType == 2:
-        sSheetName = "Ericsson IM"
-        aColumns = [[3, 6, 10, 12, 5, 8]]
-        aHeaders = ['Item Number', 'Barcode', 'External Download Code',
-                    'Manufacturer Part Number', 'Item Description',
-                    'Status Code']
+    if str(oCustomer) == 'MTW':
+        if iFileType == 2:
+            sSheetName = "FAA Y Report"
+            aColumns = [[1, 6, 5, 2, 4, 3]]
+            aHeaders = ['FFA Article', 'ZENG Article', 'Serialization', 'MPN',
+                        'Article Description',  'Vendor Article Number']
+        else:
+            raise ValueError('Invalid file type')
     else:
-        raise ValueError('Invalid file type')
+
+        if iFileType == 1:
+            sSheetName = "Ericsson BOM Report"
+            aColumns = [[2, 3, 4, 5, 6, 8], [9, 10, 11, 12, 13, 16]]
+            aHeaders = ['Oracle Parent', 'Parent Barcode', 'Parent EADC',
+                        'Parent MPN', 'Parent Description', 'Parent Status',
+                        'Oracle Child', 'Child Barcode', 'Child EADC', 'Child MPN',
+                        'Child Description', 'Child Item Status']
+        elif iFileType == 2:
+            sSheetName = "Ericsson IM"
+            aColumns = [[3, 6, 10, 12, 5, 8]]
+            aHeaders = ['Item Number', 'Barcode', 'External Download Code',
+                        'Manufacturer Part Number', 'Item Description',
+                        'Status Code']
+        else:
+            raise ValueError('Invalid file type')
 
     # Attempt to open the .xls(x) file
     try:
@@ -399,7 +409,6 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
         if sSheetName in sName:
             sSheetName = sName
             break
-
     # Attempt to retrieve the sheet object of the file
     try:
         oDataSheet = oFile.get_sheet_by_name(sSheetName)
@@ -413,52 +422,89 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
     aFileHeaders = next(aSheetData, list())
     tDesiredHeaders = list(str(aFileHeaders[i-1].value).strip() for i in
                            itertools.chain.from_iterable(aColumns))
-
     if tDesiredHeaders != aHeaders:
         raise TypeError('Header line mismatch')
 
     aExtractedData = []
 
+    # S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:-
+    # Added the if condition for MTW customer
     # Parse out relevant data from file
-    for row in aSheetData:
-        for aDataGroup in aColumns:
-            aTemp = []
-            for (idx, iCol) in enumerate(aDataGroup):
-                oData = row[iCol - 1].value
-                if idx == 0 and oData:  # Customer Part number
-                    oData = oData.upper()
-                elif idx == 1:  # Customer asset tagging
-                    if oData and oData.strip() == 'Y':
-                        oData = True
-                    elif oData and oData.strip() == 'N':
-                        oData = False
-                    else:
-                        oData = None
-                elif idx == 2:  # Customer asset
-                    if oData and oData.strip() in ('E', 'C'):
-                        oData = True
-                    elif oData is not None:
-                        oData = False
-                    else:
-                        oData = None
-                elif idx == 3 and oData:  # Ericsson part number
-                    # Convert integer-like part numbers (Part number containing
-                    # only digits must have '/' appended)
-                    oData = oData.upper()
-                    try:
-                        int(oData)
-                        oData += '/'
-                    except ValueError:
-                        pass
+    if str(oCustomer) == 'MTW':
+        for row in aSheetData:
+            for aDataGroup in aColumns:
+                aTemp = []
+                for (idx, iCol) in enumerate(aDataGroup):
+                    oData = row[iCol - 1].value
+                    if idx == 0 and oData:  # Customer Part number
+                        oData = oData
+                    elif idx == 1:  # Second Customer Part Number
+                        oData = oData
+                    elif idx == 2:  # Customer asset
+                        if oData and oData.strip() =='EAM1':
+                            oData = True
+                        elif oData is not None:
+                            oData = False
+                        else:
+                            oData = None
+                    elif idx == 3 and oData:  # Ericsson part number/MPN
+                        # Convert integer-like part numbers (Part number containing
+                        # only digits must have '/' appended)
+                        oData = oData
+                        try:
+                            int(oData)
+                            oData += '/'
+                        except ValueError:
+                            pass
 
-                aTemp.append(oData)
+                    aTemp.append(oData)
+                # end for
+                aTemp = tuple(aTemp)
+
+                if any(aTemp):
+                    aExtractedData.append(aTemp)
             # end for
-            aTemp = tuple(aTemp)
-
-            if any(aTemp):
-                aExtractedData.append(aTemp)
         # end for
-    # end for
+    else:                           # For AT&T
+        for row in aSheetData:
+            for aDataGroup in aColumns:
+                aTemp = []
+                for (idx, iCol) in enumerate(aDataGroup):
+                    oData = row[iCol - 1].value
+                    if idx == 0 and oData:  # Customer Part number
+                        oData = oData.upper()
+                    elif idx == 1:  # Customer asset tagging
+                        if oData and oData.strip() == 'Y':
+                            oData = True
+                        elif oData and oData.strip() == 'N':
+                            oData = False
+                        else:
+                            oData = None
+                    elif idx == 2:  # Customer asset
+                        if oData and oData.strip() in ('E', 'C'):
+                            oData = True
+                        elif oData is not None:
+                            oData = False
+                        else:
+                            oData = None
+                    elif idx == 3 and oData:  # Ericsson part number
+                        # Convert integer-like part numbers (Part number containing
+                        # only digits must have '/' appended)
+                        oData = oData
+                        try:
+                            int(oData)
+                            oData += '/'
+                        except ValueError:
+                            pass
+
+                    aTemp.append(oData)
+                # end for
+                aTemp = tuple(aTemp)
+
+                if any(aTemp):
+                    aExtractedData.append(aTemp)
+                    # end for
+                    # end for
 
     # Remove duplicate entries
     aExtractedData = list(set(aExtractedData))
@@ -475,129 +521,181 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
     aDuplicateTag = []
     aDuplicateInactive = []
     aInvalidEntries = []
+    aDuplicateSecCust = []
 
     bErrorsLogged = False
 
-    # Add/Remove each part
-    for tPart in aExtractedData:
-        if 'VARIOUS' in tPart[3].upper() or 'UNKNOWN' in tPart[3].upper() or \
-                        str(tPart[3]).upper().strip() == 'NONE':
-            aInvalidEntries.append(tPart)
-            continue
+# S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:- Added if and else block for each customer (AT&T & MTW)
+# for creating the discrepency arrays
 
-        if str(tPart[0]).upper().strip() == 'NONE':
-            aInvalidEntries.append(tPart)
-            continue
+    if str(oCustomer) == 'AT&T':
+        # Add/Remove each part
+        for tPart in aExtractedData:
+            if 'VARIOUS' in tPart[3].upper() or 'UNKNOWN' in tPart[3].upper() or \
+                            str(tPart[3]).upper().strip() == 'NONE':
+                aInvalidEntries.append(tPart)
+                continue
 
-        if 'DUPLICATE ITEM USE' in str(tPart[4]).upper():
-            continue
+            if str(tPart[0]).upper().strip() == 'NONE':
+                aInvalidEntries.append(tPart)
+                continue
 
-        (oPart, _) = PartBase.objects.get_or_create(
-            product_number=tPart[3], defaults={'unit_of_measure': 'PC'})
+            if 'DUPLICATE ITEM USE' in str(tPart[4]).upper():
+                continue
 
-        # Determine if Part should be deactivated/added as inactive (Status is
-        # "Inactive" or "Obsolete" or 'Discontinued use' in description)
-        if tPart[5] in ['Inactive', 'Obsolete'] or 'DISCONTINUED' in \
-                str(tPart[4]).upper():
-            (oMap, bCreated) = CustomerPartInfo.objects.get_or_create(
-                part=oPart,
-                customer=oCustomer,
-                customer_number=tPart[0],
-                customer_asset=tPart[2],
-                customer_asset_tagging=tPart[1]
-            )
-            if not bCreated and not oMap.priority:
-                oMap.active = False
-                oMap.save()
-            elif not bCreated and oMap.priority:
-                aDuplicateInactive.append(tPart)
-        else:
-            # Check if any mappings exists with current info
-            # Attempt to find an entry that matches exactly
-            try:
-                # D-03939:Customer Upload functionality returns error: changed get to filter
-                oExactMap = CustomerPartInfo.objects.filter(
+            (oPart, _) = PartBase.objects.get_or_create(
+                product_number=tPart[3], defaults={'unit_of_measure': 'PC'})
+
+            # Determine if Part should be deactivated/added as inactive (Status is
+            # "Inactive" or "Obsolete" or 'Discontinued use' in description)
+            if tPart[5] in ['Inactive', 'Obsolete'] or 'DISCONTINUED' in \
+                    str(tPart[4]).upper():
+
+                (oMap, bCreated) = CustomerPartInfo.objects.get_or_create(
                     part=oPart,
                     customer=oCustomer,
                     customer_number=tPart[0],
                     customer_asset=tPart[2],
                     customer_asset_tagging=tPart[1]
                 )
-                # D-03939:Customer Upload functionality returns error: Added below if-else block
-                if len(oExactMap) > 1:
-                    if "Active" in tPart[5]:
-                        oExactMap = CustomerPartInfo.objects.get(
-                            part=oPart,
-                            customer=oCustomer,
-                            customer_number=tPart[0],
-                            customer_asset=tPart[2],
-                            customer_asset_tagging=tPart[1],
-                            active=True
-                        )
-                else:
-                    oExactMap = CustomerPartInfo.objects.get(
+                if not bCreated and not oMap.priority:
+                    oMap.active = False
+                    oMap.save()
+                elif not bCreated and oMap.priority:
+                    aDuplicateInactive.append(tPart)
+            else:
+
+                # Check if any mappings exists with current info
+                # Attempt to find an entry that matches exactly
+                try:
+            # D-03939:Customer Upload functionality returns error: changed 'get' to 'filter' to get the multiple records of the same combination
+                    oExactMap = CustomerPartInfo.objects.filter(
                         part=oPart,
                         customer=oCustomer,
                         customer_number=tPart[0],
                         customer_asset=tPart[2],
                         customer_asset_tagging=tPart[1]
                     )
-            except CustomerPartInfo.DoesNotExist:
-                oExactMap = None
-            # end try
+            # D-03939:Customer Upload functionality returns error: Added if else block to check the whether length is more than 1 or not
+                    if len(oExactMap) > 1:
+                  # D-03939:Customer Upload functionality returns error: Added below if block to check if active record is present in the sheet or not
+                        if "Active" in tPart[5] :
+                            oExactMap = CustomerPartInfo.objects.get(
+                                part=oPart,
+                                customer=oCustomer,
+                                customer_number=tPart[0],
+                                customer_asset=tPart[2],
+                                customer_asset_tagging=tPart[1],
+                                active=True
+                            )
+                    else:
+                        oExactMap = CustomerPartInfo.objects.get(
+                            part=oPart,
+                            customer=oCustomer,
+                            customer_number=tPart[0],
+                            customer_asset=tPart[2],
+                            customer_asset_tagging=tPart[1]
+                        )
+                except CustomerPartInfo.DoesNotExist:
+                    oExactMap = None
+                # end try
 
-            # Attempt to find an entry that only matches part number
-            try:
-                oPartMap = CustomerPartInfo.objects.get(
-                    part=oPart, customer=oCustomer, active=True)
-            except CustomerPartInfo.DoesNotExist:
-                oPartMap = None
-            # end try
+                # Attempt to find an entry that only matches part number
+                try:
+                    oPartMap = CustomerPartInfo.objects.get(
+                        part=oPart, customer=oCustomer, active=True)
+                except CustomerPartInfo.DoesNotExist:
+                    oPartMap = None
+                # end try
 
-            # Attempt to find an entry that only matches customer part number
-            try:
-                oCustMap = CustomerPartInfo.objects.get(
-                    customer_number=tPart[0], customer=oCustomer, active=True)
-            except CustomerPartInfo.DoesNotExist:
-                oCustMap = None
-            # end try
+                # Attempt to find an entry that only matches customer part number
+                try:
+                    oCustMap = CustomerPartInfo.objects.get(
+                        customer_number=tPart[0], customer=oCustomer, active=True)
+                except CustomerPartInfo.DoesNotExist:
+                    oCustMap = None
+                # end try
 
-            # If there is an exact match, and its status already matches the
-            # line data status, nothing further is required
-            if oExactMap and (
-                        (oExactMap.active and "Active" in tPart[5]) or
-                        (not oExactMap.active and "Phase" in tPart[5])):
-                continue
+                # If there is an exact match, and its status already matches the
+                # line data status, nothing further is required
+                if oExactMap and (
+                            (oExactMap.active and "Active" in tPart[5]) or
+                            (not oExactMap.active and "Phase" in tPart[5])):
+                    continue
 
-            # If there is an exact match, and its status does not match the line
-            # data status, the remaining checks also need to occur, to ensure we
-            # do not overwrite protected data. We should log an error if this
-            # line data is attempting to overwrite protected (priority)
-            # information
-            elif oExactMap and (
-                        (oExactMap.active and oExactMap.priority and "Phase" in
-                            tPart[5]) or
-                        (not oExactMap.active and oExactMap.priority and
-                            "Active" in tPart[5])):
-                aDuplicateInactive.append(tPart)
+                # If there is an exact match, and its status does not match the line
+                # data status, the remaining checks also need to occur, to ensure we
+                # do not overwrite protected data. We should log an error if this
+                # line data is attempting to overwrite protected (priority)
+                # information
+                elif oExactMap and (
+                            (oExactMap.active and oExactMap.priority and "Phase" in
+                                tPart[5]) or
+                            (not oExactMap.active and oExactMap.priority and
+                                     "Active" in tPart[5])):
+                    aDuplicateInactive.append(tPart)
 
-                continue
+                    continue
 
-            # If the Part match and Customer number match are the same, then
-            # there is really only one match, the only difference between the
-            # match and line record is the customer asset information
-            elif oPartMap and oCustMap and oPartMap == oCustMap:
+                # If the Part match and Customer number match are the same, then
+                # there is really only one match, the only difference between the
+                # match and line record is the customer asset information
+                elif oPartMap and oCustMap and oPartMap == oCustMap:
+                    # If the line record is "Phase NTW" or "Phase RCL", don't log
+                    # the error. oMap will either be a new inactive record, or an
+                    # existing record (possibly active). Leave the record as-is,
+                    # because it might be newer information. Log the error if the
+                    # record is protected and the line data is attempting to change
+                    # that
+                    if oPartMap.priority and 'Active' in tPart[5]:
+                        aDuplicateTag.append(tPart)
 
-                # If the line record is "Phase NTW" or "Phase RCL", don't log
-                # the error. oMap will either be a new inactive record, or an
-                # existing record (possibly active). Leave the record as-is,
-                # because it might be newer information. Log the error if the
-                # record is protected and the line data is attempting to change
-                # that
-                if oPartMap.priority and 'Active' in tPart[5]:
-                    aDuplicateTag.append(tPart)
+                    CustomerPartInfo.objects.get_or_create(
+                        part=oPart,
+                        customer=oCustomer,
+                        customer_number=tPart[0],
+                        customer_asset=tPart[2],
+                        customer_asset_tagging=tPart[1]
+                    )
 
-                CustomerPartInfo.objects.get_or_create(
+                    if 'Phase' in tPart[5] or oPartMap.priority:
+                        continue
+                # end if
+
+                # If the MPN and Customer Number each have their own separate active
+                # matches, log the errors
+                elif oPartMap or oCustMap:
+                    # If the line record is "Phase NTW" or "Phase RCL", don't log
+                    # the error. oMap will either be a new inactive record, or an
+                    # existing record (possibly active).
+                    # If it is inactive, that is fine since the part is phased. If
+                    # it is active, just leave it active since it might be newer
+                    # information than what is provided by upload
+                    # Log the error if the line data is attempting to overwrite
+                    # protected information
+                    if oPartMap and oPartMap.priority and 'Active' in tPart[5]:
+                        aDuplicateMPN.append(tPart)
+
+                    if oCustMap and oCustMap.priority and 'Active' in tPart[5]:
+                        aDuplicateCust.append(tPart)
+
+                    CustomerPartInfo.objects.get_or_create(
+                        part=oPart,
+                        customer=oCustomer,
+                        customer_number=tPart[0],
+                        customer_asset=tPart[2],
+                        customer_asset_tagging=tPart[1]
+                    )
+
+                    if 'Phase' in tPart[5] or (oPartMap and oPartMap.priority) or \
+                            (oCustMap and oCustMap.priority):
+                        continue
+                # end if
+
+                # Only line records that do not conflict with existing protected
+                # data will have made it this far, so it is fine to make the record
+                # active in the database.
+                (oMap, _) = CustomerPartInfo.objects.get_or_create(
                     part=oPart,
                     customer=oCustomer,
                     customer_number=tPart[0],
@@ -605,95 +703,263 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                     customer_asset_tagging=tPart[1]
                 )
 
-                if 'Phase' in tPart[5] or oPartMap.priority:
-                    continue
-            # end if
+                if "Active" in tPart[5]:
+                    oMap.active = True
+                    oMap.save()
+        # end if
+        # end for
+    else:
+        # Add/Remove each part
+        for tPart in aExtractedData:
+            if 'VARIOUS' in tPart[3].upper() or 'UNKNOWN' in tPart[3].upper() or \
+                            str(tPart[3]).upper().strip() == 'NONE' or tPart[3] == '':
+                aInvalidEntries.append(tPart)
+                continue
+            if str(tPart[0]).upper().strip() == 'NONE':
+                aInvalidEntries.append(tPart)
+                continue
+            if 'DUPLICATE ITEM USE' in str(tPart[4]).upper():
+                continue
 
-            # If the MPN and Customer Number each have their own separate active
-            # matches, log the errors
-            elif oPartMap or oCustMap:
+            (oPart, _) = PartBase.objects.get_or_create(
+                product_number=tPart[3], defaults={'unit_of_measure': 'PC'})
 
-                # If the line record is "Phase NTW" or "Phase RCL", don't log
-                # the error. oMap will either be a new inactive record, or an
-                # existing record (possibly active).
-                # If it is inactive, that is fine since the part is phased. If
-                # it is active, just leave it active since it might be newer
-                # information than what is provided by upload
-                # Log the error if the line data is attempting to overwrite
-                # protected information
-                if oPartMap and oPartMap.priority and 'Active' in tPart[5]:
-                    aDuplicateMPN.append(tPart)
-
-                if oCustMap and oCustMap.priority and 'Active' in tPart[5]:
-                    aDuplicateCust.append(tPart)
-
-                CustomerPartInfo.objects.get_or_create(
+            # Determine if Part should be deactivated/added as inactive (Status is
+            # "Inactive" or "Obsolete" or 'Discontinued use' in description)
+            if tPart[5] in ['Inactive', 'Obsolete'] or 'DISCONTINUED' in \
+                    str(tPart[4]).upper():
+                (oMap, bCreated) = CustomerPartInfo.objects.get_or_create(
                     part=oPart,
                     customer=oCustomer,
                     customer_number=tPart[0],
                     customer_asset=tPart[2],
-                    customer_asset_tagging=tPart[1]
+                    second_customer_number=tPart[1]
+                )
+                if not bCreated and not oMap.priority:
+                    oMap.active = False
+                    oMap.save()
+                elif not bCreated and oMap.priority:
+                    aDuplicateInactive.append(tPart)
+            else:
+                # Check if any mappings exists with current info
+                # Attempt to find an entry that matches exactly
+                try:
+# S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:-changed 'get' to 'filter' to get the multiple records of the same combination
+                    oExactMap = CustomerPartInfo.objects.filter(
+                        part=oPart,
+                        customer=oCustomer,
+                        customer_number=tPart[0],
+                        customer_asset=tPart[2],
+                        second_customer_number=tPart[1]
+                    )
+# S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:-Added if else block to check the whether length is more than 1 or not
+                    if len(oExactMap) > 1:
+                        oExactMap = CustomerPartInfo.objects.get(
+                            part=oPart,
+                            customer=oCustomer,
+                            customer_number=tPart[0],
+                            customer_asset=tPart[2],
+                            second_customer_number=tPart[1],
+                            active=True
+                        )
+                    else:
+                        oExactMap = CustomerPartInfo.objects.get(
+                            part=oPart,
+                            customer=oCustomer,
+                            customer_number=tPart[0],
+                            customer_asset=tPart[2],
+                            second_customer_number=tPart[1]
+                        )
+                except CustomerPartInfo.DoesNotExist:
+                    oExactMap = None
+                # end try
+
+                # Attempt to find an entry that only matches part number
+                try:
+                    oPartMap = CustomerPartInfo.objects.get(
+                        part=oPart, customer=oCustomer, active=True)
+                except CustomerPartInfo.DoesNotExist:
+                    oPartMap = None
+                # end try
+                # Attempt to find an entry that only matches customer part number
+                try:
+                    oCustMap = CustomerPartInfo.objects.get(
+                        customer_number=tPart[0], customer=oCustomer, active=True)
+                except CustomerPartInfo.DoesNotExist:
+                    oCustMap = None
+                # end try
+
+                # Attempt to find an entry that only matches second customer part number
+                try:
+                    if tPart[1]:
+                        oSecCustMap = CustomerPartInfo.objects.get(
+                            customer_number=tPart[0], second_customer_number=tPart[1], customer=oCustomer, active=True)
+                except CustomerPartInfo.DoesNotExist:
+                    oSecCustMap = None
+                    # end try
+
+                # If there is an exact match, and its status already matches the
+                # line data status, nothing further is required
+                if oExactMap and ((oExactMap.active) or (not oExactMap.active)):
+                    continue
+
+                # If there is an exact match, and its status does not match the line
+                # data status, the remaining checks also need to occur, to ensure we
+                # do not overwrite protected data. We should log an error if this
+                # line data is attempting to overwrite protected (priority)
+                # information
+                elif oExactMap and (
+                    (oExactMap.active and oExactMap.priority) or
+                    (not oExactMap.active and oExactMap.priority)):
+                    aDuplicateInactive.append(tPart)
+                    continue
+
+                # If the Part match and Customer number match are the same, then
+                # there is really only one match, the only difference between the
+                # match and line record is the customer asset information
+                elif oPartMap and oCustMap and oPartMap == oCustMap:
+                    # If the line record is "Phase NTW" or "Phase RCL", don't log
+                    # the error. oMap will either be a new inactive record, or an
+                    # existing record (possibly active). Leave the record as-is,
+                    # because it might be newer information. Log the error if the
+                    # record is protected and the line data is attempting to change
+                    # that
+                    # if oPartMap.priority and 'Active' in tPart[5]:
+                    if oPartMap.priority:
+                        aDuplicateTag.append(tPart)
+
+                    CustomerPartInfo.objects.get_or_create(
+                        part=oPart,
+                        customer=oCustomer,
+                        customer_number=tPart[0],
+                        customer_asset=tPart[2],
+                        second_customer_number=tPart[1]
+                    )
+
+                    # if 'Phase' in tPart[5] or oPartMap.priority:
+                    if oPartMap.priority:
+                         continue
+                # end if
+
+                # If the MPN and Customer Number each have their own separate active
+                # matches, log the errors
+                elif oPartMap or oCustMap:
+                    # If the line record is "Phase NTW" or "Phase RCL", don't log
+                    # the error. oMap will either be a new inactive record, or an
+                    # existing record (possibly active).
+                    # If it is inactive, that is fine since the part is phased. If
+                    # it is active, just leave it active since it might be newer
+                    # information than what is provided by upload
+                    # Log the error if the line data is attempting to overwrite
+                    # protected information
+                    if oPartMap and oPartMap.priority:
+                        aDuplicateMPN.append(tPart)
+
+                    if oCustMap and oCustMap.priority:
+                        aDuplicateCust.append(tPart)
+
+                    CustomerPartInfo.objects.get_or_create(
+                        part=oPart,
+                        customer=oCustomer,
+                        customer_number=tPart[0],
+                        customer_asset=tPart[2],
+                        second_customer_number=tPart[1]
+                    )
+
+                    if (oPartMap and oPartMap.priority) or \
+                            (oCustMap and oCustMap.priority):
+                        continue
+                # original end if
+
+                # If the MPN and Second Customer Number each have their own separate active
+                # matches, log the errors
+                elif oPartMap or oSecCustMap:
+                    # If the line record is "Phase NTW" or "Phase RCL", don't log
+                    # the error. oMap will either be a new inactive record, or an
+                    # existing record (possibly active).
+                    # If it is inactive, that is fine since the part is phased. If
+                    # it is active, just leave it active since it might be newer
+                    # information than what is provided by upload
+                    # Log the error if the line data is attempting to overwrite
+                    # protected information
+                    if oPartMap and oPartMap.priority:
+                        aDuplicateMPN.append(tPart)
+
+                    if oSecCustMap and oSecCustMap.priority:
+                        aDuplicateSecCust.append(tPart)
+
+                    CustomerPartInfo.objects.get_or_create(
+                        part=oPart,
+                        customer=oCustomer,
+                        customer_number=tPart[0],
+                        customer_asset=tPart[2],
+                        second_customer_number=tPart[1]
+                    )
+
+                    if (oPartMap and oPartMap.priority) or \
+                            (oSecCustMap and oSecCustMap.priority):
+                        continue
+                # end if
+
+                # Only line records that do not conflict with existing protected
+                # data will have made it this far, so it is fine to make the record
+                # active in the database.
+                (oMap, _) = CustomerPartInfo.objects.get_or_create(
+                    part=oPart,
+                    customer=oCustomer,
+                    customer_number=tPart[0],
+                    customer_asset=tPart[2],
+                    second_customer_number=tPart[1]
                 )
 
-                if 'Phase' in tPart[5] or (oPartMap and oPartMap.priority) or \
-                        (oCustMap and oCustMap.priority):
-                    continue
-            # end if
-
-            # Only line records that do not conflict with existing protected
-            # data will have made it this far, so it is fine to make the record
-            # active in the database.
-            (oMap, _) = CustomerPartInfo.objects.get_or_create(
-                part=oPart,
-                customer=oCustomer,
-                customer_number=tPart[0],
-                customer_asset=tPart[2],
-                customer_asset_tagging=tPart[1]
-            )
-
-            if "Active" in tPart[5]:
                 oMap.active = True
                 oMap.save()
-        # end if
-    # end for
+            # end if
+            # end for
 
     # if any errors were found, send an email detailing the errors
     if aDuplicateCust or aDuplicateMPN or aDuplicateTag or aDuplicateInactive \
             or aInvalidEntries:
         bErrorsLogged = True
-        aDuplicateInactive.sort(key=lambda x: x[3])
-        aDuplicateCust.sort(key=lambda x: x[3])
-        aDuplicateTag.sort(key=lambda x: x[3])
-        aDuplicateMPN.sort(key=lambda x: x[3])
-        aInvalidEntries.sort(key=lambda x: x[0])
+        if str(oCustomer) == 'AT&T':
+            aDuplicateInactive.sort(key=lambda x: x[3])
+            aDuplicateCust.sort(key=lambda x: x[3])
+            aDuplicateTag.sort(key=lambda x: x[3])
+            aDuplicateMPN.sort(key=lambda x: x[3])
+            aInvalidEntries.sort(key=lambda x: x[0])
 
+ # S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:- Added seccust and customer attribute in the data block to be sent
+ #        to GenerateEmailMessage and also the email body
         # Send discrepancy email
         subject = 'Customer Part Number upload discrepancies'
-        # S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
-        from_email = 'acc.admin@ericsson.com'
+        from_email = 'pcbm.admin@ericsson.com'
         text_message = GenerateEmailMessage(
             **{
                 'cust': aDuplicateCust,
+                'seccust': aDuplicateSecCust,
                 'mpn': aDuplicateMPN,
                 'tag': aDuplicateTag,
                 'inactive': aDuplicateInactive,
                 'user': oUser,
                 'invalid': aInvalidEntries,
                 'filename': oStream.name,
-                'doc_type': iFileType
+                'doc_type': iFileType,
+                'customer': str(oCustomer)
             }
         )
         html_message = render_to_string(
             'BoMConfig/customer_audit_email.html',
             {
                 'cust': aDuplicateCust,
+                'seccust' : aDuplicateSecCust,
                 'mpn': aDuplicateMPN,
                 'tag': aDuplicateTag,
                 'inactive': aDuplicateInactive,
                 'user': oUser,
                 'invalid': aInvalidEntries,
                 'filename': oStream.name,
-                'type': iFileType
+                'type': iFileType,
+                'customer': str(oCustomer)
             }
         )
         oUser.email_user(subject=subject, message=text_message,
@@ -704,8 +970,8 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
 # end def
 
 
-def GenerateEmailMessage(cust=(), mpn=(), tag=(), inactive=(), invalid=(),
-                         user=None, filename='', doc_type=0):
+def GenerateEmailMessage(cust=(), seccust=(), mpn=(), tag=(), inactive=(), invalid=(),
+                         user=None, filename='', doc_type=0, customer=''):
     """
     Function to generate a plain-text error message detailing any errors
     encountered during file upload
@@ -728,26 +994,51 @@ def GenerateEmailMessage(cust=(), mpn=(), tag=(), inactive=(), invalid=(),
         'BOM Report' if doc_type == 1 else 'IM Report' if doc_type == 2 else ''
     )
 
-    aErrorLists = [inactive, tag, mpn, cust, invalid]
-    aTableTitles = ['Attempted to change priority Customer Number/MPN mapping',
-                    ('Matches priority Customer Number/MPN mapping with '
-                     'different customer asset information'),
-                    'MPN priority mapped to different Customer number',
-                    'Customer Number priority mapped to different MPN',
-                    'Customer Number and/or MPN is invalid']
+    # S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:- Added below if else block to build the
+    # respective titles and content for discrepancy email
 
-    for (idx, maplist) in enumerate(aErrorLists):
-        if maplist:
-            temp += aTableTitles[idx] + '\n'
-            for mapping in maplist:
-                temp += '\t' + mapping[0] + ' / ' + mapping[3] + ' / ' + \
-                        ('Y' if mapping[1] else "N" if mapping[1] is False else
-                            "(None)") + ' / ' + \
-                        ('Y' if mapping[2] else "N" if mapping[2] is False
-                            else "(None)") + '\n'
-            temp += '\n'
-        # end if
-    # end for
+    # aErrorLists = [inactive, tag, mpn, cust, invalid]
+    if customer == 'AT&T':
+        aErrorLists = [inactive, tag, mpn, cust, invalid]
+        aTableTitles = ['Attempted to change priority Customer Number/MPN mapping',
+                        ('Matches priority Customer Number/MPN mapping with '
+                         'different customer asset information'),
+                        'MPN priority mapped to different Customer number',
+                        'Customer Number priority mapped to different MPN',
+                        'Customer Number and/or MPN is invalid']
+
+        for (idx, maplist) in enumerate(aErrorLists):
+            if maplist:
+                temp += aTableTitles[idx] + '\n'
+
+                for mapping in maplist:
+                    temp += '\t' + mapping[0] + ' / ' + mapping[3] + ' / ' + \
+                            ('Y' if mapping[1] else "N" if mapping[1] is False else
+                                "(None)") + ' / ' + \
+                            ('Y' if mapping[2] else "N" if mapping[2] is False
+                                else "(None)") + '\n'
+                temp += '\n'
+            # end if
+        # end for
+    else:
+        aErrorLists = [inactive, tag, mpn, cust, seccust, invalid]
+        aTableTitles = ['Attempted to change priority Customer Number/MPN mapping',
+                        'Matches priority Customer Number/MPN mapping with different customer asset information – ',
+                        ('MPN priority mapped to different Customer number'),
+                        'Customer Number priority mapped to different MPN',
+                        'MPN priority mapped to different Second Customer number',
+                        'Customer Number and/or MPN is invalid'
+                        ]
+
+        for (idx, maplist) in enumerate(aErrorLists):
+            if maplist:
+                temp += aTableTitles[idx] + '\n'
+                for mapping in maplist:
+                    temp += '\t' + 'mapping[0]' + ' / ' + 'mapping[3]' + ' / ' + \
+                            'mapping[1]' + ' / ' + 'mapping[2]' + '\n'
+                temp += '\n'
+            # end if
+        # end for
 
     return temp
 # end def

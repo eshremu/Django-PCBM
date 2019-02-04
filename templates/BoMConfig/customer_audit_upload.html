@@ -38,5 +38,15 @@
                 window.location.href = link.dataset.href;
             }
         }
+
+   <!--S-08946:-  Add USCC SAP (MTW as of now) download format to upload for validation -- Added below to show the file type option for MTW CU-->
+         $('#customer').change(function(){
+            var customerval =  $('#customer').val();
+            if(document.getElementById('customer').value == '9'){
+                file_type[1].style.display = "none";
+            }else{
+                file_type[1].style.display = "block";
+            }
+        });
     </script>
 {% endblock %}
