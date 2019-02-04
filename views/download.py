@@ -372,7 +372,8 @@ def DownloadMultiple(oRequest):
         return Download(oRequest, records[0])
 
     # Generate archive name
-    sFilename = 'PCBM_{}_{}.zip'.format(
+    # S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
+    sFilename = 'ACC_{}_{}.zip'.format(
         oRequest.user.username,
         datetime.datetime.now().strftime('%d%m%Y%H%M%S')
     )
@@ -1078,23 +1079,21 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     # aHeaders.sort(key=lambda inst: inst.baseline_version, reverse=True)
     aHeaders.sort(
         key=lambda inst: (
-            # int(inst.pick_list), Added sorting of picklist later for D-04368,  D-04484
+            int(inst.pick_list),
             str(inst.product_area2.name).upper() if inst.product_area2 else
             'ZZZZ',
             str(inst.configuration_designation),
             -(char_to_num(inst.baseline_version))
         )
     )
-    # Added below two sorting block for D-04368, D-04484: PA2 incorrect on baseline download.
+    # Added below sorting block for D-04368, D-04484: PA2 incorrect on baseline download.
     aHeaders.sort(
         key=lambda inst: (
+            -int(inst.pick_list),
             str(inst.configuration_status)
         ), reverse=True
     )
-    aHeaders.sort(
-        key=lambda inst: (
-            int(inst.pick_list))
-    )
+
     for oHeader in list(aHeaders):
         if sCustomer:
             # Skip records for the wrong customers
@@ -1847,6 +1846,13 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     iCurrentRow = 2
 
     # Write ToC data for each Header object
+    # Added below sorting block for D-04368, D-04484: PA2 incorrect on baseline download.
+    aHeaders.sort(
+        key=lambda inst: (
+            int(inst.pick_list),
+            str(inst.product_area2.name).upper() if inst.product_area2 else
+            'ZZZZ')
+    )
     for oHeader in aHeaders:
         if sCustomer:
             if oHeader.customer_unit.name != sCustomer:
@@ -1960,11 +1966,11 @@ def EmailDownload(oRequest,oBaseline):
                     'Do not reply to this message.***</div>').format(
         oBaseline.current_active_version, oBaseline.title,
         oBaseline.latest_revision.completed_date.strftime('%m/%d/%Y'))
-
+    # S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
     oNewMessage = EmailMultiAlternatives(
         sSubject,
         sMessage,
-        'pcbm.admin@ericsson.com',
+        'acc.admin@ericsson.com',
         [obj.email for obj in oDistroList.users_included.all()] if oDistroList
         else [user.email for user in User.objects.filter(
             groups__name="BOM_PSM_Baseline_Manager")],

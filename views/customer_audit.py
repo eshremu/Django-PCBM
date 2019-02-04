@@ -515,13 +515,33 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
             # Check if any mappings exists with current info
             # Attempt to find an entry that matches exactly
             try:
-                oExactMap = CustomerPartInfo.objects.get(
+                # D-03939:Customer Upload functionality returns error: changed get to filter
+                oExactMap = CustomerPartInfo.objects.filter(
                     part=oPart,
                     customer=oCustomer,
                     customer_number=tPart[0],
                     customer_asset=tPart[2],
                     customer_asset_tagging=tPart[1]
                 )
+                # D-03939:Customer Upload functionality returns error: Added below if-else block
+                if len(oExactMap) > 1:
+                    if "Active" in tPart[5]:
+                        oExactMap = CustomerPartInfo.objects.get(
+                            part=oPart,
+                            customer=oCustomer,
+                            customer_number=tPart[0],
+                            customer_asset=tPart[2],
+                            customer_asset_tagging=tPart[1],
+                            active=True
+                        )
+                else:
+                    oExactMap = CustomerPartInfo.objects.get(
+                        part=oPart,
+                        customer=oCustomer,
+                        customer_number=tPart[0],
+                        customer_asset=tPart[2],
+                        customer_asset_tagging=tPart[1]
+                    )
             except CustomerPartInfo.DoesNotExist:
                 oExactMap = None
             # end try
@@ -649,7 +669,8 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
 
         # Send discrepancy email
         subject = 'Customer Part Number upload discrepancies'
-        from_email = 'pcbm.admin@ericsson.com'
+        # S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
+        from_email = 'acc.admin@ericsson.com'
         text_message = GenerateEmailMessage(
             **{
                 'cust': aDuplicateCust,

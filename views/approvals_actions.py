@@ -329,10 +329,12 @@ def Action(oRequest, **kwargs):
                     configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
                     customer_unit__in=aAvailableCU)]))),
         'active': [obj for obj in Header.objects.filter(
-            configuration_status__name='In Process/Pending', ) if
+            configuration_status__name='In Process/Pending', )
+                   if
                    HeaderTimeTracker.approvals().index(
                        obj.latesttracker.next_approval) >
-                   HeaderTimeTracker.approvals().index('acr')],
+                   HeaderTimeTracker.approvals().index('acr')
+                   ],
         'on_hold': Header.objects.filter(configuration_status__name='On Hold').filter(customer_unit__in=aAvailableCU),
         'customer_list': ['All'] + aAvailableCU,
         'viewauthorized': bool(oRequest.user.groups.filter(
@@ -1145,7 +1147,8 @@ def AjaxApprove(oRequest):
                                  'revision': aLines,
                                  }
                             ),
-                            from_email='pcbm.admin@ericsson.com',
+# S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
+                            from_email='acc.admin@ericsson.com',
                             to=[key],
                             cc=[oRequest.user.email],
                             bcc=list(

@@ -201,7 +201,8 @@ $(document).ready(function(){
      $('#validateForm').click(function () {
         if (configuration_status == 'In Process' || configuration_status == 'In Process/Pending') {
             $.ajax({
-                url: "/pcbm/entry/config/?validation=true",
+            <!--S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc-->
+                url: "/acc/entry/config/?validation=true",
                 type: "GET",
                 success: function () {
                     if (!validating) {

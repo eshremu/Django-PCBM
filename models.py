@@ -720,6 +720,7 @@ class Header(models.Model):
                     # readiness_complete value, send an email with this record
                     # attached to all users in the BOM_Forecast/Demand_Demand
                     # Manager group
+                    # S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
                     if bMessage and iPrevRC < self.readiness_complete:
                         aRecips = User.objects.filter(groups__name__in=[
                             'BOM_Forecast/Demand_Demand_Manager']).values_list(
@@ -729,7 +730,7 @@ class Header(models.Model):
                             body=('''\
 Hello SCM user,
 
-Log into the PSM Configuration & Baseline Management (PCBM) tool to review the \
+Log into the Agreed Customer Catalog (ACC) tool to review the \
 following Configuration for forecast readiness.  \
 Attached is a copy for your convenience and discussion with Forecasting and \
 Commodity Planning.  \
@@ -741,11 +742,11 @@ If there are questions, please contact the appropriate Configuration Manager.\
 You can locate this information on the "Header" tab of the attached \
 Configuration file.
 
-PCBM Link: https://rnamsupply.internal.ericsson.com/pcbm'''
+ACC Link: https://rnamsupply.internal.ericsson.com/acc'''
                                   ).format(self.configuration_designation,
                                            self.baseline_impacted or '',
                                            self.react_request or ''),
-                            from_email='pcbm.admin@ericsson.com',
+                            from_email='acc.admin@ericsson.com',
                             to=aRecips,
                             cc=[oRequest.user.email] if oRequest else None)
                         oMessage.attach_alternative((
@@ -765,7 +766,7 @@ PCBM Link: https://rnamsupply.internal.ericsson.com/pcbm'''
     </head>
     <body>
         <p>Hello SCM user,</p>
-        <p>Log into the PSM Configuration & Baseline Management (PCBM) tool to \
+        <p>Log into the Agreed Customer Catalog (ACC) tool to \
 review the following Configuration for forecast readiness.  \
 Attached is a copy for your convenience and discussion with Forecasting and \
 Commodity Planning.  This Configuration is currently at 70% Readiness Complete.
@@ -776,9 +777,9 @@ Commodity Planning.  This Configuration is currently at 70% Readiness Complete.
         <p>If there are questions, please contact the appropriate \
 Configuration Manager.  You can locate this information on the "Header" tab of \
 the attached Configuration file.</p>
-        <p>PCBM Link:
-            <a href="https://rnamsupply.internal.ericsson.com/pcbm">
-                https://rnamsupply.internal.ericsson.com/pcbm
+        <p>ACC Link:
+            <a href="https://rnamsupply.internal.ericsson.com/acc">
+                https://rnamsupply.internal.ericsson.com/acc
             </a>
         </p>
     </body>
