@@ -1,6 +1,6 @@
 {% load bomconfig_customtemplatetags %}Hello {{ recipient }},
 
-Log into the PSM Configuration & Baseline Management (PCBM) tool to review{% if level == 'cpm' %}, add or adjust pricing,{% elif level == 'blm' or level == 'psm_config' %}, process needed changes,{% endif %} and approve the processing of the following configuration(s):
+Log into the Agreed Customer Catalog (ACC) tool to review{% if level == 'cpm' %}, add or adjust pricing,{% elif level == 'blm' or level == 'psm_config' %}, process needed changes,{% endif %} and approve the processing of the following configuration(s):
 {% if action == 'disapprove' %}NOTE: These configurations were disapproved and have been returned to you for further review.{% endif %}
 
     {% for record in records %}{{ forloop.counter }}.    {{ record.header.configuration_designation }} - {{ record.header.baseline_impacted|default:"(No baseline)" }}{% if action == 'approve' %} - {{ record.last_approval_comment|default:"(No comments)" }}{% elif action == 'disapprove' %} - {{ record.last_disapproval_comment }}{% endif %} - {{ record.header.react_request|default:"(No REACT request)" }}{% endfor %}
@@ -16,4 +16,4 @@ To approve, check the Configuration(s) box{% if level == 'psm_config' %} under A
     --  Contact ACR for pricing and customer questions related to the BoM.
     --  Contact Baseline Management for baseline and customer setup related questions @ PSM-Baseline@ericsson.com.
 
-PCBM Link: https://rnamsupply.internal.ericsson.com/pcbm
+ACC Link: https://rnamsupply.internal.ericsson.com/acc

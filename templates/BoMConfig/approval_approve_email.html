@@ -22,7 +22,8 @@
 </head>
 <body>
     <p>Hello {{ recipient }},</p>
-    <p>Log into the PSM Configuration & Baseline Management (PCBM) tool to review{% if level == 'cpm' %}, add or adjust pricing,{% elif level == 'blm' or level == 'psm_config' %}, process needed changes,{% endif %} and approve the processing of the following configuration(s):</p>
+    <!--S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc-->
+    <p>Log into the Agreed Customer Catalog (ACC) tool to review{% if level == 'cpm' %}, add or adjust pricing,{% elif level == 'blm' or level == 'psm_config' %}, process needed changes,{% endif %} and approve the processing of the following configuration(s):</p>
     {% if action == 'disapprove' %}<p>NOTE: These configurations were disapproved and have been returned to you for further review.</p>{% endif %}
     <ol>
         {% for record in records %}
@@ -66,12 +67,13 @@
         <li>Contact Baseline Management for baseline and customer setup related questions @ <a href="mailto:PSM-Baseline@ericsson.com">PSM-Baseline@ericsson.com</a>.</li>
     </ul>
     <!--S-05766:Identify Emails from Test System:&#45;&#45; Added to fetch the windowURL from server and display the appropriate link as per the environment-->
+    <!--S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc-->
     {% if windowURL == 'local' %}
-         <p>PCBM Link: <a>http://localhost:8000/pcbm/</a></p>
+         <p>ACC Link: <a>http://localhost:8000/acc/</a></p>
     {% elif windowURL == 'test' %}
-         <p>PCBM Link: <a>http://eusaalx0054.aa.us.am.ericsson.se/pcbm/</a></p>
+         <p>ACC Link: <a>http://eusaalx0054.aa.us.am.ericsson.se/acc/</a></p>
     {% else %}
-         <p>PCBM Link: <a>https://rnamsupply.internal.ericsson.com/pcbm/</a></p>
+         <p>ACC Link: <a>https://rnamsupply.internal.ericsson.com/acc/</a></p>
     {% endif %}
 
 </body>

@@ -240,12 +240,13 @@ def BaselineRollbackTest(oRequest):
             sTemp += '</ul>'
             dResult['errors'].append(sTemp)
     except RollbackError as ex:
+        # S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
         if 'release date' in str(ex):
             dResult['errors'].append("<p>Active revision was not released via "
-                                     "the PCBM tool.</p>")
+                                     "the ACC tool.</p>")
         elif 'previous revision' in str(ex):
             dResult['errors'].append("<p>No previous revision exists in the "
-                                     "PCBM tool.</p>")
+                                     "ACC tool.</p>")
 
     return JsonResponse(dResult)
 # end def
