@@ -1483,9 +1483,9 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 
                         if 'quantity' in sChange:
                             aChangeCols.append(4)
-
+            # Changed below condition from 8 to 7 to highlight Unit Price Column for MTW CU
                         if 'line price' in sChange:
-                            aChangeCols.append(8)
+                            aChangeCols.append(7)
 
                         if 'comments' in sChange:
                             aChangeCols.append(14)
