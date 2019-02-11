@@ -23,12 +23,12 @@ menulisting = [
         ]
     },
 ]
-
+# D-05950: Support button email address change :- changed pagetitle and supportcontact
 # Page title, as viewed in browser
-pagetitle = "Configuration & Baseline Mgmt"
+pagetitle = "Agreed Customer Catalog"
 
 # Email address of user contacted when pressing "Support" button
-supportcontact = "susan.colip@ericsson.com"
+supportcontact = "manisha.mahendra@ericsson.com"
 
 # Specifies header and footer templates, if desired
 headerFile = "BoMConfig/header.html"
