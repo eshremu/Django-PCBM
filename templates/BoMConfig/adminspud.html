@@ -1,0 +1,280 @@
+{% extends "BoMConfig/adminlanding.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+
+        <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+        <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
+
+{% if user.is_authenticated %}
+ <div id="main-body">
+     {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" %}
+     <br>
+     <button id="addspud" class="btn btn-primary" type="button" name="add" value="add" >New Spud</button>
+     <h3 id="title"><u>Select a Spud to edit</u></h3>
+
+     {% if errors %}
+     <div class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">
+        {% for error in errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+     </div>
+    {% endif %}
+
+     <table id="tablespud" >
+            <thead>
+                <tr>
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody id="admin_spud">
+                {% for s in spud %}
+                <tr>
+                     <td><div onclick="messageToModalAdmin('Edit Spud',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'{{ s.name }}','{{ s.id }}')">{{ s.name }}</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+     </table>
+
+     <div class="modal fade" id="mynewModal" role="dialog" data-backdrop="static" data-keyboard="false">
+         <div class="modal-dialog">
+            <!-- Modal content-->
+                <div class="modal-content" style="background: none; box-shadow: none; border: none">
+                    <div class="modal-body">
+                        <p align="middle"><img src="{% static 'BoMConfig/ajax-loader.gif' %}" align="middle"/></p>
+                    </div>
+                </div>
+            </div>
+         <div id="messageModalAdmin" class="modal fade"  role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+            <!-- Modal content-->
+                <div class="modal-content">
+                    <div class="modal-header">
+                         <h4></h4>
+                    </div>
+                    <div class="modal-body">
+                         <label>Name: </label><input id ="spud" class="headerspud" type="text" name="inputspud"/>
+                    </div>
+                <div class="modal_footer" style="text-align: right; padding: 10px;">
+                        <button id="btndelete" class="modal_delete btn btn-danger"  style="display:none; float:left; margin-left:10px;">Delete</button>
+                        <button id="btnsave" class="modal_submit btn btn-primary"  disabled>Save</button>
+                        <button class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+            </div>
+        </div>
+
+
+     <script type="text/javascript">
+
+     $('#addspud').click(function(){
+                    document.getElementById('btndelete').style.display ='none';
+                    document.getElementById("btnsave").disabled = true;
+
+                    messageToModalAdmin('Add Spud',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'','');
+                    document.getElementById('spud').value = '';
+     });
+
+    <!--D-04685-Error with Band/Frequency:- Added below function to remove space at the beginning of the string(left trim)-->
+     function ltrim(str) {
+          if(str == null) return str;
+          return str.replace(/^\s+/g, '');
+     }
+
+     function messageToModalAdmin(title, message, callback, spudname, spudid){
+            var params = [];
+            for(var i = 3; i < arguments.length; i++){
+                params.push(arguments[i]);
+            }
+            if(spudname){
+              document.getElementById('spud').value = spudname;
+              document.getElementById('btndelete').style.display ='block';
+              document.getElementById("btnsave").disabled = true;
+            }
+            $('#messageModalAdmin .modal-header h4').text(title);
+            $('#messageModalAdmin .modal-body').html(message);
+            $('#messageModalAdmin .modal-body .headerspud').html(spudname);
+
+            $('#spud').keyup(function(){
+             <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in spud input field -->
+              $('#spud').val(ltrim($('input[name="inputspud"]').val()));
+              document.getElementById("btnsave").disabled = false;
+              document.getElementById("btndelete").disabled = false;
+             <!--D-04685-Error with Band/Frequency:- Added last condition to check and disable the buttons if space is present in the textfield -->
+              if($('#spud').val()=='' || $('#spud').val()==' '){
+                 document.getElementById("btnsave").disabled = true;
+                 document.getElementById("btndelete").disabled = true;
+              }
+            });
+
+            $('.modal_submit').off('click');
+            $('.modal_submit').click(function(){
+                    if(spudname == ''){      //for add
+                       process(1,'');
+                    }else{                   //for edit
+                        process(2,spudid);
+                    }
+                $('#messageModalAdmin').modal('hide');
+
+            });
+            $('.modal_delete').click(function(){
+
+                        process(3,spudid);
+
+                $('#messageModalAdmin').modal('hide');
+                if(callback != undefined) {
+                    callback.apply(this, params);
+                }
+            });
+            $('#messageModalAdmin').modal('show');
+     }
+
+     function process(operval,spudid){
+       var spudval = document.getElementById("spud").value;
+            $('#myModal').modal('show');
+            if(operval == '1'){
+                $.ajax({
+                    url: addspud_url,
+                    type: "POST",
+                    data: {
+                        data:spudval
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }else if(operval == '2'){
+                 $.ajax({
+                    url: editspud_url,
+                    type: "POST",
+                    data: {
+                        data : spudval,
+                        spudid : spudid
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }else{
+                 $.ajax({
+                    url: deletespud_url,
+                    type: "POST",
+                    data: {
+                        data : spudval,
+                        spudid : spudid
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }
+     }
+       var addspud_url = "{% url 'bomconfig:spudadd' %}";
+       var editspud_url = "{% url 'bomconfig:spudedit' %}";
+       var deletespud_url = "{% url 'bomconfig:spuddelete' %}";
+
+       $(function() {
+            function reposition() {
+                var modal = $(this),
+                        dialog = modal.find('.modal-dialog');
+                modal.css('display', 'block');
+                dialog.css("margin-top", Math.max(0, ($(window).height() - dialog.height()) / 2));
+                dialog.css("margin-left", Math.max(0, ($(window).width() - dialog.width()) / 2));
+
+            }
+            $('.modal').on('show.bs.modal', reposition);
+            $(window).on('resize', function() {
+                $('.modal:visible').each(reposition);
+            });
+       });
+
+        $(document).ready(function(){
+            var bodyHeight = $('#main-body').height();
+            var max_available = bodyHeight - 650 ;
+
+            $('#tablespud').DataTable({
+                lengthChange: false,
+                scrollY: max_available,
+                scrollCollapse: true,
+                pageLength: 50,
+            });
+
+        });
+
+        function form_resize(){
+            var topbuttonheight = $('#action_buttons').height();
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + 2);
+
+            $('#tablespud').css("height", tableheight);
+            $('#tablespud').css("overflow", 'auto');
+        }
+
+    </script>
+     {% endif %}
+ </div>
+<style>
+#tablespud {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    width: 40%;
+}
+
+#tablespud td, #tablespud th {
+    padding: 5px;
+}
+
+#tablespud tr:nth-child(odd){background-color: #f2f2f2;}
+
+#tablespud tr:hover {background-color: #ddd;}
+
+#tablespud th {
+    text-align: left;
+    background-color: white;
+    color: black;
+}
+</style>
+
+{% endif %}
+{% endblock %}

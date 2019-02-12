@@ -1,4 +1,4 @@
-/**
+    /**
 * Created by epastag on 7/11/2016.
 */
 
@@ -22,11 +22,34 @@ function cleanDataCheck(link){
 function cust_filter(customer){
     if(customer !== 'All') {
         $('#cu_filter').html(customer +" <span class=\"caret\"></span>");
+// D-04023-Customer filter on Actions issue for Admin users :- Added baselineonselectcu() to populate baseline dropdown based on selected CU
+        baselineonselectcu();
     } else {
         $('#cu_filter').html('Customer <span class="caret"></span>');
     }
     updateFilters();
 }
+// D-04023-Customer filter on Actions issue for Admin users :- Added baselineonselectcu() to populate baseline dropdown based on selected CU
+function baselineonselectcu(){
+            var cu=  $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+            $.ajax({
+            url: action_inprocess_customer_url,
+            type: "POST",
+            data: {
+                data: cu
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+            alert('success')
+            },
+            error: function(xhr, status, error){
+                $('#myModal').modal('hide');
+                console.log('Error returned from list call', status, error);
+            }
+        });
+ }
 
 function request_filter(request){
     if(request !== "All"){
@@ -389,6 +412,15 @@ $(document).ready(function(){
 
     //changes done for-- to open single popup to send notification for multiple models
     function processForms(){
+        //S-05766:Identify Emails from Test System---Added to check the window URL
+        var windowurlval = '';
+        if(window.location.href.indexOf('localhost')!=-1){          //for local
+            windowurlval='local';
+        }else if(window.location.href.indexOf('eusaalx0054')!=-1){      //for test
+            windowurlval='test';
+        }else{
+             windowurlval='prod';                                       //for prod
+        }
         if (returnedFormData == null){
 
         } else if ((iIndex + 1) >= keys.length) {
@@ -398,6 +430,7 @@ $(document).ready(function(){
                 type: "POST",
                 data: {
                     action: 'send_to_approve',
+                    windowurl: windowurlval,                               //S-05766:Identify Emails from Test System---sending the current window url as a parameter to back end
                     data: JSON.stringify(keys),
                     approval: JSON.stringify(approvalFormData)
                 },
@@ -451,6 +484,7 @@ $(document).ready(function(){
                 type: "POST",
                 data: {
                     action: 'send_to_approve',
+                    windowurl: windowurlval,                                //S-05766:Identify Emails from Test System---sending the current window url as a parameter to back end
                     data: JSON.stringify(keys),
                     approval: JSON.stringify(approvalFormData)
                 },

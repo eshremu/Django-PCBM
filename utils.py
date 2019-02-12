@@ -935,6 +935,7 @@ def GenerateRevisionSummary(oBaseline, sPrevious, sCurrent):
 # end def
 
 
+
 def HeaderComparison(oHead, oPrev):
     """
     Performs a line-by-line comparison of two Headers (oHead, oPrev) and
@@ -950,6 +951,9 @@ def HeaderComparison(oHead, oPrev):
         key: (Part #, Line #)
         value: [Qty,
                 Price,
+                Product Description,
+                Comments,
+                Additional Reference,
                 (Grandparent Part #, Parent Part #),
                 Matching line key].
     This will be used to find a match between revisions, and track when a line
@@ -983,8 +987,14 @@ def HeaderComparison(oHead, oPrev):
                                 ]
                 ).part.base.product_number if oConfigLine.is_child else None
             ),
-            None
+            None,
+            # S-07842   Revision change adjustment( Added for description, add_ref, comments)
+            oConfigLine.part.product_description or None,
+            oConfigLine.comments or None,
+            oConfigLine.additional_ref or None,
         ]
+
+    # end for
 
     # Build dictionary from oPrev ConfigLine set
     for oConfigLine in oPrev.configuration.configline_set.all():
@@ -1018,7 +1028,11 @@ def HeaderComparison(oHead, oPrev):
                     line_number=oConfigLine.line_number[
                                 :oConfigLine.line_number.rfind('.')]) else None
             ),
-            None
+            None,
+            # S-07842   Revision change adjustment( Added for description, add_ref, comments)
+            oConfigLine.part.product_description or None,
+            oConfigLine.comments or None,
+            oConfigLine.additional_ref or None,
         ]
 
     # For each key in dPrevious, check if the key is in dCurrent.
@@ -1030,9 +1044,14 @@ def HeaderComparison(oHead, oPrev):
             dCurrent[(sPart, sLine)][3] = dPrevious[(sPart, sLine)][3] = (sPart,
                                                                           sLine)
 
-            # Check if quantity or price changed from oPrev entry to oHead entry
+            # Check if quantity or price or description or comments or additional_ref changed from oPrev entry to oHead entry
+# Added for S-07842   Revision change adjustment( changed for description, add_ref, comments)(spart,sline[4],spart,sline[5],spart,sline[6])
             if dCurrent[(sPart, sLine)][0] != dPrevious[(sPart, sLine)][0] or \
-                    dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
+                dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1] or \
+                dCurrent[(sPart, sLine)][4] != dPrevious[(sPart, sLine)][4] or \
+                dCurrent[(sPart, sLine)][5] != dPrevious[(sPart, sLine)][5] or \
+                    dCurrent[(sPart, sLine)][6] != dPrevious[(sPart, sLine)][6]:
+
                 if dCurrent[(sPart, sLine)][0] != dPrevious[(sPart, sLine)][0]:
                     sTemp += '{} - {} quantity changed from {} to {}\n'.format(
                         sLine, sPart,  dPrevious[(sPart, sLine)][0],
@@ -1048,11 +1067,29 @@ def HeaderComparison(oHead, oPrev):
                     if oHead.customer_unit == oATT and not oHead.pick_list and \
                                     sLine != '10':
                         continue
-                    sTemp += ('{} - {} line price changed from {} to {}\n'
+                    sTemp += ('{} - {} line price changed\n'  # S-05747: Remove price from Comments upon baseline file download in revision tab removed,deleted from {} to {} and commented below lines
                               ).format(
                         sLine, sPart, dPrevious[(sPart, sLine)][1],
-                        dCurrent[(sPart, sLine)][1]
-                    )
+                        dCurrent[(sPart, sLine)][1])
+# Added for S-07842   Revision change adjustment( changed for description, add_ref, comments)(spart,sline[4],spart,sline[5],spart,sline[6])
+                if dCurrent[(sPart, sLine)][4] != dPrevious[(sPart, sLine)][4]:
+                    sTemp += ('{} - {} description changed\n'
+                              ).format(
+                        sLine, sPart, dPrevious[(sPart, sLine)][4],
+                        dCurrent[(sPart, sLine)][4])
+
+                if dCurrent[(sPart, sLine)][5] != dPrevious[(sPart, sLine)][5]:
+                    sTemp += ('{} - {} comments changed\n'
+                              ).format(
+                        sLine, sPart, dPrevious[(sPart, sLine)][5],
+                        dCurrent[(sPart, sLine)][5])
+
+                if dCurrent[(sPart, sLine)][6] != dPrevious[(sPart, sLine)][6]:
+                    sTemp += ('{} - {} Additional Reference changed\n'
+                              ).format(
+                        sLine, sPart, dPrevious[(sPart, sLine)][6],
+                        dCurrent[(sPart, sLine)][6])
+
 
         else:
             # if the key is not in dCurrent, we need to find potential matches
@@ -1085,27 +1122,60 @@ def HeaderComparison(oHead, oPrev):
                 if dCurrent[dPrevious[(sPart, sLine)][3]][0] != \
                         dPrevious[(sPart, sLine)][0] or \
                         dCurrent[dPrevious[(sPart, sLine)][3]][1] != \
-                        dPrevious[(sPart, sLine)][1]:
+                        dPrevious[(sPart, sLine)][1] or \
+                        dCurrent[dPrevious[(sPart, sLine)][3]][4] != \
+                        dPrevious[(sPart, sLine)][4] or \
+                        dCurrent[dPrevious[(sPart, sLine)][3]][5] != \
+                        dPrevious[(sPart, sLine)][5] or \
+                        dCurrent[dPrevious[(sPart, sLine)][3]][6] != \
+                        dPrevious[(sPart, sLine)][6]:
 
                     if dCurrent[dPrevious[(sPart, sLine)][3]][0] != \
                             dPrevious[(sPart, sLine)][0]:
-                        sTemp += ('{} - {} quantity changed from {} to {}\n'
+                         sTemp += ('{} - {} quantity changed from {} to {}\n'
                                   ).format(
                             dPrevious[(sPart, sLine)][3][1],
                             sPart, dPrevious[(sPart, sLine)][0],
                             dCurrent[dPrevious[(sPart, sLine)][3]][0]
-                        )
+                            )
 
                     if dCurrent[dPrevious[(sPart, sLine)][3]][1] != \
                             dPrevious[(sPart, sLine)][1]:
                         if oHead.customer_unit == oATT and not oHead.pick_list \
                                 and sLine != '10':
                             continue
-                        sTemp += ('{} - {} line price changed from {} to {}\n'
+                        sTemp += ('{} - {} line price changed \n' # S-05747: Remove price from Comments upon baseline file download in revision tab removed,deleted from {} to {}
                                   ).format(
                             dPrevious[(sPart, sLine)][3][1], sPart,
                             dPrevious[(sPart, sLine)][1],
                             dCurrent[dPrevious[(sPart, sLine)][3]][1]
+                        )
+
+                    if dCurrent[dPrevious[(sPart, sLine)][3]][4] != \
+                            dPrevious[(sPart, sLine)][4]:
+                        sTemp += ('{} - {} description changed \n'
+                                  ).format(
+                            dPrevious[(sPart, sLine)][3][4],
+                            sPart, dPrevious[(sPart, sLine)][4],
+                            dCurrent[dPrevious[(sPart, sLine)][3]][4]
+                        )
+
+                    if dCurrent[dPrevious[(sPart, sLine)][3]][5] != \
+                            dPrevious[(sPart, sLine)][5]:
+                        sTemp += ('{} - {} comments changed\n'
+                                  ).format(
+                            dPrevious[(sPart, sLine)][3][5],
+                            sPart, dPrevious[(sPart, sLine)][5],
+                            dCurrent[dPrevious[(sPart, sLine)][3]][5]
+                        )
+
+                    if dCurrent[dPrevious[(sPart, sLine)][3]][6] != \
+                            dPrevious[(sPart, sLine)][6]:
+                        sTemp += ('{} - {} Additional Reference changed \n'
+                                  ).format(
+                            dPrevious[(sPart, sLine)][3][6],
+                            sPart, dPrevious[(sPart, sLine)][6],
+                            dCurrent[dPrevious[(sPart, sLine)][3]][6]
                         )
 
             else:

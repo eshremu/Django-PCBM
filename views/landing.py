@@ -129,7 +129,8 @@ def Logout(oRequest):
         pass
     # end try
     oRequest.session.set_expiry(1)
-    return auth_logout(oRequest, next_page='/pcbm/')
+    # S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
+    return auth_logout(oRequest, next_page='/acc/')
 # end def
 
 

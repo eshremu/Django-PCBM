@@ -1,6 +1,6 @@
-PCBM
+ACC
 =====
-Code repository for the PSM Configuration & Baseline Management Tool.
+Code repository for the Agreed Customer Catalog.
 
 This repository contains the version of the tool being hosted on server
 EUSAALX0055.aa.us.am.ericsson.se.

@@ -10,9 +10,11 @@ from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
+from django.conf import settings
 
 import re
 
+authUser = settings.AUTH_USER_MODEL
 
 # Create your models here.
 class ParseException(Exception):
@@ -107,6 +109,7 @@ class REF_TECHNOLOGY(models.Model):
     # end class
 
     name = models.CharField(max_length=50)
+    is_inactive = models.BooleanField(default=0)    #S-05905 : Edit drop down option for BoM Entry Header - Technology: Added new field
 
     objects = OrderedManager()
 
@@ -125,6 +128,7 @@ class REF_PRODUCT_AREA_1(models.Model):
     # end class
 
     name = models.CharField(max_length=50)
+    is_inactive = models.BooleanField(default=0) #S-05906 : Edit drop down option for BoM Entry Header - Product Area 1: Added new field
 
     objects = OrderedManager()
 
@@ -145,6 +149,7 @@ class REF_PRODUCT_AREA_2(models.Model):
 
     name = models.CharField(max_length=50)
     parent = models.ForeignKey(REF_PRODUCT_AREA_1)
+    is_inactive = models.BooleanField(default=0) #S-05907 : Edit drop down option for BoM Entry Header - Product Area 2: Added new field
 
     objects = OrderedManager()
 
@@ -189,6 +194,7 @@ class REF_PROGRAM(models.Model):
 
     name = models.CharField(max_length=50)
     parent = models.ForeignKey(REF_CUSTOMER)
+    is_inactive = models.BooleanField(default=0) #S-05903 :Edit drop down option for BoM Entry Header - Program: Added new field
 
     objects = OrderedManager()
 
@@ -261,6 +267,7 @@ class REF_SPUD(models.Model):
     # end class
 
     name = models.CharField(max_length=50)
+    is_inactive = models.BooleanField(default=0) #S-05909 : Edit drop down option for BoM Entry Header - SPUD: Added new field
 
     objects = OrderedManager()
 
@@ -279,6 +286,7 @@ class REF_RADIO_BAND(models.Model):
     # end class
 
     name = models.CharField(max_length=50)
+    is_inactive = models.BooleanField(default=0) #S-05908 : Edit drop down option for BoM Entry Header - Radio Frequency / Band : Added new field
 
     def __str__(self):
         return self.name
@@ -296,6 +304,7 @@ class REF_RADIO_FREQUENCY(models.Model):
     # end class
 
     name = models.CharField(max_length=50)
+    is_inactive = models.BooleanField(default=0) #S-05908 : Edit drop down option for BoM Entry Header - Radio Frequency / Band : Added new field
 
     def __str__(self):
         return self.name
@@ -338,6 +347,7 @@ class Baseline(models.Model):
     customer = models.ForeignKey(REF_CUSTOMER, db_constraint=False, blank=True,
                                  null=True)
     isdeleted = models.BooleanField(default=0)
+    # user = models.ForeignKey(authUser)
 
     def save(self, *args, **kwargs):
         """
@@ -408,7 +418,7 @@ class Baseline_Revision(models.Model):
                                           null=True,
                                           related_name='next_revision')
     isdeleted = models.BooleanField(default=0)
-
+    
     @property
     def title(self):
         """
@@ -440,8 +450,9 @@ class Header(models.Model):
     Model for Header objects.
     Each Bill of Materials (BoM) is comprised of a Header and a Configuration
     """
-    person_responsible = models.CharField(max_length=50,
-                                          verbose_name='Person Responsible')
+
+ # S-05787: Re-alignment of Header tab of BOM Entry page for All Customers:- changed the order of the fields in the Headerform as per the mockup provided
+
     react_request = models.CharField(max_length=25,
                                      verbose_name='REACT Request', blank=True,
                                      null=True)
@@ -451,6 +462,9 @@ class Header(models.Model):
     customer_unit = models.ForeignKey(REF_CUSTOMER,
                                       verbose_name='Customer Unit',
                                       db_constraint=False)
+    person_responsible = models.CharField(max_length=50,
+                                          verbose_name='Person Responsible')
+
     customer_name = models.CharField(max_length=50,
                                      verbose_name='Customer Name', blank=True,
                                      null=True)
@@ -462,19 +476,17 @@ class Header(models.Model):
                                         blank=True, null=True)
     ship_to_party = models.IntegerField(verbose_name='Ship-to Party',
                                         blank=True, null=True)
-    bill_to_party = models.IntegerField(verbose_name='Bill-to Party',
-                                        blank=True, null=True)
     ericsson_contract = models.IntegerField(verbose_name='Ericsson Contract #',
                                             blank=True, null=True)
+    bill_to_party = models.IntegerField(verbose_name='Bill-to Party',
+                                        blank=True, null=True)
     payment_terms = models.CharField(max_length=50,
                                      verbose_name='Payment Terms', blank=True,
                                      null=True)
-    projected_cutover = models.DateField(verbose_name='Projected Cut-over Date',
-                                         blank=True, null=True)
-    program = models.ForeignKey(REF_PROGRAM, verbose_name='Program', blank=True,
-                                null=True, db_constraint=False)
     configuration_designation = models.CharField(max_length=50,
                                                  verbose_name='Configuration')
+    program = models.ForeignKey(REF_PROGRAM, verbose_name='Program', blank=True,
+                                null=True, db_constraint=False)
     customer_designation = models.CharField(max_length=50,
                                             verbose_name='Customer Designation',
                                             blank=True, null=True)
@@ -492,30 +504,21 @@ class Header(models.Model):
                                         db_constraint=False)
     radio_band = models.ForeignKey(REF_RADIO_BAND, verbose_name='Radio Band',
                                    blank=True, null=True, db_constraint=False)
-    optional_free_text1 = models.CharField(max_length=50,
-                                           verbose_name='Optional Free Text Field 1',
-                                           blank=True, null=True)
-    optional_free_text2 = models.CharField(max_length=50,
-                                           verbose_name='Optional Free Text Field 2',
-                                           blank=True, null=True)
-    optional_free_text3 = models.CharField(max_length=50,
-                                           verbose_name='Optional Free Text Field 3',
-                                           blank=True, null=True)
+
     inquiry_site_template = models.IntegerField(verbose_name='Inquiry/Site Template #',
                                                 blank=True, null=True)
-    readiness_complete = models.IntegerField(verbose_name='Readiness Complete (%)',
-                                             blank=True, null=False, default=0)
-    complete_delivery = models.BooleanField(verbose_name='Complete Delivery',
-                                            default=True)
-    no_zip_routing = models.BooleanField(default=False,
-                                         verbose_name='No ZipRouting')
     valid_from_date = models.DateField(verbose_name='Valid-from Date',
                                        blank=True, null=True)
     valid_to_date = models.DateField(verbose_name='Valid-to Date', blank=True,
                                      null=True)
+    complete_delivery = models.BooleanField(verbose_name='Complete Delivery',
+                                            default=True)
+    no_zip_routing = models.BooleanField(default=False,
+                                         verbose_name='No ZipRouting')
     shipping_condition = models.CharField(max_length=50,
                                           verbose_name='Shipping Condition',
                                           blank=True, null=True, default='71')
+
     baseline_impacted = models.CharField(max_length=50,
                                          verbose_name='Baseline Impacted',
                                          blank=True, null=True)
@@ -527,17 +530,36 @@ class Header(models.Model):
     model_replaced = models.CharField(max_length=50,
                                       verbose_name='What Model is this replacing?',
                                       blank=True, null=True)
-    model_replaced_link = models.ForeignKey('Header',
-                                            related_name='replaced_by_model',
-                                            blank=True, null=True)
     initial_revision = models.CharField(max_length=50,
                                         verbose_name='Initial Revision',
                                         blank=True,
                                         null=True)  # This is the root model
+
     configuration_status = models.ForeignKey(REF_STATUS,
                                              verbose_name='Configuration/Ordering Status',
                                              default=1, db_index=False,
                                              db_constraint=False, unique=False)
+    readiness_complete = models.IntegerField(verbose_name='Readiness Complete (%)',
+                                             blank=True, null=False, default=0)
+
+    pick_list = models.BooleanField(default=False, blank=True)
+    projected_cutover = models.DateField(verbose_name='Projected Cut-over Date',
+                                         blank=True, null=True)
+
+    optional_free_text1 = models.CharField(max_length=50,
+                                           verbose_name='Optional Free Text Field 1',
+                                           blank=True, null=True)
+    optional_free_text2 = models.CharField(max_length=50,
+                                           verbose_name='Optional Free Text Field 2',
+                                           blank=True, null=True)
+    optional_free_text3 = models.CharField(max_length=50,
+                                           verbose_name='Optional Free Text Field 3',
+                                           blank=True, null=True)
+
+    model_replaced_link = models.ForeignKey('Header',
+                                            related_name='replaced_by_model',
+                                            blank=True, null=True)
+
     old_configuration_status = models.ForeignKey(REF_STATUS, default=None,
                                                  related_name='old_status',
                                                  db_index=False,
@@ -548,7 +570,7 @@ class Header(models.Model):
                                  blank=True, null=True)
     name = models.CharField(max_length=50, verbose_name='Name', blank=True,
                             null=True)
-    pick_list = models.BooleanField(default=False, blank=True)
+
     internal_notes = models.TextField(blank=True, null=True)
     external_notes = models.TextField(blank=True, null=True)
 
@@ -564,7 +586,7 @@ class Header(models.Model):
 
     class Meta:
         unique_together = ['configuration_designation', 'baseline_version',
-                           'baseline', 'program']
+                           'baseline', 'program', 'customer_name']
     # end class
 
     def __str__(self):
@@ -698,6 +720,7 @@ class Header(models.Model):
                     # readiness_complete value, send an email with this record
                     # attached to all users in the BOM_Forecast/Demand_Demand
                     # Manager group
+                    # S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
                     if bMessage and iPrevRC < self.readiness_complete:
                         aRecips = User.objects.filter(groups__name__in=[
                             'BOM_Forecast/Demand_Demand_Manager']).values_list(
@@ -707,7 +730,7 @@ class Header(models.Model):
                             body=('''\
 Hello SCM user,
 
-Log into the PSM Configuration & Baseline Management (PCBM) tool to review the \
+Log into the Agreed Customer Catalog (ACC) tool to review the \
 following Configuration for forecast readiness.  \
 Attached is a copy for your convenience and discussion with Forecasting and \
 Commodity Planning.  \
@@ -719,11 +742,11 @@ If there are questions, please contact the appropriate Configuration Manager.\
 You can locate this information on the "Header" tab of the attached \
 Configuration file.
 
-PCBM Link: https://rnamsupply.internal.ericsson.com/pcbm'''
+ACC Link: https://rnamsupply.internal.ericsson.com/acc'''
                                   ).format(self.configuration_designation,
                                            self.baseline_impacted or '',
                                            self.react_request or ''),
-                            from_email='pcbm.admin@ericsson.com',
+                            from_email='acc.admin@ericsson.com',
                             to=aRecips,
                             cc=[oRequest.user.email] if oRequest else None)
                         oMessage.attach_alternative((
@@ -743,7 +766,7 @@ PCBM Link: https://rnamsupply.internal.ericsson.com/pcbm'''
     </head>
     <body>
         <p>Hello SCM user,</p>
-        <p>Log into the PSM Configuration & Baseline Management (PCBM) tool to \
+        <p>Log into the Agreed Customer Catalog (ACC) tool to \
 review the following Configuration for forecast readiness.  \
 Attached is a copy for your convenience and discussion with Forecasting and \
 Commodity Planning.  This Configuration is currently at 70% Readiness Complete.
@@ -754,9 +777,9 @@ Commodity Planning.  This Configuration is currently at 70% Readiness Complete.
         <p>If there are questions, please contact the appropriate \
 Configuration Manager.  You can locate this information on the "Header" tab of \
 the attached Configuration file.</p>
-        <p>PCBM Link:
-            <a href="https://rnamsupply.internal.ericsson.com/pcbm">
-                https://rnamsupply.internal.ericsson.com/pcbm
+        <p>ACC Link:
+            <a href="https://rnamsupply.internal.ericsson.com/acc">
+                https://rnamsupply.internal.ericsson.com/acc
             </a>
         </p>
     </body>
@@ -1322,9 +1345,14 @@ class ConfigLine(models.Model):
     pcode = models.CharField(max_length=100, blank=True, null=True)
     commodity_type = models.CharField(max_length=50, blank=True, null=True)
     package_type = models.CharField(max_length=50, blank=True, null=True)
+    # S-08473: Adjust configuration table to include new columns:- Added below 1 column
+    current_portfolio_code = models.CharField(max_length=50, blank=True, null=True)
     REcode = models.CharField(max_length=50, blank=True, null=True)
     mu_flag = models.CharField(max_length=50, blank=True, null=True)
     x_plant = models.CharField(max_length=50, blank=True, null=True)
+    # S-08473: Adjust configuration table to include new columns:- Added below 2 columns
+    plant_specific_material_status = models.CharField(max_length=50, blank=True, null=True)
+    distribution_chain_specific_material_status = models.CharField(max_length=50, blank=True, null=True)
     traceability_req = models.CharField(max_length=50, blank=True,
                                         null=True)  # TODO: Use CustomerPartInfo
     last_updated = models.DateTimeField(blank=True, null=True)
@@ -1487,49 +1515,12 @@ class PricingObject(models.Model):
             customer=oConfigLine.config.header.customer_unit,
             part=oConfigLine.part.base,
             is_current_active=True)
+ # Fix for D-04415- SPUD pricing in not pulled in for configs(SPUD pricing should not consider any other fields except for part number and SPUD. This will mean that we need
+ #  to remove the filter by Sold To or any other conditions).Removed all the condition and made it base only on SPUD. If part no
+ #        is entered without any spud then latest changed unit price without spud will be shown.)
 
-        # --added 2 lines below line to fetch unit price for parts having unit_price present in DB (S-05918)
-        oPriceObj = aPricingList.filter(part=oConfigLine.part.base).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(
-                sold_to=oConfigLine.config.header.sold_to_party,
-                spud=oConfigLine.spud,
-                technology=oConfigLine.config.header.technology).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(
-                sold_to=oConfigLine.config.header.sold_to_party,
-                spud=oConfigLine.spud,
-                technology=None).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(
-                sold_to=oConfigLine.config.header.sold_to_party, spud=None,
-                technology=oConfigLine.config.header.technology).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(sold_to=None, spud=oConfigLine.spud,
-                                            technology=oConfigLine.config.header
-                                            .technology).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(
-                sold_to=oConfigLine.config.header.sold_to_party, spud=None,
-                technology=None).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(sold_to=None, spud=oConfigLine.spud,
-                                            technology=None).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(sold_to=None, spud=None,
-                                            technology=oConfigLine.config.header
-                                            .technology).first()
-
-        if not oPriceObj:
-            oPriceObj = aPricingList.filter(sold_to=None, spud=None,
-                                            technology=None).first()
+        oPriceObj = aPricingList.filter(
+            spud=oConfigLine.spud).last()
 
         return oPriceObj
     # end def
@@ -1602,74 +1593,87 @@ class HeaderTimeTracker(models.Model):
 
     submitted_for_approval = models.DateTimeField(blank=True, null=True)
     psm_config_approver = models.CharField(max_length=50, blank=True, null=True)
-
+    # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+    #  added _hold_approval for each level,hold_on
     scm1_approver = models.CharField(max_length=50, blank=True, null=True)
     scm1_denied_approval = models.DateTimeField(blank=True, null=True)
     scm1_approved_on = models.DateTimeField(blank=True, null=True)
+    scm1_hold_approval = models.DateTimeField(blank=True, null=True)
     scm1_comments = models.TextField(blank=True, null=True)
     scm1_notify = models.TextField(blank=True, null=True)
 
     scm2_approver = models.CharField(max_length=50, blank=True, null=True)
     scm2_denied_approval = models.DateTimeField(blank=True, null=True)
     scm2_approved_on = models.DateTimeField(blank=True, null=True)
+    scm2_hold_approval = models.DateTimeField(blank=True, null=True)
     scm2_comments = models.TextField(blank=True, null=True)
     scm2_notify = models.TextField(blank=True, null=True)
 
     csr_approver = models.CharField(max_length=50, blank=True, null=True)
     csr_denied_approval = models.DateTimeField(blank=True, null=True)
     csr_approved_on = models.DateTimeField(blank=True, null=True)
+    csr_hold_approval = models.DateTimeField(blank=True, null=True)
     csr_comments = models.TextField(blank=True, null=True)
     csr_notify = models.TextField(blank=True, null=True)
 
     cpm_approver = models.CharField(max_length=50, blank=True, null=True)
     cpm_denied_approval = models.DateTimeField(blank=True, null=True)
     cpm_approved_on = models.DateTimeField(blank=True, null=True)
+    cpm_hold_approval = models.DateTimeField(blank=True, null=True)
     cpm_comments = models.TextField(blank=True, null=True)
     cpm_notify = models.TextField(blank=True, null=True)
 
     acr_approver = models.CharField(max_length=50, blank=True, null=True)
     acr_denied_approval = models.DateTimeField(blank=True, null=True)
     acr_approved_on = models.DateTimeField(blank=True, null=True)
+    acr_hold_approval = models.DateTimeField(blank=True, null=True)
     acr_comments = models.TextField(blank=True, null=True)
     acr_notify = models.TextField(blank=True, null=True)
 
     blm_approver = models.CharField(max_length=50, blank=True, null=True)
     blm_denied_approval = models.DateTimeField(blank=True, null=True)
     blm_approved_on = models.DateTimeField(blank=True, null=True)
+    blm_hold_approval = models.DateTimeField(blank=True, null=True)
     blm_comments = models.TextField(blank=True, null=True)
     blm_notify = models.TextField(blank=True, null=True)
 
     cust1_approver = models.CharField(max_length=50, blank=True, null=True)
     cust1_denied_approval = models.DateTimeField(blank=True, null=True)
     cust1_approved_on = models.DateTimeField(blank=True, null=True)
+    cust1_hold_approval = models.DateTimeField(blank=True, null=True)
     cust1_comments = models.TextField(blank=True, null=True)
     cust1_notify = models.TextField(blank=True, null=True)
 
     cust2_approver = models.CharField(max_length=50, blank=True, null=True)
     cust2_denied_approval = models.DateTimeField(blank=True, null=True)
     cust2_approved_on = models.DateTimeField(blank=True, null=True)
+    cust2_hold_approval = models.DateTimeField(blank=True, null=True)
     cust2_comments = models.TextField(blank=True, null=True)
     cust2_notify = models.TextField(blank=True, null=True)
 
     cust_whse_approver = models.CharField(max_length=50, blank=True, null=True)
     cust_whse_denied_approval = models.DateTimeField(blank=True, null=True)
     cust_whse_approved_on = models.DateTimeField(blank=True, null=True)
+    cust_whse_hold_approval = models.DateTimeField(blank=True, null=True)
     cust_whse_comments = models.TextField(blank=True, null=True)
     cust_whse_notify = models.TextField(blank=True, null=True)
 
     evar_approver = models.CharField(max_length=50, blank=True, null=True)
     evar_denied_approval = models.DateTimeField(blank=True, null=True)
     evar_approved_on = models.DateTimeField(blank=True, null=True)
+    evar_hold_approval = models.DateTimeField(blank=True, null=True)
     evar_comments = models.TextField(blank=True, null=True)
     evar_notify = models.TextField(blank=True, null=True)
 
     brd_approver = models.CharField(max_length=50, blank=True, null=True)
     brd_denied_approval = models.DateTimeField(blank=True, null=True)
     brd_approved_on = models.DateTimeField(blank=True, null=True)
+    brd_hold_approval = models.DateTimeField(blank=True, null=True)
     brd_comments = models.TextField(blank=True, null=True)
 
     completed_on = models.DateTimeField(blank=True, null=True)
     disapproved_on = models.DateTimeField(blank=True, null=True)
+    hold_on = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return str(self.header)
@@ -1683,7 +1687,7 @@ class HeaderTimeTracker(models.Model):
         completed_on value if it exists
         :return: DateTime / None
         """
-        return self.disapproved_on or self.completed_on
+        return self.disapproved_on or self.completed_on or self.hold_on
 
     # end def
 
@@ -1740,6 +1744,21 @@ class HeaderTimeTracker(models.Model):
                     return level
         else:
             return None
+    # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+    #  added def
+    @property
+    def hold_level(self):
+        """
+        Returns the approval level that contains a valid denied_approval value
+        :return: str / None
+        """
+        if self.hold_on:
+            for level in self.__class__.approvals():
+                if hasattr(self, level + '_hold_approval') and \
+                        getattr(self, level + '_hold_approval'):
+                    return level
+        else:
+            return None
 
     @property
     def last_approval_comment(self):
@@ -1748,7 +1767,8 @@ class HeaderTimeTracker(models.Model):
         this record that contains a valid approved_on value.
         :return: str / None
         """
-        if not self.disapproved_on:
+        if not self.disapproved_on or not self.hold_on: # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+    #  added _hold_on
             levels = self.__class__.approvals()
             levels.reverse()
             for level in levels:
@@ -1769,6 +1789,19 @@ class HeaderTimeTracker(models.Model):
         """
         if self.disapproved_on:
             return getattr(self, self.disapproved_level + '_comments')
+        else:
+            return None
+    # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+    #  added _hold_approval for each level
+    @property
+    def last_hold_comment(self):
+        """
+        Returns the comment(s) stored for the last possible approval level for
+        this record that contains a valid denied_approval value.
+        :return: str / None
+        """
+        if self.hold_on:
+            return getattr(self, self.hold_level + '_comments')
         else:
             return None
 
@@ -1877,6 +1910,20 @@ class DistroList(models.Model):
         return self.customer_unit.name
 # end def
 
+# S-06578 : Addition for User_Customer table
+class User_Customer(models.Model):
+    class Meta:
+        verbose_name = 'User Customer'
+        # end class
+
+    user = models.ForeignKey(authUser, db_constraint = False, blank=True, null=True)
+    customer = models.ForeignKey(REF_CUSTOMER, db_constraint = False, blank=True, null=True)
+    is_deleted = models.BooleanField(default=0)
+    customer_name = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return (str(self.user)+ " - " + str(self.customer)+ " - " + str(self.customer_name)+" - " + str(self.is_deleted))
+    # end def
 
 class ApprovalList(models.Model):
     """

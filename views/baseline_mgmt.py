@@ -6,7 +6,7 @@ from django.http import JsonResponse, QueryDict
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, Http404
 
-from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER
+from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER, User_Customer
 from BoMConfig.forms import SubmitForm
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import RollbackBaseline, TestRollbackBaseline, \
@@ -23,6 +23,7 @@ def BaselineLoad(oRequest):
     :param oRequest: Django Request object
     :return: HTTPResponse via Default function
     """
+
     return Default(oRequest, sTemplate='BoMConfig/baselineload.html')
 
 
@@ -38,6 +39,14 @@ def BaselineMgmt(oRequest):
 
     # Unlock any Headers that may have been locked for editing and remove any
     # old status messages
+    # S-06171- added for restricting customer_unit as per logged in user's cu in baseline view
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -56,14 +65,15 @@ def BaselineMgmt(oRequest):
     bDetailed = False
     dTableData = None
     aTable = []
-
     # A POST was submitted, the user is searching for a baseline, so show single
     # baseline details
     if oRequest.method == 'POST' and oRequest.POST['baseline_title']:
+        # If part is called when the baseline is selected from the baseline dropdown & the page gets reloaded
         form = SubmitForm(oRequest.POST)
         if form.is_valid():
             oBaseline = form.cleaned_data['baseline_title']
-
+            # S-06171: Baseline Restricts CU- This is the queryset that populates based on CU list of logged in user
+            form.fields['baseline_title'].queryset = Baseline.objects.filter(customer__in=aAvailableCU).exclude(isdeleted=1)
             # First get list of baseline revisions for this baseline a sort them
             # in reverse order
             aRevisions = sorted(
@@ -117,8 +127,10 @@ def BaselineMgmt(oRequest):
     # Otherwise, show current in-process and active revision details for all
     # baselines
     else:
+        #Else part is called when the baseline page loads
         form = SubmitForm()
-        aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
+        form.fields['baseline_title'].queryset = Baseline.objects.filter(customer__in=aAvailableCU).exclude(isdeleted=1)
+        aBaselines = Baseline.objects.filter(customer__in=aAvailableCU).exclude(isdeleted=1)
 
         # For each baseline, get header data for active and in-process
         # Baseline_Revision
@@ -149,6 +161,7 @@ def BaselineMgmt(oRequest):
         # end for
 
         # Add information for "No Associated Baseline" baseline
+        # S-06171: Baseline Restricts CU-.filter(customer_unit__in=aAvailableCU) appended to 'configs'
         if Baseline.objects.filter(title='No Associated Baseline'):
             oBaseline = Baseline.objects.get(title='No Associated Baseline')
             aRevisions = [oBaseline.current_inprocess_version or None,
@@ -160,7 +173,7 @@ def BaselineMgmt(oRequest):
                         {
                             'revision': '',
                             'configs': Header.objects.filter(
-                                baseline__baseline=oBaseline).filter(
+                                baseline__baseline=oBaseline).filter(customer_unit__in=aAvailableCU).filter(
                                 baseline_version__in=aRevisions).order_by(
                                 'configuration_status', 'pick_list',
                                 'configuration_designation'),
@@ -173,19 +186,20 @@ def BaselineMgmt(oRequest):
             )
     # end if
 
-    aTitles = ['', '', 'Configuration', 'Product Area 2', 'Status', 'BoM Request Type', 'Program',
-               'Customer Number', 'Model', 'Model Description',
+    aTitles = ['', 'Configuration', 'Product Area 2', 'Status', 'BoM Request Type', 'Program',
+               'Customer Number', 'Second Customer Number', 'Model', 'Model Description',
                'Customer Price', 'Created Year', 'Inquiry/Site Template Number',
                'Model Replacing', 'Comments', 'Release Date', 'ZUST', 'P-Code',
-               'Plant']
+               'Plant']  # S-05745: Add Second Customer number in Baseline View added Second Customer Number
 
+    # S-06171: Baseline Restricts CU- added a cust_list attribute in dContext for CU fiter dropdown
     dContext = {
         'form': form,
         'tables': aTable,
         'downloadable': bDownloadable,
         'detailed': bDetailed,
         'column_titles': aTitles,
-        'cust_list': REF_CUSTOMER.objects.all(),
+        'cust_list': aAvailableCU,
     }
 
     return Default(oRequest, sTemplate='BoMConfig/baselinemgmt.html',
@@ -226,12 +240,13 @@ def BaselineRollbackTest(oRequest):
             sTemp += '</ul>'
             dResult['errors'].append(sTemp)
     except RollbackError as ex:
+        # S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
         if 'release date' in str(ex):
             dResult['errors'].append("<p>Active revision was not released via "
-                                     "the PCBM tool.</p>")
+                                     "the ACC tool.</p>")
         elif 'previous revision' in str(ex):
             dResult['errors'].append("<p>No previous revision exists in the "
-                                     "PCBM tool.</p>")
+                                     "ACC tool.</p>")
 
     return JsonResponse(dResult)
 # end def

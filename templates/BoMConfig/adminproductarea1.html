@@ -1,0 +1,268 @@
+{% extends "BoMConfig/adminlanding.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+
+        <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+        <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
+
+{% if user.is_authenticated %}
+ <div id="main-body">
+     {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" %}
+     <br>
+     <button id="addproductarea1" class="btn btn-primary" type="button" name="add" value="add" >New Product Area 1</button><br>
+     <h3 id="title"><u>Select a Product Area 1 to edit </u></h3>
+     {% if errors %}
+    <div class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">
+        {% for error in errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+    </div>
+    {% endif %}
+     <table id="tableproductarea1">
+        <thead>
+                <tr>
+
+                    <th>Name</th>
+                </tr>
+            </thead>
+            <tbody id="admin_productarea1">
+                {% for p in productarea1 %}
+                <tr>
+                     <td><div onclick="messageToModalAdmin('Change Product Area 1',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'{{ p.name }}','{{ p.id }}')">{{ p.name }}</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+     </table>
+
+     <div class="modal fade" id="mynewModal" role="dialog" data-backdrop="static" data-keyboard="false">
+         <div class="modal-dialog">
+            <!-- Modal content-->
+                <div class="modal-content" style="background: none; box-shadow: none; border: none">
+                    <div class="modal-body">
+                        <p align="middle"><img src="{% static 'BoMConfig/ajax-loader.gif' %}" align="middle"/></p>
+                    </div>
+                </div>
+            </div>
+         <div id="messageModalAdmin" class="modal fade"  role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+            <!-- Modal content-->
+                <div class="modal-content">
+                    <div class="modal-header">
+                         <h4></h4>
+                    </div>
+                    <div class="modal-body">
+                         <label>Name: </label><input id ="productarea1" class="headerproductarea1" type="text" name="inputproductarea1"/>
+                    </div>
+                <div class="modal_footer" style="text-align: right;padding: 10px;">
+                        <button id="btndelete" class="modal_delete btn btn-danger" style="display:none; float:left; margin-left:10px;">Delete</button>
+                        <button id="btnsave" class="modal_submit btn btn-primary" disabled>Save</button>
+                        <button class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+            </div>
+        </div>
+
+
+     <script type="text/javascript">
+
+     $('#addproductarea1').click(function(){
+                    document.getElementById("btnsave").disabled = true;
+                    document.getElementById('btndelete').style.display ='none';
+                    messageToModalAdmin('Add Product Area 1',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'','');
+                    document.getElementById('productarea1').value = '';
+     });
+
+     <!--D-04685-Error with Band/Frequency:- Added below function to remove space at the beginning of the string(left trim)-->
+     function ltrim(str) {
+          if(str == null) return str;
+          return str.replace(/^\s+/g, '');
+     }
+
+     function messageToModalAdmin(title, message, callback, productarea1name, productarea1id){
+            var params = [];
+            for(var i = 3; i < arguments.length; i++){
+                params.push(arguments[i]);
+            }
+            if(productarea1name){
+              document.getElementById('productarea1').value = productarea1name;
+              document.getElementById('btndelete').style.display ='block';
+              document.getElementById("btnsave").disabled = true;
+            }
+            $('#messageModalAdmin .modal-header h4').text(title);
+            $('#messageModalAdmin .modal-body').html(message);
+            $('#messageModalAdmin .modal-body .headerproductarea1').html(productarea1name);
+
+             $('#productarea1').keyup(function(){
+              <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in productarea1 input field -->
+              $('#productarea1').val(ltrim($('input[name="inputproductarea1"]').val()));
+              document.getElementById("btnsave").disabled = false;
+              document.getElementById("btndelete").disabled = false;
+              <!--D-04685-Error with Band/Frequency:- Added last condition to check and disable the buttons if space is present in the textfield -->
+              if($('#productarea1').val()=='' || $('#productarea1').val()==' ' ){
+                 document.getElementById("btnsave").disabled = true;
+                 document.getElementById("btndelete").disabled = true;
+              }
+            });
+
+            $('.modal_submit').off('click');
+            $('.modal_submit').click(function(){
+                    if(productarea1name == ''){      //for add
+                        process(1,'');
+                    }else{                     //for edit
+                        process(2,productarea1id);
+                    }
+                $('#messageModalAdmin').modal('hide');
+                if(callback != undefined) {
+                    callback.apply(this, params);
+                }
+            });
+            $('.modal_delete').click(function(){
+                process(3,productarea1id);
+                $('#messageModalAdmin').modal('hide');
+                if(callback != undefined) {
+                    callback.apply(this, params);
+                }
+            });
+            $('#messageModalAdmin').modal('show');
+     }
+
+     function process(operval,productarea1id){
+       var productarea1val = document.getElementById("productarea1").value;
+            $('#myModal').modal('show');
+            if(operval == '1'){
+                $.ajax({
+                    url: addproductarea1_url,
+                    type: "POST",
+                    data: {
+                        data:productarea1val
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }else if(operval == '2'){
+                 $.ajax({
+                    url: editproductarea1_url,
+                    type: "POST",
+                    data: {
+                        data : productarea1val,
+                        productarea1id : productarea1id
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }else{
+                 $.ajax({
+                    url: deleteproductarea1_url,
+                    type: "POST",
+                    data: {
+                        data : productarea1val,
+                        productarea1id : productarea1id
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error',
+                             '<br/>This Product Area1 has multiple Product Area2 associated. Could not proceed with delete', function(){});
+                    }
+                });
+               }
+     }
+       var addproductarea1_url = "{% url 'bomconfig:productarea1add' %}";
+       var editproductarea1_url = "{% url 'bomconfig:productarea1edit' %}";
+       var deleteproductarea1_url = "{% url 'bomconfig:productarea1delete' %}";
+
+             $(function() {
+                function reposition() {
+                    var modal = $(this),
+                            dialog = modal.find('.modal-dialog');
+                    modal.css('display', 'block');
+                    dialog.css("margin-top", Math.max(0, ($(window).height() - dialog.height()) / 2));
+                    dialog.css("margin-left", Math.max(0, ($(window).width() - dialog.width()) / 2));
+
+                }
+                $('.modal').on('show.bs.modal', reposition);
+                $(window).on('resize', function() {
+                    $('.modal:visible').each(reposition);
+                });
+            });
+
+         $(document).ready(function(){
+            var bodyHeight = $('#main-body').height();
+            var max_available = bodyHeight -450 ;
+
+            $('#tableproductarea1').DataTable({
+                lengthChange: false,
+                scrollY: max_available,
+                scrollCollapse: true,
+                pageLength: 10,
+            });
+        });
+
+
+    </script>
+     {% endif %}
+ </div>
+<style>
+#tableproductarea1 {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    width: 100%;
+}
+
+#tableproductarea1 td, #tableproductarea1 th {
+    padding: 3px;
+}
+
+#tableproductarea1 tr:nth-child(odd){background-color: #f2f2f2;}
+
+#tableproductarea1 tr:hover {background-color: #ddd;}
+
+#tableproductarea1 th {
+    text-align: left;
+    background-color: white;
+    color: black;
+}
+</style>
+
+{% endif %}
+{% endblock %}

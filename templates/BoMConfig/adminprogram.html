@@ -1,0 +1,308 @@
+{% extends "BoMConfig/adminlanding.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+
+        <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+        <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
+
+{% if user.is_authenticated %}
+ <div id="main-body">
+     {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" %}
+     <br>
+     <button id="addprogram" class="btn btn-primary" type="button" name="add" value="add" >New Program</button>
+     <h3 id="title"><u>Select a Program to edit </u></h3>
+
+     {% if errors %}
+     <div class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">
+        {% for error in errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+     </div>
+    {% endif %}
+     <table id="tableprogram" >
+        <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>CU</th>
+                </tr>
+            </thead>
+            <tbody id="admin_program">
+                {% for p in program %}
+                <tr>
+                     <td><div onclick="messageToModalAdmin('Edit Program',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'{{ p.name }}','{{ p.id }}','{{ p.parent_id }}')">{{ p.name }}</div></td>
+                     <td><div>{{ p.parent }}</div></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+     </table>
+
+     <div class="modal fade" id="mynewModal" role="dialog" data-backdrop="static" data-keyboard="false">
+         <div class="modal-dialog">
+                <div class="modal-content" style="background: none; box-shadow: none; border: none">
+                    <div class="modal-body">
+                        <p align="middle"><img src="{% static 'BoMConfig/ajax-loader.gif' %}" align="middle"/></p>
+                    </div>
+                </div>
+            </div>
+         <div id="messageModalAdmin" class="modal fade"  role="dialog" data-backdrop="static" data-keyboard="false">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                         <h4></h4>
+                    </div>
+                    <div class="modal-body">
+                         <label>Name:  </label><input id ="program" class="headerprogram" type="text" name="inputprogram"/><br /><br />
+                         <label style="padding-left: 20px">CU:  </label><select id="programcu" name="program" >
+                                <option value="">-------</option>
+                                {% for cu in culist %}
+                                <option value="{{ cu.id }}">{{ cu.name }}</option>
+                                {% endfor %}
+                            </select>
+                        <p id="cuerror" style="color:red; padding-left: 35px; display:none;" >* Please select a CU</p>
+                    </div>
+
+                <div class="modal_footer" style="text-align: right;padding: 10px;">
+                        <button id="btndelete" class="modal_delete btn btn-danger" style="display:none; float:left; margin-left:10px;">Delete</button>
+                        <button id="btnsave" class="modal_submit btn btn-primary" disabled>Save</button>
+                        <button class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    </div>
+            </div>
+        </div>
+
+
+     <script type="text/javascript">
+
+     $('#addprogram').click(function(){
+            document.getElementById("btnsave").disabled = true;
+            document.getElementById('btndelete').style.display ='none';
+                    messageToModalAdmin('Add Program',
+                     function(source){
+                        $('#mynewModal').modal('show');
+                    },this,'','','');
+                    $('#programcu').attr("disabled", false);
+                    document.getElementById('program').value = '';
+                    document.getElementById('programcu').value = '';
+     });
+
+     <!--D-04685-Error with Band/Frequency:- Added below function to remove space at the beginning of the string(left trim)-->
+     function ltrim(str) {
+          if(str == null) return str;
+          return str.replace(/^\s+/g, '');
+     }
+
+     function messageToModalAdmin(title, message, callback, programname, programid, cuid){
+            var params = [];
+            for(var i = 3; i < arguments.length; i++){
+                params.push(arguments[i]);
+            }
+            if(programname){
+              document.getElementById('program').value = programname;
+              $('#programcu').attr("disabled", true);
+              document.getElementById('btndelete').style.display ='block';
+              document.getElementById("btnsave").disabled = true;
+            }
+
+            $('#programcu').find('option[value="'+cuid+'"]').attr("selected","selected");
+
+            $('#messageModalAdmin .modal-header h4').text(title);
+            $('#messageModalAdmin .modal-body').html(message);
+            $('#messageModalAdmin .modal-body .headerprogram').html(programname);
+
+            $('#program').keyup(function(){
+            <!--D-04685-Error with Band/Frequency:- Added below line to remove the space at the begininning of string in program input field -->
+              $('#program').val(ltrim($('input[name="inputprogram"]').val()));
+              document.getElementById("btnsave").disabled = false;
+              document.getElementById("btndelete").disabled = false;
+            <!--D-04685-Error with Band/Frequency:- Added last condition to check and disable the buttons if space is present in the textfield -->
+               if($('#program').val()=='' || $('#program').val()==' '){
+                 document.getElementById("btnsave").disabled = true;
+                 document.getElementById("btndelete").disabled = true;
+              }
+            });
+
+             $('#programcu').change(function(){
+                $("#cuerror").hide();
+            });
+
+            $('.modal_submit').off('click');
+            $('.modal_submit').click(function(){
+                   if(programname == ''){      //for add
+                       if(document.getElementById("programcu").value == ''){
+                            $("#cuerror").show();
+                            return;
+                       }else{
+                            process(1,'');
+                        }
+                    }else{                     //for edit
+                        process(2,programid);
+                    }
+                $('#messageModalAdmin').modal('hide');
+                if(callback != undefined) {
+                    callback.apply(this, params);
+                }
+            });
+            $('.modal_delete').click(function(){
+
+                        process(3,programid);
+
+                $('#messageModalAdmin').modal('hide');
+                if(callback != undefined) {
+                    callback.apply(this, params);
+                }
+            });
+            $('#messageModalAdmin').modal('show');
+     }
+
+     function process(operval,programid){
+       var programval = document.getElementById("program").value;
+       var cuval = document.getElementById("programcu").value;
+            $('#myModal').modal('show');
+            if(operval == '1'){
+                $.ajax({
+                    url: addprogram_url,
+                    type: "POST",
+                    data: {
+                        data:programval,
+                        cuval : cuval
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }else if(operval == '2'){
+                 $.ajax({
+                    url: editprogram_url,
+                    type: "POST",
+                    data: {
+                        data : programval,
+                        progid : programid,
+                        cuid : cuval
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }else{
+                 $.ajax({
+                    url: deleteprogram_url,
+                    type: "POST",
+                    data: {
+                        data : programval,
+                        progid : programid,
+                        cuid : cuval
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+               }
+     }
+
+        var addprogram_url = "{% url 'bomconfig:programadd' %}";
+        var editprogram_url = "{% url 'bomconfig:programedit' %}";
+        var deleteprogram_url = "{% url 'bomconfig:programdelete' %}";
+
+             $(function() {
+                function reposition() {
+                    var modal = $(this),
+                            dialog = modal.find('.modal-dialog');
+                    modal.css('display', 'block');
+                    dialog.css("margin-top", Math.max(0, ($(window).height() - dialog.height()) / 2));
+                    dialog.css("margin-left", Math.max(0, ($(window).width() - dialog.width()) / 2));
+
+                }
+                $('.modal').on('show.bs.modal', reposition);
+                $(window).on('resize', function() {
+                    $('.modal:visible').each(reposition);
+                });
+            });
+
+        $(document).ready(function(){
+            var bodyHeight = $('#main-body').height();
+            var max_available = bodyHeight - 1050 ;
+
+             $('#tableprogram').DataTable({
+                lengthChange: false,
+                scrollY: max_available,
+                scrollCollapse: true,
+                pageLength: 50,
+            });
+        });
+
+        function form_resize(){
+            var topbuttonheight = $('#action_buttons').height();
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + 2);
+
+            $('#tableprogram').css("height", tableheight);
+            $('#tableprogram').css("overflow", 'auto');
+
+        }
+
+    </script>
+     {% endif %}
+ </div>
+<style>
+#tableprogram {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+     width: 40%;
+}
+
+#tableprogram td, #tableprogram th {
+    padding: 5px;
+}
+
+#tableprogram tr:nth-child(odd){background-color: #f2f2f2;}
+
+#tableprogram tr:hover {background-color: #ddd;}
+
+#tableprogram th {
+    text-align: left;
+    background-color: white;
+    color: black;
+}
+</style>
+
+{% endif %}
+{% endblock %}

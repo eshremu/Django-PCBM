@@ -148,8 +148,8 @@ function calcRenderer (instance, td, row, col, prop, value, cellProperties) {
 
 function build_table() {
     var headers = ['Line #','Product Number','Internal Product Number','Product Description','Order Qty','Unit Price',
-        'Total Price','Manual Override for Total NET Price','Linkage','Material Group 5','HW/SW Indicator',
-        'Comments (viewable by customer)','Additional Reference (viewable by customer)'];
+        'Total Price','Manual Override for Total NET Price','Traceability Req. (Serialization)','Linkage','Material Group 5','HW/SW Indicator',
+        'Comments (viewable by customer)','Additional Reference (viewable by customer)']; //S-05769: Addition of Product Traceability
     var container = document.getElementById('datatable');
     hot = new Handsontable(container, {
         data: table_data,

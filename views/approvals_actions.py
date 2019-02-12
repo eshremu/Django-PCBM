@@ -17,8 +17,8 @@ from django.conf import settings
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER,\
     REF_REQUEST, SecurityPermission, HeaderTimeTracker, REF_STATUS, \
     ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, \
-    LinePricing, DocumentRequest
-from BoMConfig.utils import UpRev, GrabValue, StrToBool
+    LinePricing, DocumentRequest,User_Customer,RevisionHistory
+from BoMConfig.utils import UpRev, GrabValue, StrToBool,GenerateRevisionSummary,RevisionCompare,HeaderComparison, TitleShorten
 from BoMConfig.views.landing import Unlock, Default
 from django.contrib.auth.models import User
 
@@ -99,6 +99,14 @@ def Approval(oRequest):
     :param oRequest: Django request object
     :return: HTML response via Default function
     """
+    # S-067173 :Approvals -Resctrict view to logged in users CU:- Added to get the logged in user's CU list
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -108,19 +116,19 @@ def Approval(oRequest):
 
         del oRequest.session['existing']
     # end if
-
+    # S-067173 :Approvals -Restrict view to logged in users CU:- Added '.filter(customer_unit__in=aAvailableCU)' in the approval_wait,baselines attributes of dContext
+    # Added 'aAvailableCU' in customer_list attribute
     dContext = {
         'approval_wait': Header.objects.filter(
-            configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0),
+            configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU),
         'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
         'baselines': ['All'] + sorted(list(
             set(
                 [str(obj.baseline.title) if
                  obj.baseline.title != 'No Associated Baseline' else
                  "(Not baselined)" for obj in Header.objects.filter(
-                    configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0)]))),
-        'customer_list': ['All'] + [obj.name for obj in
-                                    REF_CUSTOMER.objects.all()],
+                    configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU)]))),
+        'customer_list': ['All'] + aAvailableCU,
         'approval_seq': HeaderTimeTracker.approvals(),
         'deaddate': timezone.datetime(1900, 1, 1),
         'namelist': ['PSM Configuration Mgr.', 'SCM #1', 'SCM #2', 'CSR',
@@ -149,7 +157,127 @@ def Approval(oRequest):
     return Default(oRequest, sTemplate='BoMConfig/approvals.html',
                    dContext=dContext)
 # end def
+# S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+#  added below function
+@login_required
+def ApprovalHold(oRequest):
+    """
+    View for viewing and interacting with records pending approval and which is on hold
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
 
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
+    if 'existing' in oRequest.session:
+        try:
+            Unlock(oRequest, oRequest.session['existing'])
+        except Header.DoesNotExist:
+            pass
+        # end try
+
+        del oRequest.session['existing']
+    # end if
+
+    dContext = {
+        'on_hold': Header.objects.filter(
+            configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU),
+        'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
+        'baselines': ['All'] + sorted(list(
+            set(
+                [str(obj.baseline.title) if
+                 obj.baseline.title != 'No Associated Baseline' else
+                 "(Not baselined)" for obj in Header.objects.filter(
+                    configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU)]))),
+        'customer_list': ['All'] + aAvailableCU,
+        'approval_seq': HeaderTimeTracker.approvals(),
+        'deaddate': timezone.datetime(1900, 1, 1),
+        'namelist': ['PSM Configuration Mgr.', 'SCM #1', 'SCM #2', 'CSR',
+                     'Comm. Price Mgmt.', 'ACR', 'PSM Baseline Mgmt.',
+                     'Customer #1', 'Customer #2', 'Customer Warehouse',
+                     'Ericsson VAR', 'Baseline Release & Dist.'],
+        'viewauthorized': SecurityPermission.objects.filter(
+            title__iregex='^.*Approval.*$').filter(
+            user__in=oRequest.user.groups.all()),
+        'removehold_authorized': HeaderTimeTracker.next_approval,
+        'available_levels': ",.".join(
+            [''] + [sLevel for sLevel in HeaderTimeTracker.approvals() if
+                    bool(SecurityPermission.objects.filter(
+                        title__in=HeaderTimeTracker.permission_entry(sLevel)
+                    ).filter(user__in=oRequest.user.groups.all()))])[1:],
+    }
+    return Default(oRequest, sTemplate='BoMConfig/approvals_hold.html',
+                   dContext=dContext)
+# end def
+
+
+# D-04023-Customer filter on Actions issue for Admin users :- Added ActionCustomer to populate baseline dropdown based on selected CU
+@login_required
+def ActionCustomer(oRequest, iCustId=''):
+    """
+       View for actions on records in various states (In process, active, on-hold,
+       etc.)
+       :param oRequest: Django request object
+       :param kwargs: Dictionary of keyword arguments passed to the function
+       :return: HTML response via Default function
+       """
+    # # S-067172 :Actions -Resctrict view to logged in users CU:- Added to get the logged in user's CU list
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+    customer = REF_CUSTOMER.objects.filter(id=iCustId)
+
+    # Unlock any record previously held
+    if 'existing' in oRequest.session:
+        try:
+            Unlock(oRequest, oRequest.session['existing'])
+        except Header.DoesNotExist:
+            pass
+        # end try
+
+        del oRequest.session['existing']
+    # end if
+
+    dContext = {
+        'in_process': Header.objects.filter(
+            configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
+            customer_unit=customer),
+        'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
+        'baselines': sorted(list(
+            set(
+                [str(obj.baseline) if
+                 obj.baseline.title != 'No Associated Baseline' else
+                 "(Not baselined)" for obj in Header.objects.filter(
+                    configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
+                    customer_unit=customer)]))),
+        'active': [obj for obj in Header.objects.filter(
+            configuration_status__name='In Process/Pending', ) if
+                   HeaderTimeTracker.approvals().index(
+                       obj.latesttracker.next_approval) >
+                   HeaderTimeTracker.approvals().index('acr')],
+        'on_hold': Header.objects.filter(configuration_status__name='On Hold').filter(customer_unit=customer),
+        'selectedcustomer': customer,
+        'customer_list': ['All'] + aAvailableCU,
+        'viewauthorized': bool(oRequest.user.groups.filter(
+            name__in=['BOM_BPMA_Architect', 'BOM_PSM_Product_Supply_Manager',
+                      'BOM_PSM_Baseline_Manager'])),
+        'approval_seq': HeaderTimeTracker.approvals(),
+        'deaddate': timezone.datetime(1900, 1, 1),
+        'namelist': ['SCM #1', 'SCM #2', 'CSR', 'Comm. Price Mgmt.', 'ACR',
+                     'PSM Baseline Mgmt.', 'Customer #1', 'Customer #2',
+                     'Customer Warehouse', 'Ericsson VAR',
+                     'Baseline Release & Dist.'],
+    }
+
+    return Default(oRequest, 'BoMConfig/actions_inprocess_customer.html', dContext)
+
+# end def
 
 @login_required
 def Action(oRequest, **kwargs):
@@ -160,6 +288,15 @@ def Action(oRequest, **kwargs):
     :param kwargs: Dictionary of keyword arguments passed to the function
     :return: HTML response via Default function
     """
+
+    # S-067172 :Actions -Resctrict view to logged in users CU:- Added to get the logged in user's CU list
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
     # Unlock any record previously held
     if 'existing' in oRequest.session:
         try:
@@ -176,24 +313,30 @@ def Action(oRequest, **kwargs):
     else:
         return redirect('bomconfig:action_inprocess')
 
+    # S-067172 :Actions -Restrict view to logged in users CU:- Added '.filter(customer_unit__in=aAvailableCU)' in the in_process,baselines,on-hold attributes of dContext
+    # Added 'aAvailableCU' in customer_list attribute
+
     dContext = {
         'in_process': Header.objects.filter(
-            configuration_status__name='In Process').filter(baseline__isdeleted=0),
+            configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
+            customer_unit__in=aAvailableCU),
         'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
         'baselines': ['All'] + sorted(list(
             set(
                 [str(obj.baseline) if
                  obj.baseline.title != 'No Associated Baseline' else
                  "(Not baselined)" for obj in Header.objects.filter(
-                    configuration_status__name='In Process').filter(baseline__isdeleted=0)]))),
+                    configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
+                    customer_unit__in=aAvailableCU)]))),
         'active': [obj for obj in Header.objects.filter(
-            configuration_status__name='In Process/Pending',) if
+            configuration_status__name='In Process/Pending', )
+                   if
                    HeaderTimeTracker.approvals().index(
                        obj.latesttracker.next_approval) >
-                   HeaderTimeTracker.approvals().index('acr')],
-        'on_hold': Header.objects.filter(configuration_status__name='On Hold'),
-        'customer_list': ['All'] + [obj.name for obj in
-                                    REF_CUSTOMER.objects.all()],
+                   HeaderTimeTracker.approvals().index('acr')
+                   ],
+        'on_hold': Header.objects.filter(configuration_status__name='On Hold').filter(customer_unit__in=aAvailableCU),
+        'customer_list': ['All'] + aAvailableCU,
         'viewauthorized': bool(oRequest.user.groups.filter(
             name__in=['BOM_BPMA_Architect', 'BOM_PSM_Product_Supply_Manager',
                       'BOM_PSM_Baseline_Manager'])),
@@ -204,6 +347,7 @@ def Action(oRequest, **kwargs):
                      'Customer Warehouse', 'Ericsson VAR',
                      'Baseline Release & Dist.'],
     }
+
     return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def
 
@@ -266,6 +410,15 @@ def ApprovalData(oRequest):
                     oRequest.POST['level'] + "_denied_approval"
                 ).strftime('%m/%d/%Y')
                 dResult['type'] = 'D'
+            # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+            #  added below elif block
+            elif getattr(oHeadTracker,
+                         oRequest.POST['level'] + "_hold_approval"):
+                dResult['date'] = getattr(
+                    oHeadTracker,
+                    oRequest.POST['level'] + "_hold_approval"
+                ).strftime('%m/%d/%Y')
+                dResult['type'] = 'H'
         else:
             dResult['type'] = 'A'
             dResult['date'] = oHeadTracker.submitted_for_approval.strftime(
@@ -276,6 +429,125 @@ def ApprovalData(oRequest):
     else:
         raise Http404()
 
+# S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added below function to write the revision comments
+def WriteRevisionToFile(record,oRequest):
+
+        oHeader = Header.objects.get(id=record)
+# S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added 'confid' to append the
+#          configuration ID to each revision comments so that the comments can be recognised in the HTML email content
+        confid = str(oHeader.id)
+        sAvailBase = Baseline.objects.filter(title=oHeader.baseline.title)
+
+        for version in sAvailBase:
+            sPrevious = version.current_active_version
+            sCurrent = version.current_inprocess_version
+
+            for config in sCurrent:
+
+                oDiscontinued = Q(configuration_status__name='Discontinued')
+                oToDiscontinue = Q(bom_request_type__name='Discontinue')
+
+
+                # aDiscontinuedHeaders = [oHead for oHead in Header.objects.get]
+                aDiscontinuedHeaders = [oHead for oHead in Header.objects.filter(id=oHeader.id).filter(
+                    bom_request_type__name='Discontinue')]
+
+
+                aAddedHeaders = [oHead for oHead in Header.objects.filter(id=oHeader.id).filter(
+                    bom_request_type__name__in=('New', 'Legacy', 'Preliminary'))]
+
+                aUpdatedHeaders = [oHead for oHead in Header.objects.filter(id=oHeader.id).filter(
+                    bom_request_type__name='Update')]
+
+
+
+
+                aCurrButNotPrev = []
+                for oHead in aUpdatedHeaders:
+                    try:
+                        Baseline_Revision.objects.get(baseline=sAvailBase,
+                                                      version=sPrevious).header_set.get(
+                            configuration_designation=oHead.configuration_designation,
+                            program=oHead.program)
+
+                    except (Header.DoesNotExist, Baseline_Revision.DoesNotExist):
+                        aCurrButNotPrev.append(oHead)
+                        # end try
+
+                sNewSummary = confid+'Added'
+                sRemovedSummary = confid + 'Discontinued'
+
+                # Append the formatted string for each Header in aAddedHeaders
+                for oHead in aAddedHeaders:
+            # D-04019: Internal Server Error (500) on multiple actions
+                    sNewSummary += '\n'.format(oHead.configuration_designation)
+
+                # Add a line for each Header that is an "Update" but has not previous record
+                # in the previous revision
+                for oHead in aCurrButNotPrev:
+                    sNewSummary += '\n'.format(oHead.configuration_designation)
+                # end for
+
+                # Add a line for each discontinued Header. Skip headers that have been
+                # replaced and that replacement is in aAddedHeaders, since we have already
+                # added a description of that transaction earlier
+                for oHead in aDiscontinuedHeaders:
+            # D-04019: Internal Server Error (500) on multiple actions
+                    sRemovedSummary += '\n'.format(oHead.configuration_designation)
+                # end for
+
+                # Calculate and add changes for updated headers
+                sUpdateSummary = confid + 'Updated:\n'
+                for oHead in aUpdatedHeaders:
+                    try:
+                        oPrev = oHead.model_replaced_link or Header.objects.get(
+                            configuration_designation=oHead.configuration_designation,
+                            program=oHead.program,
+                            baseline_version=sPrevious
+                        )
+
+                        sTemp = HeaderComparison(oHead, oPrev)
+                    except Header.DoesNotExist:
+                        sTemp = ''
+                    # end try
+
+                    if sTemp:
+                        oHead.change_notes = sTemp
+                        oHead.save()
+                        sUpdateSummary += '\n'.format(
+                            oHead.configuration_designation + (
+                                ' ({})'.format(oHead.program) if oHead.program else ''
+                            ) + (
+                                '  {}'.format(
+                                    oHead.configuration.get_first_line().customer_number
+                                ) if not oHead.pick_list and
+                                     oHead.configuration.get_first_line().customer_number
+                                else ''
+                            )
+                        )
+
+                        for sLine in sTemp.split('\n'):
+                            sUpdateSummary += confid + (' ' * 8) + sLine + '\n'
+                            # end if
+                # end for
+
+                sHistory = ''
+
+                if sNewSummary != confid+'Added':
+                    sHistory += sNewSummary
+                if sRemovedSummary != confid+'Discontinued':
+                    sHistory += sRemovedSummary
+                if sUpdateSummary != confid + 'Updated:\n':
+                    sHistory += sUpdateSummary
+
+                # Save revision history
+            # D-04019: Internal Server Error (500) on multiple actions - commented the below lines
+                # (oNew, _) = RevisionHistory.objects.get_or_create(baseline=sAvailBase,
+                #                                                   revision=sCurrent)
+                # oNew.history = sHistory
+                # oNew.save()
+
+        return sHistory
 
 @transaction.atomic
 def AjaxApprove(oRequest):
@@ -323,6 +595,12 @@ def AjaxApprove(oRequest):
             aDestinations = [
                 record for record in json.loads(
                     oRequest.POST.get('destinations', None)
+                )]
+        # added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list
+        if 'customemailid' in oRequest.POST:
+            aCustomEmail = [
+                record for record in json.loads(
+                    oRequest.POST.get('customemailid', None)
                 )]
 
         dEmailRecipients = {}
@@ -437,8 +715,11 @@ def AjaxApprove(oRequest):
         # Approval actions (approve, disapprove, skip)
         elif sAction in ('approve', 'disapprove', 'skip'):
             from BoMConfig.views.download import EmailDownload
+
             aChain = HeaderTimeTracker.approvals()
             aBaselinesCompleted = []
+            aRecipients = []
+            ctr = 0
             for index in range(len(aRecords)):
                 # For each item in aRecords, get the corresponding Header, and
                 # that Header's most recently created HeaderTimeTracker object
@@ -462,6 +743,7 @@ def AjaxApprove(oRequest):
 
                 # If so, approve, disapprove, or skip as requested
                 if bCanApprove:
+
                     if sAction == 'approve':
                         # Set HeaderTimeTracker's name, date, and comments
                         # fields for the needed approval level
@@ -474,11 +756,17 @@ def AjaxApprove(oRequest):
 
                         # Determine the list of recipients that should be
                         # notified of this records approval
-                        aRecipients = []
-                        if aDestinations[index]:
-                            aRecipients.append(User.objects.get(
-                                id=aDestinations[index]).email)
 
+                        if aDestinations[index]:
+# D-04088- Approvals incorrectly require notify field to be selected: Added below if & else to separate the aRecipients in case of custom & normal notify fields.
+                            if int(aDestinations[index]) == 0:      # for custom
+   # added for S-07353 Allow emails to be manually added to notify list. adding custom field in approval dropdown list
+                                 if aCustomEmail[ctr] != '':
+                                    aRecipients.append(aCustomEmail[ctr])
+                                    ctr = ctr + 1
+                            else:                                   # normal notify fields
+                                aRecipients.append(User.objects.get(
+                                    id=aDestinations[index]).email)
                         sNotifyLevel = oLatestTracker.next_approval
                         if sNotifyLevel != 'brd':
                             if hasattr(oLatestTracker,
@@ -734,7 +1022,7 @@ def AjaxApprove(oRequest):
             # of the baseline to the correct recipients
             for oBaseline in aBaselinesCompleted:
                 UpRev(oBaseline.baseline)
-                EmailDownload(oBaseline.baseline)
+                EmailDownload( oRequest,oBaseline.baseline) # D-03452: Some emails are not being tagged as test system, added oRequest
             # end for
 
         # Clone the record, then go to the BoM Entry view for the newly cloned
@@ -751,23 +1039,99 @@ def AjaxApprove(oRequest):
             Header.objects.filter(pk__in=aRecords).update(
                 configuration_status__name='Cancelled')             # __(double underscore means join)
         elif sAction in ('hold', 'unhold'):
-            for iRecord in aRecords:
-                oHeader = Header.objects.get(pk=iRecord)
-                # Toggle the Header's configuration's on-hold status.
-                oHeader.configuration.PSM_on_hold = not oHeader.configuration.\
-                    PSM_on_hold
-                oHeader.configuration.save()
+            # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+            #  changed below elif block and commented earlier code
+            #
+            #     for iRecord in aRecords:
+            #         oHeader = Header.objects.get(pk=iRecord)
+            #         # Toggle the Header's configuration's on-hold status.
+            #         oHeader.configuration.PSM_on_hold = not oHeader.configuration.\
+            #             PSM_on_hold
+            #         oHeader.configuration.save()
+
             # end for
+            aChain = HeaderTimeTracker.approvals()
+
+
+            for index in range(len(aRecords)):
+                # For each item in aRecords, get the corresponding Header, and
+                # that Header's most recently created HeaderTimeTracker object
+                oHeader = Header.objects.get(pk=aRecords[index])
+                oLatestTracker = oHeader.headertimetracker_set.order_by(
+                    '-submitted_for_approval').first()
+                # Determine the next approval level needed on the record
+                sNeededLevel = oLatestTracker.next_approval
+
+                # Determine if the user making the request has permission to
+                # perform the requested action on this record
+                aNames = HeaderTimeTracker.permission_entry(sNeededLevel)
+                try:
+                    bCanHold = bool(SecurityPermission.objects.filter(
+                        title__in=aNames).filter(
+                        user__in=oRequest.user.groups.all()))
+                except ValueError:
+                    bCanHold = False
+                # end if
+
+                # If so, hold or unhold as requested
+                if bCanHold and sNeededLevel != 'brd':
+                    if sAction == 'hold' and sNeededLevel != 'psm_config':
+                        # Set HeaderTimeTracker's name, date, and comments
+                        # # fields for the needed approval level
+                        setattr(oLatestTracker, sNeededLevel + '_approver',
+                                oRequest.user.username) if oLatestTracker else ''
+                        setattr(oLatestTracker, sNeededLevel + '_hold_approval',
+                                timezone.now()) if oLatestTracker else ''
+                        setattr(oLatestTracker, sNeededLevel + '_comments',
+                                aComments[index])if oLatestTracker else ''
+                        oLatestTracker.hold_on = timezone.now()
+                        oLatestTracker.save()
+                        # oHeader.configuration.PSM_on_hold = not oHeader.configuration.PSM_on_hold
+                        # oHeader.configuration.save()
+
+                        oHeader.configuration_status = REF_STATUS.objects.get(name='On Hold')
+                        oHeader.save()
+                    elif sAction == 'unhold':
+                        for iRecord in aRecords:
+                            oHeader = Header.objects.get(pk=iRecord)
+                            # Toggle the Header's configuration's on-hold status.
+                            oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
+                                PSM_on_hold
+                            oHeader.configuration.save()
+                            # end for
+                    else:
+                        for iRecord in aRecords:
+                            oHeader = Header.objects.get(pk=iRecord)
+                            # Toggle the Header's configuration's on-hold status.
+                            oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
+                                PSM_on_hold
+                            oHeader.configuration.save()
+
         # end if
+        # S-05766:Identify Emails from Test System:-- Added to frame the Email content/subject as per the environment
+        if oRequest.POST.get('windowurl') == 'local':
+            envName = 'Local System:'
+        elif oRequest.POST.get('windowurl') == 'test':
+            envName = 'Test System:'
+        else:
+            envName = ''
 
         # Send the appropriate message to each user in the dEmailRecipients
         # dictionary.  Message is determined by level and action.
         for key in dEmailRecipients.keys():
             for approval in dEmailRecipients[key]:
-                for level in dEmailRecipients[key][approval]:
-                    for baseline in dEmailRecipients[key][approval][level]:
+               for level in dEmailRecipients[key][approval]:
+                   for baseline in dEmailRecipients[key][approval][level]:
+ #S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added below 6 lines to get the comments of each config under selected baselines
+                        svar = ''
+                        for iRecord in aRecords:
+                            oHeader = Header.objects.get(pk=iRecord)
+                            svar =  svar +  WriteRevisionToFile(iRecord, oRequest)
+
+                        aLines = svar.split('\n')[:-1]
                         oMessage = EmailMultiAlternatives(
-                            subject=((baseline or '(No baseline)') +
+                            # S-05766:Identify Emails from Test System:-- Concatenated envName to frame the Email subject as per the environment
+                            subject= envName+ ((baseline or '(No baseline)') +
                                      ' Review & Approval'),
                             body=loader.render_to_string(
                                 'BoMConfig/approval_approve_email_plain.txt',
@@ -778,10 +1142,13 @@ def AjaxApprove(oRequest):
                                      email=key).first().first_name if
                                  User.objects.filter(email=key) else key,
                                  'level': level,
-                                 'action': approval
+                                 'action': approval,
+# S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added below send the comments in 'ALines' to HTML
+                                 'revision': aLines,
                                  }
                             ),
-                            from_email='pcbm.admin@ericsson.com',
+# S-10576: Change the header of the tool to ACC :- Changed the tool name from pcbm to acc
+                            from_email='acc.admin@ericsson.com',
                             to=[key],
                             cc=[oRequest.user.email],
                             bcc=list(
@@ -817,7 +1184,11 @@ def AjaxApprove(oRequest):
                                  email=key).first().first_name if
                              User.objects.filter(email=key) else key,
                              'level': level,
-                             'action': approval
+                             'action': approval,
+                             # S-05766:Identify Emails from Test System:-- Added this parameter to send the appropriate environment name to the email HTML content
+                             'windowURL': oRequest.POST.get('windowurl'),
+# S-07984: Add the list of changes(revision information) under each config and BOM Request Type: Added below send the comments in 'ALines' to HTML
+                             'revision': aLines
                              }
                         ), 'text/html')
                         # uncommented below line for D-03232 to send mail for baseline Review and approval
@@ -831,6 +1202,49 @@ def AjaxApprove(oRequest):
     else:
         raise Http404()
 # end def
+
+# S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
+ #  added below def
+
+def HoldApprove(oRequest):
+    if oRequest.method == 'POST' and oRequest.POST:
+        # Disallow requests with unsupported actions or no action
+        if oRequest.POST.get('action', None) not in ('unhold'):
+            raise Http404
+
+        # Collect the list of record ids, comments, and destinations supplied
+        # with the request, if any.
+        sAction = oRequest.POST.get('action')
+        aRecords = [
+            int(record) for record in json.loads(oRequest.POST.get('data'))]
+
+        if sAction =='unhold':
+            for index in range(len(aRecords)):
+        # For each item in aRecords, get the corresponding Header, and
+        # that Header's most recently created HeaderTimeTracker object
+                oHeader = Header.objects.get(pk=aRecords[index])
+                oLatestTracker = oHeader.headertimetracker_set.order_by(
+                    '-submitted_for_approval').first()
+                # Determine the next approval level needed on the record
+                sNeededLevel = oLatestTracker.next_approval
+
+                # Determine if the user making the request has permission to
+                # perform the requested action on this record
+                aNames = HeaderTimeTracker.permission_entry(sNeededLevel)
+                try:
+                    bCanHold = bool(SecurityPermission.objects.filter(
+                        title__in=aNames).filter(
+                        user__in=oRequest.user.groups.all()))
+                except ValueError:
+                    bCanHold = False
+                # end if
+
+                # If so, approve, disapprove, or skip as requested
+                if bCanHold and sNeededLevel != 'psm_config':
+                    oHeader.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
+                    oHeader.save()
+
+    return HttpResponse()
 
 
 def CloneHeader(oHeader):
@@ -918,7 +1332,8 @@ def CloneHeader(oHeader):
         if hasattr(oConfigLine, 'linepricing'):
             oNewPrice = copy.deepcopy(oConfigLine.linepricing)
             oNewPrice.pk = None
-            oNewPrice.override_price = None
+            # D-03994-Manual override pricing fix: When cloning a config, we should copy all manual override pricing from the previous config
+            oNewPrice.override_price = copy.deepcopy(oConfigLine.linepricing.override_price)
             oNewPrice.config_line = oNewLine
             oNewPrice.pricing_object = PricingObject.getClosestMatch(oNewLine)
             oNewPrice.save()
@@ -1349,7 +1764,7 @@ def CreateDocument(oRequest):
                     'item_category': dItemCatMap[oLine.item_category] if
                     oLine.item_category in dItemCatMap else
                     oLine.item_category or '',
-                    'pcode': oLine.pcode[1:4] if oLine.pcode else '',
+                    'pcode': (oLine.pcode[1:4]).strip('-') if oLine.pcode else '',  #  D-03252 : Incorrect p-code passed to Inquiry creation table addition of .strip('-')
                     'unit_price': str(
                         oHeader.configuration.override_net_value or
                         oHeader.configuration.net_value or '')

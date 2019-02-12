@@ -10,7 +10,6 @@
             <button id="cu_filter" class="btn dropdown-toggle filter" type="button" data-toggle="dropdown" value="all">Customer
             <span class="caret"></span></button>
             <ul class="dropdown-menu">
-                <li><a onclick="$('#cu_filter').val('all').html('Customer <span class=\'caret\'></span>').change();">ALL</a></li>
                 {% for cu in cu_list %}
                 <li><a onclick="$('#cu_filter').val('{{ cu }}').html('{{ cu }} <span class=\'caret\'></span>').change();">{{ cu }}</a></li>
                 {% endfor %}
@@ -20,7 +19,7 @@
             <button id="soldto_filter" class="btn dropdown-toggle filter" type="button" data-toggle="dropdown" value="all">Sold-To
             <span class="caret"></span></button>
             <ul class="dropdown-menu">
-                <li><a onclick="$('#soldto_filter').val('all').html('Sold-To <span class=\'caret\'></span>').change();">ALL</a></li>
+                <!--<li><a onclick="$('#soldto_filter').val('all').html('Sold-To <span class=\'caret\'></span>').change();">ALL</a></li>-->
                 {% for st in soldto_list %}
                 <li><a onclick="$('#soldto_filter').val('{{ st }}').html('{{ st }} <span class=\'caret\'></span>').change();">{{ st }}</a></li>
                 {% endfor %}

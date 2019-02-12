@@ -8,7 +8,7 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties){
 
     new_value = value;
     if (col < 5){
-        td.style.background = '#DDDDDD';
+       td.style.background = '#DDDDDD';
         if(col < 3 && instance.getDataAtCell(row - 1, col) == value && instance.getDataAtCell(row, col - 1) == instance.getDataAtCell(row - 1, col - 1))
         {
             new_value = '';
@@ -183,7 +183,8 @@ $(document).ready(function(){
         hot = new Handsontable($('#datatable')[0], {
             data: data,
             minSpareRows: 1,
-            colHeaders: ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid To', 'Valid From', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments'],
+         //S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers
+            colHeaders: ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid From','Valid To', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments'],
             cells: function(row, col, prop){
                 var cellProperties = [];
 
@@ -246,7 +247,7 @@ $(document).ready(function(){
                         cellProperties.validator = /^\d+(.\d+)?$/;
                         cellProperties.renderer = moneyRenderer;
                         break;
-
+//S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers( swapped case 7 to case 6 and viceversa)
                     case 6:
                         cellProperties.type = "date";
                         cellProperties.dateFormat = "MM/DD/YYYY";
@@ -257,7 +258,7 @@ $(document).ready(function(){
                             numberOfMonths: 3,
                             disableDayFn: function(date){
                                 var today = new Date();
-                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()+1); // date.getDay() === 0 || date.getDay() === 6 ||
+                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()); // date.getDay() === 0 || date.getDay() === 6 ||
                             }
                         };
                         cellProperties.validator = function(value, callback){
@@ -279,7 +280,7 @@ $(document).ready(function(){
                             numberOfMonths: 3,
                             disableDayFn: function(date){
                                 var today = new Date();
-                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()); // date.getDay() === 0 || date.getDay() === 6 ||
+                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()+1); // date.getDay() === 0 || date.getDay() === 6 ||
                             }
                         };
                         cellProperties.validator = function(value, callback){
@@ -360,8 +361,8 @@ $(document).ready(function(){
                     if(prop == 5 && value == ""){
                         value='0.00';
                     }
-
-                    if(prop == 7 && value == ""){
+//S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers( swapped case 7 to case 6
+                    if(prop == 6 && value == ""){
                         value="01/01/1900";
                     }
                 }
@@ -407,14 +408,14 @@ $(document).ready(function(){
                     return valid;
                 }
 
-
-                if (prop == '6' && source == 'edit'){
-                    if(Date.parse(value) <= (Date.parse(this.getDataAtCell(row, 7)) || new Date(Date.now()).setHours(0,0,0,0))){
+//S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers( swapped case 7 to case 6 and 6 to 7
+                if (prop == '7' && source == 'edit'){
+                    if(Date.parse(value) <= (Date.parse(this.getDataAtCell(row, 6)) || new Date(Date.now()).setHours(0,0,0,0))){
                         return false;
                     }
                 }
 
-                if((prop == '7' || prop == '8') && source == 'edit'){
+                if((prop == '6' || prop == '8') && source == 'edit'){
                     if (new Date(Date.now()).setHours(0,0,0,0) > Date.parse(value)){
                         return false;
                     }

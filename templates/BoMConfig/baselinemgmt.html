@@ -77,8 +77,9 @@
                         class="{{ header.customer_unit|replacewhitespace:"-_"|replace:"& _" }}"
                     >
                         <td class="body_dummy1" style="visibility: hidden;">{{ table.baseline.title }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
-                        <td class="body_dummy2"></td>
+                        <!--<td class="body_dummy2"></td>-->
                         {% with header.configuration.get_first_line as firstline %}
+
                         <td><a onclick="window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes')" style="cursor: pointer">{{ header.configuration_designation|default:'None' }}</a></td>
                         <td>{{ header.product_area2|default:'' }}</td>
                         <td>{{ header.configuration_status|default:'' }}</td>
@@ -86,6 +87,11 @@
                         <td>{{ header.program.name|default:'' }}</td>
                         <td>
                             {% if firstline and not header.pick_list %}{{ firstline.customer_number }}
+                            {% elif header.pick_list %}Multiple{% endif %}
+                        </td>
+                        <!--S-05745: Add Second Customer number in Baseline View: added below td block-->
+                        <td>
+                            {% if firstline and not header.pick_list %}{{ firstline.sec_customer_number }}
                             {% elif header.pick_list %}Multiple{% endif %}
                         </td>
                         <td>{{ header.model|default:'' }}</td>

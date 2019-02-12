@@ -10,7 +10,7 @@ from django.contrib.admin.widgets import FilteredSelectMultiple
 
 from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, \
     LinePricing, PricingObject, DistroList, SecurityPermission, \
-    HeaderTimeTracker, ApprovalList
+    HeaderTimeTracker, ApprovalList, User_Customer
 
 import datetime
 import os
@@ -65,8 +65,9 @@ class HeaderForm(forms.ModelForm):
         self.fields['readiness_complete'].widget.attrs['style'] += \
             '-webkit-appearance:none;'
 
-        self.fields['react_request'].widget.attrs['size'] = 25
-        self.fields['model_description'].widget.attrs['size'] = 45
+     # S-05787 - Realignment of Header tab of BOM Entry page for All Customers - Changed the below fields size from 25(react_request),45(model_description) to 20 to match with the rest of the field box sizes
+        self.fields['react_request'].widget.attrs['size'] = 20
+        self.fields['model_description'].widget.attrs['size'] = 20
 
         # if inquiry/site template change is in-progress, make field readonly
         if self.instance.inquiry_site_template and \
@@ -232,38 +233,43 @@ class HeaderForm(forms.ModelForm):
 
         # Check customer unit corresponds to sales office and sales group
         # provided
-        oCursor = connections['BCAMDB'].cursor()
-        sQuery = ("SELECT [Sales Office Description], t1.[Sales Office], [Sales Group]"
-                  " FROM dbo.REF_SALES_OFFICE t1 INNER JOIN dbo.REF_SALES_GROUP t2"
-                  " ON t1.[Sales Office] = t2.[Sales Office]"
-                  " WHERE [Sales Office Description] = %s")
+        # oCursor = connections['BCAMDB'].cursor()
+        # sQuery = ("SELECT [Sales Office Description], t1.[Sales Office], [Sales Group]"
+        #           " FROM dbo.REF_SALES_OFFICE t1 INNER JOIN dbo.REF_SALES_GROUP t2"
+        #           " ON t1.[Sales Office] = t2.[Sales Office]"
+        #           " WHERE [Sales Office Description] = %s")
 
-        if 'customer_unit' in data and data['customer_unit']:
-            oCursor.execute(sQuery, [bytes(REF_CUSTOMER.objects.get(
-                name=data['customer_unit']).name, 'ascii')])
-            oResults = oCursor.fetchall()
-            if 'sales_office' in data and data['sales_office']:
-                if (
-                        REF_CUSTOMER.objects.get(
-                        name=data['customer_unit']).name, data['sales_office']
-                        ) not in [(obj[0], obj[1]) for obj in oResults]:
-                    self.add_error(
-                        'sales_office',
-                        forms.ValidationError(
-                            'No such sales office for customer unit. Make sure to only use "US##" values'))
-            if 'sales_group' in data and data['sales_group']:
-                if (
-                        REF_CUSTOMER.objects.get(
-                        name=data['customer_unit']).name, data['sales_group']
-                        ) not in [(obj[0], obj[2]) for obj in oResults]:
-                    self.add_error(
-                        'sales_group',
-                        forms.ValidationError(
-                            'No such sales group for customer unit. Make sure to only use group code'))
-            # end if
-        # end if
-
-        oCursor.close()
+        # oCursor = connections['REACT'].cursor()
+        # sQuery =('SELECT [Sales_o],[sales_g] FROM ps_SalesOffice_SalesGroup '
+        #          'WHERE [sales_cu]=%s')
+        #
+        # if 'customer_unit' in data and data['customer_unit']:
+        #     oCursor.execute(sQuery, [bytes(REF_CUSTOMER.objects.get(
+        #         name=data['customer_unit']).name, 'ascii')])
+        #     oResults = oCursor.fetchall()
+        #
+        #     if 'sales_office' in data and data['sales_office']:
+        #         if (
+        #                 REF_CUSTOMER.objects.get(
+        #                 name=data['customer_unit']).name, data['sales_office']
+        #                 ) not in [(obj[0], obj[1]) for obj in oResults]:
+        #             self.add_error(
+        #                 'sales_office',
+        #                 forms.ValidationError(
+        #                     'No such sales office for customer unit. Make sure to only use "US##" values'))
+        #     if 'sales_group' in data and data['sales_group']:
+        #         if (
+        #                 REF_CUSTOMER.objects.get(
+        #                 name=data['customer_unit']).name, data['sales_group']
+        #                 ) not in [(obj[0], obj[2]) for obj in oResults]:
+        #             self.add_error(
+        #                 'sales_group',
+        #                 forms.ValidationError(
+        #                     'No such sales group for customer unit. Make sure to only use group code'))
+        #     # end if
+        # # end if
+        #
+        # oCursor.close()
 
         # Set readiness complete value
         self.data._mutable = True
@@ -363,16 +369,16 @@ class BaselineModelChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
         return obj.title
 
-
 class SubmitForm(forms.Form):
     """
     Form used during baseline management search to find baselines
     """
+
     baseline_title = BaselineModelChoiceField(
-        queryset=Baseline.objects.exclude(title='').exclude(isdeleted=1),
-        empty_label="-- Show All --",
-        required=False,
-        label='Baseline')
+            queryset=Baseline.objects.exclude(title='').exclude(title='No Associated Baseline').exclude(isdeleted=1),
+            empty_label="-- Show All --",
+            required=False,
+            label='Baseline')
 
     # def clean(self):
     #     """
@@ -556,11 +562,12 @@ class UserForm(forms.Form):
     first_name = forms.CharField(label='First Name')
     last_name = forms.CharField(label='Last Name')
     email = forms.EmailField(label='Ericsson Email')
+    #  S-05904 : show all roles assigned group to each user added widget=forms.CheckboxSelectMultiple
     assigned_group = forms.ModelMultipleChoiceField(
         Group.objects.filter(
             name__startswith='BOM_').exclude(
             name__contains='BPMA').exclude(name__contains='SuperApprover'),
-        label='Assigned Group', )
+        widget=forms.CheckboxSelectMultiple, label='Assigned Group', )
     #  S-05687 : build CU checkbox for user admin, Added below 2lines
     customer = forms.MultipleChoiceField(widget=forms.CheckboxSelectMultiple,
                                          required=False, label='Customer Unit', )
@@ -570,7 +577,6 @@ class UserForm(forms.Form):
         # SIGNUM will always be readonly, as it cannot be changed.  Changes of
         # that type will have to be done in the Djanog user adminstration view
         self.fields['signum'].widget.attrs['readonly'] = True
-        self.fields['signum'].widget.attrs['style'] = 'border: none;'
         self.fields['assigned_group'].label_from_instance = \
             lambda inst: "%s" % ((inst.name.replace('BOM_', '')
                                   .replace('_', ' - ', 1).replace('_', ' ')))

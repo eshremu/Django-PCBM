@@ -1,0 +1,23 @@
+{% extends "BoMConfig/adminlanding.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+
+        <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+        <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
+
+{% if user.is_authenticated %}
+ <div id="main-body">
+     {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" %}
+     <br>
+     <br>
+     <p><b><u><a href="{% url 'bomconfig:programadmin'  %}"><font color="blue"; size="3">Program</font> </a></u></b></p>
+     <p><b><u><a href="{% url 'bomconfig:technology'  %}"><font color="blue"; size="3">Technology</font></a></u></b></p>
+     <p><b><u><a href="{% url 'bomconfig:productarea1admin'  %}"><font color="blue"; size="3"> Product Area 1</font></a></u></b></p>
+     <p><b><u><a href="{% url 'bomconfig:productarea2admin'  %}"><font color="blue"; size="3"> Product Area 2</font></a></u></b></p>
+     <p><b><u><a href="{% url 'bomconfig:radiofrequencybandadmin' %}"><font color="blue"; size="3"> Radio Frequency/Band</font></a></u></b></p>
+     <p><b><u><a href="{% url 'bomconfig:spudadmin' %}"><font color="blue"; size="3"> SPUD</font></a></u></b></p><br>
+     {% endif %}
+ </div>
+{% endif %}
+{% endblock %}

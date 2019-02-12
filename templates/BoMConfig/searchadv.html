@@ -25,7 +25,6 @@
                         <li><label for="customer">Customer Unit</label>
                             <select id="customer" name="customer">
                                 <option value="">-------</option>
-                                <option value="n/a">Any</option>
                                 {% for cust in cust_list %}
                                 <option value="{{ cust.name }}">{{ cust.name }}</option>
                                 {% endfor %}
@@ -148,6 +147,10 @@
                         </li>
                         <li><label for="cust_num">Customer Number</label>
                             <input id="cust_num" type="text"/>
+                        </li>
+                      <!--Added for S-05767:Addition of Second Cust No. in advance search filter -->
+                        <li><label for="sec_cust_num">Second Customer Number</label>
+                            <input id="sec_cust_num" type="text"/>
                         </li>
                     </ul>
                 </div>

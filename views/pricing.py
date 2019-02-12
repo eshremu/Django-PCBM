@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, Configuration, ConfigLine, PartBase, \
     LinePricing, REF_CUSTOMER, SecurityPermission, REF_SPUD, PricingObject, \
-    REF_TECHNOLOGY, HeaderTimeTracker
+    REF_TECHNOLOGY, HeaderTimeTracker,User_Customer
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue, StrToBool
 
@@ -30,6 +30,12 @@ def PartPricing(oRequest):
     bCanWritePricing = bool(SecurityPermission.objects.filter(
         title='Detailed_Price_Write').filter(
         user__in=oRequest.user.groups.all()))
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
 
     dContext = {
         'partlines': []
@@ -75,7 +81,7 @@ def PartPricing(oRequest):
                             oCurrentPriceObj = PricingObject.objects.get(
                                 part__product_number__iexact=aRowToSave[0] or
                                 oRequest.POST.get('initial', None),
-                                customer__name=aRowToSave[1],
+                                customer__name=aRowToSave[1], # D-04625: New row populated when editing data in Unit Price Management removed if aRowToSave[1] in aAvailableCU else None
                                 sold_to=aRowToSave[2] if aRowToSave[2] not in
                                 ('', '(None)') else None,
                                 spud__name=aRowToSave[3] if aRowToSave[3] not in
@@ -90,6 +96,7 @@ def PartPricing(oRequest):
                         # Creating a new PriceObject or changing price, erosion,
                         # erosion rate, or cut-over date generates new current
                         # PriceObject
+                        # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(line 110,107,swapped valid to and valid from field)
                         if not oCurrentPriceObj or \
                                 oCurrentPriceObj.unit_price != float(
                                     aRowToSave[5]) or \
@@ -97,10 +104,10 @@ def PartPricing(oRequest):
                                     datetime.datetime.strptime(aRowToSave[6],
                                                                '%m/%d/%Y'
                                                                ).date() !=
-                                    oCurrentPriceObj.valid_to_date) or \
+                                    oCurrentPriceObj.valid_from_date) or \
                                 (aRowToSave[7] and datetime.datetime.strptime(
                                     aRowToSave[7], '%m/%d/%Y').date() !=
-                                    oCurrentPriceObj.valid_from_date) or \
+                                    oCurrentPriceObj.valid_to_date) or \
                                 (aRowToSave[8] and datetime.date.today() <=
                                     datetime.datetime.strptime(aRowToSave[8],
                                                                '%m/%d/%Y'
@@ -113,13 +120,14 @@ def PartPricing(oRequest):
                                          aRowToSave[10])):
 
                             # Mark the previous match as 'inactive'
+    # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed aRowToSave[7] to aRowToSave[6]
                             if oCurrentPriceObj:
                                 oCurrentPriceObj.is_current_active = False
                                 oCurrentPriceObj.valid_to_date = max(
                                     datetime.date.today(),
                                     datetime.datetime.strptime(
-                                        aRowToSave[7],
-                                        '%m/%d/%Y').date() if aRowToSave[7] else
+                                        aRowToSave[6],
+                                        '%m/%d/%Y').date() if aRowToSave[6] else
                                     datetime.date.today()
                                 )
                                 oCurrentPriceObj.save()
@@ -142,11 +150,12 @@ def PartPricing(oRequest):
                                     in ('(None)', '', None, 'null') else None,
                                     is_current_active=True,
                                     unit_price=aRowToSave[5],
-                                    valid_to_date=datetime.datetime.strptime(
+# S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed valid_to_date to aRowToSave[7] and valid_from_date to aRowToSave[6]
+                                    valid_from_date=datetime.datetime.strptime(
                                         aRowToSave[6],
                                         '%m/%d/%Y'
                                     ).date() if aRowToSave[6] else None,
-                                    valid_from_date=datetime.datetime.strptime(
+                                    valid_to_date=datetime.datetime.strptime(
                                         aRowToSave[7],
                                         '%m/%d/%Y'
                                     ).date() if aRowToSave[7] else None,
@@ -225,7 +234,8 @@ def PartPricing(oRequest):
                                                      'sold_to', 'spud__name')
 
                 # Create table data from list of objects
-                for oPriceObj in aPriceObjs:
+                for oPriceObj in aPriceObjs.filter(customer__in=aAvailableCU): # S-05923: Pricing - Restrict View to allowed CU's based on permissions added filter
+
                     dContext['partlines'].append([
                         oPriceObj.part.product_number,
                         oPriceObj.customer.name,
@@ -233,10 +243,11 @@ def PartPricing(oRequest):
                         getattr(oPriceObj.spud, 'name', '(None)'),
                         getattr(oPriceObj.technology, 'name', '(None)'),
                         oPriceObj.unit_price or '',
-                        oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
-                        oPriceObj.valid_to_date else '',  # Valid-To
+                        # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers
                         oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
                         oPriceObj.valid_from_date else '',  # Valid-from
+                        oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
+                        oPriceObj.valid_to_date else '',  # Valid-To
                         oPriceObj.cutover_date.strftime('%m/%d/%Y') if
                         oPriceObj.cutover_date else '',  # Cut-over
                         str(oPriceObj.price_erosion),  # Erosion
@@ -246,11 +257,11 @@ def PartPricing(oRequest):
 
                 dContext.update({
                     'customer_list': [
-                        oCust.name for oCust in REF_CUSTOMER.objects.all()],
+                        oCust.name for oCust in aAvailableCU], # S-05923: Pricing - Restrict View to allowed CU's based on permissions added aAvailableCU
                     'spud_list': [
-                        oSpud.name for oSpud in REF_SPUD.objects.all()],
+                        oSpud.name for oSpud in REF_SPUD.objects.filter(is_inactive=0)], # S-05909 : Edit drop down option for BoM Entry Header - SPUD: Added to filter dropdown data in pricing page
                     'tech_list': [
-                        oTech.name for oTech in REF_TECHNOLOGY.objects.all()]
+                        oTech.name for oTech in REF_TECHNOLOGY.objects.filter(is_inactive=0)] # S-05905 : Edit drop down option for BoM Entry Header - Technology: Added to filter dropdown data in pricing page
                 })
             except (PartBase.DoesNotExist,):
                 status_message = 'ERROR: Part number not found'
@@ -293,6 +304,12 @@ def ConfigPricing(oRequest):
     bCanWritePricing = bool(SecurityPermission.objects.filter(
         title='Detailed_Price_Write').filter(
         user__in=oRequest.user.groups.all()))
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
 
     # Unlock any locked Header
     if 'existing' in oRequest.session:
@@ -332,7 +349,7 @@ def ConfigPricing(oRequest):
 
         # Start with all Headers that match the name
         aConfigMatches = Header.objects.filter(
-            configuration_designation__iexact=sConfig)
+            configuration_designation__iexact=sConfig).filter(customer_unit_id__in=aAvailableCU) # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
 
         # If iProgram has a value, filter Headers by program
         if iProgram and iProgram not in ('None', 'NONE'):
@@ -447,11 +464,12 @@ def ConfigPricing(oRequest):
                 '6': float(oLine.order_qty or 0) * float(GrabValue(
                     oLine, 'linepricing.pricing_object.unit_price', 0)),
                 '7': GrabValue(oLine, 'linepricing.override_price', ''),
-                '8': oLine.higher_level_item or '',
-                '9': oLine.material_group_5 or '',
-                '10': oLine.commodity_type or '',
-                '11': oLine.comments or '',
-                '12': oLine.additional_ref or ''
+                '8': oLine.traceability_req or '', # S-05769: Addition of Product Traceability field in Pricing->Config Price Management tab
+                '9': oLine.higher_level_item or '',
+                '10': oLine.material_group_5 or '',
+                '11': oLine.commodity_type or '',
+                '12': oLine.comments or '',
+                '13': oLine.additional_ref or ''
                             } for oLine in aLine]
 
             # Update expected price roll-up (determined by unit price per line)
@@ -519,7 +537,7 @@ def OverviewPricing(oRequest):
     sTemplate = 'BoMConfig/overviewpricing.html'
 
     # Collect line data
-    aPricingLines, aComments = PricingOverviewLists()
+    aPricingLines, aComments = PricingOverviewLists(oRequest) # S-05923: Pricing - Restrict View to allowed CU's based on permissions: added oRequest
 
     dContext = {
         'pricelines': aPricingLines,
@@ -535,8 +553,8 @@ def OverviewPricing(oRequest):
     return Default(oRequest, sTemplate, dContext)
 # end def
 
-
-def PricingOverviewLists():
+# S-05923: Pricing - Restrict View to allowed CU's based on permissions: added oRequest
+def PricingOverviewLists(oRequest):
     """
     Function to write all pricing data into two lists.  The first list is a list
     of lists containing data to be displayed in each row/column of a table.  The
@@ -544,18 +562,24 @@ def PricingOverviewLists():
     on a each row/column.  Comments are displayed on mouseover.
     :return: 2x list of lists
     """
+
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
     # Retrieve all active PricingObjects
     aPricingObjectList = PricingObject.objects.filter(
-        is_current_active=True).order_by(
-        'part__product_number', 'customer__name', 'sold_to', 'spud__name')
+        is_current_active=True).filter(customer_id__in=aAvailableCU).order_by(
+        'part__product_number', 'customer__name', 'sold_to', 'spud__name') # For S-05923: Pricing added .filter(customer_id__in=aAvailableCU)
 
     aPricingLines = []
     aComments = []
-
     if aPricingObjectList:
         for oPriceObj in aPricingObjectList:
             aCommentRow = []
-
             # Create row data from PricingObject
             aObj = [
                 oPriceObj.part.product_number,
@@ -564,8 +588,12 @@ def PricingOverviewLists():
                 oPriceObj.spud.name if oPriceObj.spud else '(None)',
                 oPriceObj.technology.name if oPriceObj.technology else '(None)',
                 oPriceObj.unit_price,
+                # fix for S-05772 Add Valid From and Valid to columns on Pricing->Pricing Overview tab
+                oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
+                oPriceObj.valid_from_date else '',  # Valid-from
+                oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
+                oPriceObj.valid_to_date else '',  # Valid-To
             ]
-
             # Create comment data from PricingObject
             aCommentRow.append("Valid: {}\nCut-over: {}".format(
                 (oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
@@ -584,7 +612,7 @@ def PricingOverviewLists():
                 # Retrieve PricingObject
                 oChainPriceObj = PricingObject.objects.filter(
                     part__product_number=oPriceObj.part.product_number,
-                    customer__name=oPriceObj.customer.name,
+                    customer__name=aAvailableCU,  # For S-05923: Pricing, changed to aAvailableCU
                     sold_to=oPriceObj.sold_to,
                     spud=oPriceObj.spud,
                     technology=oPriceObj.technology,
@@ -631,6 +659,13 @@ def PriceErosion(oRequest):
     """
     sTemplate = 'BoMConfig/erosionpricing.html'
     sStatusMessage = None
+    # For S-05923: Pricing added belwo lines
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
 
     # Determine user permissions
     bCanReadPricing = bool(SecurityPermission.objects.filter(
@@ -654,7 +689,7 @@ def PriceErosion(oRequest):
                             price_erosion=True,
                             is_current_active=True,
                             part__product_number=aRecord[1],
-                            customer__name=aRecord[2],
+                            customer__name=aAvailableCU, # For S-05923: Pricing changed to aAvailableCU
                             sold_to=aRecord[3] if aRecord[3] not in
                             ('', '(None)', None) else None,
                             spud__name=aRecord[4] if aRecord[4] not in
@@ -703,7 +738,7 @@ def PriceErosion(oRequest):
                             'part__base': PartBase.objects.get(
                                 product_number__iexact=aRecord[1]),
                             'config__header__customer_unit':
-                                REF_CUSTOMER.objects.get(name=aRecord[2])}
+                                aAvailableCU} # For S-05923: Pricing changed to aAvailableCU
 
                         # Update pricing information for any configuration which
                         # used the previous PricingObject
@@ -739,8 +774,8 @@ def PriceErosion(oRequest):
 
     aRecords = PricingObject.objects.filter(
         price_erosion=True,
-        is_current_active=True).order_by(
-        'part__product_number', 'customer__name', 'sold_to', 'spud__name')
+        is_current_active=True).filter(customer_id__in=aAvailableCU).order_by(
+        'part__product_number', 'customer__name', 'sold_to', 'spud__name') # For S-05923: Pricing added .filter
 
     dContext = {
         'data': [['False',

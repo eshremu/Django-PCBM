@@ -21,40 +21,36 @@
         <div id="formdiv">
                        <table style="margin-bottom:20px; text-align:left; padding-bottom: 5px;}" >
                 <tbody>
+                <!--S-05904 : show all roles assigned group to each user changed html-->
+                   <br>
+                <h4 style="border:solid 2px; border-color:silver; background:linear-gradient(to bottom, #ffffff 0%, #cccccc 100%); height:30px;border-radius:5px; padding-top:3px" >User Information</h4>
                     <tr>
-                        <td>{{ form.signum.label_tag }}</td><td>{{ form.signum }}</td>
+                        <td style="padding: 10px">{{ form.signum.label_tag }}</td><td>{{ form.signum }}</td>
                         {% for error in form.signum.errors %}
                         <td class="errortext">{{ error }}</td>
                         {% endfor %}
-                    </tr>
-                    <tr>
-                        <td>{{ form.first_name.label_tag }}</td><td>{{ form.first_name }}</td>
+
+                        <td style="padding: 10px">{{ form.first_name.label_tag }}</td><td>{{ form.first_name }}</td>
                         {% for error in form.first_name.errors %}
                         <td class="errortext">{{ error }}</td>
                         {% endfor %}
-                    </tr>
-                    <tr>
-                        <td>{{ form.last_name.label_tag }}</td><td>{{ form.last_name }}</td>
+
+                        <td style="padding: 10px">{{ form.last_name.label_tag }}</td><td>{{ form.last_name }}</td>
                         {% for error in form.last_name.errors %}
                         <td class="errortext">{{ error }}</td>
                         {% endfor %}
-                    </tr>
-                    <tr>
-                        <td>{{ form.email.label_tag }}</td><td>{{ form.email }}</td>
+
+                        <td style="padding: 10px">{{ form.email.label_tag }}</td><td>{{ form.email }}</td>
                         {% for error in form.email.errors %}
-                        <td class="errortext">{{ error }}</td>
-                        {% endfor %}
-                    </tr>
-                    <tr>
-                        <td>{{ form.assigned_group.label_tag }}</td><td>{{ form.assigned_group }}</td>
-                        {% for error in form.assigned_group.errors %}
                         <td class="errortext">{{ error }}</td>
                         {% endfor %}
                     </tr>
                 </tbody>
             </table>
-            <div style="width:75%;">
-                <tr>
+            <div style="width:100%;">
+                <h4 style="border:solid 2px; border-color:silver; background:linear-gradient(to bottom, #ffffff 0%, #cccccc 100%); height:30px;border-radius:5px;padding-top:3px">
+                    Customer Information</h4>
+                 <tr>
                     <td>{{ form.customer.label_tag }}</td>
                         {% for error in form.customer.errors %}
                         <td class="errortext">{{ error }}</td>
@@ -66,9 +62,25 @@
                             <div style="width:22%;display:inline-block;">{{ choice }}</div>
                             {% endfor %}
                 </tr>
+                <br>
+                <br>
+                <h4 style="border:solid 2px; border-color:silver; background:linear-gradient(to bottom, #ffffff 0%, #cccccc 100%); height:30px;border-radius:5px;padding-top:3px">
+                    Assigned Group Information</h4>
+                 <tr>
+                        <td>{{ form.assigned_group.label_tag }}</td>
+                         {% for error in form.assigned_group.errors %}
+                        <td class="errortext">{{ error }}</td>
+                        {% endfor %}
+                 </tr>
+                        <br>
+                     <tr>
+                        {% for group in form.assigned_group %}
+                        <div style="width:30% ;display:inline-block;">{{ group }}</div>
+                        {% endfor %}
+                     </tr>
             </div>
-
         </div>
+        <br>
         <div id="formbuttons" style="margin-top:10px;">
             <button class="btn btn-primary" value="save" type="submit" name="action">Save</button>
             <button class="btn btn-danger" value="delete" type="submit" name="action">Delete</button>
