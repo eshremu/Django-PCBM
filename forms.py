@@ -10,7 +10,7 @@ from django.contrib.admin.widgets import FilteredSelectMultiple
 
 from BoMConfig.models import Header, Configuration, Baseline, REF_CUSTOMER, \
     LinePricing, PricingObject, DistroList, SecurityPermission, \
-    HeaderTimeTracker, ApprovalList, User_Customer
+    HeaderTimeTracker, ApprovalList, User_Customer,ConfigLine
 
 import datetime
 import os
@@ -117,6 +117,17 @@ class HeaderForm(forms.ModelForm):
                 attrs=self.fields['model_replaced'].widget.attrs
             )
         # end if
+
+        # S-08411:Adjust Configuration UI & Backend to include Line Numbering scheme:- Added below lines to make the
+        # Line 100 checkbox disable once there is more no. of lines than just Line 10 for the particular config
+
+        headerid = self.instance.id
+        configuration_id = Configuration.objects.filter(header=headerid)
+        configline = ConfigLine.objects.filter(config=configuration_id)
+        if len(configline) > 1:
+            self.fields['line_100'].widget.attrs['disabled'] = True
+
+
     # end def
 
     def clean(self):

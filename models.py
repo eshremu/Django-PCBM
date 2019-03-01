@@ -542,6 +542,9 @@ class Header(models.Model):
     readiness_complete = models.IntegerField(verbose_name='Readiness Complete (%)',
                                              blank=True, null=False, default=0)
 
+# S-08410:Adjust Model and BoM Header Tab:- Added below field to check whether to start from line 100 or not
+    line_100 = models.BooleanField(verbose_name='Line 100?', default = False)
+
     pick_list = models.BooleanField(default=False, blank=True)
     projected_cutover = models.DateField(verbose_name='Projected Cut-over Date',
                                          blank=True, null=True)
@@ -1157,11 +1160,19 @@ class Configuration(models.Model):
         :return: ConfigLine object
         """
         oFirst = None
-        try:
-            oFirst = self.configline_set.get(line_number='10')
-        except ConfigLine.DoesNotExist:
-            pass
-        # end try
+        line100 = self.header.line_100
+        if line100:
+            try:
+                oFirst = self.configline_set.get(line_number='100')
+            except ConfigLine.DoesNotExist:
+                pass
+            # end try
+        else:
+            try:
+                oFirst = self.configline_set.get(line_number='10')
+            except ConfigLine.DoesNotExist:
+                pass
+            # end try
         return oFirst
     # end def
 

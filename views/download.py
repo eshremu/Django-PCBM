@@ -149,9 +149,8 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
             oFile.active['N' + str(iRow)] = oConfigLine.mu_flag
             oFile.active['O' + str(iRow)] = oConfigLine.x_plant
             oFile.active['P' + str(iRow)] = oConfigLine.internal_notes
-    # S-10962:Adjust Baseline & Downloads UI & Backend:- Added the condition to check if first line is 10 or 100 for the
-    # unit price functionality in downloaded files
-
+  # S-10962:Adjust Baseline & Downloads UI & Backend:-Added the condition to check if first line is 10 or 100 for the
+  # unit price functionality in downloaded files
             oFirstLine = oHeader.configuration.get_first_line()
 
             oFile.active['Q' + str(iRow)] = '' if not oHeader.pick_list and str(
@@ -266,8 +265,8 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
             oFile.active['E' + str(iRow)] = oConfigLine.plant
             oFile.active['F' + str(iRow)] = oConfigLine.sloc
             oFile.active['G' + str(iRow)] = oConfigLine.item_category
-            # S-10962:Adjust Baseline & Downloads UI & Backend:- Added the condition to check if first line is 10 or 100 for the
-            # unit price functionality in downloaded files
+ # S-10962:Adjust Baseline & Downloads UI & Backend:-Added the condition to check if first line is 10 or 100 for the
+ # unit price functionality in downloaded files
             oFirstLine = oHeader.configuration.get_first_line()
 
             oFile.active['H' + str(iRow)] = str(
@@ -467,9 +466,11 @@ def DownloadBaselineMaster(oRequest):
         return Http404()
     # end if
 
+    # S-08483:Baseline Master File download changes: Added the customer name in the file name to distinguish for which customer
+    # the file has been downloaded
     sCustomer = oRequest.POST['customer']
     sCookie = oRequest.POST['file-cookie']
-    sFileName = "BOM Master File - {}.xlsx".format(
+    sFileName = "BOM Master File - {}_{}.xlsx".format(sCustomer,
         str(datetime.datetime.now().strftime('%d%b%Y')))
 
     aTable = []
@@ -600,8 +601,7 @@ def DownloadBaselineMaster(oRequest):
         oSheet['O1'] = 'Comments'
         oSheet['O1'].font = headerFont
         oSheet.column_dimensions['O'].width = 30
-    #S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer: Added below elif block for Sprint & T-Mobile
-    #MasterFile download format
+    #S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer: Added below elif block
     elif sCustomer in ('Sprint','T-Mobile'):
         oSheet['B1'] = 'Configuration File'
         oSheet['B1'].font = headerFont
@@ -1065,6 +1065,7 @@ def DownloadBaselineMaster(oRequest):
                 else:
                     oSheet['O' + str(iRow)].font = activeFont
 
+
             iRow += 1
         # end for
 
@@ -1484,7 +1485,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                     oSheet['F' + str(iCurrentRow)].fill = oOffRowColor
                 #
                 if not oHeader.pick_list:
-                    if  oLineItem == oFirstItem :
+                    if oLineItem == oFirstItem :
                         oSheet['G' + str(iCurrentRow)] = ''
                     else:
                         if GrabValue(oLineItem, 'linepricing.override_price'):
@@ -1637,9 +1638,13 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 
                         if 'quantity' in sChange:
                             aChangeCols.append(4)
-            # Changed below condition from 8 to 7 to highlight Unit Price Column for MTW CU
-                        if 'line price' in sChange:
+
+                        #D-06102: Unit Price column incorrectly highlighted in Baseline download: Added unit Price(column 7) column to refect the changes for unit price change
+                        if 'unit price' in sChange:
                             aChangeCols.append(7)
+
+                        if 'line price' in sChange:
+                            aChangeCols.append(8)
 
                         if 'comments' in sChange:
                             aChangeCols.append(14)

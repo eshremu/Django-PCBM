@@ -358,15 +358,64 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                                                     oHeader.model_description
                                             }
                                         )
+                        # S-08410:Adjust Model and BoM Header Tab:- Added below if else block to create records in configline table
+                        #  based on selected checkbox of line 100 or 10
+                                        configid = Configuration.objects.get(header_id=oHeader.id)
+                                        confignum = ConfigLine.objects.filter(config_id=configid.id)
+                                        if not oHeader.line_100 and len(confignum) == 0:
+                                            # ConfigLine.objects.filter(config_id=oHeader.id)
 
-                                        ConfigLine.objects.create(**{
-                                            'config': oConfig,
-                                            'part': oPart,
-                                            'line_number': '10',
-                                            'order_qty': 1,
-                                            'vendor_article_number':
-                                                oHeader.configuration_designation,
-                                        })
+                                            ConfigLine.objects.create(**{
+                                                'config': oConfig,
+                                                'part': oPart,
+                                                'line_number': '10',
+                                                'order_qty': 1,
+                                                'vendor_article_number':
+                                                    oHeader.configuration_designation,
+                                            })
+                                        elif not oHeader.line_100 and len(confignum) != 0:
+                                            ConfigLine.objects.filter(**{
+                                                'config': oConfig,
+                                                'part': oPart,
+                                                'line_number': '100',
+                                                'order_qty': 1,
+                                                'vendor_article_number':
+                                                    oHeader.configuration_designation,
+                                            }).delete()
+                                            ConfigLine.objects.create(**{
+                                                    'config': oConfig,
+                                                    'part': oPart,
+                                                    'line_number': '10',
+                                                    'order_qty': 1,
+                                                    'vendor_article_number':
+                                                        oHeader.configuration_designation,
+                                                })
+                                        elif oHeader.line_100 and len(confignum) == 0:
+                                            ConfigLine.objects.create(**{
+                                                'config': oConfig,
+                                                'part': oPart,
+                                                'line_number': '100',
+                                                'order_qty': 1,
+                                                'vendor_article_number':
+                                                    oHeader.configuration_designation,
+                                            })
+                                        elif oHeader.line_100 and len(confignum) != 0:
+                                            ConfigLine.objects.filter(**{
+                                                'config': oConfig,
+                                                'part': oPart,
+                                                'line_number': '10',
+                                                'order_qty': 1,
+                                                'vendor_article_number':
+                                                    oHeader.configuration_designation,
+                                            }).delete()
+                                            ConfigLine.objects.create(**{
+                                                    'config': oConfig,
+                                                    'part': oPart,
+                                                    'line_number': '100',
+                                                    'order_qty': 1,
+                                                    'vendor_article_number':
+                                                        oHeader.configuration_designation,
+                                            })
                                 else:
                                     # If the configuration already exists, make
                                     # sure the first line of non-pick lists is
@@ -1710,17 +1759,77 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
     # if MTW,NonPicklist-Line 10 is blank,parts wil have UP; pickList-All lines will have UP
     # for other CUs, picklist & nonPicklist:- UP will be blank in all lines
                 if oHeader.customer_unit_id == 9:               # 9 is the ID for MTW customer.
+
+    # S-08410:Adjust Model and BoM Header Tab:- Added below line to fetch the first _line of the config
+                    oFirstLine = oHeader.configuration.get_first_line()
+
                     if not oHeader.pick_list:
-                        if str(Line.line_number) == '10':
-                            dLine.update({'21': None})
-                            # if oConfig.override_net_value:
-                            #     dLine.update(
-                            #         {'21': str(oConfig.override_net_value)}
-                            #     )
-                            # else:
-                            #     dLine.update({'21': str(oConfig.net_value) if oConfig.net_value is not None else None})
-                                # end if
+    # S-08410:Adjust Model and BoM Header Tab:- Added below line to fetch if the config's first line starts with 10 or 100
+                        if oFirstLine.line_number =='10':
+                            if str(Line.line_number) == '10':
+
+                                dLine.update({'21': None})
+                                # if oConfig.override_net_value:
+                                #     dLine.update(
+                                #         {'21': str(oConfig.override_net_value)}
+                                #     )
+                                # else:
+                                #     dLine.update({'21': str(oConfig.net_value) if oConfig.net_value is not None else None})
+                                    # end if
+                            else:
+    # S-10577: Only Pull in pricing with Traceability = Y into config :-: Added below the condition to check if traceability value is Y,
+    #  only then the price would be displayed - [MTW - Non-Picklist - Not line 10]
+                                if Line.traceability_req == 'Y':
+                                    if GrabValue(Line, 'linepricing.override_price'):
+                                        dLine.update(
+                                            {'21': str(Line.linepricing.override_price)}
+                                        )
+                                    elif GrabValue(Line,
+                                                   'linepricing.pricing_object.unit_price'):
+                                        dLine.update(
+                                            {
+                                                '21': str(
+                                                    Line.linepricing.pricing_object.unit_price)
+                                            }
+                                        )
+                                    else:
+                                        dLine.update({'21': None})
+                                        # end if
+                                        # end if
+                                        # end if
+                                else:
+                                    dLine.update({'21': None})
                         else:
+                            if oFirstLine.line_number == '100':
+                                if str(Line.line_number) == '100':
+                                    dLine.update({'21': None})
+                                else:
+    # S-10577: Only Pull in pricing with Traceability = Y into config :-: Added below the condition to check if traceability value is Y,
+    #  only then the price would be displayed [MTW - Non-Picklist - Not line 100]
+                                    if Line.traceability_req == 'Y':
+                                        if GrabValue(Line, 'linepricing.override_price'):
+                                            dLine.update(
+                                                {'21': str(Line.linepricing.override_price)}
+                                            )
+                                        elif GrabValue(Line,
+                                                       'linepricing.pricing_object.unit_price'):
+                                            dLine.update(
+                                                {
+                                                    '21': str(
+                                                        Line.linepricing.pricing_object.unit_price)
+                                                }
+                                            )
+                                        else:
+                                            dLine.update({'21': None})
+                                            # end if
+                                            # end if
+                                            # end if
+                                    else:
+                                        dLine.update({'21': None})
+                    else:
+    # S-10577: Only Pull in pricing with Traceability = Y into config :-: Added below the condition to check if traceability value is Y,
+    #  only then the price would be displayed [MTW - Picklist ]
+                        if Line.traceability_req == 'Y':
                             if GrabValue(Line, 'linepricing.override_price'):
                                 dLine.update(
                                     {'21': str(Line.linepricing.override_price)}
@@ -1737,48 +1846,46 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                                 dLine.update({'21': None})
                                 # end if
                                 # end if
-                                # end if
-                    else:
-                        if GrabValue(Line, 'linepricing.override_price'):
-                            dLine.update(
-                                {'21': str(Line.linepricing.override_price)}
-                            )
-                        elif GrabValue(Line,
-                                       'linepricing.pricing_object.unit_price'):
-                            dLine.update(
-                                {
-                                    '21': str(
-                                        Line.linepricing.pricing_object.unit_price)
-                                }
-                            )
                         else:
                             dLine.update({'21': None})
-                            # end if
-                            # end if
                 else:
                     dLine.update({'21': None})
 
     # S-05770:-USCC Unit Price functionality - The below case is for Net Price functionality,case no. 18 is changed to 19
     # NonPicklist-Sum of UP of all the parts is shown as NP in line 10
     # Picklist- All lines will have the price displayed
+                oFirstLine = oHeader.configuration.get_first_line()
                 if not oHeader.pick_list:
-                    if str(Line.line_number) == '10':
-                        if oConfig.override_net_value:
-                            dLine.update(
-                                {'22': str(oConfig.override_net_value)}
-                            )
+                    if oFirstLine.line_number == '10':           # for Line 10 configs
+                        if str(Line.line_number) == '10':
+                            if oConfig.override_net_value:
+                                dLine.update(
+                                    {'22': str(oConfig.override_net_value)}
+                                )
+                            else:
+                                dLine.update({'22': str(oConfig.net_value) if oConfig.net_value is not None else None})
+                            # end if
                         else:
-                            dLine.update({'22': str(oConfig.net_value) if oConfig.net_value is not None else None})
+                            dLine.update({'22': ''})
                         # end if
-                    else:
-                        dLine.update({'22': ''})
-                    # end if
+                    else:                       # for Line 100 configs
+                        if str(Line.line_number) == '100':
+                            if oConfig.override_net_value:
+                                dLine.update(
+                                    {'22': str(oConfig.override_net_value)}
+                                )
+                            else:
+                                dLine.update({'22': str(oConfig.net_value) if oConfig.net_value is not None else None})
+                                # end if
+                        else:
+                            dLine.update({'22': ''})
+                            # end if
                 else:
-                    if GrabValue(Line, 'linepricing.override_price'):
+                   if GrabValue(Line, 'linepricing.override_price'):
                         dLine.update(
                             {'22': str(Line.linepricing.override_price)}
                         )
-                    elif GrabValue(Line,
+                   elif GrabValue(Line,
                                    'linepricing.pricing_object.unit_price'):
                         dLine.update(
                             {
@@ -1786,10 +1893,11 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                                     Line.linepricing.pricing_object.unit_price)
                             }
                         )
-                    else:
+                   else:
                         dLine.update({'22': None})
                     # end if
                 # end if
+
             else:
                 LineNumber = None
                 if '.' not in Line.line_number:
@@ -1820,18 +1928,32 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                             }
                         )
 
+ # S-08410:Adjust Model and BoM Header Tab:- Added below line to fetch if the config's first line starts with 10 or 100
                         if not oHeader.pick_list:
-                            if str(Line.line_number) == '10':
-                                if oConfig.override_net_value:
-                                    dLine.update(
-                                        {'7': oConfig.override_net_value}
-                                    )
+                            if oFirstLine.line_number == '10':  # for Line 10 configs
+                                if str(Line.line_number) == '10':
+                                    if oConfig.override_net_value:
+                                        dLine.update(
+                                            {'7': oConfig.override_net_value}
+                                        )
+                                    else:
+                                        dLine.update({'7': oConfig.net_value})
+                                        # end if
                                 else:
-                                    dLine.update({'7': oConfig.net_value})
+                                    dLine.update({'7': ''})
                                     # end if
                             else:
-                                dLine.update({'7': ''})
-                                # end if
+                                if str(Line.line_number) == '100':          # for Line 100 configs
+                                    if oConfig.override_net_value:
+                                        dLine.update(
+                                            {'7': oConfig.override_net_value}
+                                        )
+                                    else:
+                                        dLine.update({'7': oConfig.net_value})
+                                        # end if
+                                else:
+                                    dLine.update({'7': ''})
+                                    # end if
                         else:
                             if GrabValue(Line, 'linepricing.override_price'):
                                 dLine.update(
@@ -1917,6 +2039,13 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
             # Append revision data starting at current revision and working
             # backwards
             while oHeader and hasattr(oHeader, 'configuration'):
+         # S-08411:Adjust Configuration UI & Backend to include Line Numbering scheme:- Added below if else block to set the line #
+         # in a variable and use the same in the filter used in appending the data below; This is done to show in the revision tab of
+         # a config
+                if not oHeader.line_100:
+                    linenum = '10'
+                else:
+                    linenum = '100'
                 data.append({
                     '0': oHeader.bom_version,
                     '1': oHeader.baseline.title if oHeader.baseline else '',
@@ -1925,10 +2054,10 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     oHeader.release_date else '',
                     '4': oHeader.model if not oHeader.pick_list else 'None',
                     '5': oHeader.configuration.configline_set.filter(
-                        line_number='10')[0].customer_number
+                        line_number=linenum)[0].customer_number               # S-08411: Used the assigned variabie 'linenum' in this filter
                     if not oHeader.pick_list and
                     oHeader.configuration.configline_set.filter(
-                        line_number='10')[0].customer_number else '',
+                        line_number=linenum)[0].customer_number else '',      # S-08411: Used the assigned variabie 'linenum' in this filter
                     '6': oHeader.change_notes or '',
                     '7': oHeader.change_comments or '',
                     '8': oHeader.person_responsible,
@@ -2017,6 +2146,9 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         error_matrix.append(dummy)
 
 # S-08474:Pull BCAMDB on Part addition/validation : Changed the query to fetch the values for 3 new columns on page load
+# D-05973:Traceability not pulling for some parts : Added the traceability condition (gmdm.[PRIM Traceability]!='NULL')
+# in line 2179 to pick the part which has traceability as not null
+
     if not bFormatCheckOnly:
         # Collect data from database(s)
         oCursor = connections['BCAMDB'].cursor()
@@ -2044,6 +2176,7 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
             LEFT JOIN dbo.SAP_ZMARC zmarc
                 ON  bmps.[Material] =zmarc.Material and bmps.Plant=zmarc.Plant
             WHERE bmps.[Plant] IN ('2685','2666','2392')
+                  AND gmdm.[PRIM Traceability]!='NULL'
                   AND bmps.[Material] IN %s
                   ORDER BY  bmps.[Material]       
             """,
@@ -2103,6 +2236,10 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         oCursor.close()
 
         dPartData = {}
+
+        # S-10574: Manually updated Traceability req.should carry over to the cloned config:-: Added below to fetch the configuration ID
+        oConfig = oHead.configuration
+
         for row in tAllData:
             if row[0] in dPartData:
                  # Add row data to existing entry
@@ -2540,8 +2677,22 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     aData[index]['15'] = dPartData[corePartNumber]['RE-Code'][0] or ''
 
                     # Traceability Req
-                    aData[index]['28'] = 'Y' if dPartData[corePartNumber]['Traceability'][0] == 'Z001' else 'N' \
-                        if dPartData[corePartNumber]['Traceability'][0] == 'Z002' else ''
+ # S-10574: Manually updated Traceability req.should carry over to the cloned config:-: Added below block of code that fetches the traceability
+ #  value from CSP DB and also from BCAMDB, then checks if it mismatches.If it mismatches then it shows the value fetched from CSP DB(Overridden traceability)
+
+                    # fetches the config line for the part number
+                    aConfigLines = ConfigLine.objects.filter(config=oConfig).filter(vendor_article_number=aData[index]['33'])
+                    for oline in aConfigLines:
+                        if oline.traceability_req == 'Y':       # Checks the traceability value for the part number
+                            traceval = 'Z001'
+                        else:
+                            traceval = 'Z002'
+
+                        if traceval != dPartData[corePartNumber]['Traceability'][0]:    # Checks if mismatches with the BCAMDB value
+                            aData[index]['28'] = oline.traceability_req                  # writes the data in UI
+                            # Previous code - line below
+                         # aData[index]['28'] = 'Y' if dPartData[corePartNumber]['Traceability'][0] == 'Z001' else 'N' \
+                         #    if dPartData[corePartNumber]['Traceability'][0] == 'Z002' else ''
 
                     # RE-Code title
                     if aData[index]['20']:
@@ -3519,7 +3670,13 @@ def ValidateUnitPrice(dData, dResult, oHead):
     """
 
     if dResult['value'] not in ('', None):
-        if dData['line_number'] == '10' and not oHead.pick_list:
+        # S-08411:Adjust Configuration UI & Backend to include Line Numbering scheme:- Added below if else block to set the line #
+        # in a variable and use the same in comparing the dData below; functionality not discovered yet!
+        if not oHead.line_100:
+            linenum = '10'
+        else:
+            linenum = '100'
+        if dData['line_number'] == linenum and not oHead.pick_list:
             if str(oHead.configuration.override_net_value) == dResult['value']:
                 dResult['error']['value'] = 'CPM override in effect.\n'
                 dResult['status'] = 'OK'
