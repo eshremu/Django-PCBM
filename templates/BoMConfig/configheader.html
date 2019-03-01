@@ -129,7 +129,8 @@
                 <tbody>
                 <tr>
                   {% if field.label != 'Model replaced link' %}
-                    {% if field.label == 'Baseline Impacted' or field.label == 'Model' or field.label == 'Model Description' or field.label == 'What Model is this replacing?' or field.label == 'Initial Revision' or field.label == 'Configuration/Ordering Status' or field.label == 'Readiness Complete (%)' or field.label == 'Pick list' or field.label == 'Projected Cut-over Date' or field.label == 'Optional Free Text Field 1' or field.label == 'Optional Free Text Field 2' or field.label == 'Optional Free Text Field 3' %}
+     <!--S-08410:Adjust Model and BoM Header Tab:- Added 'Line 100?' field after 'Picklist' field -->
+                    {% if field.label == 'Baseline Impacted' or field.label == 'Model' or field.label == 'Model Description' or field.label == 'What Model is this replacing?' or field.label == 'Initial Revision' or field.label == 'Configuration/Ordering Status' or field.label == 'Readiness Complete (%)' or field.label == 'Pick list' or field.label == 'Line 100?' or field.label == 'Projected Cut-over Date' or field.label == 'Optional Free Text Field 1' or field.label == 'Optional Free Text Field 2' or field.label == 'Optional Free Text Field 3' %}
                         <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red; font-size:14pt;">*</span>{% endif %}</td>
                         {% if field.errors %}
                         <td >
@@ -204,6 +205,8 @@
 <!--S-07112 - Change dropdown selection view and value:- Added below 2 variables to fetch the existing sales_group & ericsson contract # for the opened configuration-->
     var headerformsalesgroup = "{{ header.sales_group }}";
     var headerformericssoncontract = "{{ header.ericsson_contract }}";
+<!--S-08410:Adjust Model and BoM Header Tab:- Added below variable to fetch the line 100 value of the config-->
+    var isline100 = "{{ header.line_100 }}";
 </script>
 {% else %}
 <div>

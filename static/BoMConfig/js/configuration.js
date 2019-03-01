@@ -1001,9 +1001,17 @@ function build_table() {
                                 var line_number = tableThis.getDataAtCell(parseInt(changes[i][0]), 1);
                                 var all_conds = tableThis.getDataAtCol(26);
 
-                                if(condition == "ZUST" && line_number !== "10"){
-                                    cellMeta['cellStatus'] = "X";
-                                    cellMeta['comment']['value'] += 'X - ZUST only allowed on line 10.\n';
+// S-08410:Adjust Model and BoM Header Tab:- Added below if else block to see if config starts from line 10 or 100
+                                if(is_line100){
+                                    if(condition == "ZUST" && line_number !== "100"){       // for line 100
+                                        cellMeta['cellStatus'] = "X";
+                                        cellMeta['comment']['value'] += 'X - ZUST only allowed on line 100.\n';
+                                    }
+                                }else{
+                                    if(condition == "ZUST" && line_number !== "10"){       //for line 10
+                                        cellMeta['cellStatus'] = "X";
+                                        cellMeta['comment']['value'] += 'X - ZUST only allowed on line 10.\n';
+                                    }
                                 }
 
                                 if(condition == "ZPRU" || condition == "ZPR1"){
@@ -1197,6 +1205,7 @@ function build_table() {
 }
 
 function estimateLineNumbers(changes, current_line_numbers) {
+
     var usedNumbers = current_line_numbers.filter(function(val){return val !== null;});
 
     for (var i=0; i < changes.length; i++){
@@ -1210,8 +1219,13 @@ function estimateLineNumbers(changes, current_line_numbers) {
     // Now step through each element in current_line_numbers.  if the element is already a line number (based on regexp matching)
     // update the last line number trackers, otherwise use the last line number trackers to create a new line number, assign it,
     // then update last trackers
-    var parent = 10, child = 1, grand = 1;
 
+//  S-08410:Adjust Model and BoM Header Tab:- Added below to check if config's parent line number should start from line 100 or not
+    if(is_line100){
+        var parent = 100, child = 1, grand = 1;
+    }else{
+         var parent = 10, child = 1, grand = 1;
+    }
     for (i = 0; i < current_line_numbers.length; i++){
         if (current_line_numbers[i] == null){
             continue;
@@ -1246,13 +1260,25 @@ function estimateLineNumbers(changes, current_line_numbers) {
                 usedNumbers.push(prefix);
                 usedNumbers.push(current_line_numbers[i]);
             } else { // parent
-                while (usedNumbers.indexOf(parent.toString()) != -1 ) {
-                    if (parent % 10 != 0){
-                        parent = Math.floor(parent/10) * 10;
-                    } else {
-                        parent += 10;
+
+//     S-08410:Adjust Model and BoM Header Tab:- Added below field to check if config starts from line 10 or 100; series for 100 is made 100,200,300 etc.
+                 if(is_line100){
+                    while (usedNumbers.indexOf(parent.toString()) != -1 ) {
+                        if (parent % 100 != 0){
+                            parent = Math.floor(parent/100) * 100;
+                        } else {
+                            parent += 100;
+                        }
                     }
-                }
+                 }else{
+                     while (usedNumbers.indexOf(parent.toString()) != -1 ) {
+                        if (parent % 10 != 0){
+                            parent = Math.floor(parent/10) * 10;
+                        } else {
+                            parent += 10;
+                        }
+                    }
+                 }
                 current_line_numbers[i] = parent.toString();
                 usedNumbers.push(parent.toString());
             }

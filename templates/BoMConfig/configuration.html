@@ -159,6 +159,8 @@
         var baseline_write_auth = {{ config_baseline_write_authorized|lower }};
         var overall_write_auth = {{ config_write_authorized|lower }};
         var is_picklist = {{ header.pick_list|lower }};
+<!--S-08410:Adjust Model and BoM Header Tab:- Added below variable to fetch the line 100 value of the config-->
+        var is_line100 = {{ header.line_100|lower }};
         var condition_list = {{ condition_list|safe }};
         var material_group_list = {{ material_group_list|safe }};
         var product_pkg_list = {{ product_pkg_list|safe }};

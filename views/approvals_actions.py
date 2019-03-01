@@ -1721,6 +1721,10 @@ def CreateDocument(oRequest):
 
     # Set the parameters for creating a document
     if not bCreateSiteTemplate:
+
+    # S-10961: Adjust Actions and Documents tabs UI and backend :- Added the below line to fetch the first line number
+        oFirstLine = oHeader.configuration.get_first_line()
+
         # Create Inquiry
         data = {
             "inquiry_type": "ZDOT",
@@ -1768,7 +1772,9 @@ def CreateDocument(oRequest):
                     'unit_price': str(
                         oHeader.configuration.override_net_value or
                         oHeader.configuration.net_value or '')
-                    if not oHeader.pick_list and oLine.line_number == '10'
+# S-10961: Adjust Actions and Documents tabs UI and backend :- Changed the below line to its next line and added line 100 condition
+                    # if not oHeader.pick_list and oLine.line_number == '10'
+                    if not oHeader.pick_list and (oFirstLine.line_number == '10' or oFirstLine.line_number == '100')
                     else '' if not oHeader.pick_list else str(GrabValue(
                         oLine.linepricing, 'override_price', '') or GrabValue(
                         oLine.linepricing, 'pricing_object.unit_price', '')

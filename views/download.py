@@ -149,8 +149,12 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
             oFile.active['N' + str(iRow)] = oConfigLine.mu_flag
             oFile.active['O' + str(iRow)] = oConfigLine.x_plant
             oFile.active['P' + str(iRow)] = oConfigLine.internal_notes
+  # S-10962:Adjust Baseline & Downloads UI & Backend:-Added the condition to check if first line is 10 or 100 for the
+  # unit price functionality in downloaded files
+            oFirstLine = oHeader.configuration.get_first_line()
+
             oFile.active['Q' + str(iRow)] = '' if not oHeader.pick_list and str(
-                oConfigLine.line_number) != '10' else str(
+                oConfigLine.line_number) != '10' or oFirstLine.line_number !='100' else str(
                 GrabValue(oConfigLine,
                           'linepricing.override_price',
                           GrabValue(oConfigLine,
@@ -261,9 +265,13 @@ def WriteConfigToFile(oHeader, sHyperlinkURL=''):
             oFile.active['E' + str(iRow)] = oConfigLine.plant
             oFile.active['F' + str(iRow)] = oConfigLine.sloc
             oFile.active['G' + str(iRow)] = oConfigLine.item_category
+ # S-10962:Adjust Baseline & Downloads UI & Backend:-Added the condition to check if first line is 10 or 100 for the
+ # unit price functionality in downloaded files
+            oFirstLine = oHeader.configuration.get_first_line()
+
             oFile.active['H' + str(iRow)] = str(
                 oConfigLine.linepricing.override_price) if \
-                str(oConfigLine.line_number) == '10' and hasattr(
+                str(oConfigLine.line_number) == '10' or oFirstLine.line_number =='100' and hasattr(
                     oConfigLine, 'linepricing') and \
                 oConfigLine.linepricing.override_price else \
                 oConfigLine.linepricing.pricing_object.unit_price if GrabValue(
@@ -458,9 +466,11 @@ def DownloadBaselineMaster(oRequest):
         return Http404()
     # end if
 
+    # S-08483:Baseline Master File download changes: Added the customer name in the file name to distinguish for which customer
+    # the file has been downloaded
     sCustomer = oRequest.POST['customer']
     sCookie = oRequest.POST['file-cookie']
-    sFileName = "BOM Master File - {}.xlsx".format(
+    sFileName = "BOM Master File - {}_{}.xlsx".format(sCustomer,
         str(datetime.datetime.now().strftime('%d%b%Y')))
 
     aTable = []
@@ -591,6 +601,62 @@ def DownloadBaselineMaster(oRequest):
         oSheet['O1'] = 'Comments'
         oSheet['O1'].font = headerFont
         oSheet.column_dimensions['O'].width = 30
+    #S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer: Added below elif block
+    elif sCustomer in ('Sprint','T-Mobile'):
+        oSheet['B1'] = 'Configuration File'
+        oSheet['B1'].font = headerFont
+        oSheet.column_dimensions['B'].width = 25
+
+        oSheet['C1'] = 'Product Area 2'
+        oSheet['C1'].font = headerFont
+        oSheet['C1'].alignment = headerAlign
+        oSheet.column_dimensions['C'].width = 10
+
+        oSheet['D1'] = 'Status'
+        oSheet['D1'].font = headerFont
+        oSheet['D1'].alignment = headerAlign
+        oSheet.column_dimensions['D'].width = 10
+
+        oSheet['E1'] = 'Customer #'
+        oSheet['E1'].font = headerFont
+        oSheet['E1'].alignment = headerAlign
+        oSheet.column_dimensions['E'].width = 20
+
+        oSheet['F1'] = 'Configuration'
+        oSheet['F1'].font = headerFont
+        oSheet.column_dimensions['F'].width = 30
+
+        oSheet['G1'] = 'Description'
+        oSheet['G1'].font = headerFont
+        oSheet.column_dimensions['G'].width = 40
+
+        oSheet['H1'] = 'Current Customer Price'
+        oSheet['H1'].font = headerFont
+        oSheet['H1'].alignment = headerAlign
+        oSheet.column_dimensions['H'].width = 15
+
+        oSheet['I1'] = 'Price Year'
+        oSheet['I1'].font = headerFont
+        oSheet['I1'].alignment = headerAlign
+        oSheet.column_dimensions['I'].width = 10
+
+        oSheet['J1'] = 'Site Template/Inquiry'
+        oSheet['J1'].font = headerFont
+        oSheet['J1'].alignment = headerAlign
+        oSheet.column_dimensions['J'].width = 20
+
+        oSheet['K1'] = 'Configuration Replacing'
+        oSheet['K1'].font = headerFont
+        oSheet.column_dimensions['K'].width = 30
+
+        oSheet['L1'] = 'Replaced By Configuration'
+        oSheet['L1'].font = headerFont
+        oSheet.column_dimensions['L'].width = 30
+
+        oSheet['M1'] = 'Comments'
+        oSheet['M1'].font = headerFont
+        oSheet.column_dimensions['M'].width = 50
+
     else:
         oSheet['B1'] = 'Baseline'
         oSheet['B1'].font = headerFont
@@ -691,127 +757,9 @@ def DownloadBaselineMaster(oRequest):
 
         # Write data for each Header in the baseline
         for oHead in aConfigs:
-            # added oHead.customer_unit_id!=9 and updated blocks for  S-05748- Remove columns in downloaded all Baselines Master file for MTW Customer(line 693-911)
-            if oHead.customer_unit_id!=9:
-                oSheet['C' + str(iRow)] = oHead.product_area2.name if \
-                    oHead.product_area2 else ''
-                oSheet['C' + str(iRow)].alignment = centerAlign
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['C' + str(iRow)].font = ipFont
-                else:
-                    oSheet['C' + str(iRow)].font = activeFont
+            # added oHead.customer_unit_id==9 and updated blocks for  S-05748- Remove columns in downloaded all Baselines Master file for MTW Customer
+            if oHead.customer_unit_id == 9:
 
-                oSheet['D' + str(iRow)] = oHead.configuration_status.name.replace(
-                    '/Pending', '').replace('In Process', 'IP')
-                oSheet['D' + str(iRow)].alignment = centerAlign
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['D' + str(iRow)].font = ipFont
-                else:
-                    oSheet['D' + str(iRow)].font = activeFont
-
-                oSheet['E' + str(iRow)] = getattr(
-                    oHead.configuration.first_line, 'customer_number', '')
-                oSheet['E' + str(iRow)].alignment = centerAlign
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['E' + str(iRow)].font = ipFont
-                else:
-                    oSheet['E' + str(iRow)].font = activeFont
-
-                oSheet['F' + str(iRow)] = oHead.configuration_designation
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['F' + str(iRow)].font = ipFont
-                else:
-                    oSheet['F' + str(iRow)].font = activeFont
-
-                oSheet['G' + str(iRow)] = oHead.model_description
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['G' + str(iRow)].font = ipFont
-                else:
-                    oSheet['G' + str(iRow)].font = activeFont
-
-                oSheet['H' + str(iRow)] = \
-                    oHead.configuration.override_net_value or \
-                    oHead.configuration.net_value
-                oSheet['H' + str(iRow)].number_format = \
-                    '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['H' + str(iRow)].font = ipFont
-                else:
-                    oSheet['H' + str(iRow)].font = activeFont
-
-                oSheet['I' + str(iRow)] = \
-                    oHead.headertimetracker_set.first().created_on.strftime('%Y')
-                oSheet['I' + str(iRow)].alignment = centerAlign
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['I' + str(iRow)].font = ipFont
-                else:
-                    oSheet['I' + str(iRow)].font = activeFont
-
-                oSheet['J' + str(iRow)] = (
-                    oHead.inquiry_site_template if str(
-                        oHead.inquiry_site_template).startswith('1') else
-                    oHead.inquiry_site_template * -1 if
-                    oHead.inquiry_site_template and
-                    oHead.inquiry_site_template < -1 and
-                    str(oHead.inquiry_site_template).startswith('-1') else ''
-                ) if not (oHead.sold_to_party == 626136 or 'KGP' in
-                          str(oHead.customer_name).upper()) else ''
-                oSheet['J' + str(iRow)].alignment = centerAlign
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['J' + str(iRow)].font = ipFont
-                else:
-                    oSheet['J' + str(iRow)].font = activeFont
-
-                oSheet['K' + str(iRow)] = (
-                    oHead.inquiry_site_template if
-                    str(oHead.inquiry_site_template).startswith('1') else
-                    oHead.inquiry_site_template * -1 if
-                    oHead.inquiry_site_template and
-                    oHead.inquiry_site_template < -1 and
-                    str(oHead.inquiry_site_template).startswith('-1') else ''
-                ) if (oHead.sold_to_party == 626136 or 'KGP' in
-                      str(oHead.customer_name).upper()) else ''
-                oSheet['K' + str(iRow)].alignment = centerAlign
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['K' + str(iRow)].font = ipFont
-                else:
-                    oSheet['K' + str(iRow)].font = activeFont
-
-                oSheet['L' + str(iRow)] = oHead.inquiry_site_template if \
-                    str(oHead.inquiry_site_template).startswith('4') else \
-                    oHead.inquiry_site_template * -1 if \
-                    oHead.inquiry_site_template and \
-                    oHead.inquiry_site_template < -1 and \
-                    str(oHead.inquiry_site_template).startswith('-4') else ''
-                oSheet['L' + str(iRow)].alignment = centerAlign
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['L' + str(iRow)].font = ipFont
-                else:
-                    oSheet['L' + str(iRow)].font = activeFont
-
-                oSheet['M' + str(iRow)] = getattr(
-                    oHead.model_replaced_link, 'configuration_designation', None
-                ) or oHead.model_replaced or 'N/A'
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['M' + str(iRow)].font = ipFont
-                else:
-                    oSheet['M' + str(iRow)].font = activeFont
-
-                oSheet['N' + str(iRow)] = getattr(
-                    oHead.replaced_by_model.exclude(
-                        bom_request_type__name='Discontinue').first(),
-                    'configuration_designation', 'N/A')
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['N' + str(iRow)].font = ipFont
-                else:
-                    oSheet['N' + str(iRow)].font = activeFont
-
-                oSheet['O' + str(iRow)] = oHead.change_comments
-                if 'In Process' in oHead.configuration_status.name:
-                    oSheet['O' + str(iRow)].font = ipFont
-                else:
-                    oSheet['O' + str(iRow)].font = activeFont
-            else:
                 oSheet['C' + str(iRow)] = oHead.product_area2.name if \
                     oHead.product_area2 else ''
                 oSheet['C' + str(iRow)].alignment = centerAlign
@@ -910,6 +858,213 @@ def DownloadBaselineMaster(oRequest):
                     oSheet['O' + str(iRow)].font = ipFont
                 else:
                     oSheet['O' + str(iRow)].font = activeFont
+
+            # added oHead.customer_unit_id in (3,4) and updated blocks for  S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer
+            elif oHead.customer_unit_id in (3, 4):
+                oSheet['C' + str(iRow)] = oHead.product_area2.name if \
+                    oHead.product_area2 else ''
+                oSheet['C' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['C' + str(iRow)].font = ipFont
+                else:
+                    oSheet['C' + str(iRow)].font = activeFont
+
+                oSheet['D' + str(iRow)] = oHead.configuration_status.name.replace(
+                    '/Pending', '').replace('In Process', 'IP')
+                oSheet['D' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['D' + str(iRow)].font = ipFont
+                else:
+                    oSheet['D' + str(iRow)].font = activeFont
+
+                oSheet['E' + str(iRow)] = getattr(
+                    oHead.configuration.first_line, 'customer_number', '')
+                oSheet['E' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['E' + str(iRow)].font = ipFont
+                else:
+                    oSheet['E' + str(iRow)].font = activeFont
+
+                oSheet['F' + str(iRow)] = oHead.configuration_designation
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['F' + str(iRow)].font = ipFont
+                else:
+                    oSheet['F' + str(iRow)].font = activeFont
+
+                oSheet['G' + str(iRow)] = oHead.model_description
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['G' + str(iRow)].font = ipFont
+                else:
+                    oSheet['G' + str(iRow)].font = activeFont
+
+                oSheet['H' + str(iRow)] = \
+                    oHead.configuration.override_net_value or \
+                    oHead.configuration.net_value
+                oSheet['H' + str(iRow)].number_format = \
+                    '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['H' + str(iRow)].font = ipFont
+                else:
+                    oSheet['H' + str(iRow)].font = activeFont
+
+                oSheet['I' + str(iRow)] = \
+                    oHead.headertimetracker_set.first().created_on.strftime('%Y')
+                oSheet['I' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['I' + str(iRow)].font = ipFont
+                else:
+                    oSheet['I' + str(iRow)].font = activeFont
+
+                oSheet['J' + str(iRow)] = oHead.inquiry_site_template if \
+                    oHead.inquiry_site_template else ''
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['J' + str(iRow)].font = ipFont
+                else:
+                    oSheet['J' + str(iRow)].font = activeFont
+
+
+                oSheet['K' + str(iRow)] = getattr(
+                    oHead.model_replaced_link, 'configuration_designation', None
+                ) or oHead.model_replaced or 'N/A'
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['K' + str(iRow)].font = ipFont
+                else:
+                    oSheet['K' + str(iRow)].font = activeFont
+
+                oSheet['L' + str(iRow)] = getattr(
+                    oHead.replaced_by_model.exclude(
+                        bom_request_type__name='Discontinue').first(),
+                    'configuration_designation', 'N/A')
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['L' + str(iRow)].font = ipFont
+                else:
+                    oSheet['L' + str(iRow)].font = activeFont
+
+                oSheet['M' + str(iRow)] = oHead.change_comments
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['M' + str(iRow)].font = ipFont
+                else:
+                    oSheet['M' + str(iRow)].font = activeFont
+            else:
+                oSheet['C' + str(iRow)] = oHead.product_area2.name if \
+                    oHead.product_area2 else ''
+                oSheet['C' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['C' + str(iRow)].font = ipFont
+                else:
+                    oSheet['C' + str(iRow)].font = activeFont
+
+                oSheet['D' + str(iRow)] = oHead.configuration_status.name.replace(
+                    '/Pending', '').replace('In Process', 'IP')
+                oSheet['D' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['D' + str(iRow)].font = ipFont
+                else:
+                    oSheet['D' + str(iRow)].font = activeFont
+
+                oSheet['E' + str(iRow)] = getattr(
+                    oHead.configuration.first_line, 'customer_number', '')
+                oSheet['E' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['E' + str(iRow)].font = ipFont
+                else:
+                    oSheet['E' + str(iRow)].font = activeFont
+
+                oSheet['F' + str(iRow)] = oHead.configuration_designation
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['F' + str(iRow)].font = ipFont
+                else:
+                    oSheet['F' + str(iRow)].font = activeFont
+
+                oSheet['G' + str(iRow)] = oHead.model_description
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['G' + str(iRow)].font = ipFont
+                else:
+                    oSheet['G' + str(iRow)].font = activeFont
+
+                oSheet['H' + str(iRow)] = \
+                    oHead.configuration.override_net_value or \
+                    oHead.configuration.net_value
+                oSheet['H' + str(iRow)].number_format = \
+                    '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['H' + str(iRow)].font = ipFont
+                else:
+                    oSheet['H' + str(iRow)].font = activeFont
+
+                oSheet['I' + str(iRow)] = \
+                    oHead.headertimetracker_set.first().created_on.strftime('%Y')
+                oSheet['I' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['I' + str(iRow)].font = ipFont
+                else:
+                    oSheet['I' + str(iRow)].font = activeFont
+
+                oSheet['J' + str(iRow)] = (
+                    oHead.inquiry_site_template if str(
+                        oHead.inquiry_site_template).startswith('1') else
+                    oHead.inquiry_site_template * -1 if
+                    oHead.inquiry_site_template and
+                    oHead.inquiry_site_template < -1 and
+                    str(oHead.inquiry_site_template).startswith('-1') else ''
+                ) if not (oHead.sold_to_party == 626136 or 'KGP' in
+                          str(oHead.customer_name).upper()) else ''
+                oSheet['J' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['J' + str(iRow)].font = ipFont
+                else:
+                    oSheet['J' + str(iRow)].font = activeFont
+
+                oSheet['K' + str(iRow)] = (
+                    oHead.inquiry_site_template if
+                    str(oHead.inquiry_site_template).startswith('1') else
+                    oHead.inquiry_site_template * -1 if
+                    oHead.inquiry_site_template and
+                    oHead.inquiry_site_template < -1 and
+                    str(oHead.inquiry_site_template).startswith('-1') else ''
+                ) if (oHead.sold_to_party == 626136 or 'KGP' in
+                      str(oHead.customer_name).upper()) else ''
+                oSheet['K' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['K' + str(iRow)].font = ipFont
+                else:
+                    oSheet['K' + str(iRow)].font = activeFont
+
+                oSheet['L' + str(iRow)] = oHead.inquiry_site_template if \
+                    str(oHead.inquiry_site_template).startswith('4') else \
+                    oHead.inquiry_site_template * -1 if \
+                        oHead.inquiry_site_template and \
+                        oHead.inquiry_site_template < -1 and \
+                        str(oHead.inquiry_site_template).startswith('-4') else ''
+                oSheet['L' + str(iRow)].alignment = centerAlign
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['L' + str(iRow)].font = ipFont
+                else:
+                    oSheet['L' + str(iRow)].font = activeFont
+
+                oSheet['M' + str(iRow)] = getattr(
+                    oHead.model_replaced_link, 'configuration_designation', None
+                ) or oHead.model_replaced or 'N/A'
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['M' + str(iRow)].font = ipFont
+                else:
+                    oSheet['M' + str(iRow)].font = activeFont
+
+                oSheet['N' + str(iRow)] = getattr(
+                    oHead.replaced_by_model.exclude(
+                        bom_request_type__name='Discontinue').first(),
+                    'configuration_designation', 'N/A')
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['N' + str(iRow)].font = ipFont
+                else:
+                    oSheet['N' + str(iRow)].font = activeFont
+
+                oSheet['O' + str(iRow)] = oHead.change_comments
+                if 'In Process' in oHead.configuration_status.name:
+                    oSheet['O' + str(iRow)].font = ipFont
+                else:
+                    oSheet['O' + str(iRow)].font = activeFont
+
 
             iRow += 1
         # end for
@@ -1330,7 +1485,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                     oSheet['F' + str(iCurrentRow)].fill = oOffRowColor
                 #
                 if not oHeader.pick_list:
-                    if  oLineItem == oFirstItem :
+                    if oLineItem == oFirstItem :
                         oSheet['G' + str(iCurrentRow)] = ''
                     else:
                         if GrabValue(oLineItem, 'linepricing.override_price'):
@@ -1483,9 +1638,13 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 
                         if 'quantity' in sChange:
                             aChangeCols.append(4)
-            # Changed below condition from 8 to 7 to highlight Unit Price Column for MTW CU
-                        if 'line price' in sChange:
+
+                        #D-06102: Unit Price column incorrectly highlighted in Baseline download: Added unit Price(column 7) column to refect the changes for unit price change
+                        if 'unit price' in sChange:
                             aChangeCols.append(7)
+
+                        if 'line price' in sChange:
+                            aChangeCols.append(8)
 
                         if 'comments' in sChange:
                             aChangeCols.append(14)
