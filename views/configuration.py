@@ -1854,6 +1854,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
     # S-05770:-USCC Unit Price functionality - The below case is for Net Price functionality,case no. 18 is changed to 19
     # NonPicklist-Sum of UP of all the parts is shown as NP in line 10
     # Picklist- All lines will have the price displayed
+        # S-08410:Adjust Model and BoM Header Tab:- Added below line to fetch the first _line of the config
                 oFirstLine = oHeader.configuration.get_first_line()
                 if not oHeader.pick_list:
                     if oFirstLine.line_number == '10':           # for Line 10 configs
@@ -1927,7 +1928,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                                 '12': Line.amount
                             }
                         )
-
+                        oFirstLine = oHeader.configuration.get_first_line()
  # S-08410:Adjust Model and BoM Header Tab:- Added below line to fetch if the config's first line starts with 10 or 100
                         if not oHeader.pick_list:
                             if oFirstLine.line_number == '10':  # for Line 10 configs
