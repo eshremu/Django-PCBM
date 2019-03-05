@@ -1928,6 +1928,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                                 '12': Line.amount
                             }
                         )
+ # D-06152-UnboundLocalError at /acc/entry/inquiry:- Added below line to fetch the first line of config
                         oFirstLine = oHeader.configuration.get_first_line()
  # S-08410:Adjust Model and BoM Header Tab:- Added below line to fetch if the config's first line starts with 10 or 100
                         if not oHeader.pick_list:
