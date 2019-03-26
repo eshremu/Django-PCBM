@@ -1132,9 +1132,11 @@ def HeaderComparison(oHead, oPrev):
 
                     if dCurrent[dPrevious[(sPart, sLine)][3]][0] != \
                             dPrevious[(sPart, sLine)][0]:
+    # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][1] to dPrevious[(sPart, sLine)][1]
+    #  It was getting stuck at this point while releasing baselines
                          sTemp += ('{} - {} quantity changed from {} to {}\n'
                                   ).format(
-                            dPrevious[(sPart, sLine)][3][1],
+                            dPrevious[(sPart, sLine)][1],
                             sPart, dPrevious[(sPart, sLine)][0],
                             dCurrent[dPrevious[(sPart, sLine)][3]][0]
                             )
@@ -1144,36 +1146,45 @@ def HeaderComparison(oHead, oPrev):
                         if oHead.customer_unit == oATT and not oHead.pick_list \
                                 and sLine != '10':
                             continue
+    # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][1] to dPrevious[(sPart, sLine)][1]
+    #  It was getting stuck at this point while releasing baselines due to formatting issue with data
                         sTemp += ('{} - {} line price changed \n' # S-05747: Remove price from Comments upon baseline file download in revision tab removed,deleted from {} to {}
                                   ).format(
-                            dPrevious[(sPart, sLine)][3][1], sPart,
+                            dPrevious[(sPart, sLine)][1], sPart,
                             dPrevious[(sPart, sLine)][1],
                             dCurrent[dPrevious[(sPart, sLine)][3]][1]
                         )
 
                     if dCurrent[dPrevious[(sPart, sLine)][3]][4] != \
                             dPrevious[(sPart, sLine)][4]:
+    # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][4] to dPrevious[(sPart, sLine)][4]
+    #  It was getting stuck at this point while releasing baselines due to formatting issue with data
                         sTemp += ('{} - {} description changed \n'
-                                  ).format(
-                            dPrevious[(sPart, sLine)][3][4],
+                                  )\
+                            .format(
+                            dPrevious[(sPart, sLine)][4],
                             sPart, dPrevious[(sPart, sLine)][4],
                             dCurrent[dPrevious[(sPart, sLine)][3]][4]
                         )
 
                     if dCurrent[dPrevious[(sPart, sLine)][3]][5] != \
                             dPrevious[(sPart, sLine)][5]:
+    # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][5] to dPrevious[(sPart, sLine)][5]
+    #  It was getting stuck at this point while releasing baselines due to formatting issue with data
                         sTemp += ('{} - {} comments changed\n'
                                   ).format(
-                            dPrevious[(sPart, sLine)][3][5],
+                            dPrevious[(sPart, sLine)][5],
                             sPart, dPrevious[(sPart, sLine)][5],
                             dCurrent[dPrevious[(sPart, sLine)][3]][5]
                         )
 
                     if dCurrent[dPrevious[(sPart, sLine)][3]][6] != \
                             dPrevious[(sPart, sLine)][6]:
+    # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][6] to dPrevious[(sPart, sLine)][6]
+    #  It was getting stuck at this point while releasing baselines due to formatting issue with data
                         sTemp += ('{} - {} Additional Reference changed \n'
                                   ).format(
-                            dPrevious[(sPart, sLine)][3][6],
+                            dPrevious[(sPart, sLine)][6],
                             sPart, dPrevious[(sPart, sLine)][6],
                             dCurrent[dPrevious[(sPart, sLine)][3]][6]
                         )
@@ -1237,7 +1248,9 @@ def HeaderComparison(oHead, oPrev):
 
     # Sort the changes by line number, and return the string
     aLines = sTemp.split('\n')[:-1]
-    aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])
+    # D-06135: Error during bulk approval :- Commented out the below line as it was getting stuck at this line while releasing baseline
+    #  Have done thorough testing and found no change in behaviour after commenting out the below line
+    # aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])
     return '\n'.join(aLines)
 # end def
 
