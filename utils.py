@@ -964,6 +964,7 @@ def HeaderComparison(oHead, oPrev):
     oATT = REF_CUSTOMER.objects.get(name='AT&T')
     # D-06102: Unit Price column incorrectly highlighted in Baseline download: Added below line for MTW cu only
     oMTW = REF_CUSTOMER.objects.get(name='MTW')
+    oFirstLine = oHead.configuration.get_first_line()
 
     # Build dictionary from oHead ConfigLine set
     for oConfigLine in oHead.configuration.configline_set.all():
@@ -1082,8 +1083,20 @@ def HeaderComparison(oHead, oPrev):
                 # 3. If record is not for AT&T
                 if oHead.customer_unit != oMTW and dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
                     if oHead.customer_unit == oATT and not oHead.pick_list and \
-                                    sLine != '10':
+                                    oFirstLine.line_number not in ('10', '100'):
                         continue
+                    sTemp += ('{} - {} line price changed\n'  # S-05747: Remove price from Comments upon baseline file download in revision tab removed,deleted from {} to {} and commented below lines
+                              ).format(
+                        sLine, sPart, dPrevious[(sPart, sLine)][1],
+                        dCurrent[(sPart, sLine)][1])
+                if oHead.customer_unit == oMTW and oFirstLine.line_number not in('10', '100') \
+                        and not oHead.pick_list and dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
+                    sTemp += ('{} - {} line price changed\n'  # S-05747: Remove price from Comments upon baseline file download in revision tab removed,deleted from {} to {} and commented below lines
+                              ).format(
+                        sLine, sPart, dPrevious[(sPart, sLine)][1],
+                        dCurrent[(sPart, sLine)][1])
+                if oHead.customer_unit == oMTW  \
+                        and oHead.pick_list and dCurrent[(sPart, sLine)][1] != dPrevious[(sPart, sLine)][1]:
                     sTemp += ('{} - {} line price changed\n'  # S-05747: Remove price from Comments upon baseline file download in revision tab removed,deleted from {} to {} and commented below lines
                               ).format(
                         sLine, sPart, dPrevious[(sPart, sLine)][1],
@@ -1108,13 +1121,14 @@ def HeaderComparison(oHead, oPrev):
                         dCurrent[(sPart, sLine)][6])
             # D-06102: Unit Price column incorrectly highlighted in Baseline download: Added belwo two if blocks to determine the changes
             # on unit price and net price individually.
-                if oHead.customer_unit == oMTW and dCurrent[(sPart, sLine)][7] != dPrevious[(sPart, sLine)][7]:
-                    sTemp += ('{} - {} unit price changed\n'
-                              ).format(
-                        sLine, sPart, dPrevious[(sPart, sLine)][7],
-                        dCurrent[(sPart, sLine)][7])
-                if oHead.customer_unit == oMTW and dCurrent[(sPart, sLine)][8] != dPrevious[(sPart, sLine)][8]:
-                    sTemp += ('{} - {} line price changed\n'
+            #     if oHead.customer_unit == oMTW and dCurrent[(sPart, sLine)][7] != dPrevious[(sPart, sLine)][7]:
+            #         sTemp += ('{} - {} unit price changed\n'
+            #                   ).format(
+            #             sLine, sPart, dPrevious[(sPart, sLine)][7],
+            #             dCurrent[(sPart, sLine)][7])
+                if oHead.customer_unit == oMTW and oFirstLine.line_number in('10','100') and not oHead.pick_list and\
+                    dCurrent[(sPart, sLine)][8] != dPrevious[(sPart, sLine)][8]:
+                    sTemp += ('{} - {} net price changed\n'
                               ).format(
                         sLine, sPart, dPrevious[(sPart, sLine)][8],
                         dCurrent[(sPart, sLine)][8])
@@ -1178,7 +1192,7 @@ def HeaderComparison(oHead, oPrev):
                     if dCurrent[dPrevious[(sPart, sLine)][3]][1] != \
                             dPrevious[(sPart, sLine)][1]:
                         if oHead.customer_unit == oATT and not oHead.pick_list \
-                                and sLine != '10':
+                                and oFirstLine.line_number not in('10','100'):
                             continue
     # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][1] to dPrevious[(sPart, sLine)][1]
     #  It was getting stuck at this point while releasing baselines due to formatting issue with data

@@ -1640,10 +1640,13 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                             aChangeCols.append(4)
 
                         #D-06102: Unit Price column incorrectly highlighted in Baseline download: Added unit Price(column 7) column to refect the changes for unit price change
-                        if 'unit price' in sChange:
-                            aChangeCols.append(7)
+                        # if 'unit price' in sChange:
+                        #     aChangeCols.append(7)
 
                         if 'line price' in sChange:
+                            aChangeCols.append(7)
+
+                        if 'net price' in sChange:
                             aChangeCols.append(8)
 
                         if 'comments' in sChange:

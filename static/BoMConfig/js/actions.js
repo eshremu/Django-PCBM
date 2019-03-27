@@ -16,9 +16,18 @@ function cleanDataCheck(link){
         window.open(link.dataset.href);
     } else {
         window.location.href = link.dataset.href;
-    }
+   }
 }
-
+//S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added below function to populate CU in document page
+function customer_filter(customer){
+    if(customer !== 'All') {
+        $('#cust_filter').html(customer +" <span class=\"caret\"></span>");
+        baselineonselectcuactive();
+    } else {
+        $('#cust_filter').html('Customer <span class="caret"></span>');
+    }
+    updateFiltersActive();
+}
 function cust_filter(customer){
     if(customer !== 'All') {
         $('#cu_filter').html(customer +" <span class=\"caret\"></span>");
@@ -28,6 +37,27 @@ function cust_filter(customer){
         $('#cu_filter').html('Customer <span class="caret"></span>');
     }
     updateFilters();
+}
+//S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added baselineonselectcuactive() to populate baseline dropdown based on selected CU
+function baselineonselectcuactive(){
+            var cu=  $('#cust_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+            $.ajax({
+            url: action_active_customer_url,
+            type: "POST",
+            data: {
+                data: cu
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+            alert('success')
+            },
+            error: function(xhr, status, error){
+                $('#myModal').modal('hide');
+                console.log('Error returned from list call', status, error);
+            }
+        });
 }
 // D-04023-Customer filter on Actions issue for Admin users :- Added baselineonselectcu() to populate baseline dropdown based on selected CU
 function baselineonselectcu(){
@@ -49,8 +79,17 @@ function baselineonselectcu(){
                 console.log('Error returned from list call', status, error);
             }
         });
- }
-
+}
+//S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added req_filter() to populate request type in Document page
+function req_filter(request){
+    if(request !== "All"){
+        $("#req_filter").html(request + "&nbsp;<span class='caret'></span>");
+    }
+    else{
+        $("#req_filter").html("Request Type" + "&nbsp;<span class='caret'></span>");
+    }
+    updateFiltersActive();
+}
 function request_filter(request){
     if(request !== "All"){
         $("#request_filter").html(request + "&nbsp;<span class='caret'></span>");
@@ -59,6 +98,16 @@ function request_filter(request){
         $("#request_filter").html("Request Type" + "&nbsp;<span class='caret'></span>");
     }
     updateFilters();
+}
+//S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added req_filter() to populate baseline in Document page
+function base_filter(baseline){
+    if(baseline !== "All"){
+        $("#base_filter").html(baseline + "&nbsp;<span class='caret'></span>");
+    }
+    else{
+        $("#base_filter").html("Baseline" + "&nbsp;<span class='caret'></span>");
+    }
+    updateFiltersActive();
 }
 
 function baseline_filter(baseline){
@@ -70,7 +119,42 @@ function baseline_filter(baseline){
     }
     updateFilters();
 }
+//S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added updateFiltersActive() for updating filter/view in Document page
+function updateFiltersActive(){
+    var customer = $('#cust_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+    var request = $('#req_filter').text().trim();
+    var baseline = $('#base_filter').text().trim();
 
+    $('tbody tr').show();
+
+    var rows = $('#document_records tbody tr').toArray();
+
+    for (var row in rows) {
+        let hide = false;
+        if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
+            hide = true;
+        }
+        if(baseline !== "Baseline"){
+            var baseline_row = $(rows[row]).find('td:nth-of-type(3):contains("' + baseline + '")');
+            if (!(baseline_row.length !== 0 && $(baseline_row[0]).text() == baseline)){
+                hide = true;
+
+            }
+        }
+
+        if(request !== "Request Type"){
+            var request_row = $(rows[row]).find('td:nth-of-type(4):contains("' + request + '")');
+            if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
+                hide = true;
+            }
+        }
+
+        if (hide){
+            $(rows[row]).hide();
+            $(rows[row]).find('input').removeAttr('checked');
+        }
+    }
+}
 function updateFilters(){
     var customer = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
     var request = $("#request_filter").text().trim();
@@ -192,7 +276,7 @@ $(document).ready(function(){
                 approvalFormData = {};
                 $('#messageModal').one('hidden.bs.modal', function(){
                     process($(source).val());
-                });
+               });
             }, this);
         } else {
             messageToModal('Error','Please select at least 1 record for approval.', function(){});
@@ -206,7 +290,7 @@ $(document).ready(function(){
                 process($(source).val());
             }, this);
         } else {
-            messageToModal('Error','Please select at least 1 record for cancellation.', function(){});
+           messageToModal('Error','Please select at least 1 record for cancellation.', function(){});
         }
     });
 
@@ -265,7 +349,7 @@ $(document).ready(function(){
 
         $('#sap_password').val(curVal);
     });
-    
+
     $('.doc_button').click(function(){
         var title = 'Confirm document ' + (this.dataset.update=="0"?"creation":"update");
         var message = '<p>You are about to ' + (this.dataset.update=="0"?"create":"update") + ' a(n) ' + (this.dataset.type == "0" ? "Inquiry" : "Site Template") + ' for ' + $($(this).parent().siblings()[1]).text() + '.  Are you sure?</p>';
@@ -488,7 +572,7 @@ $(document).ready(function(){
                     data: JSON.stringify(keys),
                     approval: JSON.stringify(approvalFormData)
                 },
-                headers:{
+               headers:{
                     'X-CSRFToken': getcookie('csrftoken')
                 },
                 success: function(data) {

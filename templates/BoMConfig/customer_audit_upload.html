@@ -42,7 +42,8 @@
    <!--S-08946:-  Add USCC SAP (MTW as of now) download format to upload for validation -- Added below to show the file type option for MTW CU-->
          $('#customer').change(function(){
             var customerval =  $('#customer').val();
-            if(document.getElementById('customer').value == '9'){
+   <!--S-08487: Customer upload changes :- Added below condition to show the file type based on CU i.e IM report only if Sprint,T-Mobile or MTW -->
+            if(document.getElementById('customer').value == '3' || document.getElementById('customer').value == '4' || document.getElementById('customer').value == '9'){
                 file_type[1].style.display = "none";
             }else{
                 file_type[1].style.display = "block";

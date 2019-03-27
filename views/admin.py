@@ -11,12 +11,18 @@ from django.contrib.auth.decorators import login_required
 from django.db import connections, IntegrityError
 from django.http import HttpResponse, Http404
 
+# S-10578:-Admin to unlock a locked config: added below to import user details
+from django.contrib.auth.models import User
+
 import json
 import itertools
 from itertools import chain
 
+# S-10578:-Admin to unlock a locked config: added below to import session details
+from django.contrib.sessions.models import Session
+
 from BoMConfig.models import DistroList, ApprovalList, User_Customer, Header,  REF_CUSTOMER, REF_PRODUCT_AREA_1, REF_SPUD, REF_PROGRAM,\
-    REF_RADIO_BAND, REF_RADIO_FREQUENCY, REF_PRODUCT_AREA_1, REF_PRODUCT_AREA_2, REF_TECHNOLOGY
+    REF_RADIO_BAND, REF_RADIO_FREQUENCY, REF_PRODUCT_AREA_1, REF_PRODUCT_AREA_2, REF_TECHNOLOGY, HeaderLock
 from BoMConfig.forms import DistroForm, UserForm, UserAddForm, CustomerApprovalLevelForm
 from BoMConfig.views.landing import Default
 
@@ -38,6 +44,43 @@ def DropDownAdmin(oRequest):
     return Default(oRequest, 'BoMConfig/admindropdown.html')
 # end def
 
+@login_required
+def UnlockAdmin(oRequest):
+    """
+    Landing view for administration of dropdowns
+    related items
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    dContext = {
+        'locked_config':  HeaderLock.objects.filter(session_key__isnull=False),
+        'errors_config': oRequest.session.pop('errors_config', None),
+        'message_type_is_error': oRequest.session.pop('message_is_error', False)
+    }
+
+    return Default(oRequest, 'BoMConfig/adminunlock.html',dContext)
+# end def
+
+@login_required
+def UnlockConfigAdmin(oRequest):
+    """
+    Landing view for administration to add technologies
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        HeaderLock.objects.filter(header=oRequest.POST.get('lockedconfigid')).update(session_key = None)
+        oRequest.session['errors_config'] = ['Configuration Unlocked successfully']
+        oRequest.session['message_type_is_error'] = False
+
+        return HttpResponse()
+    else:
+        raise Http404()
+    # end if
+
+# end def
 
 # S-05909 : Edit dropdown option for BoM Entry Header - SPUD :Added below for the landing page of Spud
 @login_required
@@ -725,6 +768,7 @@ def UserAdmin(oRequest):
     # print(dContext)
     return Default(oRequest, 'BoMConfig/adminuser.html', dContext)
 # end def
+
 # S-07204 Refine User Admin page added delete button logic  in user admin page
 @login_required
 def UserDelete(oRequest):
@@ -906,6 +950,131 @@ def UserChange(oRequest, iUserId=''):
     return Default(oRequest, 'BoMConfig/adminuserchange.html', dContext)
 # end def
 
+# S-10578:-Admin to unlock a locked config: Added below function to show user details when clicked on signum from unlock page
+# This is a similar function of UserChange. Added this function separately as the parameter passed there was the userid but here we
+# are passing the username(signum)
+@login_required
+def UserChangeFromUnlock(oRequest, iUserName=''):
+    """
+
+    :param oRequest: Django request object
+    :param iUserId: ID number of user object being changed
+    :return: HTML response via Default function
+    """
+
+    # Find and retrieve the User object by iUserId
+    if get_user_model().objects.filter(username=iUserName):
+        oUser = get_user_model().objects.get(username=iUserName)
+
+        # Create form defaults from User object information
+        dInitial = {
+            'signum': oUser,
+            'first_name': oUser.first_name,
+            'last_name': oUser.last_name,
+            'email': oUser.email,
+            'assigned_group': oUser.groups.filter(name__startswith='BOM_') if oUser.groups.filter(name__startswith='BOM_') else None
+        }
+
+    # Added for CU initial checked view
+        aMatrixEntries = User_Customer.objects.filter(user_id=oUser.id)
+        dInitial['customer'] = list([str(oSecMat.customer_id) for oSecMat in aMatrixEntries.filter(user_id=oUser.id)])
+
+        # If this request is a form submission
+        if oRequest.method == 'POST' and oRequest.POST:
+            # Build a UserForm instance from the data submitted, using data in
+            # dInitial to fill in blank fields.  It must be done this way
+            # because UserForm is a standard Form object and not a ModelForm
+            # object
+            oForm = UserForm(oRequest.POST, initial=dInitial)
+
+            # Save changes to user
+            if oRequest.POST['action'] == 'save':
+                if oForm.is_valid():
+                    if oForm.has_changed():
+                        # Process changes
+                        for field in oForm.changed_data:
+                            if field in ('signum', 'first_name', 'last_name', 'email'):
+                                # Update user object personal info values
+                                if field == 'signum':
+                                    oUser.username = oForm.cleaned_data[field]
+
+                                if field == 'first_name':
+                                    oUser.first_name = oForm.cleaned_data[field]
+
+                                if field == 'last_name':
+                                    oUser.last_name = oForm.cleaned_data[field]
+
+                                if field == 'email':
+                                    oUser.email = oForm.cleaned_data[field]
+                            elif field == 'assigned_group':
+                                oUser.groups.add(*tuple(oForm.cleaned_data[field]))
+                                oUser.groups.remove(*tuple(Group.objects.filter(name__startswith='BOM_').exclude(pk__in=oForm.cleaned_data[field])))
+                            # end if
+                    # S-06578: Added For CU options in Admin page
+                            elif field == 'customer':
+                                UserCustomerRelationEntries = User_Customer.objects.filter(user_id=oUser.id)
+                                aNewUserCustomerRelationEntries = []
+
+                                for iCustomer in oForm.cleaned_data[field]:
+                                    for obj in  REF_CUSTOMER.objects.filter(id=iCustomer):
+                                        UserCustomerName = obj.name
+                                    if UserCustomerRelationEntries.filter(customer_id=iCustomer,is_deleted=0,customer_name= UserCustomerName):
+                                        aNewUserCustomerRelationEntries.append(
+                                            UserCustomerRelationEntries.get(customer_id=iCustomer, is_deleted=0,customer_name= UserCustomerName))
+                                    else:
+                                        aNewUserCustomerRelationEntries.append(User_Customer(
+                                            user_id=oUser.id,
+                                            customer_id=iCustomer,
+                                            customer_name=UserCustomerName,
+                                            is_deleted=0))
+                                    # end if
+                                # end for
+
+                                for oSecMatrix in UserCustomerRelationEntries:
+                                    if oSecMatrix not in aNewUserCustomerRelationEntries:
+                                        oSecMatrix.delete()
+
+                                for oSecMatrix in aNewUserCustomerRelationEntries:
+                                    oSecMatrix.save()
+
+                        # end for
+                        oUser.save()
+                        oRequest.session['errors'] = ['User changed successfully']
+                        oRequest.session['message_is_error'] = False
+                    else:
+                        oRequest.session['errors'] = ['No changes detected']
+                        oRequest.session['message_is_error'] = False
+                    # end if
+                # end if
+            # Delete user
+            elif oRequest.POST['action'] == 'delete':
+                # When deleting a user, we don't actually remove the user from
+                # the system, because they may have access to multiple tools.
+                # Instead, we just remove the user from any groups that have
+                # access permissions to this tool
+                oUser.groups.remove(*tuple(Group.objects.filter(name__startswith='BOM_')))
+                oRequest.session['errors'] = ['User deleted successfully']
+                oRequest.session['message_is_error'] = False
+                return redirect(reverse('bomconfig:useradmin'))
+            # end if
+        else:
+            # Build a UserForm instance from the data in dInitial
+            oForm = UserForm(initial=dInitial)
+    else:
+        # If no such User is found, create an error and redirect to the UserAdd
+        # view
+        oRequest.session['errors'] = ['User not found']
+        oRequest.session['message_is_error'] = True
+        return redirect(reverse('bomconfig:useradd'))
+    # end if
+
+    dContext = {
+        'form': oForm,
+        'errors': oRequest.session.pop('errors', None),
+        'message_type_is_error': oRequest.session.pop('message_is_error', False)
+    }
+    return Default(oRequest, 'BoMConfig/adminuserchange.html', dContext)
+# end def
 
 @login_required
 def ApprovalAdmin(oRequest):
