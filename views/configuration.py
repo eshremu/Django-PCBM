@@ -198,9 +198,21 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 # When status of a picklist is changed to "New", no change should occur to the manual override pricing
 # When status of a config (non-picklist) is changed to "Discontinue", no change should occur to the manual override pricing
 # Added line 202 to 208 to update the override price to null in line 10 while saving a cloned config with status New
-                if 'headerID' in oRequest.POST:
+                if 'headerID' in oRequest.POST and not 'line_100':
                     configuration_id = Configuration.objects.filter(header=oRequest.POST.get('headerID'))
                     configline = ConfigLine.objects.filter(config=configuration_id).filter(line_number=10)
+                    linepricing = LinePricing.objects.get(config_line=configline)
+                    linepriceid = str(linepricing.id)
+                    LinePricing.objects.filter(pk=linepriceid).update(
+                    override_price = None)
+#D-06102: Unit Price column incorrectly highlighted in Baseline download:
+# When cloning a config, we should copy all manual override pricing from the previous config
+# When status of that config (non-picklist) is changed to "New", then manual override pricing on line 100 should be removed
+# When status of a picklist is changed to "New", no change should occur to the manual override pricing
+# When status of a config (non-picklist) is changed to "Discontinue", no change should occur to the manual override pricing
+                elif 'headerID' in oRequest.POST and 'line_100':
+                    configuration_id = Configuration.objects.filter(header=oRequest.POST.get('headerID'))
+                    configline = ConfigLine.objects.filter(config=configuration_id).filter(line_number=100)
                     linepricing = LinePricing.objects.get(config_line=configline)
                     linepriceid = str(linepricing.id)
                     LinePricing.objects.filter(pk=linepriceid).update(

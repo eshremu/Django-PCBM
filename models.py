@@ -1239,6 +1239,10 @@ class Configuration(models.Model):
                     # any ZUST value
                     if not self.header.pick_list and oCLine.line_number == '10':
                         override_net_total = oCLine.linepricing.override_price
+            #D-06102: Unit Price column incorrectly highlighted in Baseline download:
+            # Any overridden price on line 100 for non-pick-list records defines the total value of the record.
+                    elif not self.header.pick_list and oCLine.line_number == '100':
+                        override_net_total = oCLine.linepricing.override_price
                     else:
                         # Update override_net_total
                         if override_net_total is None:

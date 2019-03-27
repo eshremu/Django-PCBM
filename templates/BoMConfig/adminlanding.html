@@ -19,6 +19,10 @@
          {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
         <button class="btn" type="button" name="action" value="dropdown" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:dropdownadmin' %}'>Dropdowns</button>
         {% endif %}
+        <!--S-10578: Admin to unlock a locked config:- Added below to show the new Unlock tab in admin page-->
+        {% if user|has_group:"BOM_PSM_User_Administrator" or user|has_group:"BOM_BPMA_Architect" %}
+		<button class="btn" type="button" name="action" value="unlock" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:unlockadmin' %}'>Unlock</button>
+        {% endif %}
 	</div>
     {% block subcontent %}{% endblock %}
     {% else %}
