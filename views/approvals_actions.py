@@ -1296,8 +1296,14 @@ def HoldApprove(oRequest):
         # Disallow requests with unsupported actions or no action
         if oRequest.POST.get('action', None) not in ('unhold'):
             raise Http404
+#  D-06242: Removal from 'On-Hold' causing invalid approval: Added destination to fetch destination from oRequest.
+        if 'destinations' in oRequest.POST:
+            aDestinations = [
+                record for record in json.loads(
+                    oRequest.POST.get('destinations', None)
+                )]
 
-        # Collect the list of record ids, comments, and destinations supplied
+        # Collect the list of record ids supplied
         # with the request, if any.
         sAction = oRequest.POST.get('action')
         aRecords = [
@@ -1310,22 +1316,51 @@ def HoldApprove(oRequest):
                 oHeader = Header.objects.get(pk=aRecords[index])
                 oLatestTracker = oHeader.headertimetracker_set.order_by(
                     '-submitted_for_approval').first()
-                # Determine the next approval level needed on the record
-                sNeededLevel = oLatestTracker.next_approval
-
+#  D-06242: Removal from 'On-Hold' causing invalid approval: Added below lines to create new HeaderTimeTracker entry and to copy all previous data in the prev row.
                 # Determine if the user making the request has permission to
                 # perform the requested action on this record
-                aNames = HeaderTimeTracker.permission_entry(sNeededLevel)
-                try:
-                    bCanHold = bool(SecurityPermission.objects.filter(
-                        title__in=aNames).filter(
-                        user__in=oRequest.user.groups.all()))
-                except ValueError:
-                    bCanHold = False
+                aChain = HeaderTimeTracker.approvals()
                 # end if
+                if aDestinations[index] != 'psm_config':
+                    oNewTracker = HeaderTimeTracker.objects.create(
+                        **{'header': oHeader,
+                           'created_on': oLatestTracker.created_on,
+                           'submitted_for_approval': timezone.now()
+                           }
+                    )
 
-                # If so, approve, disapprove, or skip as requested
-                if bCanHold and sNeededLevel != 'psm_config':
+                    # Copy over approval data for each level before
+                    # destination level
+                    for level in aChain:
+                        if level == aDestinations[index]:
+                            sReturnedLevel = level
+                        # end if
+
+                        if (aChain.index(level) < aChain.index(
+                                aDestinations[index])):
+                            setattr(oNewTracker, level + '_approver',
+                                    getattr(oLatestTracker,
+                                            level + '_approver', None))
+
+                        # end if
+
+                        if (aChain.index(level) < aChain.index(
+                                aDestinations[index])):
+                            setattr(oNewTracker,
+                                    level + '_hold_approval',
+                                    getattr(oLatestTracker,
+                                            level + '_hold_approval',
+                                            None))
+                            setattr(oNewTracker, level + '_hold_on',
+                                    getattr(oLatestTracker,
+                                            level + '_hold_on',
+                                            None))
+                            setattr(oNewTracker, level + '_comments',
+                                    getattr(oLatestTracker,
+                                            level + '_comments', None))
+                    # end for
+
+                    oNewTracker.save()
                     oHeader.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
                     oHeader.save()
 
