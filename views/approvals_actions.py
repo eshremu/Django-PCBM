@@ -1321,7 +1321,8 @@ def HoldApprove(oRequest):
                 # perform the requested action on this record
                 aChain = HeaderTimeTracker.approvals()
                 # end if
-                if aDestinations[index] != 'psm_config':
+                sReturnedLevel = 'scm1'
+                if aDestinations[index] != 'psm_config' :
                     oNewTracker = HeaderTimeTracker.objects.create(
                         **{'header': oHeader,
                            'created_on': oLatestTracker.created_on,
@@ -1337,27 +1338,26 @@ def HoldApprove(oRequest):
                         # end if
 
                         if (aChain.index(level) < aChain.index(
-                                aDestinations[index])):
+                                aDestinations[index])) or (
+                                            getattr(oLatestTracker,
+                                                    level + '_approver') ==
+                                            'system'):
                             setattr(oNewTracker, level + '_approver',
                                     getattr(oLatestTracker,
                                             level + '_approver', None))
-
-                        # end if
-
-                        if (aChain.index(level) < aChain.index(
-                                aDestinations[index])):
                             setattr(oNewTracker,
                                     level + '_hold_approval',
                                     getattr(oLatestTracker,
-                                            level + '_hold_approval',
-                                            None))
-                            setattr(oNewTracker, level + '_hold_on',
+                                            level + '_hold_approval', None
+                                            ))
+                            setattr(oNewTracker, level + '_approved_on',
                                     getattr(oLatestTracker,
-                                            level + '_hold_on',
-                                            None))
+                                            level + '_approved_on', None
+                                            ))
                             setattr(oNewTracker, level + '_comments',
                                     getattr(oLatestTracker,
                                             level + '_comments', None))
+                        # end if
                     # end for
 
                     oNewTracker.save()
