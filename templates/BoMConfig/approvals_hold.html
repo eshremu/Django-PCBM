@@ -140,8 +140,8 @@
                         <div data-index="{{ record.pk }}" style="display: none;">
                             <h5 style="font-weight: bold">{{ record.configuration_designation }}</h5>
                             <form class="unhold-form">
-                                <h5>Push back to:</h5>
-                                <select data-index="{{ record.pk }}">
+                                <h5>Are you sure you wish to release the selected records from hold?</h5>
+                                <select data-index="{{ record.pk }}" hidden>
                                 {% for level in approval_seq %}
                                     {% with level|add:"_approver" as hold_level%}
                                     {% with level|add:"_hold_approval" as hold_date%}
