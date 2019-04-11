@@ -182,10 +182,10 @@ def ApprovalHold(oRequest):
 
         del oRequest.session['existing']
     # end if
-
+    # D-06381: Approvals->On Hold->Issue with UI, and cannot remove On-Hold :- added 2 excludes to filter-out hold records which are not in In process/pending in approval page
     dContext = {
         'on_hold': Header.objects.filter(
-            configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU),
+            configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU).exclude(old_configuration_status__name='In Process').exclude(old_configuration_status__name='Active'),
         'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
         'baselines': ['All'] + sorted(list(
             set(
@@ -420,7 +420,8 @@ def Action(oRequest, **kwargs):
                        obj.latesttracker.next_approval) >
                    HeaderTimeTracker.approvals().index('acr')
                    ],
-        'on_hold': Header.objects.filter(configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU),
+    # D-06381: Approvals->On Hold->Issue with UI, and cannot remove On-Hold :- added filter for hold records which are in-process status earlier in Actions page.
+        'on_hold': Header.objects.filter(configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU).filter(old_configuration_status__name='In Process'),
         'customer_list': ['All'] + aAvailableCU,
         'viewauthorized': bool(oRequest.user.groups.filter(
             name__in=['BOM_BPMA_Architect', 'BOM_PSM_Product_Supply_Manager',
@@ -1159,38 +1160,39 @@ def AjaxApprove(oRequest):
                 # end if
 
                 # If so, hold or unhold as requested
-                if bCanHold and sNeededLevel != 'brd':
-                    if sAction == 'hold' and sNeededLevel != 'psm_config':
+                if bCanHold and sAction == 'hold' and sNeededLevel != 'psm_config':
+                    # if sAction == 'hold' and sNeededLevel != 'psm_config':
                         # Set HeaderTimeTracker's name, date, and comments
                         # # fields for the needed approval level
-                        setattr(oLatestTracker, sNeededLevel + '_approver',
-                                oRequest.user.username) if oLatestTracker else ''
-                        setattr(oLatestTracker, sNeededLevel + '_hold_approval',
-                                timezone.now()) if oLatestTracker else ''
-                        setattr(oLatestTracker, sNeededLevel + '_comments',
-                                aComments[index])if oLatestTracker else ''
-                        oLatestTracker.hold_on = timezone.now()
-                        oLatestTracker.save()
-                        # oHeader.configuration.PSM_on_hold = not oHeader.configuration.PSM_on_hold
-                        # oHeader.configuration.save()
+                    setattr(oLatestTracker, sNeededLevel + '_approver',
+                            oRequest.user.username) if oLatestTracker else ''
+                    setattr(oLatestTracker, sNeededLevel + '_hold_approval',
+                            timezone.now()) if oLatestTracker else ''
+                    setattr(oLatestTracker, sNeededLevel + '_comments',
+                            aComments[index])if oLatestTracker else ''
+                    oLatestTracker.hold_on = timezone.now()
+                    oLatestTracker.save()
+                    # oHeader.configuration.PSM_on_hold = not oHeader.configuration.PSM_on_hold
+                    # oHeader.configuration.save()
 
-                        oHeader.configuration_status = REF_STATUS.objects.get(name='On Hold')
-                        oHeader.save()
-                    elif sAction == 'unhold':
-                        for iRecord in aRecords:
-                            oHeader = Header.objects.get(pk=iRecord)
-                            # Toggle the Header's configuration's on-hold status.
-                            oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
-                                PSM_on_hold
-                            oHeader.configuration.save()
-                            # end for
-                    else:
-                        for iRecord in aRecords:
-                            oHeader = Header.objects.get(pk=iRecord)
-                            # Toggle the Header's configuration's on-hold status.
-                            oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
-                                PSM_on_hold
-                            oHeader.configuration.save()
+                    oHeader.configuration_status = REF_STATUS.objects.get(name='On Hold')
+                    oHeader.save()
+            # D-06381: Approvals->On Hold->Issue with UI, and cannot remove On-Hold :- commented out below elif block because it is not needed.
+                    # elif sAction == 'unhold':
+                    #     for iRecord in aRecords:
+                    #         oHeader = Header.objects.get(pk=iRecord)
+                    #         # Toggle the Header's configuration's on-hold status.
+                    #         oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
+                    #             PSM_on_hold
+                    #         oHeader.configuration.save()
+                    #         # end for
+                else:
+                    for iRecord in aRecords:
+                        oHeader = Header.objects.get(pk=iRecord)
+                        # Toggle the Header's configuration's on-hold status.
+                        oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
+                            PSM_on_hold
+                        oHeader.configuration.save()
 
         # end if
         # S-05766:Identify Emails from Test System:-- Added to frame the Email content/subject as per the environment
