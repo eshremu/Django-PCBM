@@ -1,0 +1,126 @@
+{% extends "BoMConfig/adminlanding.html" %}
+{% load bomconfig_customtemplatetags %}
+{% load staticfiles %}
+{% block subcontent %}
+
+    <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
+    <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
+
+{% if user.is_authenticated %}
+ <div id="main-body">
+     {% if user|has_group:"BOM_PSM_Tool_Administrator" or user|has_group:"BOM_PSM_User_Administrator" %}
+     <br>
+
+     {% if errors_config %}
+     <div class="messageblock {% if message_type_is_error %}errorblock{% else %}successblock{% endif %}">
+        {% for error in errors_config %}
+        <p>{{ error }}</p>
+        {% endfor %}
+     </div>
+     {% endif %}
+     <br>
+     {% if locked_config %}
+         <table id="tableunlock" >
+                <thead>
+                    <tr>
+                        <th>Configuration</th>
+                        <th>Locked By</th>
+                        <th>Unlock</th>
+                    </tr>
+                </thead>
+                <tbody id="admin_unlock">
+                    {% for l in locked_config %}
+                        <tr>
+                            <td><div>{{ l.header }}</div></td>
+                            <td><div><a href="{% url 'bomconfig:userchangefromunlock' l.session_key|safe|slice:':7' %}">{{ l.session_key|safe|slice:":7" }} </a></div></td>
+                            <td><button class="btn btn-primary" type="button" name="action" value="unlock" onclick="UnlockConfig({{l.header.id}})">Unlock</button></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+         </table>
+     {% else %}
+     <p><b>NO LOCKED CONFIGURATIONS FOUND</b></p>
+     {% endif %}
+
+     <script type="text/javascript">
+       $(function() {
+            function reposition() {
+                var modal = $(this),
+                        dialog = modal.find('.modal-dialog');
+                modal.css('display', 'block');
+                dialog.css("margin-top", Math.max(0, ($(window).height() - dialog.height()) / 2));
+                dialog.css("margin-left", Math.max(0, ($(window).width() - dialog.width()) / 2));
+
+            }
+            $('.modal').on('show.bs.modal', reposition);
+            $(window).on('resize', function() {
+                $('.modal:visible').each(reposition);
+            });
+       });
+
+        $(document).ready(function(){
+            var bodyHeight = $('#main-body').height();
+            var max_available = bodyHeight - 650 ;
+        });
+
+        function UnlockConfig(lockedheaderid){
+                $.ajax({
+                    url: unlockdmin_url,
+                    type: "POST",
+                    data: {
+                        lockedconfigid : lockedheaderid
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+                        if(data){
+                            location.href = data;
+                        } else {
+                            location.reload(true);
+                        }
+                    },
+                    error: function(xhr, status, error){
+                        $('#myModal').modal('hide');
+                        messageToModal('Submission Error','The following error occurred during submission:<br/>' +
+                            status + ": " + error + '<br/>Please try again or contact a tool admin.', function(){});
+                    }
+                });
+        }
+        var unlockdmin_url = "{% url 'bomconfig:unlockconfigadmin' %}";
+        function form_resize(){
+            var topbuttonheight = $('#action_buttons').height();
+            var bodyheight = $('#main-body').height();
+
+            var tableheight = bodyheight - (topbuttonheight + bottombuttonheight + 2);
+
+            $('#tableunlock').css("height", tableheight);
+            $('#tableunlock').css("overflow", 'auto');
+        }
+
+    </script>
+     {% endif %}
+ </div>
+<style>
+#tableunlock {
+    font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+    width: 40%;
+}
+
+#tableunlock td, #tableunlock th {
+    padding: 5px;
+}
+
+#tableunlock tr:nth-child(odd){background-color: #f2f2f2;}
+
+#tableunlock tr:hover {background-color: #ddd;}
+
+#tableunlock th {
+    text-align: left;
+    background-color: white;
+    color: black;
+}
+</style>
+
+{% endif %}
+{% endblock %}
