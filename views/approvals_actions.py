@@ -1172,9 +1172,9 @@ def AjaxApprove(oRequest):
                             aComments[index])if oLatestTracker else ''
                     oLatestTracker.hold_on = timezone.now()
                     oLatestTracker.save()
-                    # oHeader.configuration.PSM_on_hold = not oHeader.configuration.PSM_on_hold
-                    # oHeader.configuration.save()
-
+            # D-06454: Chevrons not showing correct coloring when view only on On Hold records: Added below two lines to check PSM_on_hold in configuration
+                    oHeader.configuration.PSM_on_hold = 1
+                    oHeader.configuration.save()
                     oHeader.configuration_status = REF_STATUS.objects.get(name='On Hold')
                     oHeader.save()
             # D-06381: Approvals->On Hold->Issue with UI, and cannot remove On-Hold :- commented out below elif block because it is not needed.
@@ -1363,6 +1363,9 @@ def HoldApprove(oRequest):
                     # end for
 
                     oNewTracker.save()
+            # D-06454: Chevrons not showing correct coloring when view only on On Hold records: Added below two lines to uncheck PSM_on_hold in configuration
+                    oHeader.configuration.PSM_on_hold = 0
+                    oHeader.configuration.save()
                     oHeader.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
                     oHeader.save()
 

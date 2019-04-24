@@ -1764,14 +1764,15 @@ class HeaderTimeTracker(models.Model):
     @property
     def hold_level(self):
         """
-        Returns the approval level that contains a valid denied_approval value
+        Returns the approval level that contains a valid hold_approval value
         :return: str / None
         """
+        # D-06454: Chevrons not showing correct coloring when view only on On Hold records: added .upper in return level to match the case used in entrylanding.html
         if self.hold_on:
             for level in self.__class__.approvals():
                 if hasattr(self, level + '_hold_approval') and \
                         getattr(self, level + '_hold_approval'):
-                    return level
+                    return level.upper()
         else:
             return None
 
