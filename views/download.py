@@ -2027,6 +2027,11 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                         oHeader.pick_list:
                     oSheet[utils.get_column_letter(iIndex) +
                            str(iCurrentRow)].value = 'Multiple'
+                elif 'USCC Article Code FAA' in dTOCData[iIndex][0] and \
+                        oHeader.pick_list:
+                    oSheet[utils.get_column_letter(iIndex) +
+                           str(iCurrentRow)].value = 'Multiple'
+
                 else:
                     oSheet[utils.get_column_letter(iIndex) +
                            str(iCurrentRow)].value = str(

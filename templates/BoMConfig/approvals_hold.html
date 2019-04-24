@@ -71,7 +71,8 @@
                             {% if tracker == record.get_all_trackers.first %}
 
                             <td><input class="pending" type="checkbox" data-index="{{ record.id }}"/><span>&nbsp;&nbsp;</span></td>
-                            <td>{{ record.configuration_designation }}</td>
+                    <!--D-06454: Chevrons not showing correct coloring when view only on On Hold records: Added below url to open configuration from On Hold page-->
+                            <td><a href="{% url 'bomconfig:search' %}?link={{ record.pk|searchscramble }}&readonly=1', '{{ record.configuration_designation }}', 'left=100,top=100,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no'" target="_blank">{{ record.configuration_designation }}</a></td>
                             <td></td>
                             <td>{{ record.program|default:"------" }}</td>
                             <td></td>
