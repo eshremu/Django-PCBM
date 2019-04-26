@@ -1364,7 +1364,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                              'Order Qty', 'UoM', 'HW/SW Ind', 'Unit Price', 'Net Price',
                              'Traceability Req. (Serialization)',
                              'In the USCC BOM', 'USCC Article Code FAA',
-                         	 'USCC Article code ZENG', 'Vendor Article Number',
+                         	 'USCC Article Code ZENG', 'Vendor Article Number',
                              'Comments', 'Additional Reference\n(if required)']
             for iIndex in range(len(aColumnTitles)):
                 oSheet[str(utils.get_column_letter(iIndex + 1)) + '1'] = \
@@ -1966,7 +1966,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             16: ['Ext Notes', 'external_notes', 50],
             # D- 03265 - Missing columns in downloaded baseline files -added below two columns
             5: ['USCC Article Code FAA', 'configuration.first_line.customer_number', 20],
-            6: ['USCC Article code ZENG', 'configuration.first_line.sec_customer_number', 20]
+            6: ['USCC Article Code ZENG', 'configuration.first_line.sec_customer_number', 20]
     }
     else:
         dTOCData = {
@@ -2027,7 +2027,9 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                         oHeader.pick_list:
                     oSheet[utils.get_column_letter(iIndex) +
                            str(iCurrentRow)].value = 'Multiple'
-                elif 'USCC Article Code FAA' in dTOCData[iIndex][0] and \
+        # Fix for ACC UAT Customer Number for Optional HW/pick list(MTW CU) Added below elif block to show customer numbers as 'Multiple'
+        #             in downloaded baseline file
+                elif 'USCC Article Code' in dTOCData[iIndex][0] and \
                         oHeader.pick_list:
                     oSheet[utils.get_column_letter(iIndex) +
                            str(iCurrentRow)].value = 'Multiple'
