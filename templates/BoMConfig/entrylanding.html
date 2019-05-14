@@ -32,6 +32,24 @@
     </div>
     {% endfor %}
     {% endwith %}
+    <!--D-06454: Chevrons not showing correct coloring when view only on On Hold records: Added below elif block for on-hold chevron in approval page-->
+    {% elif header.configuration_status.name == 'On Hold' and header.old_configuration_status.name == 'In Process/Pending' %}
+    {% with header.latesttracker.chevron_levels as levels %}
+    {% with header.latesttracker.hold_level as current_hold_level %}
+    {% for level in levels %}
+    <div class="chev" style="display:inline; position: relative; left: {{ -30|multiply:forloop.counter }}px;">
+        {% if levels|getindexof:current_hold_level > forloop.counter0 %}
+        <img src="{% static 'BoMConfig/images/ActiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
+        {% elif levels|getindexof:current_hold_level == forloop.counter0 %}
+        <img src="{% static 'BoMConfig/images/InworkChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
+        {% else %}
+        <img src="{% static 'BoMConfig/images/InactiveChev.png' %}" style="width:97px;"/> <!-- position:relative; left:-7%; -->
+        {% endif %}
+        <span style="color:white; position: absolute; left:30px; top:-2px;">{{ level }}</span>
+    </div>
+    {% endfor %}
+    {% endwith %}
+    {% endwith %}
     {% else %}
     {% with header.latesttracker.chevron_levels as levels %}
     {% with header.latesttracker.next_chevron as current_level %}
@@ -155,7 +173,7 @@
   (function() {
     var u="//138.85.180.81/piwik/";
     _paq.push(['setTrackerUrl', u+'piwik.php']);
-    _paq.push(['setSiteId', '11']);
+    _paq.push(['setSiteId', '12']);
     var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
     g.type='text/javascript'; g.async=true; g.defer=true; g.src=u+'piwik.js'; s.parentNode.insertBefore(g,s);
   })();

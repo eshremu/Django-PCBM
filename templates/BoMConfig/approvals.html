@@ -96,10 +96,12 @@
                             {% with level|add:'_approver' as approver%}
                             {% with level|add:'_approved_on' as approvedate%}
                             {% with level|add:'_denied_approval' as disapprovedate%}
+                            {% with level|add:'_hold_approval' as holddate%}
                             {% if tracker|getattr:disapprovedate %}
                             <span class="glyphicon glyphicon-remove" style="color:#DD0000;"></span>
                             <!-- S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter added 2 lines-->
-                            {% elif tracker|getattr:holdapprovedate %}
+                            <!--D-06242: Removal from 'On-Hold' causing invalid approval: added flag to show on hold records with comments-->
+                            {% elif tracker|getattr:holddate %}
                             <span class="glyphicon glyphicon-flag" style="color:#FF8C00;"></span>
                             {% elif tracker|getattr:approvedate|date:"Y-M-D" == deaddate|date:"Y-M-D" %}
                             <span class="glyphicon glyphicon-minus"></span>
@@ -108,6 +110,7 @@
                             {% else %}
                             <span style="color:#FFFFFF">_</span>
                             {% endif %}
+                            {% endwith %}
                             {% endwith %}
                             {% endwith %}
                             {% endwith %}

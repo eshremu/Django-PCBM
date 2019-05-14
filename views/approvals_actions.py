@@ -182,10 +182,10 @@ def ApprovalHold(oRequest):
 
         del oRequest.session['existing']
     # end if
-
+    # D-06381: Approvals->On Hold->Issue with UI, and cannot remove On-Hold :- added 2 excludes to filter-out hold records which are not in In process/pending in approval page
     dContext = {
         'on_hold': Header.objects.filter(
-            configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU),
+            configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU).exclude(old_configuration_status__name='In Process').exclude(old_configuration_status__name='Active'),
         'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
         'baselines': ['All'] + sorted(list(
             set(
@@ -279,6 +279,77 @@ def ActionCustomer(oRequest, iCustId=''):
 
 # end def
 
+# S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added below defination to filter baseline on selected CU
+@login_required
+def ActiveCustomer(oRequest, iCustId=''):
+    """
+       View for document on records for In process/Pending  states
+       :param oRequest: Django request object
+       :param iCustId: Selected Customer-id
+       :return: HTML response via Default function
+       """
+    # # S-067172 :Actions -Resctrict view to logged in users CU:- Added to get the logged in user's CU list
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+    customer = REF_CUSTOMER.objects.filter(id=iCustId)
+
+    # Unlock any record previously held
+    if 'existing' in oRequest.session:
+        try:
+            Unlock(oRequest, oRequest.session['existing'])
+        except Header.DoesNotExist:
+            pass
+        # end try
+
+        del oRequest.session['existing']
+    # end if
+
+    dContext = {
+        'in_process': Header.objects.filter(
+            configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(
+            customer_unit=customer),
+        'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
+        'baselines': sorted(list(
+            set(
+                [str(obj.baseline) if
+                 obj.baseline.title != 'No Associated Baseline' else
+                 "(Not baselined)" for obj in Header.objects.filter(
+                    configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(
+                    customer_unit=customer) if
+                 HeaderTimeTracker.approvals().index(
+                     obj.latesttracker.next_approval) >
+                 HeaderTimeTracker.approvals().index('acr')
+                 ]))),
+        'active': [obj for obj in Header.objects.filter(
+            configuration_status__name='In Process/Pending', ).filter(baseline__isdeleted=0).filter(
+            customer_unit=customer)
+                   if
+                   HeaderTimeTracker.approvals().index(
+                       obj.latesttracker.next_approval) >
+                   HeaderTimeTracker.approvals().index('acr')
+                   ]
+        ,
+        'on_hold': Header.objects.filter(configuration_status__name='On Hold').filter(customer_unit=customer),
+        'selectedcustomer': customer,
+        'customer_list': ['All'] + aAvailableCU,
+        'viewauthorized': bool(oRequest.user.groups.filter(
+            name__in=['BOM_BPMA_Architect', 'BOM_PSM_Product_Supply_Manager',
+                      'BOM_PSM_Baseline_Manager'])),
+        'approval_seq': HeaderTimeTracker.approvals(),
+        'deaddate': timezone.datetime(1900, 1, 1),
+        'namelist': ['SCM #1', 'SCM #2', 'CSR', 'Comm. Price Mgmt.', 'ACR',
+                     'PSM Baseline Mgmt.', 'Customer #1', 'Customer #2',
+                     'Customer Warehouse', 'Ericsson VAR',
+                     'Baseline Release & Dist.'],
+    }
+
+    return Default(oRequest, 'BoMConfig/actions_active_customer.html', dContext)
+
+# end def
+
 @login_required
 def Action(oRequest, **kwargs):
     """
@@ -328,14 +399,29 @@ def Action(oRequest, **kwargs):
                  "(Not baselined)" for obj in Header.objects.filter(
                     configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
                     customer_unit__in=aAvailableCU)]))),
+# S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added 'baseline_active' to filter baselines
+# which are in pending status and approval level is beyond 'acr'
+        'baseline_active': ['All'] + sorted(list(
+            set(
+                [str(obj.baseline) if
+                 obj.baseline.title != 'No Associated Baseline' else
+                 "(Not baselined)" for obj in Header.objects.filter(
+                    configuration_status__name='In Process/Pending').filter().filter(baseline__isdeleted=0).filter(
+                    customer_unit__in=aAvailableCU) if
+                 HeaderTimeTracker.approvals().index(
+                     obj.latesttracker.next_approval) >
+                 HeaderTimeTracker.approvals().index('acr')
+                 ]))),
         'active': [obj for obj in Header.objects.filter(
-            configuration_status__name='In Process/Pending', )
+            configuration_status__name='In Process/Pending', ).filter(baseline__isdeleted=0).filter(
+            customer_unit__in=aAvailableCU)
                    if
                    HeaderTimeTracker.approvals().index(
                        obj.latesttracker.next_approval) >
                    HeaderTimeTracker.approvals().index('acr')
                    ],
-        'on_hold': Header.objects.filter(configuration_status__name='On Hold').filter(customer_unit__in=aAvailableCU),
+    # D-06381: Approvals->On Hold->Issue with UI, and cannot remove On-Hold :- added filter for hold records which are in-process status earlier in Actions page.
+        'on_hold': Header.objects.filter(configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU).filter(old_configuration_status__name='In Process'),
         'customer_list': ['All'] + aAvailableCU,
         'viewauthorized': bool(oRequest.user.groups.filter(
             name__in=['BOM_BPMA_Architect', 'BOM_PSM_Product_Supply_Manager',
@@ -1074,38 +1160,39 @@ def AjaxApprove(oRequest):
                 # end if
 
                 # If so, hold or unhold as requested
-                if bCanHold and sNeededLevel != 'brd':
-                    if sAction == 'hold' and sNeededLevel != 'psm_config':
+                if bCanHold and sAction == 'hold' and sNeededLevel != 'psm_config':
+                    # if sAction == 'hold' and sNeededLevel != 'psm_config':
                         # Set HeaderTimeTracker's name, date, and comments
                         # # fields for the needed approval level
-                        setattr(oLatestTracker, sNeededLevel + '_approver',
-                                oRequest.user.username) if oLatestTracker else ''
-                        setattr(oLatestTracker, sNeededLevel + '_hold_approval',
-                                timezone.now()) if oLatestTracker else ''
-                        setattr(oLatestTracker, sNeededLevel + '_comments',
-                                aComments[index])if oLatestTracker else ''
-                        oLatestTracker.hold_on = timezone.now()
-                        oLatestTracker.save()
-                        # oHeader.configuration.PSM_on_hold = not oHeader.configuration.PSM_on_hold
-                        # oHeader.configuration.save()
-
-                        oHeader.configuration_status = REF_STATUS.objects.get(name='On Hold')
-                        oHeader.save()
-                    elif sAction == 'unhold':
-                        for iRecord in aRecords:
-                            oHeader = Header.objects.get(pk=iRecord)
-                            # Toggle the Header's configuration's on-hold status.
-                            oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
-                                PSM_on_hold
-                            oHeader.configuration.save()
-                            # end for
-                    else:
-                        for iRecord in aRecords:
-                            oHeader = Header.objects.get(pk=iRecord)
-                            # Toggle the Header's configuration's on-hold status.
-                            oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
-                                PSM_on_hold
-                            oHeader.configuration.save()
+                    setattr(oLatestTracker, sNeededLevel + '_approver',
+                            oRequest.user.username) if oLatestTracker else ''
+                    setattr(oLatestTracker, sNeededLevel + '_hold_approval',
+                            timezone.now()) if oLatestTracker else ''
+                    setattr(oLatestTracker, sNeededLevel + '_comments',
+                            aComments[index])if oLatestTracker else ''
+                    oLatestTracker.hold_on = timezone.now()
+                    oLatestTracker.save()
+            # D-06454: Chevrons not showing correct coloring when view only on On Hold records: Added below two lines to check PSM_on_hold in configuration
+                    oHeader.configuration.PSM_on_hold = 1
+                    oHeader.configuration.save()
+                    oHeader.configuration_status = REF_STATUS.objects.get(name='On Hold')
+                    oHeader.save()
+            # D-06381: Approvals->On Hold->Issue with UI, and cannot remove On-Hold :- commented out below elif block because it is not needed.
+                    # elif sAction == 'unhold':
+                    #     for iRecord in aRecords:
+                    #         oHeader = Header.objects.get(pk=iRecord)
+                    #         # Toggle the Header's configuration's on-hold status.
+                    #         oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
+                    #             PSM_on_hold
+                    #         oHeader.configuration.save()
+                    #         # end for
+                else:
+                    for iRecord in aRecords:
+                        oHeader = Header.objects.get(pk=iRecord)
+                        # Toggle the Header's configuration's on-hold status.
+                        oHeader.configuration.PSM_on_hold = not oHeader.configuration. \
+                            PSM_on_hold
+                        oHeader.configuration.save()
 
         # end if
         # S-05766:Identify Emails from Test System:-- Added to frame the Email content/subject as per the environment
@@ -1211,8 +1298,14 @@ def HoldApprove(oRequest):
         # Disallow requests with unsupported actions or no action
         if oRequest.POST.get('action', None) not in ('unhold'):
             raise Http404
+#  D-06242: Removal from 'On-Hold' causing invalid approval: Added destination to fetch destination from oRequest.
+        if 'destinations' in oRequest.POST:
+            aDestinations = [
+                record for record in json.loads(
+                    oRequest.POST.get('destinations', None)
+                )]
 
-        # Collect the list of record ids, comments, and destinations supplied
+        # Collect the list of record ids supplied
         # with the request, if any.
         sAction = oRequest.POST.get('action')
         aRecords = [
@@ -1225,22 +1318,54 @@ def HoldApprove(oRequest):
                 oHeader = Header.objects.get(pk=aRecords[index])
                 oLatestTracker = oHeader.headertimetracker_set.order_by(
                     '-submitted_for_approval').first()
-                # Determine the next approval level needed on the record
-                sNeededLevel = oLatestTracker.next_approval
-
+#  D-06242: Removal from 'On-Hold' causing invalid approval: Added below lines to create new HeaderTimeTracker entry and to copy all previous data in the prev row.
                 # Determine if the user making the request has permission to
                 # perform the requested action on this record
-                aNames = HeaderTimeTracker.permission_entry(sNeededLevel)
-                try:
-                    bCanHold = bool(SecurityPermission.objects.filter(
-                        title__in=aNames).filter(
-                        user__in=oRequest.user.groups.all()))
-                except ValueError:
-                    bCanHold = False
+                aChain = HeaderTimeTracker.approvals()
                 # end if
+                sReturnedLevel = 'scm1'
+                if aDestinations[index] != 'psm_config' :
+                    oNewTracker = HeaderTimeTracker.objects.create(
+                        **{'header': oHeader,
+                           'created_on': oLatestTracker.created_on,
+                           'submitted_for_approval': timezone.now()
+                           }
+                    )
 
-                # If so, approve, disapprove, or skip as requested
-                if bCanHold and sNeededLevel != 'psm_config':
+                    # Copy over approval data for each level before
+                    # destination level
+                    for level in aChain:
+                        if level == aDestinations[index]:
+                            sReturnedLevel = level
+                        # end if
+
+                        if (aChain.index(level) < aChain.index(
+                                aDestinations[index])) or (
+                                            getattr(oLatestTracker,
+                                                    level + '_approver') ==
+                                            'system'):
+                            setattr(oNewTracker, level + '_approver',
+                                    getattr(oLatestTracker,
+                                            level + '_approver', None))
+                            setattr(oNewTracker,
+                                    level + '_hold_approval',
+                                    getattr(oLatestTracker,
+                                            level + '_hold_approval', None
+                                            ))
+                            setattr(oNewTracker, level + '_approved_on',
+                                    getattr(oLatestTracker,
+                                            level + '_approved_on', None
+                                            ))
+                            setattr(oNewTracker, level + '_comments',
+                                    getattr(oLatestTracker,
+                                            level + '_comments', None))
+                        # end if
+                    # end for
+
+                    oNewTracker.save()
+            # D-06454: Chevrons not showing correct coloring when view only on On Hold records: Added below two lines to uncheck PSM_on_hold in configuration
+                    oHeader.configuration.PSM_on_hold = 0
+                    oHeader.configuration.save()
                     oHeader.configuration_status = REF_STATUS.objects.get(name='In Process/Pending')
                     oHeader.save()
 
@@ -1721,6 +1846,10 @@ def CreateDocument(oRequest):
 
     # Set the parameters for creating a document
     if not bCreateSiteTemplate:
+
+    # S-10961: Adjust Actions and Documents tabs UI and backend :- Added the below line to fetch the first line number
+        oFirstLine = oHeader.configuration.get_first_line()
+
         # Create Inquiry
         data = {
             "inquiry_type": "ZDOT",
@@ -1768,7 +1897,9 @@ def CreateDocument(oRequest):
                     'unit_price': str(
                         oHeader.configuration.override_net_value or
                         oHeader.configuration.net_value or '')
-                    if not oHeader.pick_list and oLine.line_number == '10'
+# S-10961: Adjust Actions and Documents tabs UI and backend :- Changed the below line to its next line and added line 100 condition
+                    # if not oHeader.pick_list and oLine.line_number == '10'
+                    if not oHeader.pick_list and (oFirstLine.line_number == '10' or oFirstLine.line_number == '100')
                     else '' if not oHeader.pick_list else str(GrabValue(
                         oLine.linepricing, 'override_price', '') or GrabValue(
                         oLine.linepricing, 'pricing_object.unit_price', '')

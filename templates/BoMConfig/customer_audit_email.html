@@ -33,6 +33,18 @@
                 {% endfor %}
                 </tbody>
             </table>
+    <!--S-08487: Customer upload changes :- Added below block for showing the inactive records for Sprint & T-Mobile-->
+        {% elif customer == 'Sprint' or customer == 'T-Mobile' %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number</th><th>MPN</th></tr>
+                </thead>
+                <tbody>
+                {% for map in inactive %}
+                    <tr><td>{{ map.0 }}</td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         {% else %}
             <table>
                 <thead>
@@ -59,6 +71,18 @@
                 {% endfor %}
                 </tbody>
             </table>
+    <!--S-08487: Customer upload changes :- Added below block for showing the records with invalid CA info for Sprint & T-Mobile-->
+        {% elif customer == 'Sprint' or customer == 'T-Mobile' %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number</th><th>MPN</th></tr>
+                </thead>
+                <tbody>
+                {% for map in tag %}
+                    <tr><td>{{ map.0 }}</td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         {% else %}
             <table>
                 <thead>
@@ -78,6 +102,18 @@
             <table>
                 <thead>
                     <tr><th>MPN</th><th>Customer Part Number</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
+                </thead>
+                <tbody>
+                {% for map in mpn %}
+                    <tr><td>{{ map.3 }}</td><td>{{ map.0 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+    <!--S-08487: Customer upload changes :- Added below block for showing the records with invalid MPN info for Sprint & T-Mobile-->
+        {% elif customer == 'Sprint' or customer == 'T-Mobile' %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number</th><th>MPN</th></tr>
                 </thead>
                 <tbody>
                 {% for map in mpn %}
@@ -126,6 +162,18 @@
                 {% endfor %}
                 </tbody>
             </table>
+    <!--S-08487: Customer upload changes :- Added below block for showing the records with invalid customer # info for Sprint & T-Mobile-->
+        {% elif customer == 'Sprint' or customer == 'T-Mobile' %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number</th><th>MPN</th></tr>
+                </thead>
+                 <tbody>
+                {% for map in cust %}
+                    <tr><td>{{ map.0 }}</td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
         {% else %}
             <table>
                 <thead>
@@ -148,6 +196,18 @@
                     <tr><th>Customer Part Number</th><th>MPN</th><th>Customer Asset Tagging</th><th>Customer Asset</th></tr>
                 </thead>
                 <tbody>
+                {% for map in invalid %}
+                    <tr><td>{{ map.0 }} </td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+    <!--S-08487: Customer upload changes :- Added below block for showing the invalid records for Sprint & T-Mobile-->
+        {% elif customer == 'Sprint' or customer == 'T-Mobile' %}
+            <table>
+                <thead>
+                    <tr><th>Customer Part Number</th><th>MPN</th></tr>
+                </thead>
+                 <tbody>
                 {% for map in invalid %}
                     <tr><td>{{ map.0 }} </td><td>{{ map.3 }}</td><td>{% if map.1 == True %}Y{% elif map.1 == False %}N{% endif %}</td><td>{% if map.2 == True %}Y{% elif map.2 == False %}N{% endif %}</td></tr>
                 {% endfor %}

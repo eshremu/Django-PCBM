@@ -45,6 +45,8 @@ urlpatterns = patterns(
     url(r'^actions/inprocess/customer/(?P<iCustId>\d+)/$', views.ActionCustomer, name='action_inprocess_customer'),
     url(r'^actions/active/$', views.Action, {'type':'active'},
         name='action_active'),
+# S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added below url to redirect to this page based on selected CU
+    url(r'^actions/active/customer/(?P<iCustId>\d+)/$', views.ActiveCustomer, name='action_active_customer'),
     url(r'^actions/hold/$', views.Action, {'type':'hold'}, name='action_hold'),
     url(r'^actions/changepart/$', views.Action, {'type': 'changepart'},
         name='action_changepart'),
@@ -88,6 +90,10 @@ urlpatterns = patterns(
     url(r'^admin/mailing/add/$', views.MailingChange, name='mailadd'),
 # Added below line for S-07533 New sub-tab drop-down admin base template creation
     url(r'^admin/dropdown/$', views.DropDownAdmin, name='dropdownadmin'),
+# S-10578: Admin to unlock a locked config:- Added below to open unlock admin page with the list of locked configs
+    url(r'^admin/unlock/$', views.UnlockAdmin, name='unlockadmin'),
+# S-10578:-Admin to unlock a locked config: Added below to call the function with the functionality for unlocking the locked configs
+    url(r'^admin/unlock/unlockconfig$', views.UnlockConfigAdmin, name='unlockconfigadmin'),
 # S-05903, S-05905, S-05906, S-05907, S-05908,S-05909:- Added From 'productarea1admin' to 'radiofrequencybanddelete' for Admin dropdown functionalities
     url(r'^admin/dropdown/productarea1/$', views.ProductArea1Admin, name='productarea1admin'),
     url(r'^admin/dropdown/productarea1/add$', views.ProductArea1Add, name='productarea1add'),
@@ -115,10 +121,12 @@ urlpatterns = patterns(
     url(r'^admin/dropdown/radiofrequencyband/delete$', views.RFDelete, name='radiofrequencybanddelete'),
     url(r'^admin/user/$', views.UserAdmin, name='useradmin'),
     url(r'^admin/user/add/$', views.UserAdd, name='useradd'),
-# S-07204 Refine User Admin page added delete button logic  in user admin page
+# S-07204:- Refine User Admin page: Added delete button logic  in user admin page
     url(r'^admin/user/delete/$', views.UserDelete, name='userdelete'),
     url(r'^admin/user/changeuser/(?P<iUserId>\d+)$', views.UserChange,
         name='userchange'),
+# S-10578:-Admin to unlock a locked config: Added below to redirect to userchange page on clicking username from unlock page
+    url(r'^admin/user/changeuser/(?P<iUserName>\w+)$', views.UserChangeFromUnlock, name='userchangefromunlock'),
     url(r'^admin/$', views.AdminLanding, name='adminlanding'),
     url(r'^admin/approval/$', views.ApprovalAdmin, name='approvaladmin'),
     url(r'^admin/approval/add/$', views.ApprovalChange, name='approvaladd'),

@@ -542,6 +542,9 @@ class Header(models.Model):
     readiness_complete = models.IntegerField(verbose_name='Readiness Complete (%)',
                                              blank=True, null=False, default=0)
 
+# S-08410:Adjust Model and BoM Header Tab:- Added below field to check whether to start from line 100 or not
+    line_100 = models.BooleanField(verbose_name='Line 100?', default = False)
+
     pick_list = models.BooleanField(default=False, blank=True)
     projected_cutover = models.DateField(verbose_name='Projected Cut-over Date',
                                          blank=True, null=True)
@@ -1157,11 +1160,19 @@ class Configuration(models.Model):
         :return: ConfigLine object
         """
         oFirst = None
-        try:
-            oFirst = self.configline_set.get(line_number='10')
-        except ConfigLine.DoesNotExist:
-            pass
-        # end try
+        line100 = self.header.line_100
+        if line100:
+            try:
+                oFirst = self.configline_set.get(line_number='100')
+            except ConfigLine.DoesNotExist:
+                pass
+            # end try
+        else:
+            try:
+                oFirst = self.configline_set.get(line_number='10')
+            except ConfigLine.DoesNotExist:
+                pass
+            # end try
         return oFirst
     # end def
 
@@ -1227,6 +1238,10 @@ class Configuration(models.Model):
                     # final value can be determined from this override price and
                     # any ZUST value
                     if not self.header.pick_list and oCLine.line_number == '10':
+                        override_net_total = oCLine.linepricing.override_price
+            #D-06102: Unit Price column incorrectly highlighted in Baseline download:
+            # Any overridden price on line 100 for non-pick-list records defines the total value of the record.
+                    elif not self.header.pick_list and oCLine.line_number == '100':
                         override_net_total = oCLine.linepricing.override_price
                     else:
                         # Update override_net_total
@@ -1749,14 +1764,15 @@ class HeaderTimeTracker(models.Model):
     @property
     def hold_level(self):
         """
-        Returns the approval level that contains a valid denied_approval value
+        Returns the approval level that contains a valid hold_approval value
         :return: str / None
         """
+        # D-06454: Chevrons not showing correct coloring when view only on On Hold records: added .upper in return level to match the case used in entrylanding.html
         if self.hold_on:
             for level in self.__class__.approvals():
                 if hasattr(self, level + '_hold_approval') and \
                         getattr(self, level + '_hold_approval'):
-                    return level
+                    return level.upper()
         else:
             return None
 

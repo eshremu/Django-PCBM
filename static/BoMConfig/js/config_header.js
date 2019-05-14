@@ -12,6 +12,7 @@ var old_conf_name;
 var new_conf_name;
 
 $(document).ready(function(){
+
 //D-03994-Manual override pricing fix: Added below old conf name  to distinguish between clone and normal config
 old_conf_name = $('#id_configuration_designation').val();
 // S-07112 - Change dropdown selection view and value:-Added below code to show the option selected in the sales_group & ericsson contract dropdown
@@ -230,6 +231,17 @@ if(!($("#id_pick_list").is(':checked'))){
         list_react_filler('ericsson_contract', 'bill_to_party');
         list_react_filler('ericsson_contract', 'payment_terms');
     });
+// S-08410:Adjust Model and BoM Header Tab:- Added below if conditions to check the line 100 value of the config
+// If a new config is opened then checkbox should be checked, if existing opens then depending on the value it will show checked or unchecked
+    if(isline100==''){                          // For New config on BoM entry page load
+     $('#id_line_100').prop('checked', true);
+    }
+    if(isline100 == 'True'){                    // For existing config on opening a line 100 config
+         $('#id_line_100').prop('checked', true);
+    }
+    if(isline100 == 'False'){                   // For existing config on opening a line 10 config
+        $('#id_line_100').prop('checked', false);
+    }
 
     $('#id_baseline_impacted').change(function(){
         if ($(this).val() === 'New'){
@@ -328,7 +340,7 @@ function list_filler(parent, child, index){
 function list_react_filler(parent, child, index){
     index = typeof(index) !== 'undefined' ? index : 0;
 
-//    if(!isNaN($('#id_' + parent).val()) && $('#id_' + parent).val() != ''){alert('in')
+//    if(!isNaN($('#id_' + parent).val()) && $('#id_' + parent).val() != ''){
 
 //S-06166- Shift header page to new reference table:Added to show the change based on CU change; name,sold_to,contract_number=''
     if(parent == 'customer_unit'){
