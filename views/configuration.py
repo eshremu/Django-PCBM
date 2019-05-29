@@ -592,10 +592,11 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             # This widget needs to use Baseline_Revision because we need to
             # filter using the completed_date, to ensure we only allow baselines
             # that have an in-process configuration to be selected.
+            # S - 11552: Baseline tab changes: changed choices for new baseline to catalog
             headerForm.fields['baseline_impacted'].widget = \
                 forms.widgets.Select(
                     choices=(('', '---------'),
-                             ('New', 'Create New baseline')) + tuple(
+                             ('New', 'Create New catalog')) + tuple(
                         (obj.title, obj.title) for obj in
                         Baseline_Revision.objects.filter(
                             baseline__customer=oExisting.customer_unit if

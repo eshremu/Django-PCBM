@@ -389,7 +389,8 @@ class SubmitForm(forms.Form):
             queryset=Baseline.objects.exclude(title='').exclude(title='No Associated Baseline').exclude(isdeleted=1),
             empty_label="-- Show All --",
             required=False,
-            label='Baseline')
+            label='Catalog')
+    # S-11544: Change main tab from "Baseline" to "Catalog": Changed label from Baseline
 
     # def clean(self):
     #     """

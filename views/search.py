@@ -138,7 +138,7 @@ def Search(oRequest, advanced=False):
                     'type="checkbox"/></th><th style="width:175px;">'
                     'Configuration</th><th style="25px;"></th>'
                     '<th style="width:175px;">Program</th>'
-                    '<th style="width:175px;">Baseline</th>'
+                    '<th style="width:175px;">Catalog</th>' #S-11548: Search - Advanced Search sub-tab changes: Changed Baseline to Catalog
                     '<th style="width:75px;">Version</th>'
                     '<th style="width:175px;">Person Responsible</th>'
                     '<th style="width:175px;">BoM Request Type</th>'
@@ -192,7 +192,7 @@ def Search(oRequest, advanced=False):
                 '<input class="selectall" type="checkbox"></th>'
                 '<th style="width:175px;">Configuration</th>'
                 '<th style="width: 20px;"></th><th style="width:175px;">'
-                'Baseline Impacted</th><th style="width:175px;">Version</th>'
+                'Catalog Impacted</th><th style="width:175px;">Version</th>' #S-11548: Search - Advanced Search sub-tab changes: Changed Baseline Impacted to Catalog Impacted
                 '<th style="width:175px;">Inquiry / Site Template Number</th>'
                 '<th style="width:175px;">Customer</th>'
             )

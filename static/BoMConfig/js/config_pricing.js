@@ -11,8 +11,9 @@ $(document).ready(function(){
         }
 
         if(program_list != undefined && program_list.length > 1){
-            var message = "Multiple matching configurations were found.<br/>Please select the program & baseline for the desired configuration.";
-            message += '<br/><label for="desiredprog" style="padding-right: 5px;">Program|Baseline:</label><select name="desiredprog">';
+        //     S-11552: Baseline tab changes : changed pop-up message to catalog
+            var message = "Multiple matching configurations were found.<br/>Please select the program & catalog for the desired configuration.";
+            message += '<br/><label for="desiredprog" style="padding-right: 5px;">Program|Catalog:</label><select name="desiredprog">';
             for(var i=0; i<program_list.length; i++) {
                 message += '<option value="'+ program_list[i][0] + "_" + baseline_list[i][0] +'">' +
                     program_list[i][1] + ' | ' + baseline_list[i][1] + '</option>';

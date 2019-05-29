@@ -130,7 +130,8 @@
                 <tr>
                   {% if field.label != 'Model replaced link' %}
      <!--S-08410:Adjust Model and BoM Header Tab:- Added 'Line 100?' field after 'Picklist' field -->
-                    {% if field.label == 'Baseline Impacted' or field.label == 'Model' or field.label == 'Model Description' or field.label == 'What Model is this replacing?' or field.label == 'Initial Revision' or field.label == 'Configuration/Ordering Status' or field.label == 'Readiness Complete (%)' or field.label == 'Pick list' or field.label == 'Line 100?' or field.label == 'Projected Cut-over Date' or field.label == 'Optional Free Text Field 1' or field.label == 'Optional Free Text Field 2' or field.label == 'Optional Free Text Field 3' %}
+                    <!--S-11545: BoM Entry - Header sub tab change: changed the filed.label from Baseline Impacted -->
+                    {% if field.label == 'Catalog Impacted' or field.label == 'Model' or field.label == 'Model Description' or field.label == 'What Model is this replacing?' or field.label == 'Initial Revision' or field.label == 'Configuration/Ordering Status' or field.label == 'Readiness Complete (%)' or field.label == 'Pick list' or field.label == 'Line 100?' or field.label == 'Projected Cut-over Date' or field.label == 'Optional Free Text Field 1' or field.label == 'Optional Free Text Field 2' or field.label == 'Optional Free Text Field 3' %}
                         <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red; font-size:14pt;">*</span>{% endif %}</td>
                         {% if field.errors %}
                         <td >
@@ -146,10 +147,11 @@
                         </td>
                         {% endif %}
                     {% endif %}
-                    {% if field.label == 'Baseline Impacted' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
+                    <!--S-11545: BoM Entry - Header sub tab change: changed the filed.label from Baseline Impacted -->
+                    {% if field.label == 'Catalog Impacted' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
                         <td>
-                            &nbsp;&nbsp;
-                            <input id="new_baseline" type="text" name="new_baseline" placeholder="Baseline Name" style="display:none;"/>
+                            <!--S-11552: Baseline tab changes : changed placeholder to catalog--> &nbsp;&nbsp;
+                            <input id="new_baseline" type="text" name="new_baseline" placeholder="Catalog Name" style="display:none;"/>
                             &nbsp;&nbsp;&nbsp;&nbsp;
                         </td>
                         {% elif field.label == 'Configuration/Ordering Status' and headerForm.configuration_status.value == 4 %}

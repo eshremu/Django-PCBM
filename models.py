@@ -518,9 +518,9 @@ class Header(models.Model):
     shipping_condition = models.CharField(max_length=50,
                                           verbose_name='Shipping Condition',
                                           blank=True, null=True, default='71')
-
+# S-11545: BoM Entry - Header sub tab change: changed the verbose_name from Baseline Impacted
     baseline_impacted = models.CharField(max_length=50,
-                                         verbose_name='Baseline Impacted',
+                                         verbose_name='Catalog Impacted',
                                          blank=True, null=True)
     model = models.CharField(max_length=50, verbose_name='Model', blank=True,
                              null=True)

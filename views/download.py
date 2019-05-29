@@ -538,7 +538,8 @@ def DownloadBaselineMaster(oRequest):
     # oSheet.column_dimensions['A'].width = 10
     # S-05748-Remove columns in downloaded all Baselines Master file for MTW Customer( added Scustomer=MTW , to have a new baseline download format)(line 528-626)
     if sCustomer == 'MTW':
-        oSheet['B1'] = 'Baseline'
+    # S - 11552: Baseline tab changes: changed downloaded table header to catalog
+        oSheet['B1'] = 'Catalog'
         oSheet['B1'].font = headerFont
         oSheet.column_dimensions['B'].width = 25
 
@@ -658,7 +659,8 @@ def DownloadBaselineMaster(oRequest):
         oSheet.column_dimensions['M'].width = 50
 
     else:
-        oSheet['B1'] = 'Baseline'
+        # S - 11552: Baseline tab changes: changed downloaded table header to catalog
+        oSheet['B1'] = 'Catalog'
         oSheet['B1'].font = headerFont
         oSheet.column_dimensions['B'].width = 25
 
@@ -2118,16 +2120,17 @@ def EmailDownload(oRequest,oBaseline):
 
     # Build email message
     sSubject = envName + 'New revision released: ' + oBaseline.title  # D-03452: Some emails are not being tagged as test system, added envName
+    # S - 11552: Baseline tab changes: changed sMessage to include catalog
     sMessage = ('Revision {} of {} has been released as of {}.  A copy of the '
-                'baseline has been attached.\nIssues may be addressed with '
+                'catalog has been attached.\nIssues may be addressed with '
                 'Katya Pridgen at Katya.Pridgen@Ericsson.com.\n\n'
                 '***This is an automated message. Do not reply to this '
                 'message.***').format(
         oBaseline.current_active_version, oBaseline.title,
         oBaseline.latest_revision.completed_date.strftime('%m/%d/%Y'))
-
+    # S - 11552: Baseline tab changes: changed sMessageHtml to include catalog
     sMessageHtml = ('Revision {} of {} has been released as of {}.  '
-                    'A copy of the baseline has been attached.<br/>'
+                    'A copy of the catalog has been attached.<br/>'
                     'Issues may be addressed with Katya Pridgen at '
                     '<a href="mailto:Katya.Pridgen@Ericsson.com">'
                     'Katya.Pridgen@ericsson.com</a>.<br/><br/>'

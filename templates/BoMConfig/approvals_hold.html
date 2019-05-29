@@ -18,7 +18,8 @@
         </ul>
         <ul class="btn" style="border: none; padding: 5px 0 0 0;">
             <li class="dropdown" style="list-style-type: none;">
-                <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Baseline <span class="caret"></span></button>
+           <!--S-11555: Approvals tab changes : Changed Baseline to Catalog in Filter-->
+                <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Catalog <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for baseline in baselines %}
                     <li><a href="#" onclick="baseline_filter('{{ baseline }}');">{{ baseline }}</a></li>
@@ -55,7 +56,8 @@
                             <th style="width:25px;"></th>
                             <th style="height: 160px;vertical-align: bottom;">Program</th>
                             <th style="width:25px;"></th>
-                            <th style="height: 160px;vertical-align: bottom;">Baseline</th>
+             <!--S-11555: Approvals tab changes : Changed Baseline to Catalog in Table Header UI-->
+                            <th style="height: 160px;vertical-align: bottom;">Catalog</th>
                             <th style="width:25px;"></th>
                             <th style="height: 160px;vertical-align: bottom;">BoM Request Type</th>
                             {% for name in namelist %}

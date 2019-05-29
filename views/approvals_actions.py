@@ -131,10 +131,11 @@ def Approval(oRequest):
         'customer_list': ['All'] + aAvailableCU,
         'approval_seq': HeaderTimeTracker.approvals(),
         'deaddate': timezone.datetime(1900, 1, 1),
+ # S-11555: Approvals tab changes: Changed Baseline to Catalog in role header for PSM Baseline Mgmt.(PSM changed to PPM) and  Baseline Release & Dist.
         'namelist': ['PSM Configuration Mgr.', 'SCM #1', 'SCM #2', 'CSR',
-                     'Comm. Price Mgmt.', 'ACR', 'PSM Baseline Mgmt.',
+                     'Comm. Price Mgmt.', 'ACR', 'PPM Catalog Mgmt.',
                      'Customer #1', 'Customer #2', 'Customer Warehouse',
-                     'Ericsson VAR', 'Baseline Release & Dist.'],
+                     'Ericsson VAR', 'Catalog Release & Dist.'],
         'viewauthorized': SecurityPermission.objects.filter(
             title__iregex='^.*Approval.*$').filter(
             user__in=oRequest.user.groups.all()),
@@ -196,10 +197,11 @@ def ApprovalHold(oRequest):
         'customer_list': ['All'] + aAvailableCU,
         'approval_seq': HeaderTimeTracker.approvals(),
         'deaddate': timezone.datetime(1900, 1, 1),
+        # S-11555: Approvals tab changes: Changed Baseline to Catalog in role header for PSM Baseline Mgmt.(PSM changed to PPM) and  Baseline Release & Dist.
         'namelist': ['PSM Configuration Mgr.', 'SCM #1', 'SCM #2', 'CSR',
-                     'Comm. Price Mgmt.', 'ACR', 'PSM Baseline Mgmt.',
+                     'Comm. Price Mgmt.', 'ACR', 'PPM Catalog Mgmt.',
                      'Customer #1', 'Customer #2', 'Customer Warehouse',
-                     'Ericsson VAR', 'Baseline Release & Dist.'],
+                     'Ericsson VAR', 'Catalog Release & Dist.'],
         'viewauthorized': SecurityPermission.objects.filter(
             title__iregex='^.*Approval.*$').filter(
             user__in=oRequest.user.groups.all()),
@@ -428,10 +430,11 @@ def Action(oRequest, **kwargs):
                       'BOM_PSM_Baseline_Manager'])),
         'approval_seq': HeaderTimeTracker.approvals(),
         'deaddate': timezone.datetime(1900, 1, 1),
+    # S-11553: Actions tab changes : Changed Baseline to Catalog in role header for PSM Baseline Mgmt.(PSM changed to PPM) and  Baseline Release & Dist.
         'namelist': ['SCM #1', 'SCM #2', 'CSR', 'Comm. Price Mgmt.', 'ACR',
-                     'PSM Baseline Mgmt.', 'Customer #1', 'Customer #2',
+                     'PPM Catalog Mgmt.', 'Customer #1', 'Customer #2',
                      'Customer Warehouse', 'Ericsson VAR',
-                     'Baseline Release & Dist.'],
+                     'Catalog Release & Dist.'],
     }
 
     return Default(oRequest, sTemplate=sTemplate, dContext=dContext)

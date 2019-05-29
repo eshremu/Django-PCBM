@@ -131,8 +131,8 @@ function downloadModal(){
     if($('#downloadform input[name="baseline"]').val() == 'No Associated Baseline') {
         sMessage += '<label style="padding-right:5px;">Customer:</label><select name="cust">' + cust_list + '</select>';
     }
-
-    messageToModal('Download Baseline',
+//     S-11552: Baseline tab changes : changed pop-up message to catalog
+    messageToModal('Download Catalog',
             sMessage,
             function(){
                 $("#downloadform input[name='version']").val($('#messageModal .modal-body select[name="rev"]').val());
@@ -172,11 +172,12 @@ function rollbackTest(){
             if(returned.status == 1) {
                 rollbackModal();
             } else {
-                var errorMessage = 'The baseline cannot be rolled back due to the following error:';
+                //     S-11552: Baseline tab changes : changed pop-up message to catalog
+                var errorMessage = 'The catalog cannot be rolled back due to the following error:';
                 for(var index in returned.errors){
                     errorMessage += '<br/>' + returned.errors[index];
                 }
-                messageToModal('Unable to rollback baseline', errorMessage);
+                messageToModal('Unable to rollback catalog', errorMessage);
             }
         },
         error: function(xhr, status, error){
@@ -188,8 +189,9 @@ function rollbackTest(){
 }
 
 function rollbackModal(){
-    messageToModal('Rollback Baseline',
-            'You are about to rollback the latest revision of this baseline. This will return the latest "Active" revision to an "In-process" state.<br/><br/>'+
+//     S-11552: Baseline tab changes : changed pop-up message to catalog
+    messageToModal('Rollback Catalog',
+            'You are about to rollback the latest revision of this catalog. This will return the latest "Active" revision to an "In-process" state.<br/><br/>'+
             '<em style="color: red; text-decoration: underline;">This CANNOT be undone!</em><br/><br/>'+
             'Are you sure you wish to proceed?',
             function(){
@@ -207,7 +209,8 @@ function rollbackModal(){
                     success: function(returned) {
                         // var returned = JSON.parse(data);
                         if(returned.status == 1) {
-                            messageToModal('Rollback completed', 'Baseline has been rolled back ' + returned.revision,
+                        //     S-11552: Baseline tab changes : changed pop-up message to catalog
+                            messageToModal('Rollback completed', 'Catalog has been rolled back ' + returned.revision,
                                 function(){$('#id_baseline_title').val($('#rollbackform input[name="baseline_title"]').val()); $('#headersubform form').submit();}
                             );
                         } else {
