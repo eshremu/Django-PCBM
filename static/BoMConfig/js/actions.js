@@ -105,7 +105,8 @@ function base_filter(baseline){
         $("#base_filter").html(baseline + "&nbsp;<span class='caret'></span>");
     }
     else{
-        $("#base_filter").html("Baseline" + "&nbsp;<span class='caret'></span>");
+//   S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
+        $("#base_filter").html("Catalog" + "&nbsp;<span class='caret'></span>");
     }
     updateFiltersActive();
 }
@@ -115,7 +116,8 @@ function baseline_filter(baseline){
         $("#baseline_filter").html(baseline + "&nbsp;<span class='caret'></span>");
     }
     else{
-        $("#baseline_filter").html("Baseline" + "&nbsp;<span class='caret'></span>");
+  //   S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
+        $("#baseline_filter").html("Catalog" + "&nbsp;<span class='caret'></span>");
     }
     updateFilters();
 }
@@ -134,7 +136,8 @@ function updateFiltersActive(){
         if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
             hide = true;
         }
-        if(baseline !== "Baseline"){
+        //   S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
+        if(baseline !== "Catalog"){
             var baseline_row = $(rows[row]).find('td:nth-of-type(3):contains("' + baseline + '")');
             if (!(baseline_row.length !== 0 && $(baseline_row[0]).text() == baseline)){
                 hide = true;
@@ -169,8 +172,8 @@ function updateFilters(){
         if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
             hide = true;
         }
-
-        if(baseline !== "Baseline"){
+//   S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
+        if(baseline !== "Catalog"){
             var baseline_row = $(rows[row]).find('td:nth-of-type(7):contains("' + baseline + '")');
             if (!(baseline_row.length !== 0 && $(baseline_row[0]).text() == baseline)){
                 hide = true;

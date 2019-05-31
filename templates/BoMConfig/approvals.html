@@ -358,7 +358,8 @@
                 $("#baseline_filter").html(baseline + "&nbsp;<span class='caret'></span>");
             }
             else{
-                $("#baseline_filter").html("Baseline" + "&nbsp;<span class='caret'></span>");
+            <!--S-11555: Approvals tab changes : Changed Baseline to Catalog when select All-->
+                $("#baseline_filter").html("Catalog" + "&nbsp;<span class='caret'></span>");
             }
             updateFilters();
         }

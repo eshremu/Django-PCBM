@@ -211,7 +211,8 @@
                 $("#baseline_filter").html(baseline + "&nbsp;<span class='caret'></span>");
             }
             else{
-                $("#baseline_filter").html("Baseline" + "&nbsp;<span class='caret'></span>");
+            <!--S-11555: Approvals tab changes : Changed Baseline to Catalog in Filter-->
+                $("#baseline_filter").html("Catalog" + "&nbsp;<span class='caret'></span>");
             }
             updateFilters();
         }
@@ -232,8 +233,8 @@
                 if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
                     hide = true;
                 }
-
-                if(baseline !== "Baseline"){
+<!--S-11555: Approvals tab changes : Changed Baseline to Catalog in Filter-->
+                if(baseline !== "Catalog"){
                     var baseline_row = $(rows[row]).find('td:nth-of-type(6):contains("' + baseline + '")');
                     if (!(baseline_row.length !== 0 && $(baseline_row[0]).text() == baseline)){
                         hide = true;
