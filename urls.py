@@ -26,6 +26,8 @@ urlpatterns = patterns(
     url(r'^pricing/download/$', views.PartPriceDownload,
         name='pricingdownload'),
     url(r'^pricing_config/$', views.ConfigPricing, name='configpricing'),
+# S-11541: Upload - pricing for list of parts in pricing tab: Added below PriceUpload to upload pricing data
+    url(r'^price_upload/$', views.PriceUpload, name='priceupload'),
 # S-11537: Multi Config sub tab - UI for Multiple Config tab :- Added below MultConfigPricing to show multiple configs
     url(r'^multi_config_pricing/$', views.MultiConfigPricing, name='multiconfigpricing'),
 # S-11538: Open multiple revisions for each configuration - UI Elements :- Added below to show multiple revisions for each config

@@ -4,13 +4,17 @@ View related to viewing, editing, and downloading pricing information
 
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-
+from django.shortcuts import redirect
+from django.template.loader import render_to_string
 from BoMConfig.models import Header, Configuration, ConfigLine, PartBase, \
     LinePricing, REF_CUSTOMER, SecurityPermission, REF_SPUD, PricingObject, \
     REF_TECHNOLOGY, HeaderTimeTracker,User_Customer
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue, StrToBool
-
+from datetime import datetime as dt
+import openpyxl
+from openpyxl import utils
+import zipfile
 import json
 import datetime
 import itertools
@@ -86,8 +90,8 @@ def PartPricing(oRequest):
                                 ('', '(None)') else None,
                                 spud__name=aRowToSave[3] if aRowToSave[3] not in
                                 ('', '(None)') else None,
-                                technology__name=aRowToSave[4] if aRowToSave[4]
-                                not in ('', '(None)') else None,
+                                # technology__name=aRowToSave[4] if aRowToSave[4]
+                                # not in ('', '(None)') else None,
                                 is_current_active=True
                             )
                         except PricingObject.DoesNotExist:
@@ -235,23 +239,23 @@ def PartPricing(oRequest):
 
                 # Create table data from list of objects
                 for oPriceObj in aPriceObjs.filter(customer__in=aAvailableCU): # S-05923: Pricing - Restrict View to allowed CU's based on permissions added filter
-
+            # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
                     dContext['partlines'].append([
                         oPriceObj.part.product_number,
                         oPriceObj.customer.name,
                         oPriceObj.sold_to or '(None)',
                         getattr(oPriceObj.spud, 'name', '(None)'),
-                        getattr(oPriceObj.technology, 'name', '(None)'),
+                        # getattr(oPriceObj.technology, 'name', '(None)'),
                         oPriceObj.unit_price or '',
                         # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers
                         oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
                         oPriceObj.valid_from_date else '',  # Valid-from
                         oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
                         oPriceObj.valid_to_date else '',  # Valid-To
-                        oPriceObj.cutover_date.strftime('%m/%d/%Y') if
-                        oPriceObj.cutover_date else '',  # Cut-over
-                        str(oPriceObj.price_erosion),  # Erosion
-                        oPriceObj.erosion_rate or '',  # Erosion rate
+                        # oPriceObj.cutover_date.strftime('%m/%d/%Y') if
+                        # oPriceObj.cutover_date else '',  # Cut-over
+                        # str(oPriceObj.price_erosion),  # Erosion
+                        # oPriceObj.erosion_rate or '',  # Erosion rate
                         oPriceObj.comments or '',  # Comments
                     ])
 
@@ -278,17 +282,267 @@ def PartPricing(oRequest):
     # part number provided
     if not dContext['partlines']:
         if oRequest.POST.get('part') and not status_message:
+# S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. removed 4 ''
             dContext['partlines'] = [[oRequest.POST.get('part', ''), '', '', '',
-                                      '', '', '', '', '', '', '', '']]
+                                      '', '', '', '']]
         elif oRequest.POST.get('initial') and not status_message:
             dContext['partlines'] = [[oRequest.POST.get('initial', ''), '', '',
-                                      '', '', '', '', '', '', '', '', '']]
+                                      '', '', '', '', '']]
         else:
             dContext['partlines'] = [[]]
 
     return Default(oRequest, sTemplate='BoMConfig/partpricing.html',
                    dContext=dContext)
+# S-11541: Upload - pricing for list of parts in pricing tab: Added below PriceUpload function to upload pricing data
+@login_required
+def PriceUpload(oRequest):
+    """
+    View to provide users with a means to upload Part Number price
+    for creating new pricingobject mapping objects.
+    :param oRequest:
+    :return:
+    """
+    # Determine if user has permission to interact with pricing information
+    bCanReadPricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Read').filter(
+        user__in=oRequest.user.groups.all()))
+    bCanWritePricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Write').filter(
+        user__in=oRequest.user.groups.all()))
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
 
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+    dContext = {'customer_list': aAvailableCU,
+                'pricing_read_authorized': bCanReadPricing,
+                'pricing_write_authorized': bCanWritePricing
+                }
+
+    # If POSTing an upload file
+    if oRequest.POST:
+        try:
+            # Attempt to process the uploaded file
+            bErrors = ProcessPriceUpload(
+                oRequest.FILES['file'],
+                REF_CUSTOMER.objects.get(id=oRequest.POST['customer']),
+                oRequest.user
+            )
+            status_message = 'Upload completed.' + \
+                (' An email has been sent detailing errors.'
+                              if bErrors else '')
+            status_error = False
+        except ValueError:
+            status_message = 'Invalid file provided'
+            status_error = True
+
+        dContext['status_message'] = status_message
+        dContext['status_error'] = status_error
+
+    return Default(oRequest, sTemplate='BoMConfig/priceupload.html',
+                   dContext=dContext)
+# end def
+# S-12189: Validate pricing for list of parts in pricing tab: Added below function to validate pricing data before saving in th DB
+# Condition to Upload: if the uploaded values match an existing entry exactly in the combined fields for Part #, Customer, Sold-to, SPUD,
+# Valid From, and Valid To, then it should be flagged in an email and not added to the database. Same for Comment also. Any data if there is
+# a difference in one of those fields from (a), then a new entry should be made except for customer will be uploaded.
+def ProcessPriceUpload(oStream, oCustomer, oUser):
+    """
+    Function to parse information from a data stream provided in oStream into
+    CustomerPartInfo objects.  There are currently two supported file types.
+    :param oStream: Data stream (filestream, etc.) containing uploaded
+    information
+    :param oCustomer: REF_CUSTOMER object used to create CustomerPartInfo object
+    :param oUser: User object creating entries
+    :return: Boolean indicating if any erroneous data was encountered
+    """
+    sSheetName = "Price Upload"
+    aColumns = [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]]
+    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)', 'Valid From',
+                 'Valid To', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments']
+
+    # Attempt to open the .xls(x) file
+    try:
+        oFile = openpyxl.load_workbook(oStream, read_only=True)
+    except (IOError, utils.exceptions.InvalidFileException, zipfile.BadZipFile):
+        raise TypeError('Invalid file')
+
+    # Attempt to find exact match for expected sheet name (this was needed due
+    # to extra spaces being present in file, which we cannot control)
+    for sName in oFile.get_sheet_names():
+        if sSheetName in sName:
+            sSheetName = sName
+            break
+    # Attempt to retrieve the sheet object of the file
+    try:
+        oDataSheet = oFile.get_sheet_by_name(sSheetName)
+    except KeyError:
+        raise TypeError('Invalid sheet name')
+
+    aSheetData = oDataSheet.rows
+
+    # Determine if expected headers match what is in the file, to ensure we use
+    # the correct data
+    aFileHeaders = next(aSheetData, list())
+    tDesiredHeaders = list(str(aFileHeaders[i-1].value).strip() for i in
+                           itertools.chain.from_iterable(aColumns))
+    if tDesiredHeaders != aHeaders:
+        raise TypeError('Header line mismatch')
+
+
+    aExtractedData = []
+    for row in aSheetData:
+        for aDataGroup in aColumns:
+            aTemp = []
+            for (idx, iCol) in enumerate(aDataGroup):
+                oData = row[iCol - 1].value
+                aTemp.append(oData)
+            # end for
+            aTemp = tuple(aTemp)
+            if any(aTemp):
+                aExtractedData.append(aTemp)
+                # end for
+                # end for
+
+    # Remove duplicate entries
+    aExtractedData = list(set(aExtractedData))
+    aDuplicateEntry = []
+    aDuplicateComments = []
+    aDuplicateCustomer = []
+
+    bErrorsLogged = False
+
+    for tPart in aExtractedData:
+        # Check if any mappings exists with current info
+        # Attempt to find an entry that matches exactly
+
+        try:
+            vt_temp = datetime.date.strftime(tPart[7], '%Y-%m-%d')
+            vf_temp = datetime.date.strftime(tPart[6], '%Y-%m-%d')
+            oCurrentPriceObj = PricingObject.objects.filter(
+                part__product_number__iexact=tPart[0],
+                customer__name=tPart[1],
+                sold_to=tPart[2] if tPart[2] not in ('', '(None)') else None,
+                spud__name=tPart[3] if tPart[3] not in('', '(None)') else None,
+                valid_from_date=vf_temp,
+                valid_to_date=vt_temp,
+                is_current_active=True
+            )
+
+        except PricingObject.DoesNotExist:
+            oCurrentPriceObj = None
+
+        if not oCurrentPriceObj and str(oCustomer) != str(tPart[1]):
+            aDuplicateCustomer.append(tPart)
+            continue
+        if oCurrentPriceObj and str(oCustomer) != str(tPart[1]):
+            aDuplicateCustomer.append(tPart)
+            continue
+        if oCurrentPriceObj and str(oCustomer) == str(tPart[1]) and not tPart[11]:
+            aDuplicateEntry.append(tPart)
+            continue
+        if oCurrentPriceObj and str(oCustomer) == str(tPart[1]) and tPart[11]:
+            aDuplicateComments.append(tPart)
+            continue
+
+
+        if not oCurrentPriceObj:
+            # Create a new PricingObject
+
+            try:
+                oNewPriceObj = PricingObject.objects.create(
+                    part=PartBase.objects.get(
+                        product_number__iexact=tPart[0]),
+                    spud=REF_SPUD.objects.get(name__iexact=tPart[3])if tPart[3] not
+                                    in ('(None)', '', None, 'null') else None,
+                    customer=oCustomer,
+                    sold_to=tPart[2] if tPart[2] not
+                                    in ('(None)', '', None, 'null') else None,
+                    unit_price=tPart[5],
+                    valid_from_date=vf_temp,
+                    valid_to_date=vt_temp,
+                    technology=REF_TECHNOLOGY.objects.get(
+                                        name=tPart[4]) if tPart[4] not
+                                    in ('(None)', '', None, 'null') else None,
+                    comments=tPart[11] if tPart[11] not
+                                          in ('(None)', '', None, 'null') else None,
+                    is_current_active=True,
+
+                )
+            except PricingObject.DoesNotExist:
+                oNewPriceObj = None
+        # end if
+    # end for
+    if aDuplicateComments or aDuplicateCustomer or aDuplicateEntry :
+        bErrorsLogged = True
+        aDuplicateEntry.sort(key=lambda x: x[3])
+        aDuplicateComments.sort(key=lambda x: x[3])
+        aDuplicateCustomer.sort(key=lambda x: x[3])
+
+
+        subject = 'Price upload errors'
+        from_email = 'acc.admin@ericsson.com'
+        text_message = GenerateEmailMessage(
+            **{
+                'dupentry': aDuplicateEntry,
+                'comments': aDuplicateComments,
+                'cu': aDuplicateCustomer,
+                'user': oUser,
+                'filename': oStream.name
+            }
+        )
+        html_message = render_to_string(
+            'BoMConfig/priceupload_email.html',
+            {
+                'dupentry': aDuplicateEntry,
+                'comments': aDuplicateComments,
+                'cu': aDuplicateCustomer,
+                'user': oUser,
+                'filename': oStream.name
+            }
+        )
+        oUser.email_user(subject=subject, message=text_message,
+                         from_email=from_email, html_message=html_message)
+    # end if
+
+
+    return bErrorsLogged
+# S-12189: Validate pricing for list of parts in pricing tab: Added below function to generate email based on the error faced during upload.
+def GenerateEmailMessage( dupentry=(), comments=(), cu=(),
+                         user=None, filename=''):
+    """
+    Function to generate a plain-text error message detailing any errors
+    encountered during file upload
+    :param cu: List of entries found that duplicate an existing customer associated
+    :param comments: List of entries found that duplicate an comments
+    :param dupentry: List of entries found that found to be duplicate
+    :param user: User object of user uploading file
+    :param filename: String containing name of file uploaded
+    :return: String containing formatted plain-text error message
+    """
+    temp = ('Hello {},\n\nThe following errors were found '
+            'while uploading {}:\n\n').format(
+        user.first_name, filename
+    )
+    aErrorLists = [dupentry, comments, cu ]
+    aTableTitles = ['Same Part Number + Customer + Sold-to + SPUD + Valid From + Valid To already exists in the database with different pricing',
+                    'Same Part Number + Customer + Sold-to + SPUD + Valid From + Valid To has different value in Comments',
+                    ('Different Customer provided in the file for the selected Customer')
+                    ]
+
+    for (idx, maplist) in enumerate(aErrorLists):
+        if maplist:
+            temp += aTableTitles[idx] + '\n'
+            for mapping in maplist:
+                temp += '\t' + mapping[0] + '\n'
+            temp += '\n'
+        # end if
+    # end for
+
+    return temp
+# end def
 
 @login_required
 def ConfigPricing(oRequest):

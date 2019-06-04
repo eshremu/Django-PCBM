@@ -16,6 +16,10 @@
         {% if user|has_group:"BOM_Pricing_Price_Manager" %}
         <button class="btn" type="button" name="action" value="multi_config" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:multiconfigpricing' %}'>Multi Configuration</button>
         {% endif %}
+        <!--S-11541: Upload - pricing for list of parts in pricing tab: Added a new button Price upload-->
+        {% if user|has_group:"BOM_Pricing_Price_Manager" or user|has_group:"BOM_Pricing_Price_Management_Manager" or user|has_group:"BOM_Pricing_Price_Specialist" or user|has_group:"BOM_PSM_Baseline_Manager" %}
+        <button class="btn" type="button" name="action" value="price_upload" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:priceupload' %}'>Price Upload</button>
+	    {% endif %}
 	</div>
     {% block subcontent %}{% endblock %}
     {% else %}

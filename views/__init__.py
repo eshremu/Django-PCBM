@@ -12,7 +12,8 @@ from BoMConfig.views.baseline_mgmt import BaselineMgmt, BaselineLoad, \
     BaselineRollback, BaselineRollbackTest, DeleteBaseline
 # S-11537: Multi Config sub tab - UI for Multiple Config tab :- Added MultConfigPricing to show multiple configs
 # S-11538: Open multiple revisions for each configuration - UI Elements :-  Added MultRevConfigPricing to show multiple rev configs
-from BoMConfig.views.pricing import ConfigPricing, MultiConfigPricing, MultiRevConfigPricing,  OverviewPricing, PartPricing, \
+# S-11541: Upload - pricing for list of parts in pricing tab: Added PriceUpload to upload pricing data
+from BoMConfig.views.pricing import ConfigPricing, MultiConfigPricing, MultiRevConfigPricing, PriceUpload,  OverviewPricing, PartPricing, \
     PriceErosion, ErosionAjax
 from BoMConfig.views.reporting import Report
 from BoMConfig.views.upload import Upload
