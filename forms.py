@@ -164,6 +164,13 @@ class HeaderForm(forms.ModelForm):
                     'configuration_designation',
                     forms.ValidationError(
                         'Configuration designation cannot end with underscore ("_")'))
+
+            # S-11116:- Trim trailing space(s) after the configuration name:- Added below block to show error if the text ends with a space
+            elif data['configuration_designation'].upper().endswith(' '):
+                self.add_error(
+                    'configuration_designation',
+                    forms.ValidationError(
+                        'Configuration designation cannot end with a space'))
             elif len(data['configuration_designation']) > 18 and not \
                     data['pick_list']:
                 self.add_error(
@@ -179,6 +186,14 @@ class HeaderForm(forms.ModelForm):
             self.add_error(
                 'model',
                 forms.ValidationError('Model title exceeds 18 characters'))
+        # end if
+
+        # S-11115:- Model description should be 40 characters per SAP:- Added below block to show the error if text exceeds 40 chars
+        if 'model_description' in data and len(data['model_description']) > 40 and not \
+                data['pick_list']:
+            self.add_error(
+                'model_description',
+                forms.ValidationError('Model descripiton title exceeds 40 characters'))
         # end if
 
         # Ensure that if valid-to and valid-from are both provided, valid-from

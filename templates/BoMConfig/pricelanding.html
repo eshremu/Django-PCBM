@@ -1,5 +1,6 @@
 {% extends "BoMConfig/template.html" %}
-		
+{% load bomconfig_customtemplatetags %}
+
 {% block content %}
 {% if user.is_authenticated %}
 <div id="main-body">
@@ -10,6 +11,10 @@
 		<button class="btn" type="button" name="action" value="price_report" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:basepricing' %}'>Pricing Overview</button>
         {% if pricing_write_authorized %}
         <button class="btn" type="button" name="action" value="price_erosion" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:erosionpricing' %}'>Pricing Erosion</button>
+        {% endif %}
+        <!-- S-11537: Multiconfig sub tab UI changes:- Added below to show the multi config button in the pricing page  -->
+        {% if user|has_group:"BOM_Pricing_Price_Manager" %}
+        <button class="btn" type="button" name="action" value="multi_config" onclick="cleanDataCheck(this);" data-href='{% url 'bomconfig:multiconfigpricing' %}'>Multi Configuration</button>
         {% endif %}
 	</div>
     {% block subcontent %}{% endblock %}

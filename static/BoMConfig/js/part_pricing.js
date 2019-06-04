@@ -138,6 +138,10 @@ $(document).ready(function(){
         }
     });
 
+    $('#part').keyup(function(){
+       $('#part').val($('input[name="part"]').val().trim());
+    });
+
     $(window).resize(function(){
         form_resize();
     });

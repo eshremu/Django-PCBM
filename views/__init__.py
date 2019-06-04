@@ -10,15 +10,16 @@ from BoMConfig.views.configuration import AddHeader, AddConfig, AddTOC, \
 from BoMConfig.views.search import Search
 from BoMConfig.views.baseline_mgmt import BaselineMgmt, BaselineLoad, \
     BaselineRollback, BaselineRollbackTest, DeleteBaseline
-
-from BoMConfig.views.pricing import ConfigPricing, OverviewPricing, PartPricing, \
+# S-11537: Multi Config sub tab - UI for Multiple Config tab :- Added MultConfigPricing to show multiple configs
+# S-11538: Open multiple revisions for each configuration - UI Elements :-  Added MultRevConfigPricing to show multiple rev configs
+from BoMConfig.views.pricing import ConfigPricing, MultiConfigPricing, MultiRevConfigPricing,  OverviewPricing, PartPricing, \
     PriceErosion, ErosionAjax
 from BoMConfig.views.reporting import Report
 from BoMConfig.views.upload import Upload
 from BoMConfig.views.download import Download, DownloadBaseline, \
     DownloadMultiple, DownloadBaselineMaster, ConfigPriceDownload, \
     PriceOverviewDownload, PartPriceDownload, ErosionDownload, \
-    DownloadSearchResults
+    DownloadSearchResults, MultiConfigPriceDownload
  # D-04023-Customer filter on Actions issue for Admin users :- Added ActionCustomer to populate baseline dropdown based on selected CU
 # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
     #  added ApprovalHold,HoldApprove

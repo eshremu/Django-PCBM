@@ -17,12 +17,16 @@ $(document).ready(function(){
 old_conf_name = $('#id_configuration_designation').val();
 // S-07112 - Change dropdown selection view and value:-Added below code to show the option selected in the sales_group & ericsson contract dropdown
 // when an existing configuration is opened (since only the code is fetched from DB and the code with description is present in UI)
-    if(headerformsalesgroup!='' || headerformericssoncontract!='' ){
+    if(headerformsalesgroup!='' || headerformericssoncontract!='' || headerformhub!='' ){
          var $salegchild = $('#id_sales_group');
          $salegchild.find("option:contains('"+headerformsalesgroup+"')").attr("selected","selected");
 
          var $ericchild = $('#id_ericsson_contract');
          $ericchild.find("option:contains('"+headerformericssoncontract+"')").attr("selected","selected");
+
+// S-11475-Add region/market areas with the hub below it :- Added below code on hub to show the saved value pre-populated on page load
+         var $hubchild = $('#id_hub');
+         $hubchild.find("option:contains('"+headerformhub+"')").attr("selected","selected");
     }
     var max = 0;
     $('tr td:first-child').each(function(idx, elem){max = Math.max(max, $(elem).width())});
@@ -216,6 +220,11 @@ if(!($("#id_pick_list").is(':checked'))){
         list_filler('customer_unit', 'program');
         list_filler('customer_unit', 'baseline_impacted', 1);
         list_filler('customer_unit', 'person_responsible');
+    });
+
+// S-11475-Add region/market areas with the hub below it :- Added on change block of Region field to show the data of dependent field of hub
+     $('#id_region').change(function(){
+        list_react_filler('region', 'hub');
     });
 
     $('#id_customer_name').change(function(){
@@ -524,6 +533,42 @@ function list_react_filler(parent, child, index){
                         $child.append($('<option>',{value:key,text:data[key]}));
                     }
                 }
+            },
+            error: function(){
+                var $child = $('#id_' + child);
+                $child.find('option:gt(' + index + ')').remove();
+            }
+        });
+    }
+// S-11475-Add region/market areas with the hub below it :- Added below else if block for Region field to show the data of dependent field of hub
+    else if(parent == 'region'){
+        $.ajax({
+            url: listreactfill_url,
+            dataType: "json",
+            type: "POST",
+            data: {
+                id:'',
+                parent: parent,
+                child: child,
+                name: $('#id_' + parent).val(),
+                sold_to:'',
+                contract_number: ''
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+                var $child = $('#id_' + child);
+                $child.find('option:gt(' + index + ')').remove();
+
+                if(child == 'hub'){
+                    for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                            $child.append($('<option>',{value:key,text:data[key]}));
+                        }
+                     }
+                }
+
             },
             error: function(){
                 var $child = $('#id_' + child);

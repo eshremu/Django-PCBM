@@ -6,17 +6,19 @@
     <script src="{% static 'BoMConfig/js/config_pricing.js' %}"></script>
     <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.30.1/dist/handsontable.full.min.css' %}"/>
 
+
+
         <form id="headersubform"
     {#          {% if configlines %}onsubmit="$('<input/>').attr('id','data_form').attr('type', 'hidden').attr('name','data_form')#}
     {#          .attr('value',JSON.stringify(hot.getSourceData())).appendTo('#headersubform');form_save=true;"{% endif %}#}
               method="post">
             {% csrf_token %}
-            <label for="config">Configuration</label>
-            <input id="config" name="config" type="text" value="{{ config }}"/>
+            <!--<label for="config">Configuration</label>-->
+            <input id="config" name="config" type="hidden" value="{{ config }}"/>
             <input id="initial" name="initial" type="hidden" value="{{ config }}"/>
             <input id="program" name="program" type="hidden" value="{{ program }}"/>
             <input id="baseline" name="baseline" type="hidden" value="{{ baseline }}"/>
-            <button id="search" class="btn" type="submit" name="action" value="search">Search</button>
+            <!--<button id="search" class="btn" type="submit" name="action" value="search">Search {{config}}</button>-->
             <br/>
             <label for="net_value">Net Value ($):</label>
             <input type="text" id="net_value" name="net_value" style="border:none;" readonly/>
@@ -50,5 +52,53 @@
         var readonly = {{ readonly|lower }};
         var download_url = '{% url 'bomconfig:configpricingdownload' %}';
         var file_cookie = "{% random_string 10 %}";
+
+$(document).ready(function(){
+         $(window).load(function(){
+        <!--form_resize();-->
+        <!--alert('test');-->
+        var baseid = getUrlVars()["iBaseId"];
+var progid = getUrlVars()["iProgId"];
+var conf = getUrlVars()["iConf"];
+var rev = getUrlVars()["rev"];
+<!--alert('baseid'+baseid+'prog'+progid);-->
+$('input[name="program"]').val(progid);
+$('input[name="baseline"]').val(baseid);
+$('input[name="config"]').val(conf);
+<!--alert(window.location.href);-->
+<!--var url1=window.location.href.split('?');-->
+<!--window.history.pushState("", "", url1[0]);-->
+
+<!--alert(url1[0]+'==='+url1[1]);-->
+document.title=conf +' Revision ' + rev;
+window.location.href=url1[0];
+<!--location.href = window.location.href.replace(url1[1], '');-->
+<!--alert(window.location.href);-->
+if($('input[name="program"]').val()!=''||$('input[name="baseline"]').val()!=''||$('input[name="config"]').val()!=''){
+$('#headersubform').submit();}
+        });
+        });
+
+        function getUrlVars() {
+    var vars = {};
+    var parts = window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, function(m,key,value) {
+        vars[key] = value;
+    });
+    return vars;
+}
+
+        function headersubform_popup(form){
+                  <!--window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes');-->
+             <!--window.open('', '', 'width=400,height=400,resizeable,scrollbars');-->
+             <!--for(i=0;i<5;i++){-->
+             <!--window.open('form', '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes');-->
+             <!--form.target = 'form';-->
+             <!--}-->
+
+             for(j=0; j<2; j++){
+             mywin=window.open(form, '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes');
+                        }
+        }
+
     </script>
 {% endblock %}

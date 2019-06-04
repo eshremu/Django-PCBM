@@ -43,7 +43,7 @@
          $('#customer').change(function(){
             var customerval =  $('#customer').val();
    <!--S-08487: Customer upload changes :- Added below condition to show the file type based on CU i.e IM report only if Sprint,T-Mobile or MTW -->
-            if(document.getElementById('customer').value == '3' || document.getElementById('customer').value == '4' || document.getElementById('customer').value == '9'){
+            if(document.getElementById('customer').value == '3' || document.getElementById('customer').value == '4' || document.getElementById('customer').value == '9' || document.getElementById('customer').value == '6' || document.getElementById('customer').value == '12'){
                 file_type[1].style.display = "none";
             }else{
                 file_type[1].style.display = "block";

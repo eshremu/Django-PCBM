@@ -10,9 +10,9 @@ Values used in overall site creation
 menulisting = [
     {'title':"BoM Entry","destination":"bomconfig:entry"},
     {'title':"Search","destination":"bomconfig:search"},
-    {'title':"Upload","destination":"bomconfig:upload"},
-    # S-11544: Change main tab from "Baseline" to "Catalog": changed title
-    {'title':"Catalog","destination":"bomconfig:baseload"},
+    # S-11550 Hide upload main tab
+    # {'title':"Upload","destination":"bomconfig:upload"},
+    {'title':"Baseline","destination":"bomconfig:baseload"},
     {'title':"Pricing","destination":"bomconfig:pricing"},
     {'title':"Actions","destination":"bomconfig:action"},
     {'title':"Approvals","destination":"bomconfig:approval"},

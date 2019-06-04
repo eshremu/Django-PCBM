@@ -62,6 +62,60 @@ class NewsItem(models.Model):
     # end def
 # end class
 
+# S-11475: Add region/market areas with hub below it :- Added below block to show region/hub fields
+class Region(models.Model):
+    """
+    Model for customer objects
+    """
+    class Meta:
+        verbose_name = 'Region'
+    # end class
+
+    name = models.CharField(max_length=50)
+
+    objects = OrderedManager()
+
+    def __str__(self):
+        return self.name
+    # end def
+# end class
+
+class Hub(models.Model):
+    """
+    Model for customer objects
+    """
+    class Meta:
+        verbose_name = 'Hub'
+    # end class
+
+    name = models.CharField(max_length=50)
+    region = models.ForeignKey(Region, db_constraint=False, blank=True,
+                                 null=True)
+
+    objects = OrderedManager()
+
+    def __str__(self):
+        return self.name
+    # end def
+# end class
+
+# S-11475: Add Supply chain flow below Ericsson contract #:- Added below block to show Supply chain flow field
+class Supply_Chain_Flow(models.Model):
+    """
+    Model for customer objects
+    """
+    class Meta:
+        verbose_name = 'Supply Chain Flow'
+    # end class
+
+    name = models.CharField(max_length=50)
+
+    objects = OrderedManager()
+
+    def __str__(self):
+        return self.name
+    # end def
+# end class
 
 class REF_CUSTOMER(models.Model):
     """
@@ -459,6 +513,11 @@ class Header(models.Model):
     bom_request_type = models.ForeignKey(REF_REQUEST,
                                          verbose_name='BoM Request Type',
                                          db_constraint=False)
+
+# S-11475: Add region/market areas with hub below it :- Added below block to show region/hub fields
+    region = models.ForeignKey(Region, verbose_name='Region', blank=True, null=True, db_constraint=False)
+    hub = models.ForeignKey(Hub, verbose_name='Hub', blank=True, null=True, db_constraint=False)
+
     customer_unit = models.ForeignKey(REF_CUSTOMER,
                                       verbose_name='Customer Unit',
                                       db_constraint=False)
@@ -478,6 +537,9 @@ class Header(models.Model):
                                         blank=True, null=True)
     ericsson_contract = models.IntegerField(verbose_name='Ericsson Contract #',
                                             blank=True, null=True)
+# S-11475: Add Supply chain flow below Ericsson contract #:- Added below to show Supply chain flow field
+    supply_chain_flow = models.ForeignKey(Supply_Chain_Flow, verbose_name='Supply Chain Flow', blank=True,
+                                          null=True, db_constraint=False)
     bill_to_party = models.IntegerField(verbose_name='Bill-to Party',
                                         blank=True, null=True)
     payment_terms = models.CharField(max_length=50,
@@ -518,12 +580,13 @@ class Header(models.Model):
     shipping_condition = models.CharField(max_length=50,
                                           verbose_name='Shipping Condition',
                                           blank=True, null=True, default='71')
-# S-11545: BoM Entry - Header sub tab change: changed the verbose_name from Baseline Impacted
+# S-11545: BoM Entry - Header sub tab change:- changed the verbose_name from Baseline Impacted
     baseline_impacted = models.CharField(max_length=50,
                                          verbose_name='Catalog Impacted',
                                          blank=True, null=True)
     model = models.CharField(max_length=50, verbose_name='Model', blank=True,
                              null=True)
+
     model_description = models.CharField(max_length=50,
                                          verbose_name='Model Description',
                                          blank=True, null=True)

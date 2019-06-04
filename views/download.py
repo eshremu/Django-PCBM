@@ -603,7 +603,8 @@ def DownloadBaselineMaster(oRequest):
         oSheet['O1'].font = headerFont
         oSheet.column_dimensions['O'].width = 30
     #S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer: Added below elif block
-    elif sCustomer in ('Sprint','T-Mobile'):
+    # S-11474- For master download customization added customer ECSO and RBMA
+    elif sCustomer in ('Sprint','T-Mobile','ECSO','RBMA'):
         oSheet['B1'] = 'Configuration File'
         oSheet['B1'].font = headerFont
         oSheet.column_dimensions['B'].width = 25
@@ -862,7 +863,8 @@ def DownloadBaselineMaster(oRequest):
                     oSheet['O' + str(iRow)].font = activeFont
 
             # added oHead.customer_unit_id in (3,4) and updated blocks for  S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer
-            elif oHead.customer_unit_id in (3, 4):
+            # added oHead.customer_unit_id in (6,12) and updated blocks for  S-11474- Baseline Master File download changes for ECSO & RBMA Customer
+            elif oHead.customer_unit_id in (3, 4, 6, 12):
                 oSheet['C' + str(iRow)] = oHead.product_area2.name if \
                     oHead.product_area2 else ''
                 oSheet['C' + str(iRow)].alignment = centerAlign
@@ -2163,6 +2165,97 @@ def EmailDownload(oRequest,oBaseline):
     oNewMessage.send()
 # end def
 
+#S-11779- Multiconfig sub tab, download functionality
+def MultiConfigPriceDownload(oRequest):
+    """
+    View to download pricing data for a specific Header/Configuration
+    :param oRequest: Django HTTP request object
+    :return: HttpResponse containing downloaded data file
+    """
+
+    if oRequest.POST:
+        scon = oRequest.POST['config'] if 'config' in oRequest.POST else None
+        scon2 = scon.split(';')
+        aConfigLines1 = []
+        aConfigLines2 = [{'12': '', '10': '', '11': '', '8': '', '9': '', '0': '', '1': '', '2': '', '3': '', '4': '', '5': '', '6': '', '7': ''}]
+        first_element = []
+        for sConfig in scon2:
+            # Retrieve desired Header object and determine filename
+            oHeader = Header.objects.filter(
+                configuration_designation=sConfig).latest('baseline')
+            # Retrieve ConfigLines and sort by line number
+            aLine = oHeader.configuration.configline_set.all()
+            aLine = sorted(aLine,
+                           key=lambda x: ([int(y) for y in x.line_number.split('.')]))
+
+            # Build data rows for .xls file
+            aConfigLines = [
+                {
+                    '0': oLine.line_number,
+                    '1': ('..' if oLine.is_grandchild else '.' if
+                    oLine.is_child else '') + oLine.part.base.product_number,
+                    '2': str(oLine.part.base.product_number) +
+                         str('_' + oLine.spud.name if oLine.spud else ''),
+                    '3': oLine.part.product_description,
+                    '4': float(oLine.order_qty if oLine.order_qty else 0.0),
+                    '5': float(GrabValue(oLine,
+                                         'linepricing.pricing_object.unit_price', 0.0)),
+                    '6': float(oLine.order_qty or 0) * float(GrabValue(
+                        oLine, 'linepricing.pricing_object.unit_price', 0.0)),
+                    '7': GrabValue(oLine, 'linepricing.override_price', ''),
+                    '8': oLine.higher_level_item or '',
+                    '9': oLine.material_group_5 or '',
+                    '10': oLine.commodity_type or '',
+                    '11': oLine.comments or '',
+                    '12': oLine.additional_ref or ''
+                } for oLine in aLine
+            ]
+
+            if not oHeader.pick_list:
+                config_total = sum([float(line['6']) for line in aConfigLines])
+                aConfigLines[0]['5'] = aConfigLines[0]['6'] = config_total
+
+            aConfigLines1.append(aConfigLines)
+            aConfigLines1.append(aConfigLines2)
+
+        headers = ['Line #', 'Product Number', 'Internal Product Number',
+                   'Product Description', 'Order Qty', 'Unit Price', 'Total Price',
+                   'Manual Override for Total NET Price', 'Linkage',
+                   'Material Group 5', 'HW/SW Indicator',
+                   'Comments (viewable by customer)',
+                   'Additional Reference (viewable by customer)']
+        # Open new workbook
+        oFile = openpyxl.Workbook()
+        oSheet = oFile.active
+        # Write column titles
+        for i in range(len(headers)):
+            oSheet[utils.get_column_letter(i + 1) + '1'] = headers[i]
+         # Write data to table
+        for c in aConfigLines1:
+            if isinstance(c, list):
+                for d in c:
+                    rearranged_data = [None]*13
+                    for v in d:
+                        if int(v) in (5,6,7):
+                            if d[v] != '':
+                             d[v]= '${:,.2f}'.format(d[v])
+                        rearranged_data[int(v)] = d[v]
+                    oSheet.append(rearranged_data)
+
+        sFileName = str(oHeader.customer_unit) + 'Multiple Active configurations' + '_' + str(datetime.datetime.now().strftime('%d%b%Y')) + '_'+ ' Pricing.xlsx'
+        # Save file stream to HTTP response
+        response = HttpResponse(content_type='application/ms-excel')
+        response['Content-Disposition'] = 'attachment;filename="{0}"'.format(
+            sFileName)
+        response.set_cookie('fileMark', oRequest.POST['file_cookie'],
+                            max_age=60)
+        oFile.save(response)
+
+        return response
+    else:
+        return HttpResponse()
+# end def
+
 
 def ConfigPriceDownload(oRequest):
     """
@@ -2347,6 +2440,8 @@ def PartPriceDownload(oRequest):
                           getattr(oPriceObj.spud, 'name', '(None)'),
                           getattr(oPriceObj.technology, 'name', '(None)'),
                           oPriceObj.unit_price or '',
+                          oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
+                          oPriceObj.valid_from_date else '',
                           oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
                           oPriceObj.valid_to_date else '',
                           oPriceObj.valid_from_date.strftime('%m/%d/%Y') if

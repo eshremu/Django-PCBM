@@ -332,6 +332,7 @@ def ConfigPricing(oRequest):
     aConfigLines = []
     dContext = {'configlines': aConfigLines, 'readonly': False}
 
+
     # If POSTing data
     if oRequest.method == 'POST' and oRequest.POST:
         sConfig = oRequest.POST['config'] if 'config' in oRequest.POST else None
@@ -374,8 +375,9 @@ def ConfigPricing(oRequest):
                 [oHead.program.id, oHead.program.name] if oHead.program else
                 ['None', '(No Program)'] for oHead in aConfigMatches
             )
+        # S-11538: Open multiple revisions for each configuration - UI Elements :- Added below to pick the baseline, it's revision
             aBaselineList = list(
-                [oHead.baseline.id, str(oHead.baseline)] if oHead.baseline else
+                [oHead.baseline.id, str(oHead.baseline_impacted), str(oHead.baseline_version)] if oHead.baseline else
                 ['None', '(No Baseline)'] for oHead in aConfigMatches
             )
             dContext.update(
@@ -483,6 +485,542 @@ def ConfigPricing(oRequest):
                  'is_not_pick_list': not aLine[0].config.header.pick_list if
                  aLine else False,
                  'program': iProgValue,
+                 'baseline': iBaseValue,
+                 'prog_list': [],
+                 'base_list': [],
+                 'readonly': 'In Process' not in
+                             aLine[0].config.header.configuration_status.name
+                 }
+            )
+        # end if
+    # end if
+
+    dContext.update({
+        'status_message': status_message,
+        'pricing_read_authorized': bCanReadPricing,
+        'pricing_write_authorized': bCanWritePricing,
+    })
+
+    return Default(oRequest, sTemplate, dContext)
+
+# S-11537: Multi Config sub tab - UI for Multiple Config tab :- Added below MultConfigPricing to show multiple configs
+@login_required
+def MultiConfigPricing(oRequest):
+    """
+    View for viewing and editing manual pricing overrides for individual Headers
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    # Determine user permissions
+    bCanReadPricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Read').filter(
+        user__in=oRequest.user.groups.all()))
+    bCanWritePricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Write').filter(
+        user__in=oRequest.user.groups.all()))
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
+    # Unlock any locked Header
+    if 'existing' in oRequest.session:
+        try:
+            Unlock(oRequest, oRequest.session['existing'])
+        except Header.DoesNotExist:
+            pass
+        # end try
+
+        del oRequest.session['existing']
+    # end if
+
+    if 'status' in oRequest.session:
+        del oRequest.session['status']
+    # end if
+
+    status_message = None
+
+    sTemplate = 'BoMConfig/multi_configpricing.html'
+    aConfigLines = []
+    aConfigLines1 = []
+    aBaselines1 = []
+    aBaseRev1 = []
+    aConfigs1 = []
+    dContext = {'configlines': aConfigLines1, 'readonly': False}
+
+    # If POSTing data
+    if oRequest.method == 'POST' and oRequest.POST:
+
+        scon= oRequest.POST['config'] if 'config' in oRequest.POST else None
+        scon2= scon.split(';')
+
+        for config_index in range(len(scon2)):
+            sConfig = scon2[config_index]
+
+            if 'action' in oRequest.POST and oRequest.POST['action'] == 'search':
+                iProgram = None
+                iBaseline = None
+
+            # Since the user searches by Header name only, it is possible to have
+            # multiple Headers with the same name, with different programs and/or
+            # baselines.  So if multiple matches exist, we will create a list to
+            # allow the user to select the desired Header.
+
+            # Start with all Headers that match the name
+            if sConfig:
+                aConfigMatches = Header.objects.filter(
+                    configuration_designation__iexact=sConfig).filter(customer_unit_id__in=aAvailableCU).latest('baseline') # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
+
+            if aConfigMatches == 0:
+                status_message = 'No matching configuration found'
+                dContext.update({'config': sConfig})
+
+            # Only a single match was found, so load the data for the match
+            else:
+                iProgValue = aConfigMatches.program.id if \
+                    aConfigMatches.program else None
+                iBaseValue = aConfigMatches.baseline.id if \
+                    aConfigMatches.baseline else None
+                iBaselineValue = aConfigMatches.baseline.title if \
+                    aConfigMatches.baseline else None
+                iBaseRevValue = aConfigMatches.baseline.version if \
+                    aConfigMatches.baseline else None
+
+                if sConfig:
+                    dLineFilters = {
+                        'config__header__configuration_designation__iexact': sConfig,
+                    }
+
+                    dConfigFilters = {
+                        'header__configuration_designation__iexact': sConfig,
+                    }
+                dLineFilters.update({'config__header__program__id': iProgValue})
+                dConfigFilters.update({'header__program__id': iProgValue})
+
+                dLineFilters.update({'config__header__baseline__id': iBaseValue})
+                dConfigFilters.update({'header__baseline__id': iBaseValue})
+
+                # Save data
+                if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
+                    # Ensure user has not changed the configuration value prior to
+                    # saving
+                    if oRequest.POST['config'] == oRequest.POST['initial']:
+                        # net_total = 0
+                        if config_index < len(json.loads(oRequest.POST['data_form'])):
+                            for dLine in json.loads(oRequest.POST['data_form'])[config_index]:
+
+                                # Change dLine to dict with str keys
+                                if isinstance(dLine, list):
+                                    dLine = {
+                                        str(key): val for (key, val) in enumerate(dLine)
+                                        }
+                                elif isinstance(dLine, dict):
+                                    dLine = {
+                                        str(key): val for (key, val) in dLine.items()}
+
+                                dLineFilters.update({'line_number': dLine['0']})
+
+                                # Retrieve ConfigLine matching line number and update
+                                # override_price
+                                oLineToEdit = ConfigLine.objects.filter(
+                                    **dLineFilters)[0]
+                                (oLinePrice, _) = LinePricing.objects.get_or_create(
+                                    config_line=oLineToEdit)
+                                oLinePrice.override_price = float(dLine['7']) if \
+                                    dLine['7'] not in (None, '') else None
+
+                                oLinePrice.save()
+                        # end for
+                        dLineFilters.pop('line_number', None)
+
+                        # Save the configuration
+                        oConfig = Configuration.objects.get(**dConfigFilters)
+                        oConfig.save()
+
+                        status_message = 'Data saved.'
+                    else:
+                        status_message = 'Cannot change configuration during save.'
+                        sConfig = oRequest.POST['initial']
+                    # end if
+                # end if
+
+                # Retrieve ConfigLines that matches the filters and sort by line
+                # number
+                aLine = ConfigLine.objects.filter(**dLineFilters)
+                aLine = sorted(aLine, key=lambda x: (
+                    [int(y) for y in x.line_number.split('.')]))
+
+                # Build table layout from matching data
+                aConfigLines = [{
+                    '0': oLine.line_number,
+                    '1': ('..' if oLine.is_grandchild else '.' if
+                          oLine.is_child else '') + oLine.part.base.product_number,
+                    '2': str(oLine.part.base.product_number) +
+                    str('_' + oLine.spud.name if oLine.spud else ''),
+                    '3': oLine.part.product_description,
+                    '4': float(oLine.order_qty if oLine.order_qty else 0),
+                    '5': float(GrabValue(
+                        oLine, 'linepricing.pricing_object.unit_price', 0)),
+                    '6': float(oLine.order_qty or 0) * float(GrabValue(
+                        oLine, 'linepricing.pricing_object.unit_price', 0)),
+                    '7': GrabValue(oLine, 'linepricing.override_price', ''),
+                    '8': oLine.traceability_req or '', # S-05769: Addition of Product Traceability field in Pricing->Config Price Management tab
+                    '9': oLine.higher_level_item or '',
+                    '10': oLine.material_group_5 or '',
+                    '11': oLine.commodity_type or '',
+                    '12': oLine.comments or '',
+                    '13': oLine.additional_ref or ''
+                                } for oLine in aLine]
+
+                # Update expected price roll-up (determined by unit price per line)
+                if not aLine[0].config.header.pick_list:
+                    config_total = sum([float(line['6']) for line in aConfigLines])
+                    aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
+
+                aConfigLines1.append(aConfigLines)
+                aBaselines1.append(iBaselineValue)
+                aBaseRev1.append(iBaseRevValue)
+                aConfigs1.append(sConfig)
+
+                dContext['configlines'] = aConfigLines1
+                dContext['baselines'] = aBaselines1
+                dContext['baserevs'] = aBaseRev1
+                dContext['configs'] = aConfigs1
+
+                dContext.update(
+                    {'config': scon,
+                     'is_not_pick_list': not aLine[0].config.header.pick_list if
+                     aLine else False,
+                     'program': iProgValue,
+                     'baseline': iBaseValue,
+                     'prog_list': [],
+                     'base_list': [],
+                     'readonly': 'In Process' not in
+                                 aLine[0].config.header.configuration_status.name
+                     }
+                )
+        # end if
+    # end if
+
+    dContext.update({
+        'status_message': status_message,
+        'pricing_read_authorized': bCanReadPricing,
+        'pricing_write_authorized': bCanWritePricing,
+    })
+
+    return Default(oRequest, sTemplate, dContext)
+
+# S-11538: Open multiple revisions for each configuration - UI Elements :- Added below function to show multiple revisions for each config
+@login_required
+def MultiRevConfigPricing(oRequest):
+    """
+    View for viewing and editing manual pricing overrides for individual Headers
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    # Determine user permissions
+    bCanReadPricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Read').filter(
+        user__in=oRequest.user.groups.all()))
+    bCanWritePricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Write').filter(
+        user__in=oRequest.user.groups.all()))
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
+    # Unlock any locked Header
+    if 'existing' in oRequest.session:
+        try:
+            Unlock(oRequest, oRequest.session['existing'])
+        except Header.DoesNotExist:
+            pass
+        # end try
+
+        del oRequest.session['existing']
+    # end if
+
+    if 'status' in oRequest.session:
+        del oRequest.session['status']
+    # end if
+
+    status_message = None
+
+    sTemplate = 'BoMConfig/multirevconfigpricing.html'
+    aConfigLines = []
+    dContext = {'configlines': aConfigLines, 'readonly': False}
+
+
+    # If POSTing data
+    if oRequest.method == 'POST' and oRequest.POST:
+        sConfig = oRequest.POST['config'] if 'config' in oRequest.POST else None
+
+        # iProgram = oRequest.POST.get('iProgId', None)
+        iBaseline = oRequest.POST.get('iBaseId', None)
+
+        if 'action' in oRequest.POST and oRequest.POST['action'] == 'search':
+            iProgram = None
+            iBaseline = None
+
+        # Since the user searches by Header name only, it is possible to have
+        # multiple Headers with the same name, with different programs and/or
+        # baselines.  So if multiple matches exist, we will create a list to
+        # allow the user to select the desired Header.
+
+        # Start with all Headers that match the name
+        aConfigMatches = Header.objects.filter(
+            configuration_designation__iexact=sConfig).filter(
+            customer_unit_id__in=aAvailableCU)  # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
+
+
+        if iBaseline and iBaseline not in ('None', 'NONE'):
+            aConfigMatches = aConfigMatches.filter(baseline__id=iBaseline)
+        elif iBaseline:
+            aConfigMatches = aConfigMatches.filter(baseline=None)
+        if len(aConfigMatches) == 0:
+            status_message = 'No matching configuration found'
+            dContext.update({'config': sConfig})
+
+        # More than one match was found, so create a list with an entry for each
+        # match
+
+        # Only a single match was found, so load the data for the match
+        else:
+            iBaseValue = aConfigMatches[0].baseline.id if \
+                aConfigMatches[0].baseline else None
+
+            dLineFilters = {
+                'config__header__configuration_designation__iexact': sConfig,
+            }
+            dConfigFilters = {
+                'header__configuration_designation__iexact': sConfig,
+            }
+
+            dLineFilters.update({'config__header__baseline__id': iBaseValue})
+            dConfigFilters.update({'header__baseline__id': iBaseValue})
+
+            # Save data
+            if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
+                # Ensure user has not changed the configuration value prior to
+                # saving
+                if oRequest.POST['config'] == oRequest.POST['initial']:
+                    # net_total = 0
+                    for dLine in json.loads(oRequest.POST['data_form']):
+                        # Change dLine to dict with str keys
+                        if isinstance(dLine, list):
+                            dLine = {
+                                str(key): val for (key, val) in enumerate(dLine)
+                                }
+                        elif isinstance(dLine, dict):
+                            dLine = {
+                                str(key): val for (key, val) in dLine.items()}
+
+                        dLineFilters.update({'line_number': dLine['0']})
+
+                        # Retrieve ConfigLine matching line number and update
+                        # override_price
+                        oLineToEdit = ConfigLine.objects.filter(
+                            **dLineFilters)[0]
+                        (oLinePrice, _) = LinePricing.objects.get_or_create(
+                            config_line=oLineToEdit)
+                        oLinePrice.override_price = float(dLine['7']) if \
+                            dLine['7'] not in (None, '') else None
+
+                        oLinePrice.save()
+                    # end for
+                    dLineFilters.pop('line_number', None)
+
+                    # Save the configuration
+                    oConfig = Configuration.objects.get(**dConfigFilters)
+                    oConfig.save()
+
+                    status_message = 'Data saved.'
+                else:
+                    status_message = 'Cannot change configuration during save.'
+                    sConfig = oRequest.POST['initial']
+                # end if
+            # end if
+
+            # Retrieve ConfigLines that matches the filters and sort by line
+            # number
+            aLine = ConfigLine.objects.filter(**dLineFilters)
+            aLine = sorted(aLine, key=lambda x: (
+                [int(y) for y in x.line_number.split('.')]))
+
+            # Build table layout from matching data
+            aConfigLines = [{
+                '0': oLine.line_number,
+                '1': ('..' if oLine.is_grandchild else '.' if
+                      oLine.is_child else '') + oLine.part.base.product_number,
+                '2': str(oLine.part.base.product_number) +
+                str('_' + oLine.spud.name if oLine.spud else ''),
+                '3': oLine.part.product_description,
+                '4': float(oLine.order_qty if oLine.order_qty else 0),
+                '5': float(GrabValue(
+                    oLine, 'linepricing.pricing_object.unit_price', 0)),
+                '6': float(oLine.order_qty or 0) * float(GrabValue(
+                    oLine, 'linepricing.pricing_object.unit_price', 0)),
+                '7': GrabValue(oLine, 'linepricing.override_price', ''),
+                '8': oLine.traceability_req or '', # S-05769: Addition of Product Traceability field in Pricing->Config Price Management tab
+                '9': oLine.higher_level_item or '',
+                '10': oLine.material_group_5 or '',
+                '11': oLine.commodity_type or '',
+                '12': oLine.comments or '',
+                '13': oLine.additional_ref or ''
+                            } for oLine in aLine]
+
+            # Update expected price roll-up (determined by unit price per line)
+            if not aLine[0].config.header.pick_list:
+                config_total = sum([float(line['6']) for line in aConfigLines])
+                aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
+
+            dContext['configlines'] = aConfigLines
+            dContext.update(
+                {'config': sConfig,
+                 'is_not_pick_list': not aLine[0].config.header.pick_list if
+                 aLine else False,
+                 # 'program': iProgValue,
+                 'baseline': iBaseValue,
+                 'prog_list': [],
+                 'base_list': [],
+                 'readonly': 'In Process' not in
+                             aLine[0].config.header.configuration_status.name
+                 }
+            )
+        # end if
+    # end if
+    if oRequest.method == 'GET' and oRequest.GET:
+
+        sConfig = oRequest.GET['iConf'] if 'iConf' in oRequest.GET else None
+
+        iBaseline = oRequest.GET.get('iBaseId', None)
+
+        if 'action' in oRequest.POST and oRequest.POST['action'] == 'search':
+            iProgram = None
+            iBaseline = None
+
+        # Since the user searches by Header name only, it is possible to have
+        # multiple Headers with the same name, with different programs and/or
+        # baselines.  So if multiple matches exist, we will create a list to
+        # allow the user to select the desired Header.
+
+        # Start with all Headers that match the name
+        aConfigMatches = Header.objects.filter(
+            configuration_designation__iexact=sConfig).filter(
+            customer_unit_id__in=aAvailableCU)  # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
+        # If iBaseline has a value, filter Headers by baseline id
+        if iBaseline and iBaseline not in ('None', 'NONE'):
+            aConfigMatches = aConfigMatches.filter(baseline__id=iBaseline)
+        elif iBaseline:
+            aConfigMatches = aConfigMatches.filter(baseline=None)
+
+        if len(aConfigMatches) == 0:
+            status_message = 'No matching configuration found'
+            dContext.update({'config': sConfig})
+
+        # Only a single match was found, so load the data for the match
+        else:
+            iBaseValue = aConfigMatches[0].baseline.id if \
+                aConfigMatches[0].baseline else None
+
+            dLineFilters = {
+                'config__header__configuration_designation__iexact': sConfig,
+            }
+            dConfigFilters = {
+                'header__configuration_designation__iexact': sConfig,
+            }
+
+            dLineFilters.update({'config__header__baseline__id': iBaseValue})
+            dConfigFilters.update({'header__baseline__id': iBaseValue})
+
+            # Save data
+            if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
+                # Ensure user has not changed the configuration value prior to
+                # saving
+                if oRequest.GET['config'] == oRequest.GET['initial']:
+                    # net_total = 0
+                    for dLine in json.loads(oRequest.GET['data_form']):
+                        # Change dLine to dict with str keys
+                        if isinstance(dLine, list):
+                            dLine = {
+                                str(key): val for (key, val) in enumerate(dLine)
+                                }
+                        elif isinstance(dLine, dict):
+                            dLine = {
+                                str(key): val for (key, val) in dLine.items()}
+
+                        dLineFilters.update({'line_number': dLine['0']})
+
+                        # Retrieve ConfigLine matching line number and update
+                        # override_price
+                        oLineToEdit = ConfigLine.objects.filter(
+                            **dLineFilters)[0]
+                        (oLinePrice, _) = LinePricing.objects.get_or_create(
+                            config_line=oLineToEdit)
+                        oLinePrice.override_price = float(dLine['7']) if \
+                            dLine['7'] not in (None, '') else None
+
+                        oLinePrice.save()
+                    # end for
+                    dLineFilters.pop('line_number', None)
+
+                    # Save the configuration
+                    oConfig = Configuration.objects.get(**dConfigFilters)
+                    oConfig.save()
+
+                    status_message = 'Data saved.'
+                else:
+                    status_message = 'Cannot change configuration during save.'
+                    sConfig = oRequest.GET['initial']
+                # end if
+            # end if
+
+            # Retrieve ConfigLines that matches the filters and sort by line
+            # number
+            aLine = ConfigLine.objects.filter(**dLineFilters)
+            aLine = sorted(aLine, key=lambda x: (
+                [int(y) for y in x.line_number.split('.')]))
+
+            # Build table layout from matching data
+            aConfigLines = [{
+                '0': oLine.line_number,
+                '1': ('..' if oLine.is_grandchild else '.' if
+                      oLine.is_child else '') + oLine.part.base.product_number,
+                '2': str(oLine.part.base.product_number) +
+                str('_' + oLine.spud.name if oLine.spud else ''),
+                '3': oLine.part.product_description,
+                '4': float(oLine.order_qty if oLine.order_qty else 0),
+                '5': float(GrabValue(
+                    oLine, 'linepricing.pricing_object.unit_price', 0)),
+                '6': float(oLine.order_qty or 0) * float(GrabValue(
+                    oLine, 'linepricing.pricing_object.unit_price', 0)),
+                '7': GrabValue(oLine, 'linepricing.override_price', ''),
+                '8': oLine.traceability_req or '', # S-05769: Addition of Product Traceability field in Pricing->Config Price Management tab
+                '9': oLine.higher_level_item or '',
+                '10': oLine.material_group_5 or '',
+                '11': oLine.commodity_type or '',
+                '12': oLine.comments or '',
+                '13': oLine.additional_ref or ''
+                            } for oLine in aLine]
+
+            # Update expected price roll-up (determined by unit price per line)
+            if not aLine[0].config.header.pick_list:
+                config_total = sum([float(line['6']) for line in aConfigLines])
+                aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
+
+            dContext['configlines'] = aConfigLines
+            dContext.update(
+                {'config': sConfig,
+                 'is_not_pick_list': not aLine[0].config.header.pick_list if
+                 aLine else False,
+                 # 'program': iProgValue,
                  'baseline': iBaseValue,
                  'prog_list': [],
                  'base_list': [],
