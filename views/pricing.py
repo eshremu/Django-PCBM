@@ -90,6 +90,7 @@ def PartPricing(oRequest):
                                 ('', '(None)') else None,
                                 spud__name=aRowToSave[3] if aRowToSave[3] not in
                                 ('', '(None)') else None,
+            # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. commented aRowToSave[4]
                                 # technology__name=aRowToSave[4] if aRowToSave[4]
                                 # not in ('', '(None)') else None,
                                 is_current_active=True
@@ -101,37 +102,40 @@ def PartPricing(oRequest):
                         # erosion rate, or cut-over date generates new current
                         # PriceObject
                         # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(line 110,107,swapped valid to and valid from field)
+                        # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.changed aRowToSave[5] to aRowToSave[7] -> aRowToSave[4] to aRowToSave[6]
                         if not oCurrentPriceObj or \
                                 oCurrentPriceObj.unit_price != float(
-                                    aRowToSave[5]) or \
-                                (aRowToSave[6] and
-                                    datetime.datetime.strptime(aRowToSave[6],
+                                    aRowToSave[4]) or \
+                                (aRowToSave[5] and
+                                    datetime.datetime.strptime(aRowToSave[5],
                                                                '%m/%d/%Y'
                                                                ).date() !=
                                     oCurrentPriceObj.valid_from_date) or \
-                                (aRowToSave[7] and datetime.datetime.strptime(
-                                    aRowToSave[7], '%m/%d/%Y').date() !=
-                                    oCurrentPriceObj.valid_to_date) or \
-                                (aRowToSave[8] and datetime.date.today() <=
-                                    datetime.datetime.strptime(aRowToSave[8],
-                                                               '%m/%d/%Y'
-                                                               ).date() !=
-                                    oCurrentPriceObj.cutover_date) or \
-                                oCurrentPriceObj.price_erosion != eval(
-                                    aRowToSave[9]) or \
-                                (aRowToSave[10] and
-                                    oCurrentPriceObj.erosion_rate != float(
-                                         aRowToSave[10])):
+                                (aRowToSave[6] and datetime.datetime.strptime(
+                                    aRowToSave[6], '%m/%d/%Y').date() !=
+                                    oCurrentPriceObj.valid_to_date):
+                        # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.commented aRowToSave[8] to aRowToSave[10]
+                                # (aRowToSave[8] and datetime.date.today() <=
+                                #     datetime.datetime.strptime(aRowToSave[8],
+                                #                                '%m/%d/%Y'
+                                #                                ).date() !=
+                                #     oCurrentPriceObj.cutover_date) or \
+                                # oCurrentPriceObj.price_erosion != eval(
+                                #     aRowToSave[9]) or \
+                                # (aRowToSave[10] and
+                                #     oCurrentPriceObj.erosion_rate != float(
+                                #          aRowToSave[10])):
 
                             # Mark the previous match as 'inactive'
     # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed aRowToSave[7] to aRowToSave[6]
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.changed aRowToSave[6] to aRowToSave[5]
                             if oCurrentPriceObj:
                                 oCurrentPriceObj.is_current_active = False
                                 oCurrentPriceObj.valid_to_date = max(
                                     datetime.date.today(),
                                     datetime.datetime.strptime(
-                                        aRowToSave[6],
-                                        '%m/%d/%Y').date() if aRowToSave[6] else
+                                        aRowToSave[5],
+                                        '%m/%d/%Y').date() if aRowToSave[5] else
                                     datetime.date.today()
                                 )
                                 oCurrentPriceObj.save()
@@ -149,31 +153,35 @@ def PartPricing(oRequest):
                                     spud=REF_SPUD.objects.get(
                                         name=aRowToSave[3]) if aRowToSave[3] not
                                     in ('(None)', '', None, 'null') else None,
-                                    technology=REF_TECHNOLOGY.objects.get(
-                                        name=aRowToSave[4]) if aRowToSave[4] not
-                                    in ('(None)', '', None, 'null') else None,
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
+    # commented-out aRowToSave[4] and changed aRowToSave[5] to aRowToSave[7] -> aRowToSave[4] to aRowToSave[6]
+                                    # technology=REF_TECHNOLOGY.objects.get(
+                                    #     name=aRowToSave[4]) if aRowToSave[4] not
+                                    # in ('(None)', '', None, 'null') else None,
                                     is_current_active=True,
-                                    unit_price=aRowToSave[5],
-# S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed valid_to_date to aRowToSave[7] and valid_from_date to aRowToSave[6]
+                                    unit_price=aRowToSave[4],
+    # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed valid_to_date to aRowToSave[7] and valid_from_date to aRowToSave[6]
                                     valid_from_date=datetime.datetime.strptime(
+                                        aRowToSave[5],
+                                        '%m/%d/%Y'
+                                    ).date() if aRowToSave[5] else None,
+                                    valid_to_date=datetime.datetime.strptime(
                                         aRowToSave[6],
                                         '%m/%d/%Y'
                                     ).date() if aRowToSave[6] else None,
-                                    valid_to_date=datetime.datetime.strptime(
-                                        aRowToSave[7],
-                                        '%m/%d/%Y'
-                                    ).date() if aRowToSave[7] else None,
-                                    cutover_date=datetime.datetime.strptime(
-                                        aRowToSave[8],
-                                        '%m/%d/%Y'
-                                    ).date() if aRowToSave[8] else None,
-                                    price_erosion=eval(
-                                        aRowToSave[9]
-                                    ) if aRowToSave[9] else False,
-                                    erosion_rate=float(
-                                        aRowToSave[10]
-                                    ) if aRowToSave[10] else None,
-                                    comments=aRowToSave[11],
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
+     # commented-out aRowToSave[8] to aRowToSave[10] and changed aRowToSave[11] to aRowToSave[7] for comments
+                                    # cutover_date=datetime.datetime.strptime(
+                                    #     aRowToSave[8],
+                                    #     '%m/%d/%Y'
+                                    # ).date() if aRowToSave[8] else None,
+                                    # price_erosion=eval(
+                                    #     aRowToSave[9]
+                                    # ) if aRowToSave[9] else False,
+                                    # erosion_rate=float(
+                                    #     aRowToSave[10]
+                                    # ) if aRowToSave[10] else None,
+                                    comments=aRowToSave[7],
                                     previous_pricing_object=oCurrentPriceObj
                                 )
 
@@ -220,11 +228,12 @@ def PartPricing(oRequest):
 
                         # Updating comments only will modify current PriceObject
                         # in-place
+            # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. changed aRowToSave[11] to aRowToSave[7] for comments
                         elif oCurrentPriceObj and (
-                                    oCurrentPriceObj.comments != aRowToSave[11]
+                                    oCurrentPriceObj.comments != aRowToSave[7]
                         ):
-                            if oCurrentPriceObj.comments != aRowToSave[11]:
-                                oCurrentPriceObj.comments = aRowToSave[11]
+                            if oCurrentPriceObj.comments != aRowToSave[7]:
+                                oCurrentPriceObj.comments = aRowToSave[7]
                             oCurrentPriceObj.save()
                         # end if
                     # end for
@@ -245,6 +254,7 @@ def PartPricing(oRequest):
                         oPriceObj.customer.name,
                         oPriceObj.sold_to or '(None)',
                         getattr(oPriceObj.spud, 'name', '(None)'),
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. commented technology
                         # getattr(oPriceObj.technology, 'name', '(None)'),
                         oPriceObj.unit_price or '',
                         # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers
@@ -252,6 +262,7 @@ def PartPricing(oRequest):
                         oPriceObj.valid_from_date else '',  # Valid-from
                         oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
                         oPriceObj.valid_to_date else '',  # Valid-To
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. commented below 3 fields
                         # oPriceObj.cutover_date.strftime('%m/%d/%Y') if
                         # oPriceObj.cutover_date else '',  # Cut-over
                         # str(oPriceObj.price_erosion),  # Erosion
@@ -263,9 +274,10 @@ def PartPricing(oRequest):
                     'customer_list': [
                         oCust.name for oCust in aAvailableCU], # S-05923: Pricing - Restrict View to allowed CU's based on permissions added aAvailableCU
                     'spud_list': [
-                        oSpud.name for oSpud in REF_SPUD.objects.filter(is_inactive=0)], # S-05909 : Edit drop down option for BoM Entry Header - SPUD: Added to filter dropdown data in pricing page
-                    'tech_list': [
-                        oTech.name for oTech in REF_TECHNOLOGY.objects.filter(is_inactive=0)] # S-05905 : Edit drop down option for BoM Entry Header - Technology: Added to filter dropdown data in pricing page
+                        oSpud.name for oSpud in REF_SPUD.objects.filter(is_inactive=0)]  # S-05909 : Edit drop down option for BoM Entry Header - SPUD: Added to filter dropdown data in pricing page
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. commented-out tech-list
+                    # 'tech_list': [
+                    #     oTech.name for oTech in REF_TECHNOLOGY.objects.filter(is_inactive=0)] # S-05905 : Edit drop down option for BoM Entry Header - Technology: Added to filter dropdown data in pricing page
                 })
             except (PartBase.DoesNotExist,):
                 status_message = 'ERROR: Part number not found'
@@ -354,7 +366,7 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
     CustomerPartInfo objects.  There are currently two supported file types.
     :param oStream: Data stream (filestream, etc.) containing uploaded
     information
-    :param oCustomer: REF_CUSTOMER object used to create CustomerPartInfo object
+    :param oCustomer: REF_CUSTOMER object used to create PriceObject object
     :param oUser: User object creating entries
     :return: Boolean indicating if any erroneous data was encountered
     """
@@ -411,6 +423,7 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
     aDuplicateEntry = []
     aDuplicateComments = []
     aDuplicateCustomer = []
+    aInvalidEntries = []
 
     bErrorsLogged = False
 
@@ -418,32 +431,36 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
         # Check if any mappings exists with current info
         # Attempt to find an entry that matches exactly
 
+        oPart = PartBase.objects.filter( product_number=tPart[0])
+        if not oPart:
+            aInvalidEntries.append(tPart)
+            continue
         try:
-            vt_temp = datetime.date.strftime(tPart[7], '%Y-%m-%d')
-            vf_temp = datetime.date.strftime(tPart[6], '%Y-%m-%d')
+            vt_temp = datetime.date.strftime(tPart[7], '%Y-%m-%d') if tPart[7] else ''
+            vf_temp = datetime.date.strftime(tPart[6], '%Y-%m-%d') if tPart[6] else ''
             oCurrentPriceObj = PricingObject.objects.filter(
                 part__product_number__iexact=tPart[0],
                 customer__name=tPart[1],
                 sold_to=tPart[2] if tPart[2] not in ('', '(None)') else None,
                 spud__name=tPart[3] if tPart[3] not in('', '(None)') else None,
-                valid_from_date=vf_temp,
-                valid_to_date=vt_temp,
+                valid_from_date=vf_temp if vf_temp not in ('', '(None)') else None,
+                valid_to_date=vt_temp if vt_temp not in ('', '(None)') else None,
                 is_current_active=True
             )
 
         except PricingObject.DoesNotExist:
             oCurrentPriceObj = None
 
-        if not oCurrentPriceObj and str(oCustomer) != str(tPart[1]):
+        if not oCurrentPriceObj and str(oCustomer).upper() != str(tPart[1]).upper():
             aDuplicateCustomer.append(tPart)
             continue
-        if oCurrentPriceObj and str(oCustomer) != str(tPart[1]):
+        if oCurrentPriceObj and str(oCustomer).upper() != str(tPart[1]).upper():
             aDuplicateCustomer.append(tPart)
             continue
-        if oCurrentPriceObj and str(oCustomer) == str(tPart[1]) and not tPart[11]:
+        if oCurrentPriceObj and str(oCustomer).upper() == str(tPart[1]).upper() and not tPart[11]:
             aDuplicateEntry.append(tPart)
             continue
-        if oCurrentPriceObj and str(oCustomer) == str(tPart[1]) and tPart[11]:
+        if oCurrentPriceObj and str(oCustomer).upper() == str(tPart[1]).upper() and tPart[11]:
             aDuplicateComments.append(tPart)
             continue
 
@@ -461,8 +478,8 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                     sold_to=tPart[2] if tPart[2] not
                                     in ('(None)', '', None, 'null') else None,
                     unit_price=tPart[5],
-                    valid_from_date=vf_temp,
-                    valid_to_date=vt_temp,
+                    valid_from_date=vf_temp if vf_temp not in ('', '(None)') else None,
+                    valid_to_date=vt_temp if vt_temp not in ('', '(None)') else None,
                     technology=REF_TECHNOLOGY.objects.get(
                                         name=tPart[4]) if tPart[4] not
                                     in ('(None)', '', None, 'null') else None,
@@ -475,11 +492,13 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                 oNewPriceObj = None
         # end if
     # end for
-    if aDuplicateComments or aDuplicateCustomer or aDuplicateEntry :
+
+    if aDuplicateComments or aDuplicateCustomer or aDuplicateEntry  or aInvalidEntries:
         bErrorsLogged = True
         aDuplicateEntry.sort(key=lambda x: x[3])
         aDuplicateComments.sort(key=lambda x: x[3])
         aDuplicateCustomer.sort(key=lambda x: x[3])
+        aInvalidEntries.sort(key=lambda x: x[3])
 
 
         subject = 'Price upload errors'
@@ -489,6 +508,7 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                 'dupentry': aDuplicateEntry,
                 'comments': aDuplicateComments,
                 'cu': aDuplicateCustomer,
+                'invalidentry': aInvalidEntries,
                 'user': oUser,
                 'filename': oStream.name
             }
@@ -499,6 +519,7 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                 'dupentry': aDuplicateEntry,
                 'comments': aDuplicateComments,
                 'cu': aDuplicateCustomer,
+                'invalidentry': aInvalidEntries,
                 'user': oUser,
                 'filename': oStream.name
             }
@@ -509,8 +530,9 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
 
 
     return bErrorsLogged
-# S-12189: Validate pricing for list of parts in pricing tab: Added below function to generate email based on the error faced during upload.
-def GenerateEmailMessage( dupentry=(), comments=(), cu=(),
+
+# S-12189: Validate pricing for list of parts in pricing tab: Added below function to generate detailed error message
+def GenerateEmailMessage( dupentry=(), comments=(), cu=(), invalidentry=(),
                          user=None, filename=''):
     """
     Function to generate a plain-text error message detailing any errors
@@ -526,10 +548,11 @@ def GenerateEmailMessage( dupentry=(), comments=(), cu=(),
             'while uploading {}:\n\n').format(
         user.first_name, filename
     )
-    aErrorLists = [dupentry, comments, cu ]
+    aErrorLists = [dupentry, comments, cu, invalidentry ]
     aTableTitles = ['Same Part Number + Customer + Sold-to + SPUD + Valid From + Valid To already exists in the database with different pricing',
                     'Same Part Number + Customer + Sold-to + SPUD + Valid From + Valid To has different value in Comments',
-                    ('Different Customer provided in the file for the selected Customer')
+                    ('Different Customer provided in the file for the selected Customer'),
+                    'Part does not exist in system'
                     ]
 
     for (idx, maplist) in enumerate(aErrorLists):

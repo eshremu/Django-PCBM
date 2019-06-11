@@ -58,5 +58,18 @@
             </tbody>
         </table>
     {% endif %}
+    {% if invalidentry %}
+    <h4>Part does not exist in system</h4>
+        <table>
+            <thead>
+                <tr><th>Part Number</th></tr>
+            </thead>
+            <tbody>
+            {% for map in invalidentry %}
+                <tr><td>{{ map.0 }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
 </body>
 </html>
