@@ -2499,7 +2499,8 @@ def DownloadSearchResults(oRequest):
     :return: HTTPResponse containing data file download
     """
     # Retrieve data to download from URL query parameters
-    getDict = dict(oRequest.GET)
+    # D-06762 - 414: Request - URI Too Large' error when downloading search results: made getdict to POST instead of GET
+    getDict = dict(oRequest.POST)
     keys = list(getDict.keys())
     keys.remove('header')
     keys.sort(key=lambda x: int(x.replace('row', '')))
