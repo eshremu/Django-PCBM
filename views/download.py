@@ -2502,16 +2502,16 @@ def PartPriceDownload(oRequest):
                           getattr(oPriceObj.spud, 'name', '(None)'),
                           getattr(oPriceObj.technology, 'name', '(None)'),
                           oPriceObj.unit_price or '',
+    # S-12188- Unit price mngmnt,Account for Valid From and Valid to: Changed the order of Valid from and valid to for unit price download file
                           oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
                           oPriceObj.valid_from_date else '',
                           oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
                           oPriceObj.valid_to_date else '',
-                          oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
-                          oPriceObj.valid_from_date else '',
-                          oPriceObj.cutover_date.strftime('%m/%d/%Y') if
-                          oPriceObj.cutover_date else '',
-                          str(oPriceObj.price_erosion),
-                          oPriceObj.erosion_rate or '',
+     # S-12189- Part price upload: Commented out below lines.
+                          # oPriceObj.cutover_date.strftime('%m/%d/%Y') if
+                          # oPriceObj.cutover_date else '',
+                          # str(oPriceObj.price_erosion),
+                          # oPriceObj.erosion_rate or '',
                           oPriceObj.comments or '',
                        ] for oPriceObj in aPriceList]
 
@@ -2537,8 +2537,12 @@ def WritePartPriceToFile(aPriceList):
     :return: OpenPyXL file object
     """
     aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology',
-                'Latest Unit Price ($)', 'Valid To', 'Valid From',
-                'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments'
+                'Latest Unit Price ($)',
+    # S-12188- Unit price mngmnt,Account for Valid From and Valid to: Changed the order of Valid from and valid to for unit price download file
+                'Valid From','Valid To',
+    # S-12189- Part price upload: Commented out below lines.
+                # 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)',
+                'Comments'
                 ]
     oFile = openpyxl.Workbook()
     oSheet = oFile.active
