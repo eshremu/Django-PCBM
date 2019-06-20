@@ -1252,7 +1252,15 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             str(inst.configuration_status)
         ), reverse=True
     )
-
+    # D - 06860: Incorrect tab alignment on downloaded Baseline file- created a dictionary to save data, 0 is for non-picklist PA2,
+    # 1 for non-picklist none PA2, 2 for picklist. Two variables (sheetName, order) to store sheetname and order of the sheet.
+    sheets = {
+        0:{},
+        1:{},
+        2:{}
+    }
+    sheetName=''
+    order=''
     for oHeader in list(aHeaders):
         if sCustomer:
             # Skip records for the wrong customers
@@ -1268,36 +1276,72 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
         # Records are separated by Product Area 2 value, so each new Product
         # area 2 value encountered needs to be written as a new separation tab
         # S-08413: Adjust category tab name based on Product Area 2 name for picklists:added not oHeader.pick_list
-        if not oHeader.pick_list and oHeader.product_area2 and oHeader.product_area2.name not in \
-                oFile.sheetnames:
-            oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]:\'\?/]', '_',
-                                                     oHeader.product_area2.name)
-                                        )
-            oSheet.sheet_properties.tabColor = '0062FF'
+        # D - 06860: Incorrect tab alignment on downloaded Baseline file- changed below method to add order and sheetName
+        if not oHeader.pick_list and oHeader.product_area2 :
+            sheetName = re.sub(r'[\*\\\[\]:\'\?/]', '_',
+                               oHeader.product_area2.name if oHeader.product_area2.name is not None else 'None')
+            order = 0
+            if sheetName not in oFile.sheetnames:
+                oSheet = oFile.create_sheet(title=sheetName)
+                oSheet.sheet_properties.tabColor = '0062FF'
+                sheets[0][sheetName] = {
+                    'tabColor': '0062FF',
+                    'childs': []
+                }
         # S-08413: Adjust category tab name based on Product Area 2 name for picklists:added not oHeader.pick_list
-        elif not oHeader.pick_list and not oHeader.product_area2 and 'None' not in \
-                oFile.sheetnames:
-            oSheet = oFile.create_sheet(title="None")
-            oSheet.sheet_properties.tabColor = '0062FF'
+        # D - 06860: Incorrect tab alignment on downloaded Baseline file- changed below method to add order and sheetName
+        elif not oHeader.pick_list and not oHeader.product_area2 :
+            sheetName = "None"
+            order = 1
+            if sheetName not in oFile.sheetnames:
+                oSheet = oFile.create_sheet(title=sheetName)
+                oSheet.sheet_properties.tabColor = '0062FF'
+                sheets[1][sheetName] = {
+                    'tabColor': '0062FF',
+                    'childs': []
+                }
+
         # S-08413: Adjust category tab name based on Product Area 2 name for picklists: Commented line 1114 to 1117 and
         #  Added below lines from 1118 to 1132
         # elif oHeader.pick_list and 'Pick Lists' not in oFile.sheetnames \
         #         and 'Optional Hardware' not in oFile.sheetnames:
         #     oSheet = oFile.create_sheet(title="Pick Lists")
         #     oSheet.sheet_properties.tabColor = '0062FF'
+        # D - 06860: Incorrect tab alignment on downloaded Baseline file- changed below method to add order and sheetName
         elif oHeader.pick_list:
-            if not oHeader.product_area2 and 'None (Opt HW)' not in oFile.sheetnames:
-                oSheet = oFile.create_sheet(title="None (Opt HW)")
-                oSheet.sheet_properties.tabColor = '0062FF'
-            elif oHeader.product_area2 and oHeader.product_area2.name == 'Optional Hardware' \
-                    and 'Optional Hardware' not in oFile.sheetnames:
-                oSheet = oFile.create_sheet(title="Optional Hardware")
-                oSheet.sheet_properties.tabColor = '0062FF'
-            elif oHeader.product_area2 and oHeader.product_area2.name != 'Optional Hardware' \
-                    and (oHeader.product_area2.name + '(Opt HW)') not in oFile.sheetnames: # D-04626: Picklist tab names for Opt HW are generating duplicate tabs added 2nd and part
-                oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]:\'\?/]', '_', # D-04403: Unable to download Baseline file
-                                                     oHeader.product_area2.name)+'(Opt HW)')
-                oSheet.sheet_properties.tabColor = '0062FF'
+            if not oHeader.product_area2:
+                sheetName = "None (Opt HW)"
+                order = 2
+                if sheetName not in oFile.sheetnames:
+                    oSheet = oFile.create_sheet(title=sheetName)
+                    oSheet.sheet_properties.tabColor = '0062FF'
+                    sheets[2][sheetName] = {
+                        'tabColor': '0062FF',
+                        'childs': []
+                    }
+
+            elif oHeader.product_area2 and oHeader.product_area2.name == 'Optional Hardware':
+                sheetName = "Optional Hardware"
+                order = 2
+                if sheetName not in oFile.sheetnames:
+                    oSheet = oFile.create_sheet(title=sheetName)
+                    oSheet.sheet_properties.tabColor = '0062FF'
+                    sheets[2][sheetName] = {
+                        'tabColor': '0062FF',
+                        'childs': []
+                    }
+            # D-04626: Picklist tab names for Opt HW are generating duplicate tabs added 2nd and part
+            elif oHeader.product_area2 and oHeader.product_area2.name != 'Optional Hardware':
+                sheetName = re.sub(r'[\*\\\[\]:\'\?/]', '_', oHeader.product_area2.name)+'(Opt HW)'
+                order = 2
+                if sheetName not in oFile.sheetnames :
+                    oSheet = oFile.create_sheet(title=sheetName)
+                    oSheet.sheet_properties.tabColor = '0062FF'
+                    sheets[2][sheetName] = {
+                        'tabColor': '0062FF',
+                        'childs': []
+                    }
+
 
         iCurrentRow = 2
 
@@ -1347,6 +1391,8 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                 dHistory[key] = []
             dHistory[key].append(value)
 
+        # D - 06860: Incorrect tab alignment on downloaded Baseline file- added childs under PA2 tab
+        sheets[order][sheetName]['childs'].append(re.sub(r'[\*\\\[\]:\'\?/]', '_', sTitle))
         oSheet = oFile.create_sheet(
             title=re.sub(r'[\*\\\[\]:\'\?/]', '_', sTitle))
 
@@ -2086,7 +2132,23 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                        str(iCurrentRow)].font = Font(color=colors.BLUE,
                                                      underline='single')
         iCurrentRow += 1
+    #D - 06860: Incorrect tab alignment on downloaded Baseline file- Added below lines from 2144 to 2160
+    # to arrange the sheet based on PA2 and configuration under that PA2
 
+    orderedSheet = []
+    for order in sheets.keys():
+        for pa2 in sheets.get(order).keys():
+            orderedSheet.append(pa2)
+            pa2Data = sheets.get(order).get(pa2)
+            for config in pa2Data.get('childs'):
+                orderedSheet.append(config)
+    sheetOrder = [0,1]
+    osheetNames = []
+    for sheet in oFile._sheets[2:]:
+        osheetNames.append(sheet.title)
+    for sheet in orderedSheet:
+        sheetOrder.append(osheetNames.index(sheet)+2)
+    oFile._sheets = [oFile._sheets[i] for i in sheetOrder]
     return oFile
 # end def
 
@@ -2597,7 +2659,8 @@ def DownloadSearchResults(oRequest):
     :return: HTTPResponse containing data file download
     """
     # Retrieve data to download from URL query parameters
-    getDict = dict(oRequest.GET)
+ # D-06762 - 414: Request - URI Too Large' error when downloading search results: made getdict to POST instead of GET
+    getDict = dict(oRequest.POST)
     keys = list(getDict.keys())
     keys.remove('header')
     keys.sort(key=lambda x: int(x.replace('row', '')))
