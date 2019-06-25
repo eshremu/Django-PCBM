@@ -42,7 +42,8 @@ function submitForm(submitter){
                     $('<th>').css('width', '25px').appendTo(row);
                     $('<th>').text('Status').appendTo(row);
                     $('<th>').css('width', '25px').appendTo(row);
-                    $('<th>').text('Baseline').appendTo(row);
+//                    S-11553: Actions tab changes : Changed Baseline to Catalog in Table Header UI
+                    $('<th>').text('Catalog').appendTo(row);
                     $('<th>').css('width', '25px').appendTo(row);
                     $('<th>').text('Revision').appendTo(row);
                     table.append($('<thead>').append(row));

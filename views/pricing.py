@@ -4,13 +4,17 @@ View related to viewing, editing, and downloading pricing information
 
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-
+from django.shortcuts import redirect
+from django.template.loader import render_to_string
 from BoMConfig.models import Header, Configuration, ConfigLine, PartBase, \
     LinePricing, REF_CUSTOMER, SecurityPermission, REF_SPUD, PricingObject, \
     REF_TECHNOLOGY, HeaderTimeTracker,User_Customer
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue, StrToBool
-
+from datetime import datetime as dt
+import openpyxl
+from openpyxl import utils
+import zipfile
 import json
 import datetime
 import itertools
@@ -86,8 +90,9 @@ def PartPricing(oRequest):
                                 ('', '(None)') else None,
                                 spud__name=aRowToSave[3] if aRowToSave[3] not in
                                 ('', '(None)') else None,
-                                technology__name=aRowToSave[4] if aRowToSave[4]
-                                not in ('', '(None)') else None,
+            # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. commented aRowToSave[4]
+                                # technology__name=aRowToSave[4] if aRowToSave[4]
+                                # not in ('', '(None)') else None,
                                 is_current_active=True
                             )
                         except PricingObject.DoesNotExist:
@@ -97,37 +102,40 @@ def PartPricing(oRequest):
                         # erosion rate, or cut-over date generates new current
                         # PriceObject
                         # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(line 110,107,swapped valid to and valid from field)
+                        # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.changed aRowToSave[5] to aRowToSave[7] -> aRowToSave[4] to aRowToSave[6]
                         if not oCurrentPriceObj or \
                                 oCurrentPriceObj.unit_price != float(
-                                    aRowToSave[5]) or \
-                                (aRowToSave[6] and
-                                    datetime.datetime.strptime(aRowToSave[6],
+                                    aRowToSave[4]) or \
+                                (aRowToSave[5] and
+                                    datetime.datetime.strptime(aRowToSave[5],
                                                                '%m/%d/%Y'
                                                                ).date() !=
                                     oCurrentPriceObj.valid_from_date) or \
-                                (aRowToSave[7] and datetime.datetime.strptime(
-                                    aRowToSave[7], '%m/%d/%Y').date() !=
-                                    oCurrentPriceObj.valid_to_date) or \
-                                (aRowToSave[8] and datetime.date.today() <=
-                                    datetime.datetime.strptime(aRowToSave[8],
-                                                               '%m/%d/%Y'
-                                                               ).date() !=
-                                    oCurrentPriceObj.cutover_date) or \
-                                oCurrentPriceObj.price_erosion != eval(
-                                    aRowToSave[9]) or \
-                                (aRowToSave[10] and
-                                    oCurrentPriceObj.erosion_rate != float(
-                                         aRowToSave[10])):
+                                (aRowToSave[6] and datetime.datetime.strptime(
+                                    aRowToSave[6], '%m/%d/%Y').date() !=
+                                    oCurrentPriceObj.valid_to_date):
+                        # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.commented aRowToSave[8] to aRowToSave[10]
+                                # (aRowToSave[8] and datetime.date.today() <=
+                                #     datetime.datetime.strptime(aRowToSave[8],
+                                #                                '%m/%d/%Y'
+                                #                                ).date() !=
+                                #     oCurrentPriceObj.cutover_date) or \
+                                # oCurrentPriceObj.price_erosion != eval(
+                                #     aRowToSave[9]) or \
+                                # (aRowToSave[10] and
+                                #     oCurrentPriceObj.erosion_rate != float(
+                                #          aRowToSave[10])):
 
                             # Mark the previous match as 'inactive'
     # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed aRowToSave[7] to aRowToSave[6]
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.changed aRowToSave[6] to aRowToSave[5]
                             if oCurrentPriceObj:
                                 oCurrentPriceObj.is_current_active = False
                                 oCurrentPriceObj.valid_to_date = max(
                                     datetime.date.today(),
                                     datetime.datetime.strptime(
-                                        aRowToSave[6],
-                                        '%m/%d/%Y').date() if aRowToSave[6] else
+                                        aRowToSave[5],
+                                        '%m/%d/%Y').date() if aRowToSave[5] else
                                     datetime.date.today()
                                 )
                                 oCurrentPriceObj.save()
@@ -145,31 +153,35 @@ def PartPricing(oRequest):
                                     spud=REF_SPUD.objects.get(
                                         name=aRowToSave[3]) if aRowToSave[3] not
                                     in ('(None)', '', None, 'null') else None,
-                                    technology=REF_TECHNOLOGY.objects.get(
-                                        name=aRowToSave[4]) if aRowToSave[4] not
-                                    in ('(None)', '', None, 'null') else None,
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
+    # commented-out aRowToSave[4] and changed aRowToSave[5] to aRowToSave[7] -> aRowToSave[4] to aRowToSave[6]
+                                    # technology=REF_TECHNOLOGY.objects.get(
+                                    #     name=aRowToSave[4]) if aRowToSave[4] not
+                                    # in ('(None)', '', None, 'null') else None,
                                     is_current_active=True,
-                                    unit_price=aRowToSave[5],
-# S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed valid_to_date to aRowToSave[7] and valid_from_date to aRowToSave[6]
+                                    unit_price=aRowToSave[4],
+    # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed valid_to_date to aRowToSave[7] and valid_from_date to aRowToSave[6]
                                     valid_from_date=datetime.datetime.strptime(
+                                        aRowToSave[5],
+                                        '%m/%d/%Y'
+                                    ).date() if aRowToSave[5] else None,
+                                    valid_to_date=datetime.datetime.strptime(
                                         aRowToSave[6],
                                         '%m/%d/%Y'
                                     ).date() if aRowToSave[6] else None,
-                                    valid_to_date=datetime.datetime.strptime(
-                                        aRowToSave[7],
-                                        '%m/%d/%Y'
-                                    ).date() if aRowToSave[7] else None,
-                                    cutover_date=datetime.datetime.strptime(
-                                        aRowToSave[8],
-                                        '%m/%d/%Y'
-                                    ).date() if aRowToSave[8] else None,
-                                    price_erosion=eval(
-                                        aRowToSave[9]
-                                    ) if aRowToSave[9] else False,
-                                    erosion_rate=float(
-                                        aRowToSave[10]
-                                    ) if aRowToSave[10] else None,
-                                    comments=aRowToSave[11],
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
+     # commented-out aRowToSave[8] to aRowToSave[10] and changed aRowToSave[11] to aRowToSave[7] for comments
+                                    # cutover_date=datetime.datetime.strptime(
+                                    #     aRowToSave[8],
+                                    #     '%m/%d/%Y'
+                                    # ).date() if aRowToSave[8] else None,
+                                    # price_erosion=eval(
+                                    #     aRowToSave[9]
+                                    # ) if aRowToSave[9] else False,
+                                    # erosion_rate=float(
+                                    #     aRowToSave[10]
+                                    # ) if aRowToSave[10] else None,
+                                    comments=aRowToSave[7],
                                     previous_pricing_object=oCurrentPriceObj
                                 )
 
@@ -216,11 +228,12 @@ def PartPricing(oRequest):
 
                         # Updating comments only will modify current PriceObject
                         # in-place
+            # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. changed aRowToSave[11] to aRowToSave[7] for comments
                         elif oCurrentPriceObj and (
-                                    oCurrentPriceObj.comments != aRowToSave[11]
+                                    oCurrentPriceObj.comments != aRowToSave[7]
                         ):
-                            if oCurrentPriceObj.comments != aRowToSave[11]:
-                                oCurrentPriceObj.comments = aRowToSave[11]
+                            if oCurrentPriceObj.comments != aRowToSave[7]:
+                                oCurrentPriceObj.comments = aRowToSave[7]
                             oCurrentPriceObj.save()
                         # end if
                     # end for
@@ -235,23 +248,25 @@ def PartPricing(oRequest):
 
                 # Create table data from list of objects
                 for oPriceObj in aPriceObjs.filter(customer__in=aAvailableCU): # S-05923: Pricing - Restrict View to allowed CU's based on permissions added filter
-
+            # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
                     dContext['partlines'].append([
                         oPriceObj.part.product_number,
                         oPriceObj.customer.name,
                         oPriceObj.sold_to or '(None)',
                         getattr(oPriceObj.spud, 'name', '(None)'),
-                        getattr(oPriceObj.technology, 'name', '(None)'),
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. commented technology
+                        # getattr(oPriceObj.technology, 'name', '(None)'),
                         oPriceObj.unit_price or '',
                         # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers
                         oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
                         oPriceObj.valid_from_date else '',  # Valid-from
                         oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
                         oPriceObj.valid_to_date else '',  # Valid-To
-                        oPriceObj.cutover_date.strftime('%m/%d/%Y') if
-                        oPriceObj.cutover_date else '',  # Cut-over
-                        str(oPriceObj.price_erosion),  # Erosion
-                        oPriceObj.erosion_rate or '',  # Erosion rate
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. commented below 3 fields
+                        # oPriceObj.cutover_date.strftime('%m/%d/%Y') if
+                        # oPriceObj.cutover_date else '',  # Cut-over
+                        # str(oPriceObj.price_erosion),  # Erosion
+                        # oPriceObj.erosion_rate or '',  # Erosion rate
                         oPriceObj.comments or '',  # Comments
                     ])
 
@@ -259,9 +274,10 @@ def PartPricing(oRequest):
                     'customer_list': [
                         oCust.name for oCust in aAvailableCU], # S-05923: Pricing - Restrict View to allowed CU's based on permissions added aAvailableCU
                     'spud_list': [
-                        oSpud.name for oSpud in REF_SPUD.objects.filter(is_inactive=0)], # S-05909 : Edit drop down option for BoM Entry Header - SPUD: Added to filter dropdown data in pricing page
-                    'tech_list': [
-                        oTech.name for oTech in REF_TECHNOLOGY.objects.filter(is_inactive=0)] # S-05905 : Edit drop down option for BoM Entry Header - Technology: Added to filter dropdown data in pricing page
+                        oSpud.name for oSpud in REF_SPUD.objects.filter(is_inactive=0)]  # S-05909 : Edit drop down option for BoM Entry Header - SPUD: Added to filter dropdown data in pricing page
+    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. commented-out tech-list
+                    # 'tech_list': [
+                    #     oTech.name for oTech in REF_TECHNOLOGY.objects.filter(is_inactive=0)] # S-05905 : Edit drop down option for BoM Entry Header - Technology: Added to filter dropdown data in pricing page
                 })
             except (PartBase.DoesNotExist,):
                 status_message = 'ERROR: Part number not found'
@@ -278,17 +294,278 @@ def PartPricing(oRequest):
     # part number provided
     if not dContext['partlines']:
         if oRequest.POST.get('part') and not status_message:
+# S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. removed 4 ''
             dContext['partlines'] = [[oRequest.POST.get('part', ''), '', '', '',
-                                      '', '', '', '', '', '', '', '']]
+                                      '', '', '', '']]
         elif oRequest.POST.get('initial') and not status_message:
             dContext['partlines'] = [[oRequest.POST.get('initial', ''), '', '',
-                                      '', '', '', '', '', '', '', '', '']]
+                                      '', '', '', '', '']]
         else:
             dContext['partlines'] = [[]]
 
     return Default(oRequest, sTemplate='BoMConfig/partpricing.html',
                    dContext=dContext)
+# S-11541: Upload - pricing for list of parts in pricing tab: Added below PriceUpload function to upload pricing data
+@login_required
+def PriceUpload(oRequest):
+    """
+    View to provide users with a means to upload Part Number price
+    for creating new pricingobject mapping objects.
+    :param oRequest:
+    :return:
+    """
+    # Determine if user has permission to interact with pricing information
+    bCanReadPricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Read').filter(
+        user__in=oRequest.user.groups.all()))
+    bCanWritePricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Write').filter(
+        user__in=oRequest.user.groups.all()))
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
 
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+    dContext = {'customer_list': aAvailableCU,
+                'pricing_read_authorized': bCanReadPricing,
+                'pricing_write_authorized': bCanWritePricing
+                }
+
+    # If POSTing an upload file
+    if oRequest.POST:
+        try:
+            # Attempt to process the uploaded file
+            bErrors = ProcessPriceUpload(
+                oRequest.FILES['file'],
+                REF_CUSTOMER.objects.get(id=oRequest.POST['customer']),
+                oRequest.user
+            )
+            status_message = 'Upload completed.' + \
+                (' An email has been sent detailing errors.'
+                              if bErrors else '')
+            status_error = False
+        except ValueError:
+            status_message = 'Invalid file provided'
+            status_error = True
+
+        dContext['status_message'] = status_message
+        dContext['status_error'] = status_error
+
+    return Default(oRequest, sTemplate='BoMConfig/priceupload.html',
+                   dContext=dContext)
+# end def
+# S-12189: Validate pricing for list of parts in pricing tab: Added below function to validate pricing data before saving in th DB
+# Condition to Upload: if the uploaded values match an existing entry exactly in the combined fields for Part #, Customer, Sold-to, SPUD,
+# Valid From, and Valid To, then it should be flagged in an email and not added to the database. Same for Comment also. Any data if there is
+# a difference in one of those fields from (a), then a new entry should be made except for customer will be uploaded.
+def ProcessPriceUpload(oStream, oCustomer, oUser):
+    """
+    Function to parse information from a data stream provided in oStream into
+    CustomerPartInfo objects.  There are currently two supported file types.
+    :param oStream: Data stream (filestream, etc.) containing uploaded
+    information
+    :param oCustomer: REF_CUSTOMER object used to create PriceObject object
+    :param oUser: User object creating entries
+    :return: Boolean indicating if any erroneous data was encountered
+    """
+    sSheetName = "Price Upload"
+    aColumns = [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]]
+    aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)', 'Valid From',
+                 'Valid To', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments']
+
+    # Attempt to open the .xls(x) file
+    try:
+        oFile = openpyxl.load_workbook(oStream, read_only=True)
+    except (IOError, utils.exceptions.InvalidFileException, zipfile.BadZipFile):
+        raise TypeError('Invalid file')
+
+    # Attempt to find exact match for expected sheet name (this was needed due
+    # to extra spaces being present in file, which we cannot control)
+    for sName in oFile.get_sheet_names():
+        if sSheetName in sName:
+            sSheetName = sName
+            break
+    # Attempt to retrieve the sheet object of the file
+    try:
+        oDataSheet = oFile.get_sheet_by_name(sSheetName)
+    except KeyError:
+        raise TypeError('Invalid sheet name')
+
+    aSheetData = oDataSheet.rows
+
+    # Determine if expected headers match what is in the file, to ensure we use
+    # the correct data
+    aFileHeaders = next(aSheetData, list())
+    tDesiredHeaders = list(str(aFileHeaders[i-1].value).strip() for i in
+                           itertools.chain.from_iterable(aColumns))
+    if tDesiredHeaders != aHeaders:
+        raise TypeError('Header line mismatch')
+
+
+    aExtractedData = []
+    for row in aSheetData:
+        for aDataGroup in aColumns:
+            aTemp = []
+            for (idx, iCol) in enumerate(aDataGroup):
+                oData = row[iCol - 1].value
+                aTemp.append(oData)
+            # end for
+            aTemp = tuple(aTemp)
+            if any(aTemp):
+                aExtractedData.append(aTemp)
+                # end for
+                # end for
+
+    # Remove duplicate entries
+    aExtractedData = list(set(aExtractedData))
+    aDuplicateEntry = []
+    aDuplicateComments = []
+    aDuplicateCustomer = []
+    aInvalidEntries = []
+
+    bErrorsLogged = False
+
+    for tPart in aExtractedData:
+        # Check if any mappings exists with current info
+        # Attempt to find an entry that matches exactly
+
+        oPart = PartBase.objects.filter( product_number=tPart[0])
+        if not oPart:
+            aInvalidEntries.append(tPart)
+            continue
+        try:
+            vt_temp = datetime.date.strftime(tPart[7], '%Y-%m-%d') if tPart[7] else ''
+            vf_temp = datetime.date.strftime(tPart[6], '%Y-%m-%d') if tPart[6] else ''
+            oCurrentPriceObj = PricingObject.objects.filter(
+                part__product_number__iexact=tPart[0],
+                customer__name=tPart[1],
+                sold_to=tPart[2] if tPart[2] not in ('', '(None)') else None,
+                spud__name=tPart[3] if tPart[3] not in('', '(None)') else None,
+                valid_from_date=vf_temp if vf_temp not in ('', '(None)') else None,
+                valid_to_date=vt_temp if vt_temp not in ('', '(None)') else None,
+                is_current_active=True
+            )
+
+        except PricingObject.DoesNotExist:
+            oCurrentPriceObj = None
+
+        if not oCurrentPriceObj and str(oCustomer).upper() != str(tPart[1]).upper():
+            aDuplicateCustomer.append(tPart)
+            continue
+        if oCurrentPriceObj and str(oCustomer).upper() != str(tPart[1]).upper():
+            aDuplicateCustomer.append(tPart)
+            continue
+        if oCurrentPriceObj and str(oCustomer).upper() == str(tPart[1]).upper() and not tPart[11]:
+            aDuplicateEntry.append(tPart)
+            continue
+        if oCurrentPriceObj and str(oCustomer).upper() == str(tPart[1]).upper() and tPart[11]:
+            aDuplicateComments.append(tPart)
+            continue
+
+
+        if not oCurrentPriceObj:
+            # Create a new PricingObject
+
+            try:
+                oNewPriceObj = PricingObject.objects.create(
+                    part=PartBase.objects.get(
+                        product_number__iexact=tPart[0]),
+                    spud=REF_SPUD.objects.get(name__iexact=tPart[3])if tPart[3] not
+                                    in ('(None)', '', None, 'null') else None,
+                    customer=oCustomer,
+                    sold_to=tPart[2] if tPart[2] not
+                                    in ('(None)', '', None, 'null') else None,
+                    unit_price=tPart[5],
+                    valid_from_date=vf_temp if vf_temp not in ('', '(None)') else None,
+                    valid_to_date=vt_temp if vt_temp not in ('', '(None)') else None,
+                    technology=REF_TECHNOLOGY.objects.get(
+                                        name=tPart[4]) if tPart[4] not
+                                    in ('(None)', '', None, 'null') else None,
+                    comments=tPart[11] if tPart[11] not
+                                          in ('(None)', '', None, 'null') else None,
+                    is_current_active=True,
+
+                )
+            except PricingObject.DoesNotExist:
+                oNewPriceObj = None
+        # end if
+    # end for
+
+    if aDuplicateComments or aDuplicateCustomer or aDuplicateEntry  or aInvalidEntries:
+        bErrorsLogged = True
+        aDuplicateEntry.sort(key=lambda x: x[3])
+        aDuplicateComments.sort(key=lambda x: x[3])
+        aDuplicateCustomer.sort(key=lambda x: x[3])
+        aInvalidEntries.sort(key=lambda x: x[3])
+
+
+        subject = 'Price upload errors'
+        from_email = 'acc.admin@ericsson.com'
+        text_message = GenerateEmailMessage(
+            **{
+                'dupentry': aDuplicateEntry,
+                'comments': aDuplicateComments,
+                'cu': aDuplicateCustomer,
+                'invalidentry': aInvalidEntries,
+                'user': oUser,
+                'filename': oStream.name
+            }
+        )
+        html_message = render_to_string(
+            'BoMConfig/priceupload_email.html',
+            {
+                'dupentry': aDuplicateEntry,
+                'comments': aDuplicateComments,
+                'cu': aDuplicateCustomer,
+                'invalidentry': aInvalidEntries,
+                'user': oUser,
+                'filename': oStream.name
+            }
+        )
+        oUser.email_user(subject=subject, message=text_message,
+                         from_email=from_email, html_message=html_message)
+    # end if
+
+
+    return bErrorsLogged
+
+# S-12189: Validate pricing for list of parts in pricing tab: Added below function to generate detailed error message
+def GenerateEmailMessage( dupentry=(), comments=(), cu=(), invalidentry=(),
+                         user=None, filename=''):
+    """
+    Function to generate a plain-text error message detailing any errors
+    encountered during file upload
+    :param cu: List of entries found that duplicate an existing customer associated
+    :param comments: List of entries found that duplicate an comments
+    :param dupentry: List of entries found that found to be duplicate
+    :param user: User object of user uploading file
+    :param filename: String containing name of file uploaded
+    :return: String containing formatted plain-text error message
+    """
+    temp = ('Hello {},\n\nThe following errors were found '
+            'while uploading {}:\n\n').format(
+        user.first_name, filename
+    )
+    aErrorLists = [dupentry, comments, cu, invalidentry ]
+    aTableTitles = ['Same Part Number + Customer + Sold-to + SPUD + Valid From + Valid To already exists in the database with different pricing',
+                    'Same Part Number + Customer + Sold-to + SPUD + Valid From + Valid To has different value in Comments',
+                    ('Different Customer provided in the file for the selected Customer'),
+                    'Part does not exist in system'
+                    ]
+
+    for (idx, maplist) in enumerate(aErrorLists):
+        if maplist:
+            temp += aTableTitles[idx] + '\n'
+            for mapping in maplist:
+                temp += '\t' + mapping[0] + '\n'
+            temp += '\n'
+        # end if
+    # end for
+
+    return temp
+# end def
 
 @login_required
 def ConfigPricing(oRequest):
@@ -332,6 +609,7 @@ def ConfigPricing(oRequest):
     aConfigLines = []
     dContext = {'configlines': aConfigLines, 'readonly': False}
 
+
     # If POSTing data
     if oRequest.method == 'POST' and oRequest.POST:
         sConfig = oRequest.POST['config'] if 'config' in oRequest.POST else None
@@ -374,8 +652,9 @@ def ConfigPricing(oRequest):
                 [oHead.program.id, oHead.program.name] if oHead.program else
                 ['None', '(No Program)'] for oHead in aConfigMatches
             )
+        # S-11538: Open multiple revisions for each configuration - UI Elements :- Added below to pick the baseline, it's revision
             aBaselineList = list(
-                [oHead.baseline.id, str(oHead.baseline)] if oHead.baseline else
+                [oHead.baseline.id, str(oHead.baseline_impacted), str(oHead.baseline_version)] if oHead.baseline else
                 ['None', '(No Baseline)'] for oHead in aConfigMatches
             )
             dContext.update(
@@ -483,6 +762,546 @@ def ConfigPricing(oRequest):
                  'is_not_pick_list': not aLine[0].config.header.pick_list if
                  aLine else False,
                  'program': iProgValue,
+                 'baseline': iBaseValue,
+                 'prog_list': [],
+                 'base_list': [],
+                 'readonly': 'In Process' not in
+                             aLine[0].config.header.configuration_status.name
+                 }
+            )
+        # end if
+    # end if
+
+    dContext.update({
+        'status_message': status_message,
+        'pricing_read_authorized': bCanReadPricing,
+        'pricing_write_authorized': bCanWritePricing,
+    })
+
+    return Default(oRequest, sTemplate, dContext)
+
+# S-11537: Multi Config sub tab - UI for Multiple Config tab :- Added below MultConfigPricing to show multiple configs
+@login_required
+def MultiConfigPricing(oRequest):
+    """
+    View for viewing and editing manual pricing overrides for individual Headers
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    # Determine user permissions
+    bCanReadPricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Read').filter(
+        user__in=oRequest.user.groups.all()))
+    bCanWritePricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Write').filter(
+        user__in=oRequest.user.groups.all()))
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
+    # Unlock any locked Header
+    if 'existing' in oRequest.session:
+        try:
+            Unlock(oRequest, oRequest.session['existing'])
+        except Header.DoesNotExist:
+            pass
+        # end try
+
+        del oRequest.session['existing']
+    # end if
+
+    if 'status' in oRequest.session:
+        del oRequest.session['status']
+    # end if
+
+    status_message = None
+
+    sTemplate = 'BoMConfig/multi_configpricing.html'
+    aConfigLines = []
+    aConfigLines1 = []
+    aBaselines1 = []
+    aBaseRev1 = []
+    aConfigs1 = []
+    aConfigStatus = []
+    aConfigStatus1 = []
+    dContext = {'configlines': aConfigLines1, 'readonly': False}
+
+    # If POSTing data
+    if oRequest.method == 'POST' and oRequest.POST:
+
+        scon= oRequest.POST['config'] if 'config' in oRequest.POST else None
+        scon2= scon.split(';')
+
+        for config_index in range(len(scon2)):
+            sConfig = scon2[config_index]
+
+            if 'action' in oRequest.POST and oRequest.POST['action'] == 'search':
+                iProgram = None
+                iBaseline = None
+
+            # Since the user searches by Header name only, it is possible to have
+            # multiple Headers with the same name, with different programs and/or
+            # baselines.  So if multiple matches exist, we will create a list to
+            # allow the user to select the desired Header.
+
+            # Start with all Headers that match the name
+            if sConfig:
+                aConfigMatches = Header.objects.filter(
+                    configuration_designation__iexact=sConfig).filter(customer_unit_id__in=aAvailableCU).latest('baseline') # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
+
+            if aConfigMatches == 0:
+                status_message = 'No matching configuration found'
+                dContext.update({'config': sConfig})
+
+            # Only a single match was found, so load the data for the match
+            else:
+                iProgValue = aConfigMatches.program.id if \
+                    aConfigMatches.program else None
+                iBaseValue = aConfigMatches.baseline.id if \
+                    aConfigMatches.baseline else None
+                iBaselineValue = aConfigMatches.baseline.title if \
+                    aConfigMatches.baseline else None
+                iBaseRevValue = aConfigMatches.baseline.version if \
+                    aConfigMatches.baseline else None
+
+                if sConfig:
+                    dLineFilters = {
+                        'config__header__configuration_designation__iexact': sConfig,
+                    }
+
+                    dConfigFilters = {
+                        'header__configuration_designation__iexact': sConfig,
+                    }
+                dLineFilters.update({'config__header__program__id': iProgValue})
+                dConfigFilters.update({'header__program__id': iProgValue})
+
+                dLineFilters.update({'config__header__baseline__id': iBaseValue})
+                dConfigFilters.update({'header__baseline__id': iBaseValue})
+
+                # Save data
+                if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
+                    # Ensure user has not changed the configuration value prior to
+                    # saving
+                    if oRequest.POST['config'] == oRequest.POST['initial']:
+                        # net_total = 0
+                        if config_index < len(json.loads(oRequest.POST['data_form'])):
+                            for dLine in json.loads(oRequest.POST['data_form'])[config_index]:
+
+                                # Change dLine to dict with str keys
+                                if isinstance(dLine, list):
+                                    dLine = {
+                                        str(key): val for (key, val) in enumerate(dLine)
+                                        }
+                                elif isinstance(dLine, dict):
+                                    dLine = {
+                                        str(key): val for (key, val) in dLine.items()}
+
+                                dLineFilters.update({'line_number': dLine['0']})
+
+                                # Retrieve ConfigLine matching line number and update
+                                # override_price
+                                oLineToEdit = ConfigLine.objects.filter(
+                                    **dLineFilters)[0]
+                                (oLinePrice, _) = LinePricing.objects.get_or_create(
+                                    config_line=oLineToEdit)
+                                oLinePrice.override_price = float(dLine['7']) if \
+                                    dLine['7'] not in (None, '') else None
+
+                                oLinePrice.save()
+                        # end for
+                        dLineFilters.pop('line_number', None)
+
+                        # Save the configuration
+                        oConfig = Configuration.objects.get(**dConfigFilters)
+                        oConfig.save()
+
+                        status_message = 'Data saved.'
+                    else:
+                        status_message = 'Cannot change configuration during save.'
+                        sConfig = oRequest.POST['initial']
+                    # end if
+                # end if
+
+                # Retrieve ConfigLines that matches the filters and sort by line
+                # number
+                aLine = ConfigLine.objects.filter(**dLineFilters)
+                aLine = sorted(aLine, key=lambda x: (
+                    [int(y) for y in x.line_number.split('.')]))
+
+                # Build table layout from matching data
+                aConfigLines = [{
+                    '0': oLine.line_number,
+                    '1': ('..' if oLine.is_grandchild else '.' if
+                          oLine.is_child else '') + oLine.part.base.product_number,
+                    '2': str(oLine.part.base.product_number) +
+                    str('_' + oLine.spud.name if oLine.spud else ''),
+                    '3': oLine.part.product_description,
+                    '4': float(oLine.order_qty if oLine.order_qty else 0),
+                    '5': float(GrabValue(
+                        oLine, 'linepricing.pricing_object.unit_price', 0)),
+                    '6': float(oLine.order_qty or 0) * float(GrabValue(
+                        oLine, 'linepricing.pricing_object.unit_price', 0)),
+                    '7': GrabValue(oLine, 'linepricing.override_price', ''),
+                    '8': oLine.traceability_req or '', # S-05769: Addition of Product Traceability field in Pricing->Config Price Management tab
+                    '9': oLine.higher_level_item or '',
+                    '10': oLine.material_group_5 or '',
+                    '11': oLine.commodity_type or '',
+                    '12': oLine.comments or '',
+                    '13': oLine.additional_ref or ''
+                                } for oLine in aLine]
+
+                # Update expected price roll-up (determined by unit price per line)
+                if not aLine[0].config.header.pick_list:
+                    config_total = sum([float(line['6']) for line in aConfigLines])
+                    aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
+
+                aConfigLines1.append(aConfigLines)
+                aBaselines1.append(iBaselineValue)
+                aBaseRev1.append(iBaseRevValue)
+                aConfigs1.append(sConfig)
+                aConfigStatus1.append(aLine[0].config.header.configuration_status.name)
+
+                dContext['configlines'] = aConfigLines1
+                dContext['baselines'] = aBaselines1
+                dContext['baserevs'] = aBaseRev1
+                dContext['configs'] = aConfigs1
+                dContext['configstatus'] = aConfigStatus1
+
+                dContext.update(
+                    {'config': scon,
+                     'is_not_pick_list': not aLine[0].config.header.pick_list if
+                      aLine else False,
+                     'program': iProgValue,
+                     'baseline': iBaseValue,
+                     'prog_list': [],
+                     'base_list': [],
+                     'readonly': 'In Process' not in
+                                 aLine[0].config.header.configuration_status.name
+                    }
+                )
+        # end if
+    # end if
+
+    dContext.update({
+        'status_message': status_message,
+        'pricing_read_authorized': bCanReadPricing,
+        'pricing_write_authorized': bCanWritePricing,
+    })
+
+    return Default(oRequest, sTemplate, dContext)
+
+# S-11538: Open multiple revisions for each configuration - UI Elements :- Added below function to show multiple revisions for each config
+@login_required
+def MultiRevConfigPricing(oRequest):
+    """
+    View for viewing and editing manual pricing overrides for individual Headers
+    :param oRequest: Django request object
+    :return: HTML response via Default function
+    """
+
+    # Determine user permissions
+    bCanReadPricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Read').filter(
+        user__in=oRequest.user.groups.all()))
+    bCanWritePricing = bool(SecurityPermission.objects.filter(
+        title='Detailed_Price_Write').filter(
+        user__in=oRequest.user.groups.all()))
+    # S-05923: Pricing - Restrict View to allowed CU's based on permissions
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+
+    # Unlock any locked Header
+    if 'existing' in oRequest.session:
+        try:
+            Unlock(oRequest, oRequest.session['existing'])
+        except Header.DoesNotExist:
+            pass
+        # end try
+
+        del oRequest.session['existing']
+    # end if
+
+    if 'status' in oRequest.session:
+        del oRequest.session['status']
+    # end if
+
+    status_message = None
+
+    sTemplate = 'BoMConfig/multirevconfigpricing.html'
+    aConfigLines = []
+    dContext = {'configlines': aConfigLines, 'readonly': False}
+
+
+    # If POSTing data
+    if oRequest.method == 'POST' and oRequest.POST:
+        sConfig = oRequest.POST['config'] if 'config' in oRequest.POST else None
+
+        # iProgram = oRequest.POST.get('iProgId', None)
+        iBaseline = oRequest.POST.get('iBaseId', None)
+
+        if 'action' in oRequest.POST and oRequest.POST['action'] == 'search':
+            iProgram = None
+            iBaseline = None
+
+        # Since the user searches by Header name only, it is possible to have
+        # multiple Headers with the same name, with different programs and/or
+        # baselines.  So if multiple matches exist, we will create a list to
+        # allow the user to select the desired Header.
+
+        # Start with all Headers that match the name
+        aConfigMatches = Header.objects.filter(
+            configuration_designation__iexact=sConfig).filter(
+            customer_unit_id__in=aAvailableCU)  # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
+
+
+        if iBaseline and iBaseline not in ('None', 'NONE'):
+            aConfigMatches = aConfigMatches.filter(baseline__id=iBaseline)
+        elif iBaseline:
+            aConfigMatches = aConfigMatches.filter(baseline=None)
+        if len(aConfigMatches) == 0:
+            status_message = 'No matching configuration found'
+            dContext.update({'config': sConfig})
+
+        # More than one match was found, so create a list with an entry for each
+        # match
+
+        # Only a single match was found, so load the data for the match
+        else:
+            iBaseValue = aConfigMatches[0].baseline.id if \
+                aConfigMatches[0].baseline else None
+
+            dLineFilters = {
+                'config__header__configuration_designation__iexact': sConfig,
+            }
+            dConfigFilters = {
+                'header__configuration_designation__iexact': sConfig,
+            }
+
+            dLineFilters.update({'config__header__baseline__id': iBaseValue})
+            dConfigFilters.update({'header__baseline__id': iBaseValue})
+
+            # Save data
+            if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
+                # Ensure user has not changed the configuration value prior to
+                # saving
+                if oRequest.POST['config'] == oRequest.POST['initial']:
+                    # net_total = 0
+                    for dLine in json.loads(oRequest.POST['data_form']):
+                        # Change dLine to dict with str keys
+                        if isinstance(dLine, list):
+                            dLine = {
+                                str(key): val for (key, val) in enumerate(dLine)
+                                }
+                        elif isinstance(dLine, dict):
+                            dLine = {
+                                str(key): val for (key, val) in dLine.items()}
+
+                        dLineFilters.update({'line_number': dLine['0']})
+
+                        # Retrieve ConfigLine matching line number and update
+                        # override_price
+                        oLineToEdit = ConfigLine.objects.filter(
+                            **dLineFilters)[0]
+                        (oLinePrice, _) = LinePricing.objects.get_or_create(
+                            config_line=oLineToEdit)
+                        oLinePrice.override_price = float(dLine['7']) if \
+                            dLine['7'] not in (None, '') else None
+
+                        oLinePrice.save()
+                    # end for
+                    dLineFilters.pop('line_number', None)
+
+                    # Save the configuration
+                    oConfig = Configuration.objects.get(**dConfigFilters)
+                    oConfig.save()
+
+                    status_message = 'Data saved.'
+                else:
+                    status_message = 'Cannot change configuration during save.'
+                    sConfig = oRequest.POST['initial']
+                # end if
+            # end if
+
+            # Retrieve ConfigLines that matches the filters and sort by line
+            # number
+            aLine = ConfigLine.objects.filter(**dLineFilters)
+            aLine = sorted(aLine, key=lambda x: (
+                [int(y) for y in x.line_number.split('.')]))
+
+            # Build table layout from matching data
+            aConfigLines = [{
+                '0': oLine.line_number,
+                '1': ('..' if oLine.is_grandchild else '.' if
+                      oLine.is_child else '') + oLine.part.base.product_number,
+                '2': str(oLine.part.base.product_number) +
+                str('_' + oLine.spud.name if oLine.spud else ''),
+                '3': oLine.part.product_description,
+                '4': float(oLine.order_qty if oLine.order_qty else 0),
+                '5': float(GrabValue(
+                    oLine, 'linepricing.pricing_object.unit_price', 0)),
+                '6': float(oLine.order_qty or 0) * float(GrabValue(
+                    oLine, 'linepricing.pricing_object.unit_price', 0)),
+                '7': GrabValue(oLine, 'linepricing.override_price', ''),
+                '8': oLine.traceability_req or '', # S-05769: Addition of Product Traceability field in Pricing->Config Price Management tab
+                '9': oLine.higher_level_item or '',
+                '10': oLine.material_group_5 or '',
+                '11': oLine.commodity_type or '',
+                '12': oLine.comments or '',
+                '13': oLine.additional_ref or ''
+                            } for oLine in aLine]
+
+            # Update expected price roll-up (determined by unit price per line)
+            if not aLine[0].config.header.pick_list:
+                config_total = sum([float(line['6']) for line in aConfigLines])
+                aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
+
+            dContext['configlines'] = aConfigLines
+            dContext.update(
+                {'config': sConfig,
+                 'is_not_pick_list': not aLine[0].config.header.pick_list if
+                 aLine else False,
+                 # 'program': iProgValue,
+                 'baseline': iBaseValue,
+                 'prog_list': [],
+                 'base_list': [],
+                 'readonly': 'In Process' not in
+                             aLine[0].config.header.configuration_status.name
+                 }
+            )
+        # end if
+    # end if
+    if oRequest.method == 'GET' and oRequest.GET:
+
+        sConfig = oRequest.GET['iConf'] if 'iConf' in oRequest.GET else None
+
+        iBaseline = oRequest.GET.get('iBaseId', None)
+
+        if 'action' in oRequest.POST and oRequest.POST['action'] == 'search':
+            iProgram = None
+            iBaseline = None
+
+        # Since the user searches by Header name only, it is possible to have
+        # multiple Headers with the same name, with different programs and/or
+        # baselines.  So if multiple matches exist, we will create a list to
+        # allow the user to select the desired Header.
+
+        # Start with all Headers that match the name
+        aConfigMatches = Header.objects.filter(
+            configuration_designation__iexact=sConfig).filter(
+            customer_unit_id__in=aAvailableCU)  # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
+        # If iBaseline has a value, filter Headers by baseline id
+        if iBaseline and iBaseline not in ('None', 'NONE'):
+            aConfigMatches = aConfigMatches.filter(baseline__id=iBaseline)
+        elif iBaseline:
+            aConfigMatches = aConfigMatches.filter(baseline=None)
+
+        if len(aConfigMatches) == 0:
+            status_message = 'No matching configuration found'
+            dContext.update({'config': sConfig})
+
+        # Only a single match was found, so load the data for the match
+        else:
+            iBaseValue = aConfigMatches[0].baseline.id if \
+                aConfigMatches[0].baseline else None
+
+            dLineFilters = {
+                'config__header__configuration_designation__iexact': sConfig,
+            }
+            dConfigFilters = {
+                'header__configuration_designation__iexact': sConfig,
+            }
+
+            dLineFilters.update({'config__header__baseline__id': iBaseValue})
+            dConfigFilters.update({'header__baseline__id': iBaseValue})
+
+            # Save data
+            if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
+                # Ensure user has not changed the configuration value prior to
+                # saving
+                if oRequest.GET['config'] == oRequest.GET['initial']:
+                    # net_total = 0
+                    for dLine in json.loads(oRequest.GET['data_form']):
+                        # Change dLine to dict with str keys
+                        if isinstance(dLine, list):
+                            dLine = {
+                                str(key): val for (key, val) in enumerate(dLine)
+                                }
+                        elif isinstance(dLine, dict):
+                            dLine = {
+                                str(key): val for (key, val) in dLine.items()}
+
+                        dLineFilters.update({'line_number': dLine['0']})
+
+                        # Retrieve ConfigLine matching line number and update
+                        # override_price
+                        oLineToEdit = ConfigLine.objects.filter(
+                            **dLineFilters)[0]
+                        (oLinePrice, _) = LinePricing.objects.get_or_create(
+                            config_line=oLineToEdit)
+                        oLinePrice.override_price = float(dLine['7']) if \
+                            dLine['7'] not in (None, '') else None
+
+                        oLinePrice.save()
+                    # end for
+                    dLineFilters.pop('line_number', None)
+
+                    # Save the configuration
+                    oConfig = Configuration.objects.get(**dConfigFilters)
+                    oConfig.save()
+
+                    status_message = 'Data saved.'
+                else:
+                    status_message = 'Cannot change configuration during save.'
+                    sConfig = oRequest.GET['initial']
+                # end if
+            # end if
+
+            # Retrieve ConfigLines that matches the filters and sort by line
+            # number
+            aLine = ConfigLine.objects.filter(**dLineFilters)
+            aLine = sorted(aLine, key=lambda x: (
+                [int(y) for y in x.line_number.split('.')]))
+
+            # Build table layout from matching data
+            aConfigLines = [{
+                '0': oLine.line_number,
+                '1': ('..' if oLine.is_grandchild else '.' if
+                      oLine.is_child else '') + oLine.part.base.product_number,
+                '2': str(oLine.part.base.product_number) +
+                str('_' + oLine.spud.name if oLine.spud else ''),
+                '3': oLine.part.product_description,
+                '4': float(oLine.order_qty if oLine.order_qty else 0),
+                '5': float(GrabValue(
+                    oLine, 'linepricing.pricing_object.unit_price', 0)),
+                '6': float(oLine.order_qty or 0) * float(GrabValue(
+                    oLine, 'linepricing.pricing_object.unit_price', 0)),
+                '7': GrabValue(oLine, 'linepricing.override_price', ''),
+                '8': oLine.traceability_req or '', # S-05769: Addition of Product Traceability field in Pricing->Config Price Management tab
+                '9': oLine.higher_level_item or '',
+                '10': oLine.material_group_5 or '',
+                '11': oLine.commodity_type or '',
+                '12': oLine.comments or '',
+                '13': oLine.additional_ref or ''
+                            } for oLine in aLine]
+
+            # Update expected price roll-up (determined by unit price per line)
+            if not aLine[0].config.header.pick_list:
+                config_total = sum([float(line['6']) for line in aConfigLines])
+                aConfigLines[0]['5'] = aConfigLines[0]['6'] = str(config_total)
+
+            dContext['configlines'] = aConfigLines
+            dContext.update(
+                {'config': sConfig,
+                 'is_not_pick_list': not aLine[0].config.header.pick_list if
+                 aLine else False,
+                 # 'program': iProgValue,
                  'baseline': iBaseValue,
                  'prog_list': [],
                  'base_list': [],

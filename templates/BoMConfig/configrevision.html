@@ -123,10 +123,10 @@
             $('#table-wrapper').css("height", tableheight);
             build_table();
         }
-
+        <!--S-11547: BoM Entry - Revisions sub-tab changes: Changed Baseline to Catalog-->
         function determineColumns(cols, headers, readonly){
             cols.push({data: 0}, {data: 1}, {data: 2}, {data: 3}, {data: 4}, {data: 5}, {data: 6}, {data: 7}, {data: 8});
-            headers.push('BoM Revision', 'Baseline', 'Baseline Revision', 'Release Date', "Model", 'Customer Number', 'Changes', 'Comments', 'Person Responsible');
+            headers.push('BoM Revision', 'Catalog', 'Catalog Revision', 'Release Date', "Model", 'Customer Number', 'Changes', 'Comments', 'Person Responsible');
             {% if revision_write_authorized %}
             readonly.push(0, 1, 2, 4, 5, 6, 8);
             {% else %}

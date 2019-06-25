@@ -1,0 +1,40 @@
+{% extends "BoMConfig/pricelanding.html" %}
+{% load staticfiles %}
+{% load bomconfig_customtemplatetags %}
+{% block subcontent %}
+<h5>NOTE: Please provide template sheet name as <b>Price Upload</b> with valid inputs. </h5>
+    <form id="headersubform"
+          method="post" enctype="multipart/form-data">
+        <div id="outer">
+        {% csrf_token %}
+            <label for="customer">Customer:</label>
+        <select id="customer" name="customer" required>
+            <option value="">------</option>
+            {% for cust in customer_list %}
+            <option value="{{ cust.id }}">{{ cust.name }}</option>
+            {% endfor %}
+        </select>
+            <br/>
+        <input type="file" name="file" required/>
+        <button class="btn btn-primary" type="submit" style="margin-top:10px;">Upload</button>
+         </div>
+    </form>
+    {% if status_message %}
+    <div class="messageblock {% if status_error %}errorblock{% else %}successblock{% endif %}">
+        <p>{{ status_message }}</p>
+    </div>
+    {% endif %}
+    <script>
+        $('button[value="price_upload"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        $('a.headtitle:contains("Price Upload")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        $('button[value="upload"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+        function cleanDataCheck(link){
+            if (link.target == "_blank"){
+                window.open(link.dataset.href);
+            } else {
+                window.location.href = link.dataset.href;
+            }
+        }
+    </script>
+
+{% endblock %}

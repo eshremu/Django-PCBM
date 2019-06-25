@@ -26,8 +26,16 @@ urlpatterns = patterns(
     url(r'^pricing/download/$', views.PartPriceDownload,
         name='pricingdownload'),
     url(r'^pricing_config/$', views.ConfigPricing, name='configpricing'),
+# S-11541: Upload - pricing for list of parts in pricing tab: Added below PriceUpload to upload pricing data
+    url(r'^price_upload/$', views.PriceUpload, name='priceupload'),
+# S-11537: Multi Config sub tab - UI for Multiple Config tab :- Added below MultConfigPricing to show multiple configs
+    url(r'^multi_config_pricing/$', views.MultiConfigPricing, name='multiconfigpricing'),
+# S-11538: Open multiple revisions for each configuration - UI Elements :- Added below to show multiple revisions for each config
+    url(r'^pricing_config/mult/$', views.MultiRevConfigPricing, name='multirevconfigpricing'),
     url(r'^pricing_config/download/$', views.ConfigPriceDownload,
         name='configpricingdownload'),
+#S-11779- Multiconfig sub tab, download functionality
+    url(r'^multi_config_pricing/download/$', views.MultiConfigPriceDownload, name='multiconfigpricingdownload'),
     url(r'^pricing_report/$', views.OverviewPricing, name='basepricing'),
     url(r'^pricing_report/download/$', views.PriceOverviewDownload,
         name='pricingoverviewdownload'),
@@ -45,7 +53,7 @@ urlpatterns = patterns(
     url(r'^actions/inprocess/customer/(?P<iCustId>\d+)/$', views.ActionCustomer, name='action_inprocess_customer'),
     url(r'^actions/active/$', views.Action, {'type':'active'},
         name='action_active'),
-# S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added below url to redirect to this page based on selected CU
+# S-10575: Add 3 filters for Customer, Baseline and Request Type in Documents Tab: Added below url to redirect to this page based on selected CU
     url(r'^actions/active/customer/(?P<iCustId>\d+)/$', views.ActiveCustomer, name='action_active_customer'),
     url(r'^actions/hold/$', views.Action, {'type':'hold'}, name='action_hold'),
     url(r'^actions/changepart/$', views.Action, {'type': 'changepart'},

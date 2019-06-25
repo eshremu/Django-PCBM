@@ -1,9 +1,9 @@
-var hot, clean_form;
+var hot, clean_form, container;
 var form_save = false;
+var hotarr=[]; var hotarr1=[];
 
-$('button[value="config_price"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+$('button[value="multi_config"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 $(document).ready(function(){
-
     $(window).load(function(){
         form_resize();
 
@@ -11,52 +11,20 @@ $(document).ready(function(){
             clean_form = JSON.stringify(hot.getSourceData());
         }
 
-// S-11538: Open multiple revisions for each configuration - UI Elements :- modified below block to show the UI as per the requirement
-        var baseln = '';
         if(program_list != undefined && program_list.length > 1){
-        //     S-11552: Baseline tab changes : changed pop-up message to catalog
-            var message = "Multiple matching configurations were found.<br/>Please select the catalog for the desired configuration.";
-
-            message += '<label for="desiredprog" style="padding-right: 5px; margin-left: 30%;">Catalog / Revision - Program</label>';
-            message += '<div style="width:100%;"><div style="width:20%; float:left;"><br/><input id="latest10btn" onclick="selectLatest10()" type="button" class="btn btn-primary" name="latest10" value="Select Latest 10"></input>&nbsp<br/><input id="deselectbtn" onclick="deselectAll()"  class="btn btn-primary" type="button" name="deselectall" value="Deselect All"></input></div>';
-
-            message += '<div  style="width:100%;"><ul id="desiredprog" style="height: 155px; margin-left: 25%; width:70%; overflow: auto; list-style-type: none;  overflow-x: hidden;  border: 1px solid #000;">';
+            var message = "Multiple matching configurations were found.<br/>Please select the program & baseline for the desired configuration.";
+            message += '<br/><label for="desiredprog" style="padding-right: 5px;">Program|Baseline:</label><select name="desiredprog">';
             for(var i=0; i<program_list.length; i++) {
-
-               if(baseln !=  baseline_list[i][1]){
-                    message += '<li><label>'+
-                         baseline_list[i][1]+'</label></li>';
-               }
-
-                message += '<li value="'+ program_list[i][0] + "_" + baseline_list[i][0]+'"><label for="'+i+'"><input type="checkbox" name="revs" id="'+i+'" value="'+ program_list[i][0] + "_" + baseline_list[i][0]+'" >' +
-                 ' Rev '+ baseline_list[i][2] + ' - ' + program_list[i][1] +'</label></li>';
-                baseln = baseline_list[i][1];
+                message += '<option value="'+ program_list[i][0] + "_" + baseline_list[i][0] +'">' +
+                    program_list[i][1] + ' | ' + baseline_list[i][1] + '</option>';
             }
-            message += '</ul></div></div>';
-            message += '<label id="limiterr" style="color:midnightblue; display:none; margin-left: 30%;">*Limit of 10 Revisions</label>';
-            message += '<label id="novalerr" style="color:midnightblue; display:none; margin-left: 30%;">*Please select a revision</label>';
-
-            messageToModalPricing('Multiple configurations found',
+            message += '</select>';
+            messageToModal('Multiple configurations found',
                 message,
                 function(){
-                        var unorderedList = document.getElementById('desiredprog');
-                        ListItems = unorderedList.getElementsByTagName('li');
-                        var list = [];
-                        $.each($("input[name='revs']:checked"), function(){
-                            list.push($(this).val());
-                        });
-
-                        for (var input, i = 0; i < list.length; i++) {
-                             $('input[name="program"]').val( list[i].split("_")[0]);
-                             $('input[name="baseline"]').val( list[i].split("_")[1]);
-                       }
-                        if($('input[name="revs"]:checked').length <=10){
-                            for(j=0; j<list.length; j++){
-                                window.open('../pricing_config/mult/'+'?iBaseId='+list[j].split("_")[1]+'&iProgId='+list[j].split("_")[0]+'&iConf='+$('input[name="config"]').val()+'&rev='+baseline_list[j][2] ,'','left=100,top=100,height=540,width=624,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes');
-                            }
-                        }else{
-                            $('#limiterr').css("display", "block");
-                        }
+                    $('input[name="program"]').val($('select[name="desiredprog"]').val().split("_")[0]);
+                    $('input[name="baseline"]').val($('select[name="desiredprog"]').val().split("_")[1]);
+                    $('#headersubform').submit();
                 }
             );
         }
@@ -69,15 +37,33 @@ $(document).ready(function(){
     $(window).resize(function(){
         form_resize();
     });
-    
+
     $('#saveForm').click(function(event){
         $('#headersubform').removeAttr('action');
-        $('<input/>').attr('id','data_form').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#headersubform');form_save=true;
+
+        let data = []
+        for(i=0; i < hotarr.length; i++){
+            hotarr1.push(hotarr[i]);
+            data.push(hotarr[i].getSourceData())
+
+            form_save=true;
+        }
+        $('<input/>').attr('id', 'data_form').attr('type', 'hidden').attr('name','data_form').attr('value', JSON.stringify(data)).appendTo('#headersubform');
+
     });
 
     $('#search').click(function(event) {
-        $('#headersubform').removeAttr('action');
+        str = $('input[name="config"]').val();
+        n = $('input[name="config"]').val().length;
+
+        if(str[n-1]==";"){
+           $('#config').val($('input[name="config"]').val().substring(0,n-1));
+        }
+        else{
+           $('#headersubform').removeAttr('action');
+        }
     });
+
     $('#download').click(function(event){
         $('<input/>').attr('id','cookie').attr('type', 'hidden').attr('name','file_cookie').attr('value', file_cookie).appendTo('#headersubform');
         $('#headersubform').attr('action', download_url);
@@ -88,20 +74,12 @@ $(document).ready(function(){
             }
         },1000);
     });
-
 });
 
-// S-11538: Open multiple revisions for each configuration - UI Elements :- Added below function that gets called on deselect button click
-function deselectAll(){
-     $("input[name='revs']").removeAttr("checked");
-}
-// S-11538: Open multiple revisions for each configuration - UI Elements :- Added below function that gets called on Select latest 10 button clic
-function selectLatest10(){
-    $('#novalerr').css("display", "none");
-    var checkboxes=$("input[name='revs']");
-    for (var i = 0; i < 10; i++) {
-            checkboxes[i].checked = true;
-    }
+function removeLastSemiColon(strng){
+    var n=strng.lastIndexOf(";");
+    var a=strng.substring(0,n)
+    return a;
 }
 function form_resize(){
     var topbuttonheight = $('#action_buttons').outerHeight(true);
@@ -113,37 +91,66 @@ function form_resize(){
 
     var tableheight = bodyheight - (subformheight + bottombuttonheight + topbuttonheight + displayformheight + 5); //+ crumbheight);
 
-    $('#table-wrapper').css("max-height", tableheight);
-    $('#table-wrapper').css("height", tableheight);
-
     if(table_data.length > 0) {
-        build_table();
-    }
-}
+         for(i=0; i<table_data.length; i++){
 
-function messageToModalPricing(title, message, callback){
-    var params = [];
-    for(var i = 3; i < arguments.length; i++){
-        params.push(arguments[i]);
-    }
-    $('#messageModal .modal-header h4').text(title);
-    $('#messageModal .modal-body').html(message);
-    $('.modal_submit').off('click');
-    $('.modal_submit').click(function(){
+            sp = document.createElement('br');
+//            if(i>=1){
+                k = document.createElement('label');
+                k.innerHTML = '<label for="net_value'+i+'">Net Value ($): </label><input type="text" id="net_value'+i+'" name="net_value'+i+'" style="border:none;" readonly/>';
+                document.getElementById('main-body').append(k);
+//            }
 
-// S-11538: Open multiple revisions for each configuration - UI Elements :- Added below block if else to show the error lines
-        if($('input[name="revs"]:checked').length == 0){            // if nothing is selected
-              $('#novalerr').css("display", "block");
-        }else if($('input[name="revs"]:checked').length >10){       // if more than 10 checkboxes are checked
-              $('#limiterr').css("display", "block");
-        }else{
-              $('#messageModal').modal('hide');
-        }
-        if(callback != undefined) {
-            callback.apply(this, params);
-        }
-    });
-    $('#messageModal').modal('show');
+//            if(i>=1){
+                l = document.createElement('label');
+                l.innerHTML = '<label for="config'+i+'">Configuration: </label><input type="text" id="config'+i+'" name="config'+i+'" style="border:none;" readonly/>';
+                document.getElementById('main-body').append(l);
+//            }
+
+//            if(i>=1){
+                m = document.createElement('label');
+                m.innerHTML = '<label for="catalog'+i+'">Catalog: </label><input type="text" id="catalog'+i+'" name="catalog'+i+'" style="border:none;" readonly/>';
+                document.getElementById('main-body').append(m);
+//            }
+
+//            if(i>=1){
+                n = document.createElement('label');
+                n.innerHTML = '<label for="rev'+i+'">Rev: </label><input type="text" id="rev'+i+'" name="rev'+i+'" style="border:none;" readonly/>';
+                document.getElementById('main-body').append(n);
+//            }
+
+            g = document.createElement('div');
+            g.setAttribute("id", "table-wrapper"+i);
+            document.getElementById('main-body').append(g);
+            h = document.createElement('div');
+            h.setAttribute("id", "datatable"+i);
+
+            document.getElementById('main-body').append(h);
+            document.getElementById('main-body').append(sp);
+
+            $('#main-body').css("height", "auto");
+            $('#main-body').css("margin-bottom", "40px;");
+            $('#table-wrapper'+i).css("max-height", tableheight);
+            $('#table-wrapper'+i).css("overflow", "hidden");
+
+            $('#datatable'+i).css("overflow-x", "scroll");
+            $('#datatable'+i).css("overflow", "hidden");
+            $('#table-wrapper'+i).css("height", "auto");
+            $('#datatable'+i).css("height", "auto");
+
+            table_data1 = table_data[i];
+            $('#catalog'+i).val(baselinesdata[i]);
+            $('#catalog'+i).css("font-weight","normal");
+            $('#rev'+i).val(baserevdata[i]);
+            $('#rev'+i).css("font-weight","normal");
+            $('#config'+i).val(configdata[i]);
+            $('#config'+i).css("font-weight","normal");
+
+            build_table(table_data1,i);
+         }
+         $('#formbuttons').css("display", "block");
+         $('#formbuttons').css("z-index", "9999");
+    }
 }
 
 function readonlyRenderer(instance, td, row, col, prop, value, cellProperties) {
@@ -220,15 +227,16 @@ function calcRenderer (instance, td, row, col, prop, value, cellProperties) {
     moneyRenderer(instance, td, row, col, prop, value, cellProperties);
 }
 
-function build_table() {
+function build_table(table_data1,i) {
+
     var headers = ['Line #','Product Number','Internal Product Number','Product Description','Order Qty','Unit Price',
         'Total Price','Manual Override for Total NET Price','Traceability Req. (Serialization)','Linkage','Material Group 5','HW/SW Indicator',
         'Comments (viewable by customer)','Additional Reference (viewable by customer)']; //S-05769: Addition of Product Traceability
-    var container = document.getElementById('datatable');
+    container = document.getElementById('datatable'+i);
     hot = new Handsontable(container, {
-        data: table_data,
+        data: table_data1,
         minRows: 1,
-        maxRows: table_data.length,
+        maxRows: table_data1.length,
         minCols: 13,
         maxCols: 13,
         minSpareRows:0,
@@ -254,10 +262,19 @@ function build_table() {
                             callback(false);
                         }
                     };
+
+                    if(configstatusdata[i] != 'In Process'){
+                         cellProperties.readOnly = true;
+                    } else {
+                         cellProperties.readOnly = false;
+                    }
+
                     cellProperties.allowInvalid = false;
                     cellProperties.renderer = moneyRenderer;
                 } else {
-                    cellProperties.readOnly = true;
+                    if(configstatusdata[i] != 'In Process'){
+                        cellProperties.readOnly = true;
+                    }
                     cellProperties.renderer = moneyRenderer;
                 }
             }
@@ -283,10 +300,13 @@ function build_table() {
             calcValue(this);
         }
     });
-    calcValue(hot);
+
+    calcValue(hot,i);
+
+    hotarr[i] = hot;
 }
 
-function calcValue(instance){
+function calcValue(instance,j){
     overall_total = 0;
     stated_total = 0;
 
@@ -308,5 +328,6 @@ function calcValue(instance){
         overall_total = stated_total;
     }
 
-    $('#net_value').val(overall_total.toFixed(2));
+    $('#net_value'+j).val(overall_total.toFixed(2));
+    $('#net_value'+j).css("font-weight","normal");
 }

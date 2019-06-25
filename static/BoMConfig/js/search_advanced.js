@@ -100,6 +100,7 @@ $(document).ready(function(){
         });
 
         messageToModal('Download Results', $table, function(){
+// <!--D-06762- 414 Request-URI Too Large' error when downloading search results: made destination blank from var destination = reporturl + '?';-->
             var destination = '';
             var chosenFields = [];
             $('#messageModal .modal-body input:checked').each(function(idx, elem){
@@ -124,7 +125,7 @@ $(document).ready(function(){
                 });
             });
 
-            <!--D-06762- 414 Request-URI Too Large' error when downloading search results: deleted window.open and added below code from line 198-226-->
+//<!--D-06762- 414 Request-URI Too Large' error when downloading search results: deleted window.open and added below code from line 130-157-->
 
             var today = new Date();
             var date = today.getFullYear()+ '_' + (today.getMonth()+1) + '_' + today.getDate()  + '_' + today.getHours() + today.getMinutes() + today.getSeconds();

@@ -138,6 +138,10 @@ $(document).ready(function(){
         }
     });
 
+    $('#part').keyup(function(){
+       $('#part').val($('input[name="part"]').val().trim());
+    });
+
     $(window).resize(function(){
         form_resize();
     });
@@ -184,7 +188,9 @@ $(document).ready(function(){
             data: data,
             minSpareRows: 1,
          //S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers
-            colHeaders: ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid From','Valid To', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments'],
+         //S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
+//            colHeaders: ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology', 'Latest Unit Price ($)','Valid From','Valid To', 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments'],
+            colHeaders: ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Latest Unit Price ($)','Valid From','Valid To', 'Comments'],
             cells: function(row, col, prop){
                 var cellProperties = [];
 
@@ -231,24 +237,24 @@ $(document).ready(function(){
                         }
                         break;
 
-                    case 4:
-                        if (row > (orig_length - 1) || (orig_length == 1 && orig_data[0].join().replace(/,/g, '') == $('#initial').val())) {
-                            cellProperties.type = "dropdown";
-                            // cellProperties.source = [''].concat({{ customer_list|safe }});
-                            cellProperties.source = tech_list;
-                            cellProperties.validator = /.+|^$/;
-                        } else {
-                            cellProperties.readOnly = true;
-                            cellProperties.renderer = customRenderer;
-                        }
-                        break;
+//                    case 4:
+//                        if (row > (orig_length - 1) || (orig_length == 1 && orig_data[0].join().replace(/,/g, '') == $('#initial').val())) {
+//                            cellProperties.type = "dropdown";
+//                            // cellProperties.source = [''].concat({{ customer_list|safe }});
+//                            cellProperties.source = tech_list;
+//                            cellProperties.validator = /.+|^$/;
+//                        } else {
+//                            cellProperties.readOnly = true;
+//                            cellProperties.renderer = customRenderer;
+//                        }
+//                        break;
 
-                    case 5:
+                    case 4:
                         cellProperties.validator = /^\d+(.\d+)?$/;
                         cellProperties.renderer = moneyRenderer;
                         break;
 //S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers( swapped case 7 to case 6 and viceversa)
-                    case 6:
+                    case 5:
                         cellProperties.type = "date";
                         cellProperties.dateFormat = "MM/DD/YYYY";
                         cellProperties.correctFormat = true;
@@ -270,7 +276,7 @@ $(document).ready(function(){
                         };
                         break;
 
-                    case 7:
+                    case 6:
                         cellProperties.type = "date";
                         cellProperties.dateFormat = "MM/DD/YYYY";
                         cellProperties.correctFormat = true;
@@ -292,58 +298,58 @@ $(document).ready(function(){
                         };
                         break;
 
-                    case 8:
-                        cellProperties.type = "date";
-                        cellProperties.dateFormat = "MM/DD/YYYY";
-                        cellProperties.correctFormat = true;
-                        cellProperties.datePickerConfig = {
-                            firstDay: 1,
-                            showWeekNumber: true,
-                            numberOfMonths: 3,
-                            disableDayFn: function(date){
-                                var today = new Date();
-                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
-                            }
-                        };
-                        cellProperties.validator = function(value, callback){
-                            if(!value){
-                                callback(true);
-                            } else {
-                                Handsontable.DateValidator.call(this, value, callback);
-                            }
-                        };
-                        break;
-
-                    case 9:
-                        cellProperties.type = 'checkbox';
-                        cellProperties.checkedTemplate = 'True';
-                        cellProperties.uncheckedTemplate = 'False';
-                        cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties){
-                            td.style.textAlign = 'center';
-                            if(value==""){
-                                value = null;
-                            }
-                            Handsontable.renderers.CheckboxRenderer.apply(this, [instance, td, row, col, prop, value, cellProperties]);
-                        };
-                        cellProperties.validator = function(value, callback){
-                            test_value = this.instance.getDataAtCell(this.row, this.col + 1);
-                            if(value == "False" && !(test_value == "" || test_value == null || test_value == undefined)){
-                                callback(false);
-                            } else {
-                                callback(true);
-                            }
-                        };
-                        break;
-
-                    case 10:
-                        cellProperties.validator = function(value, callback){
-                            if((value == "" || value == null || value == undefined) && this.instance.getDataAtCell(this.row, this.col - 1) == "True"){
-                                callback(false);
-                            } else {
-                                callback(true);
-                            }
-                        };
-                        break;
+//                    case 8:
+//                        cellProperties.type = "date";
+//                        cellProperties.dateFormat = "MM/DD/YYYY";
+//                        cellProperties.correctFormat = true;
+//                        cellProperties.datePickerConfig = {
+//                            firstDay: 1,
+//                            showWeekNumber: true,
+//                            numberOfMonths: 3,
+//                            disableDayFn: function(date){
+//                                var today = new Date();
+//                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+//                            }
+//                        };
+//                        cellProperties.validator = function(value, callback){
+//                            if(!value){
+//                                callback(true);
+//                            } else {
+//                                Handsontable.DateValidator.call(this, value, callback);
+//                            }
+//                        };
+//                        break;
+//
+//                    case 9:
+//                        cellProperties.type = 'checkbox';
+//                        cellProperties.checkedTemplate = 'True';
+//                        cellProperties.uncheckedTemplate = 'False';
+//                        cellProperties.renderer = function(instance, td, row, col, prop, value, cellProperties){
+//                            td.style.textAlign = 'center';
+//                            if(value==""){
+//                                value = null;
+//                            }
+//                            Handsontable.renderers.CheckboxRenderer.apply(this, [instance, td, row, col, prop, value, cellProperties]);
+//                        };
+//                        cellProperties.validator = function(value, callback){
+//                            test_value = this.instance.getDataAtCell(this.row, this.col + 1);
+//                            if(value == "False" && !(test_value == "" || test_value == null || test_value == undefined)){
+//                                callback(false);
+//                            } else {
+//                                callback(true);
+//                            }
+//                        };
+//                        break;
+//
+//                    case 10:
+//                        cellProperties.validator = function(value, callback){
+//                            if((value == "" || value == null || value == undefined) && this.instance.getDataAtCell(this.row, this.col - 1) == "True"){
+//                                callback(false);
+//                            } else {
+//                                callback(true);
+//                            }
+//                        };
+//                        break;
 
                     default:
                         cellProperties.renderer = customRenderer;
@@ -357,12 +363,13 @@ $(document).ready(function(){
                     if(prop == 1 && value == ""){
                         value=" ";
                     }
-
-                    if(prop == 5 && value == ""){
+//S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. changed 5 to 4
+                    if(prop == 4 && value == ""){
                         value='0.00';
                     }
 //S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers( swapped case 7 to case 6
-                    if(prop == 6 && value == ""){
+//S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. changed 6 to 5
+                    if(prop == 5 && value == ""){
                         value="01/01/1900";
                     }
                 }
@@ -409,13 +416,14 @@ $(document).ready(function(){
                 }
 
 //S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers( swapped case 7 to case 6 and 6 to 7
-                if (prop == '7' && source == 'edit'){
+//S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.changed 7 to 6
+                if (prop == '6' && source == 'edit'){
                     if(Date.parse(value) <= (Date.parse(this.getDataAtCell(row, 6)) || new Date(Date.now()).setHours(0,0,0,0))){
                         return false;
                     }
                 }
-
-                if((prop == '6' || prop == '8') && source == 'edit'){
+//S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.changed 6 to 5
+                if((prop == '5' || prop == '8') && source == 'edit'){
                     if (new Date(Date.now()).setHours(0,0,0,0) > Date.parse(value)){
                         return false;
                     }

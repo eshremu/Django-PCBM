@@ -830,21 +830,25 @@ function build_table() {
                                 break;
                             case 4: // Order qty
                                 // Test format
-                                if(!/^\d+(?:\.\d+)?$|^$/.test(changes[i][3])){
+// D-06736 : BoM Entry - Configuration Tab - Qty. showing decimal : Changed float# regex to int # regex in the below line to check
+//if it is in int format or not and also changed the 'comment' 'value' as use # format(from #.# format)
+                                if(!/^[-+]?\d*$/.test(changes[i][3])){
                                     cellMeta['cellStatus'] = "X";
-                                    cellMeta['comment']['value'] += 'X - Invalid format. Use #.# format.\n';
+                                    cellMeta['comment']['value'] += 'X - Invalid format. Use # format.\n';
                                 } else {
                                     if(/^$/.test(changes[i][3]) && tableThis.getDataAtCell(changes[i][0], 2)){
                                         cellMeta['cellStatus'] = "X";
                                         cellMeta['comment']['value'] += 'X - Invalid Order Qty.\n';
                                     } else {
                                         // Convert to float with at least one decimal
-                                        var updatedQty = parseFloat(changes[i][3]);
+// D-06736 : BoM Entry - Configuration Tab - Qty. showing decimal : Changed parseFloat to parseInt to show Qty in int format
+                                       var updatedQty = parseInt(changes[i][3]);
                                         if(Number.isInteger(updatedQty)){
-                                            updatedQty = updatedQty + ".0";
-                                        } else {
-                                            updatedQty = updatedQty.toString();
-                                        }
+// D-06736 : BoM Entry - Configuration Tab - Qty. showing decimal : Removed the .0 from below line show Qty in int format
+                                        	updatedQty = updatedQty ;
+                                        }else{
+	                                        updatedQty = updatedQty.toString();
+	                                    }
                                         tableThis.setDataAtRowProp(parseInt(changes[i][0]), 4, updatedQty, 'validation');
                                     }
                                 }

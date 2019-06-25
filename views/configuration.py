@@ -18,7 +18,7 @@ from BoMConfig.models import Header, Part, Configuration, ConfigLine, PartBase,\
     Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, \
     SecurityPermission,REF_PRODUCT_AREA_1, REF_PRODUCT_AREA_2, REF_TECHNOLOGY, REF_RADIO_FREQUENCY, REF_RADIO_BAND,REF_PROGRAM, REF_CONDITION, \
     REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_REQUEST, PricingObject, \
-    CustomerPartInfo, HeaderTimeTracker,User_Customer
+    CustomerPartInfo, HeaderTimeTracker, User_Customer, Region, Hub, Supply_Chain_Flow
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException, Unlock
 from BoMConfig.views.approvals_actions import CloneHeader
@@ -592,10 +592,11 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             # This widget needs to use Baseline_Revision because we need to
             # filter using the completed_date, to ensure we only allow baselines
             # that have an in-process configuration to be selected.
+            # S - 11552: Baseline tab changes: changed choices for new baseline to catalog
             headerForm.fields['baseline_impacted'].widget = \
                 forms.widgets.Select(
                     choices=(('', '---------'),
-                             ('New', 'Create New baseline')) + tuple(
+                             ('New', 'Create New catalog')) + tuple(
                         (obj.title, obj.title) for obj in
                         Baseline_Revision.objects.filter(
                             baseline__customer=oExisting.customer_unit if
@@ -631,6 +632,35 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 forms.widgets.Select(
                     choices=(('', '---------'),) +
                             tuple((obj, obj) for obj in chain.from_iterable(tResults1))
+                )
+
+    # S-11475: Add region/market areas with hub below it :- Added below block to show region field & populate data
+            headerForm.fields['region'].widget = \
+                forms.widgets.Select(
+                    choices=(('', '---------'),)+
+                            tuple((obj.id, obj.name) for obj in Region.objects.all())
+                )
+
+            # tResults = [(obj.id, obj.name) for obj in Hub.objects.filter(region_id=iParentName)]
+
+    # S-11475: Add region/market areas with hub below it :- Added below block to show hub field & populate data based on region selection
+            if oExisting:
+                headerForm.fields['hub'].widget = \
+                    forms.widgets.Select(
+                        choices=(('', '---------'),)+
+                                tuple((obj.id, obj.name) for obj in Hub.objects.filter(region_id=oExisting.region_id))
+                    )
+            else:                                           # show a blank dropdown field on page load
+                headerForm.fields['hub'].widget = \
+                    forms.widgets.Select(
+                        choices=(('', '---------'),)
+                    )
+
+    # S-11475: Add Supply chain flow below Ericsson contract #:- Added below block to show Supply chain flow field & populate data
+            headerForm.fields['supply_chain_flow'].widget = \
+                forms.widgets.Select(
+                    choices=(('', '---------'),)+
+                            tuple((obj.id, obj.name) for obj in Supply_Chain_Flow.objects.all())
                 )
 
             # oCursor.execute(
@@ -1733,7 +1763,8 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                           if Line.is_child else ''
                           ) + Line.part.base.product_number,
                     '3': Line.part.product_description,
-                    '4': str(Line.order_qty or ''),
+# D-06736 : BoM Entry - Configuration Tab - Qty. showing decimal : Changed str to int in the below line to show the Qty in integer format on page load
+                    '4': int(Line.order_qty or ''),
                     '5': Line.part.base.unit_of_measure,
                     '6': Line.contextId,
                     '7': Line.plant,
@@ -2998,6 +3029,14 @@ def ListREACTFill(oRequest):
             result = OrderedDict(
                 [(obj, obj) for obj in chain.from_iterable(tResults)]
             )
+ # S-11475: Add region/market areas with hub below it :- Added below block to show hub field & populate data based on region selection
+        elif oRequest.POST['child'] == 'hub':
+
+            tResults = [(obj.id,obj.name) for obj in Hub.objects.filter(region_id=iParentName)]
+
+            result = OrderedDict(
+                [(obj.id, obj.name) for obj in Hub.objects.filter(region_id=iParentName)]
+            )
         else:
             print('to be added.....')
 
@@ -3233,6 +3272,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
     oCursor = connections['BCAMDB'].cursor()
 
 # S-08474:Pull BCAMDB on Part addition/validation : Changed the query to fetch the values for 3 new columns on adding part number
+# D-06763: Product number not found after saving configuration: Added  AND T2.[PRIM Traceability]!='NULL' in the query to match with the validator query
     oCursor.execute(
         """
         SELECT TOP 1 T1.[Material Description],T1.[MU-Flag], T1.[X-Plant Status]+','+ REFSTATUS.[Description] xplantdesc,T1.[Base Unit of Measure],
@@ -3252,7 +3292,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
         ON T1.[Material] =ZM.Material and T1.Plant=ZM.Plant 
         LEFT JOIN dbo.SAP_ZMVKE ZV
         ON T1.[Material] =ZV.Material and T1.Plant=ZV.Plant
-        WHERE [ZMVKE Item Category]<>'NORM' and T1.Material = %s and T1.[Plant] IN ('2685','2666','2392')
+        WHERE [ZMVKE Item Category]<>'NORM' and T1.Material = %s and T1.[Plant] IN ('2685','2666','2392') AND T2.[PRIM Traceability]!='NULL' 
         """
         ,
         [bytes(dResult['value'].strip('.'), 'ascii')])

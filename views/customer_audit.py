@@ -381,7 +381,8 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
             raise ValueError('Invalid file type')
 
 # S-08487: Customer upload changes :- Added below elif condition for Sprint & T-Mobile for creating the template headings
-    elif str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile':
+    # S-11567- For Customer Upload customization added customer ECSO and RBMA
+    elif str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile'or str(oCustomer) == 'ECSO' or str(oCustomer) == 'RBMA':
         if iFileType == 2:
             sSheetName = "Customer Upload Template"
             aColumns = [[6, 3, 9, 5, 7, 4 ]]
@@ -476,7 +477,8 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
             # end for
         # end for
 # S-08487: Customer upload changes :- Added below elif block to process the data based on Sprint & T-Mobile CU template
-    elif str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile':    # For Sprint & T-Mobile
+    # S-11567- For Customer Upload customization added customer ECSO and RBMA
+    elif str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile'or str(oCustomer) == 'ECSO' or str(oCustomer) == 'RBMA':   # For Sprint & T-Mobile
         for row in aSheetData:
             for aDataGroup in aColumns:
                 aTemp = []
@@ -756,7 +758,8 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
         # end if
         # end for
 # S-08487: Customer upload changes :- Added below block to check the discrepancies and form the arrays with invalid records for Sprint & T-Mobile
-    elif str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile':
+    # S-11567- For Customer Upload customization added customer ECSO and RBMA
+    elif str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile'or str(oCustomer) == 'ECSO' or str(oCustomer) == 'RBMA':
         # Add/Remove each part
         for tPart in aExtractedData:
             if 'VARIOUS' in tPart[3].upper() or 'UNKNOWN' in tPart[3].upper() or \
@@ -1265,7 +1268,8 @@ def GenerateEmailMessage(cust=(), seccust=(), mpn=(), tag=(), inactive=(), inval
             # end if
         # end for
 # S-08487: Customer upload changes :- Added below block to generate email with the discrepancies headings & data for Sprint & T-Mobile
-    elif customer == 'Sprint' or customer == 'T-Mobile':
+    # S-11567- For Customer Upload customization added customer ECSO and RBMA
+    elif customer == 'Sprint' or customer == 'T-Mobile' or customer == 'ECSO' or customer == 'RBMA':
         aErrorLists = [inactive, mpn, cust, invalid]
         aTableTitles = ['Attempted to change priority Customer Number/MPN mapping',
                         ('MPN priority mapped to different Customer number'),

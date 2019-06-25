@@ -2,7 +2,8 @@
 {% load staticfiles %}
 {% load bomconfig_customtemplatetags %}
 {% block subcontent %}
-    <h3><u>{% if form.readonly %}Change{% else %}Add{% endif %} Baseline Approval List</u></h3>
+<!--S-11558: Admin tab changes : Changed Baseline to Catalog-->
+    <h3><u>{% if form.readonly %}Change{% else %}Add{% endif %} Catalog Approval List</u></h3>
     {% if form.non_field_errors %}
         <div class="messageblock errorblock">
             <p>Select a choice level for all approval stages</p>
