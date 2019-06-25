@@ -3272,6 +3272,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
     oCursor = connections['BCAMDB'].cursor()
 
 # S-08474:Pull BCAMDB on Part addition/validation : Changed the query to fetch the values for 3 new columns on adding part number
+# D-06763- Product number not fouund after saving configuration. Added  AND T2.[PRIM Traceability]!='NULL' in the query
     oCursor.execute(
         """
         SELECT TOP 1 T1.[Material Description],T1.[MU-Flag], T1.[X-Plant Status]+','+ REFSTATUS.[Description] xplantdesc,T1.[Base Unit of Measure],
@@ -3291,7 +3292,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
         ON T1.[Material] =ZM.Material and T1.Plant=ZM.Plant 
         LEFT JOIN dbo.SAP_ZMVKE ZV
         ON T1.[Material] =ZV.Material and T1.Plant=ZV.Plant
-        WHERE [ZMVKE Item Category]<>'NORM' and T1.Material = %s and T1.[Plant] IN ('2685','2666','2392')
+        WHERE [ZMVKE Item Category]<>'NORM' and T1.Material = %s and T1.[Plant] IN ('2685','2666','2392') AND T2.[PRIM Traceability]!='NULL' 
         """
         ,
         [bytes(dResult['value'].strip('.'), 'ascii')])
