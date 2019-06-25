@@ -263,7 +263,7 @@ function build_table(table_data1,i) {
                         }
                     };
 
-                    if(configstatusdata[i] != 'In Process'){
+                    if(configstatusdata[i] != 'In Process/Pending'){
                          cellProperties.readOnly = true;
                     } else {
                          cellProperties.readOnly = false;
@@ -272,7 +272,7 @@ function build_table(table_data1,i) {
                     cellProperties.allowInvalid = false;
                     cellProperties.renderer = moneyRenderer;
                 } else {
-                    if(configstatusdata[i] != 'In Process'){
+                    if(configstatusdata[i] != 'In Process/Pending'){
                         cellProperties.readOnly = true;
                     }
                     cellProperties.renderer = moneyRenderer;
