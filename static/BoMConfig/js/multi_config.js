@@ -3,7 +3,7 @@ var form_save = false;
 var hotarr=[]; var hotarr1=[];
 
 $('button[value="multi_config"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
-$(document).ready(function(){ console.log(baselinesdata);//console.log(baseline_list)
+$(document).ready(function(){
     $(window).load(function(){
         form_resize();
 
@@ -43,7 +43,7 @@ $(document).ready(function(){ console.log(baselinesdata);//console.log(baseline_
 
         let data = []
         for(i=0; i < hotarr.length; i++){
-            hotarr1.push(hotarr[i]);console.log(hotarr[i]);
+            hotarr1.push(hotarr[i]);
             data.push(hotarr[i].getSourceData())
 
             form_save=true;
@@ -53,7 +53,15 @@ $(document).ready(function(){ console.log(baselinesdata);//console.log(baseline_
     });
 
     $('#search').click(function(event) {
-        $('#headersubform').removeAttr('action');
+        str = $('input[name="config"]').val();
+        n = $('input[name="config"]').val().length;
+
+        if(str[n-1]==";"){
+           $('#config').val($('input[name="config"]').val().substring(0,n-1));
+        }
+        else{
+           $('#headersubform').removeAttr('action');
+        }
     });
 
     $('#download').click(function(event){
@@ -68,6 +76,11 @@ $(document).ready(function(){ console.log(baselinesdata);//console.log(baseline_
     });
 });
 
+function removeLastSemiColon(strng){
+    var n=strng.lastIndexOf(";");
+    var a=strng.substring(0,n)
+    return a;
+}
 function form_resize(){
     var topbuttonheight = $('#action_buttons').outerHeight(true);
     var displayformheight = $('#display_form').height();
@@ -249,10 +262,19 @@ function build_table(table_data1,i) {
                             callback(false);
                         }
                     };
+
+                    if(configstatusdata[i] != 'In Process'){
+                         cellProperties.readOnly = true;
+                    } else {
+                         cellProperties.readOnly = false;
+                    }
+
                     cellProperties.allowInvalid = false;
                     cellProperties.renderer = moneyRenderer;
                 } else {
-                    cellProperties.readOnly = true;
+                    if(configstatusdata[i] != 'In Process'){
+                        cellProperties.readOnly = true;
+                    }
                     cellProperties.renderer = moneyRenderer;
                 }
             }

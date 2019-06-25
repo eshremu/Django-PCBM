@@ -3272,7 +3272,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
     oCursor = connections['BCAMDB'].cursor()
 
 # S-08474:Pull BCAMDB on Part addition/validation : Changed the query to fetch the values for 3 new columns on adding part number
-# D-06763- Product number not fouund after saving configuration. Added  AND T2.[PRIM Traceability]!='NULL' in the query
+# D-06763: Product number not found after saving configuration: Added  AND T2.[PRIM Traceability]!='NULL' in the query to match with the validator query
     oCursor.execute(
         """
         SELECT TOP 1 T1.[Material Description],T1.[MU-Flag], T1.[X-Plant Status]+','+ REFSTATUS.[Description] xplantdesc,T1.[Base Unit of Measure],

@@ -826,6 +826,8 @@ def MultiConfigPricing(oRequest):
     aBaselines1 = []
     aBaseRev1 = []
     aConfigs1 = []
+    aConfigStatus = []
+    aConfigStatus1 = []
     dContext = {'configlines': aConfigLines1, 'readonly': False}
 
     # If POSTing data
@@ -961,23 +963,25 @@ def MultiConfigPricing(oRequest):
                 aBaselines1.append(iBaselineValue)
                 aBaseRev1.append(iBaseRevValue)
                 aConfigs1.append(sConfig)
+                aConfigStatus1.append(aLine[0].config.header.configuration_status.name)
 
                 dContext['configlines'] = aConfigLines1
                 dContext['baselines'] = aBaselines1
                 dContext['baserevs'] = aBaseRev1
                 dContext['configs'] = aConfigs1
+                dContext['configstatus'] = aConfigStatus1
 
                 dContext.update(
                     {'config': scon,
                      'is_not_pick_list': not aLine[0].config.header.pick_list if
-                     aLine else False,
+                      aLine else False,
                      'program': iProgValue,
                      'baseline': iBaseValue,
                      'prog_list': [],
                      'base_list': [],
                      'readonly': 'In Process' not in
                                  aLine[0].config.header.configuration_status.name
-                     }
+                    }
                 )
         # end if
     # end if

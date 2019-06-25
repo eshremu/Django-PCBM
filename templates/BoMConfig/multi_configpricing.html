@@ -18,7 +18,33 @@
         <input id="program" name="program" type="hidden" value="{{ program }}"/>
         <input id="baseline" name="baseline" type="hidden" value="{{ baseline }}"/>
         <button id="search" class="btn" type="submit" name="action" value="search" >Search</button>
+
+        {% if configlines %}
+         <button id="download" class="btn btn-primary" name="download" type="submit" form="headersubform" value="download" style="">Download</button>
+         <button id="saveForm" class="btn btn-primary" type="submit" name="action" form="headersubform" value="save">Save</button>
+        {% endif %}
         <br/>
+        {% if not configlines %}
+         <span style="color:darkblue; font-weight:bold; ">*** Use <span style="color:red;">;</span> as a separator ***</span>
+        {% endif %}
+    <br />
+   <!--<div id="formbuttons" style="position:absolute; margin-top:148%; z-index:9999;">-->
+   <!--&lt;!&ndash;<div id="formbuttons">&ndash;&gt;-->
+        <!--{% if configlines %}-->
+        <!--<button id="cancelForm" class="btn" name="action" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>-->
+        <!--<button id="saveForm" class="btn btn-primary" type="submit"-->
+                <!--name="action" form="headersubform" value="save">Save</button>-->
+        <!--<button id="download1" class="btn" name="download" type="submit" form="headersubform" value="download" style="margin-left: 50px;">Download</button>-->
+        <!--{% endif %}-->
+        <!--{% if status_message %}-->
+        <!--<span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:50px;">-->
+            <!--{{ status_message }}-->
+        <!--</span>-->
+        <!--<script>-->
+            <!--setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);-->
+        <!--</script>-->
+        <!--{% endif %}-->
+   <!--</div>-->
 
     </form>
     <!--{% for i in configlines|length|safe %}-->
@@ -45,36 +71,21 @@
         <!--{% endfor %}-->
 
 
-   <div id="formbuttons" style="position:absolute; margin-top:148%; z-index:9999;">
-   <!--<div id="formbuttons">-->
-        {% if configlines %}
-        <button id="cancelForm" class="btn" name="action" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>
-        <button id="saveForm" class="btn btn-primary" type="submit"
-                name="action" form="headersubform" value="save">Save</button>
-        <button id="download" class="btn" name="download" type="submit" form="headersubform" value="download" style="margin-left: 50px;">Download</button>
-        {% endif %}
-        {% if status_message %}
-        <span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:50px;">
-            {{ status_message }}
-        </span>
-        <script>
-            setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
-        </script>
-        {% endif %}
-    </div>
 
 
-    <script>
+
+   <script>
         var not_picklist;{% if is_not_pick_list %}not_picklist = {{ is_not_pick_list|lower }};{% endif %}
         var can_write = {{ pricing_write_authorized|lower }};
         var table_data = {{ configlines|safe }};
         var baselinesdata = {{ baselines|safe }};
         var baserevdata = {{ baserevs|safe }};
         var configdata = {{ configs|safe }};
+        var configstatusdata = {{ configstatus|safe }};
         var program_list;{% if prog_list %}program_list = {{ prog_list|safe }};{% endif %}
         var baseline_list;{% if base_list %}baseline_list = {{ base_list|safe }};{% endif %}
         var readonly = {{ readonly|lower }};
         var download_url = '{% url 'bomconfig:multiconfigpricingdownload' %}';
         var file_cookie = "{% random_string 10 %}";
-    </script>
+   </script>
 {% endblock %}
