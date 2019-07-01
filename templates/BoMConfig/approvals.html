@@ -379,8 +379,8 @@
                 if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
                     hide = true;
                 }
-
-                if(baseline !== "Baseline"){
+                <!--S-11555: Approvals tab changes : Changed Baseline to Catalog-->
+                if(baseline !== "Catalog"){
                     var baseline_row = $(rows[row]).find('td:nth-of-type(6):contains("' + baseline + '")');
                     if (!(baseline_row.length !== 0 && $(baseline_row[0]).text() == baseline)){
                         hide = true;
