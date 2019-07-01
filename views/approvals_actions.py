@@ -271,10 +271,11 @@ def ActionCustomer(oRequest, iCustId=''):
                       'BOM_PSM_Baseline_Manager'])),
         'approval_seq': HeaderTimeTracker.approvals(),
         'deaddate': timezone.datetime(1900, 1, 1),
+        # S-11553: Actions tab changes : Changed Baseline to Catalog in role header for PSM Baseline Mgmt.(PSM changed to PPM) and  Baseline Release & Dist.
         'namelist': ['SCM #1', 'SCM #2', 'CSR', 'Comm. Price Mgmt.', 'ACR',
-                     'PSM Baseline Mgmt.', 'Customer #1', 'Customer #2',
+                     'PPM Catalog Mgmt.', 'Customer #1', 'Customer #2',
                      'Customer Warehouse', 'Ericsson VAR',
-                     'Baseline Release & Dist.'],
+                     'Catalog Release & Dist.'],
     }
 
     return Default(oRequest, 'BoMConfig/actions_inprocess_customer.html', dContext)
@@ -342,10 +343,11 @@ def ActiveCustomer(oRequest, iCustId=''):
                       'BOM_PSM_Baseline_Manager'])),
         'approval_seq': HeaderTimeTracker.approvals(),
         'deaddate': timezone.datetime(1900, 1, 1),
+        # S-11553: Actions tab changes : Changed Baseline to Catalog in role header for PSM Baseline Mgmt.(PSM changed to PPM) and  Baseline Release & Dist.
         'namelist': ['SCM #1', 'SCM #2', 'CSR', 'Comm. Price Mgmt.', 'ACR',
-                     'PSM Baseline Mgmt.', 'Customer #1', 'Customer #2',
+                     'PPM Catalog Mgmt.', 'Customer #1', 'Customer #2',
                      'Customer Warehouse', 'Ericsson VAR',
-                     'Baseline Release & Dist.'],
+                     'Catalog Release & Dist.'],
     }
 
     return Default(oRequest, 'BoMConfig/actions_active_customer.html', dContext)
