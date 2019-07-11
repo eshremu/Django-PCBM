@@ -7,7 +7,7 @@ function customRenderer(instance, td, row, col, prop, value, cellProperties){
     var new_value;
 
     new_value = value;
-    if (col < 5){
+    if (col < 4){
        td.style.background = '#DDDDDD';
         if(col < 3 && instance.getDataAtCell(row - 1, col) == value && instance.getDataAtCell(row, col - 1) == instance.getDataAtCell(row - 1, col - 1))
         {
@@ -130,6 +130,17 @@ function formSubmit(event){
 
 $(document).ready(function(){
     definebodysize();
+//S - 12676: Unit Price Mgmt - Account for valid to and valid from dates in Unit Price Mgmt ( in Pricing tab) added below blocks to show error message
+    if(error_found=='True'){
+        $('#error').css('visibility','visible');
+    }else{
+        $('#error').css('visibility','hidden');
+    }
+    if(error_found1=='True'){
+        $('#error1').css('visibility','visible');
+    }else{
+        $('#error1').css('visibility','hidden');
+    }
 
     $(window).load(function(){
         form_resize();
@@ -418,15 +429,21 @@ $(document).ready(function(){
 //S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers( swapped case 7 to case 6 and 6 to 7
 //S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.changed 7 to 6
                 if (prop == '6' && source == 'edit'){
-                    if(Date.parse(value) <= (Date.parse(this.getDataAtCell(row, 6)) || new Date(Date.now()).setHours(0,0,0,0))){
+                    if(Date.parse(value) <= (Date.parse(this.getDataAtCell(row, 5)) || new Date(Date.now()).setHours(0,0,0,0))){
                         return false;
                     }
                 }
 //S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.changed 6 to 5
-                if((prop == '5' || prop == '8') && source == 'edit'){
+                if((prop == '5' ) && source == 'edit'){
                     if (new Date(Date.now()).setHours(0,0,0,0) > Date.parse(value)){
                         return false;
                     }
+//S - 12676: Unit Price Mgmt - Account for valid to and valid from dates in Unit Price Mgmt ( in Pricing tab)
+                    else if (value == '' || value == undefined || value == null){
+                    return false;
+                    }
+
+
                 }
             }
         });

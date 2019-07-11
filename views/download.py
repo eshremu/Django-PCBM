@@ -2137,7 +2137,7 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
 
     orderedSheet = []
     for order in sheets.keys():
-        for pa2 in sheets.get(order).keys():
+        for pa2 in sorted(sheets.get(order).keys()):
             orderedSheet.append(pa2)
             pa2Data = sheets.get(order).get(pa2)
             for config in pa2Data.get('childs'):
