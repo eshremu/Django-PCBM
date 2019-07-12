@@ -11,6 +11,7 @@ from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 from django.conf import settings
+from datetime import datetime
 
 import re
 
@@ -1597,11 +1598,21 @@ class PricingObject(models.Model):
  #  to remove the filter by Sold To or any other conditions).Removed all the condition and made it base only on SPUD. If part no
  #        is entered without any spud then latest changed unit price without spud will be shown.)
 
-        oPriceObj = aPricingList.filter(
-            spud=oConfigLine.spud).last()
+        # oPriceObj = aPricingList.filter(
+        #     spud=oConfigLine.spud).last()
 
+        oPriceObj = aPricingList.filter(spud=oConfigLine.spud).last()
+        today = timezone.datetime.now().date().strftime('%m/%d/%Y')
+        if oPriceObj is not None:
+            vf = oPriceObj.valid_from_date.strftime('%m/%d/%Y') if oPriceObj.valid_from_date else ''
+            vt = oPriceObj.valid_to_date.strftime('%m/%d/%Y') if oPriceObj.valid_to_date else ''
+            if today >= vf and today <= vt:
+                oPriceObj = aPricingList.filter(
+                    spud=oConfigLine.spud).last()
+            else:
+                oPriceObj = aPricingList.filter(spud=oConfigLine.spud).first()
         return oPriceObj
-    # end def
+            # end def
 
 
 class HeaderLock(models.Model):
