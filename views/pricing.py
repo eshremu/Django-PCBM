@@ -958,6 +958,7 @@ def MultiConfigPricing(oRequest):
     aBaselines1 = []
     aBaseRev1 = []
     aConfigs1 = []
+    aConfigStatus1 = []
     dContext = {'configlines': aConfigLines1, 'readonly': False}
 
     # If POSTing data
@@ -997,6 +998,9 @@ def MultiConfigPricing(oRequest):
                     aConfigMatches.baseline else None
                 iBaseRevValue = aConfigMatches.baseline.version if \
                     aConfigMatches.baseline else None
+    # Added below to add config status for each config for the readonly & editable feature in multi-config pricing page
+                iConfigStatusValue = aConfigMatches.configuration_status.name if \
+                    aConfigMatches.configuration_status else None
 
                 if sConfig:
                     dLineFilters = {
@@ -1093,11 +1097,14 @@ def MultiConfigPricing(oRequest):
                 aBaselines1.append(iBaselineValue)
                 aBaseRev1.append(iBaseRevValue)
                 aConfigs1.append(sConfig)
+                aConfigStatus1.append(iConfigStatusValue)
 
                 dContext['configlines'] = aConfigLines1
                 dContext['baselines'] = aBaselines1
                 dContext['baserevs'] = aBaseRev1
                 dContext['configs'] = aConfigs1
+    # Added below to add config status for each config for the readonly & editable feature in multi-config pricing page
+                dContext['configstatus'] = aConfigStatus1
 
                 dContext.update(
                     {'config': scon,

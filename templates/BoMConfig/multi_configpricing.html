@@ -20,7 +20,7 @@
         <button id="search" class="btn" type="submit" name="action" value="search" >Search</button>
 
         {% if configlines %}
-         <button id="download" class="btn btn-primary" name="download" type="submit" form="headersubform" value="download" style="">Download</button>
+         <button id="download" class="btn btn-primary" name="download" type="submit" form="headersubform" onclick="RestrictMultipleUItables(this.id)" value="download" style="">Download</button>
          <button id="saveForm" class="btn btn-primary" type="submit" name="action" form="headersubform" value="save">Save</button>
         {% endif %}
         <br/>
