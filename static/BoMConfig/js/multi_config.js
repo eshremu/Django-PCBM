@@ -1,6 +1,6 @@
 var hot, clean_form, container;
 var form_save = false;
-var hotarr=[]; var hotarr1=[];
+var hotarr=[]; var hotarr1=[]; var btn_evnt_id;
 
 $('button[value="multi_config"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 $(document).ready(function(){
@@ -91,7 +91,8 @@ function form_resize(){
 
     var tableheight = bodyheight - (subformheight + bottombuttonheight + topbuttonheight + displayformheight + 5); //+ crumbheight);
 
-    if(table_data.length > 0) {
+//This condition is added to get rid off the multiple tables drawn on page load while clicking on download button
+    if(table_data.length > 0 && btn_evnt_id != 'download') {
          for(i=0; i<table_data.length; i++){
 
             sp = document.createElement('br');
@@ -122,6 +123,7 @@ function form_resize(){
             g = document.createElement('div');
             g.setAttribute("id", "table-wrapper"+i);
             document.getElementById('main-body').append(g);
+
             h = document.createElement('div');
             h.setAttribute("id", "datatable"+i);
 
@@ -147,10 +149,15 @@ function form_resize(){
             $('#config'+i).css("font-weight","normal");
 
             build_table(table_data1,i);
+
          }
          $('#formbuttons').css("display", "block");
          $('#formbuttons').css("z-index", "9999");
     }
+}
+//This function is added to get rid off the multiple tables drawn on page load while clicking on download button
+function RestrictMultipleUItables(ev){
+ btn_evnt_id = ev;
 }
 
 function readonlyRenderer(instance, td, row, col, prop, value, cellProperties) {
@@ -227,7 +234,7 @@ function calcRenderer (instance, td, row, col, prop, value, cellProperties) {
     moneyRenderer(instance, td, row, col, prop, value, cellProperties);
 }
 
-function build_table(table_data1,i) {
+function build_table(table_data1,i) {//alert('pppp')
 
     var headers = ['Line #','Product Number','Internal Product Number','Product Description','Order Qty','Unit Price',
         'Total Price','Manual Override for Total NET Price','Traceability Req. (Serialization)','Linkage','Material Group 5','HW/SW Indicator',
