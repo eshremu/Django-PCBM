@@ -1898,8 +1898,9 @@ def CreateDocument(oRequest):
                         oHeader.configuration.override_net_value or
                         oHeader.configuration.net_value or '')
 # S-10961: Adjust Actions and Documents tabs UI and backend :- Changed the below line to its next line and added line 100 condition
-                    # if not oHeader.pick_list and oLine.line_number == '10'
-                    if not oHeader.pick_list and (oFirstLine.line_number == '10' or oFirstLine.line_number == '100')
+    #D-06863-Error in SAP inquiry creation: commented below 2nd line and uncommented below line and added the (or condition)
+                    if not oHeader.pick_list and oLine.line_number == '10' or (oFirstLine.line_number == '100' and oLine.line_number == '100')
+                    # if not oHeader.pick_list and (oFirstLine.line_number == '10' or oFirstLine.line_number == '100')
                     else '' if not oHeader.pick_list else str(GrabValue(
                         oLine.linepricing, 'override_price', '') or GrabValue(
                         oLine.linepricing, 'pricing_object.unit_price', '')
