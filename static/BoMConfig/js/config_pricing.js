@@ -28,7 +28,8 @@ $(document).ready(function(){
                          baseline_list[i][1]+'</label></li>';
                }
 
-                message += '<li value="'+ program_list[i][0] + "_" + baseline_list[i][0]+'"><label for="'+i+'"><input type="checkbox" name="revs" id="'+i+'" value="'+ program_list[i][0] + "_" + baseline_list[i][0]+'" >' +
+//D-07038: On multiple revisions in pricing view, opened incorrect revisions from what was selected :- Added "baseline_list[i][2]" below in the value to include the actual rev value when selected
+                message += '<li value="'+ program_list[i][0] + "_" + baseline_list[i][0]+'"><label for="'+i+'"><input type="checkbox" name="revs" id="'+i+'" value="'+ program_list[i][0] + "_" + baseline_list[i][0] + "_" + baseline_list[i][2] +'" >' +
                  ' Rev '+ baseline_list[i][2] + ' - ' + program_list[i][1] +'</label></li>';
                 baseln = baseline_list[i][1];
             }
@@ -49,10 +50,13 @@ $(document).ready(function(){
                         for (var input, i = 0; i < list.length; i++) {
                              $('input[name="program"]').val( list[i].split("_")[0]);
                              $('input[name="baseline"]').val( list[i].split("_")[1]);
+//D-07038: On multiple revisions in pricing view, opened incorrect revisions from what was selected :- Added below to set the rev value of the selected revisions in the input box
+                             $('input[name="baselinerev"]').val( list[i].split("_")[2]);
                        }
                         if($('input[name="revs"]:checked').length <=10){
                             for(j=0; j<list.length; j++){
-                                window.open('../pricing_config/mult/'+'?iBaseId='+list[j].split("_")[1]+'&iProgId='+list[j].split("_")[0]+'&iConf='+$('input[name="config"]').val()+'&rev='+baseline_list[j][2] ,'','left=100,top=100,height=540,width=624,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes');
+//D-07038: On multiple revisions in pricing view, opened incorrect revisions from what was selected :- Changed the value part of &rev from 'baseline_list[j][2]' below to show the rev value of the selected record and not according to the list from top
+                                window.open('../pricing_config/mult/'+'?iBaseId='+list[j].split("_")[1]+'&iProgId='+list[j].split("_")[0]+'&iConf='+$('input[name="config"]').val()+'&rev='+list[j].split("_")[2] ,'','left=100,top=100,height=540,width=624,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes');
                             }
                         }else{
                             $('#limiterr').css("display", "block");
@@ -95,11 +99,13 @@ $(document).ready(function(){
 function deselectAll(){
      $("input[name='revs']").removeAttr("checked");
 }
-// S-11538: Open multiple revisions for each configuration - UI Elements :- Added below function that gets called on Select latest 10 button clic
+// S-11538: Open multiple revisions for each configuration - UI Elements :- Added below function that gets called on Select latest 10 button click
 function selectLatest10(){
     $('#novalerr').css("display", "none");
     var checkboxes=$("input[name='revs']");
-    for (var i = 0; i < 10; i++) {
+// D-07042: Config Price Mgmt popup - select latest ten error :- Changed the i position from 0 to the checkbox length-1 as it will count from bottom
+// and i >= checkbox length -10 as it will select 10 revisions from below which is claimed to be as the latest 10 revisions.
+    for (var i = checkboxes.length -1; i >= checkboxes.length -10; i--) {
             checkboxes[i].checked = true;
     }
 }
