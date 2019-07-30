@@ -136,11 +136,7 @@ $(document).ready(function(){
     }else{
         $('#error').css('visibility','hidden');
     }
-    if(error_found1=='True'){
-        $('#error1').css('visibility','visible');
-    }else{
-        $('#error1').css('visibility','hidden');
-    }
+
 
     $(window).load(function(){
         form_resize();
@@ -297,7 +293,9 @@ $(document).ready(function(){
                             numberOfMonths: 3,
                             disableDayFn: function(date){
                                 var today = new Date();
-                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()+1); // date.getDay() === 0 || date.getDay() === 6 ||
+// D-07148: Demo on S-12676: Account for valid to and valid from dates in Unit Price Mgmt (in Pricing tab): removed '+1 ' from today.getDate().
+//Valid-to needs to make selection of today’s date possible
+                                return date < new Date(today.getFullYear(), today.getMonth(), today.getDate()); // date.getDay() === 0 || date.getDay() === 6 ||
                             }
                         };
                         cellProperties.validator = function(value, callback){
@@ -431,6 +429,10 @@ $(document).ready(function(){
                 if (prop == '6' && source == 'edit'){
                     if(Date.parse(value) <= (Date.parse(this.getDataAtCell(row, 5)) || new Date(Date.now()).setHours(0,0,0,0))){
                         return false;
+                    }
+// D-07148: Demo on S-12676: Account for valid to and valid from dates in Unit Price Mgmt (in Pricing tab): Added below block to make valid-to a mandatory field. Value should be 12/31/9999
+                    else if (value == '' || value == undefined || value == null){
+                    return false;
                     }
                 }
 //S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.changed 6 to 5

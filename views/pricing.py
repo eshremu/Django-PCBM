@@ -91,67 +91,40 @@ def PartPricing(oRequest):
                             # Retrieve PricingObject that matches the data provided,
                             # if it exists
                             try:
-        # S - 12676: Unit Price Mgmt - Account for valid to and valid from dates in Unit Price Mgmt ( in Pricing tab): added below conditions to check
-        #  if unit price, vt, vf has data. Also added valid-from date in filtering to get exact match
-                                if (aRowToSave[4] and aRowToSave[5] and aRowToSave[6] is not None):
-                                    # Check for when valid from is entered as same as previous combination
-                                    oCurrentPriceObj = PricingObject.objects.get(
-                                        part__product_number__iexact=aRowToSave[0] or
-                                                                     oRequest.POST.get('initial', None),
-                                        customer__name=aRowToSave[1],
-                                        # D-04625: New row populated when editing data in Unit Price Management removed if aRowToSave[1] in aAvailableCU else None
-                                        sold_to=aRowToSave[2] if aRowToSave[2] not in
-                                                                 ('', '(None)') else None,
-                                        spud__name=aRowToSave[3] if aRowToSave[3] not in
-                                                                    ('', '(None)') else None,
-                                        valid_to_date=datetime.datetime.strptime(
-                                            aRowToSave[6],
-                                            '%m/%d/%Y'
-                                        ).date() if aRowToSave[6] else None,
-                                        # unit_price=aRowToSave[4],
-                                        is_current_active=True
-                                    )
+        # S - 12676: Unit Price Mgmt - Account for valid to and valid from dates in Unit Price Mgmt ( in Pricing tab): added valid_from_date to check
+        #  in filtering to get exact match
+                                oCurrentPriceObj = PricingObject.objects.get(
+                                    part__product_number__iexact=aRowToSave[0] or
+                                                                 oRequest.POST.get('initial', None),
+                                    customer__name=aRowToSave[1],# D-04625: New row populated when editing data in Unit Price Management removed if aRowToSave[1] in aAvailableCU else None
+                                    # sold_to=aRowToSave[2] if aRowToSave[2] not in
+                                    #                          ('', '(None)') else None, # D-07148: Demo on S-12676: Account for valid to and valid from dates in Unit Price Mgmt (in Pricing tab):
+                                    # commented out.Sold-to should have no effect on rules in adding a different price.
 
-                                # Check for when valid to is entered as same as previous combination
-                                elif (aRowToSave[4] and aRowToSave[5]):
-                                    oCurrentPriceObj = PricingObject.objects.get(
-                                        part__product_number__iexact=aRowToSave[0] or
-                                                                     oRequest.POST.get('initial', None),
-                                        customer__name=aRowToSave[1],
-                                        # D-04625: New row populated when editing data in Unit Price Management removed if aRowToSave[1] in aAvailableCU else None
-                                        sold_to=aRowToSave[2] if aRowToSave[2] not in
-                                                                 ('', '(None)') else None,
-                                        spud__name=aRowToSave[3] if aRowToSave[3] not in
-                                                                    ('', '(None)') else None,
-                                        valid_from_date=datetime.datetime.strptime(
-                                            aRowToSave[5],
-                                            '%m/%d/%Y'
-                                        ).date() if aRowToSave[5] else None,
-                                        # unit_price=aRowToSave[4],
-                                        is_current_active=True
-                                    )
-                                else:
-                                    oCurrentPriceObj = PricingObject.objects.get(
-                                        part__product_number__iexact=aRowToSave[0] or
-                                        oRequest.POST.get('initial', None),
-                                        customer__name=aRowToSave[1], # D-04625: New row populated when editing data in Unit Price Management removed if aRowToSave[1] in aAvailableCU else None
-                                        sold_to=aRowToSave[2] if aRowToSave[2] not in
-                                        ('', '(None)') else None,
-                                        spud__name=aRowToSave[3] if aRowToSave[3] not in
-                                        ('', '(None)') else None,
-                                        # valid_from_date=datetime.datetime.strptime(
-                                        #         aRowToSave[5],
-                                        #         '%m/%d/%Y'
-                                        #     ).date() if aRowToSave[5] else None,
-                                        unit_price=aRowToSave[4],
-                    # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate. commented aRowToSave[4]
-                                        # technology__name=aRowToSave[4] if aRowToSave[4]
-                                        # not in ('', '(None)') else None,
-                                        is_current_active=True
-                                    )
-
+                                    spud__name=aRowToSave[3] if aRowToSave[3] not in
+                                                                ('', '(None)') else None,
+                                    valid_from_date=datetime.datetime.strptime(
+                                        aRowToSave[5],
+                                     '%m/%d/%Y'
+                                    ).date() if aRowToSave[5] else None,
+                                    is_current_active=True
+                                )
                             except PricingObject.DoesNotExist:
                                 oCurrentPriceObj = None
+                    # D-07148: Demo on S-12676: Account for valid to and valid from dates in Unit Price Mgmt (in Pricing tab):
+                    # For edit/new row entry:To check if valid-to entered is same as of previous record then error,
+                    # if not update existing valid-to to entered date. Or raise the error if not satisfied.
+                            if oCurrentPriceObj and aRowToSave[6] not in ('', '(None)'):
+                                if datetime.datetime.strptime(aRowToSave[6],'%m/%d/%Y').date() == oCurrentPriceObj.valid_to_date:
+                                    oCurrentPriceObj.is_current_active = True
+                                    errorfound = True
+                                    oCurrentPriceObj.save()
+                                    break
+
+                                oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(aRowToSave[6],'%m/%d/%Y').date()
+                                oCurrentPriceObj.is_current_active = True
+                                oCurrentPriceObj.save()
+
 
                             if not oCurrentPriceObj or \
                                     oCurrentPriceObj.unit_price != float(
@@ -177,7 +150,7 @@ def PartPricing(oRequest):
                                     oCurrentPriceObj.is_current_active = True
                                     errorfound = True
                                     oCurrentPriceObj.save()
-                                    break;
+                                    break
 
                                 elif oCurrentPriceObj and oCurrentPriceObj.unit_price != float(
                                         aRowToSave[4]) and (oCurrentPriceObj.valid_from_date != datetime.datetime.strptime(
@@ -186,7 +159,7 @@ def PartPricing(oRequest):
                                     oCurrentPriceObj.is_current_active = True
                                     errorfound = True
                                     oCurrentPriceObj.save()
-                                    break;
+                                    break
                                 elif oCurrentPriceObj and (oCurrentPriceObj.valid_to_date != datetime.datetime.strptime(
                                         aRowToSave[6],
                                         '%m/%d/%Y'
@@ -197,7 +170,6 @@ def PartPricing(oRequest):
                                     oCurrentPriceObj.save()
 
                                 # else:
-                                #     print('in else')
                                 #     oCurrentPriceObj.is_current_active = False
                                 #     oCurrentPriceObj.valid_to_date = max(
                                 #         datetime.date.today(),
@@ -269,7 +241,7 @@ def PartPricing(oRequest):
                                                 '%m/%d/%Y'
                                             ).date() if aRowToSave[6] else None,
                                         oCurrentPriceObj.save()
-                                        break;
+                                        break
 
 
                                     else:
@@ -313,7 +285,7 @@ def PartPricing(oRequest):
                                             #     aRowToSave[10]
                                             # ) if aRowToSave[10] else None,
                                             comments=aRowToSave[7],
-                                            # previous_pricing_object=None
+                                            previous_pricing_object=oCurrentPriceObj
                                         )
 
                                     # Update any configurations that are in-process
