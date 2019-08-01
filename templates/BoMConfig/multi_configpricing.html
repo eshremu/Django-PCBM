@@ -17,62 +17,24 @@
         <input id="initial" name="initial" type="hidden" value="{{ config }}"/>
         <input id="program" name="program" type="hidden" value="{{ program }}"/>
         <input id="baseline" name="baseline" type="hidden" value="{{ baseline }}"/>
+<!-- S-12911: Pricing Multi Config download enhancement - Added below 3 fields to store the baseline/rev/netvalue data to show it in the downloaded file-->
+        <input id="baselinedata" name="baselinedata" type="hidden" value="{{ baselines|safe }}" />
+        <input id="baserevdata" name="baserevdata" type="hidden" value="{{ baserevs|safe }}" />
+        <input id="netvalue" name="netvalue" type="hidden" />
+
         <button id="search" class="btn" type="submit" name="action" value="search" >Search</button>
 
         {% if configlines %}
          <button id="download" class="btn btn-primary" name="download" type="submit" form="headersubform" onclick="RestrictMultipleUItables(this.id)" value="download" style="">Download</button>
-         <button id="saveForm" class="btn btn-primary" type="submit" name="action" form="headersubform" value="save">Save</button>
+<!-- D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Commented out Save button as confirmed that save functionality not required anymore -->
+        <!--<button id="saveForm" class="btn btn-primary" type="submit" name="action" form="headersubform" value="save">Save</button>-->
         {% endif %}
         <br/>
         {% if not configlines %}
          <span style="color:darkblue; font-weight:bold; ">*** Use <span style="color:red;">;</span> as a separator ***</span>
         {% endif %}
     <br />
-   <!--<div id="formbuttons" style="position:absolute; margin-top:148%; z-index:9999;">-->
-   <!--&lt;!&ndash;<div id="formbuttons">&ndash;&gt;-->
-        <!--{% if configlines %}-->
-        <!--<button id="cancelForm" class="btn" name="action" value="Cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>-->
-        <!--<button id="saveForm" class="btn btn-primary" type="submit"-->
-                <!--name="action" form="headersubform" value="save">Save</button>-->
-        <!--<button id="download1" class="btn" name="download" type="submit" form="headersubform" value="download" style="margin-left: 50px;">Download</button>-->
-        <!--{% endif %}-->
-        <!--{% if status_message %}-->
-        <!--<span id="statuses" style="color:red;font-size:20px;font-weight: bold;padding-left:50px;">-->
-            <!--{{ status_message }}-->
-        <!--</span>-->
-        <!--<script>-->
-            <!--setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);-->
-        <!--</script>-->
-        <!--{% endif %}-->
-   <!--</div>-->
-
     </form>
-    <!--{% for i in configlines|length|safe %}-->
-            <!--<label for="net_value{{forloop.counter0}}">Net Value ($): </label>-->
-            <!--<input type="text" id="net_value{{forloop.counter0}}" name="net_value{{forloop.counter0}}" style="border:none;" readonly/>-->
-
-            <!--<label for="config{{forloop.counter0}}">Configuration: </label>-->
-            <!--<input type="text" id="config{{forloop.counter0}}" name="config{{forloop.counter0}}" style="border:none;" readonly/>-->
-
-            <!--<label for="catalog{{forloop.counter0}}">Catalog: </label>-->
-            <!--<input type="text" id="catalog{{forloop.counter0}}" name="catalog{{forloop.counter0}}" style="border:none;" readonly/>-->
-
-            <!--<label for="rev{{forloop.counter0}}">Rev: </label>-->
-            <!--<input type="text" id="rev{{forloop.counter0}}" name="rev{{forloop.counter0}}" style="border:none;" readonly/>-->
-
-            <!--<div id='table-wrapper{{forloop.counter0}}' style="overflow-y: hidden; overflow-x: hidden;"><div id="datatable{{forloop.counter0}}"></div></div><br />-->
-
-    <!--{% endfor %}-->
-
-
-        <!--{% for i in configlines|length|safe %}-->
-            <!--<div id='table-wrapper{{forloop.counter0}}' style="overflow-y: hidden; overflow-x: hidden;"><div id="datatable{{forloop.counter0}}"></div></div>-->
-<!--&lt;!&ndash;<div id="table-wrapper1" style="overflow-y: hidden; overflow-x: hidden;">bhhvv <div id="datatable1"></div></div>&ndash;&gt;-->
-        <!--{% endfor %}-->
-
-
-
-
 
    <script>
         var not_picklist;{% if is_not_pick_list %}not_picklist = {{ is_not_pick_list|lower }};{% endif %}
