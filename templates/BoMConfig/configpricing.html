@@ -47,6 +47,8 @@
         var table_data = {{ configlines|safe }};
         var program_list;{% if prog_list %}program_list = {{ prog_list|safe }};{% endif %}
         var baseline_list;{% if base_list %}baseline_list = {{ base_list|safe }};{% endif %}
+ <!--S-12898: Need status information on multiple revision selection in Pricing - Added status variable below to store the status info coming from backend -->
+        var configstatus_list;{% if configstatus %}configstatus_list = {{ configstatus|safe }};{% endif %}
         var readonly = {{ readonly|lower }};
         var download_url = '{% url 'bomconfig:configpricingdownload' %}';
         var file_cookie = "{% random_string 10 %}";

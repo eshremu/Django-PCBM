@@ -1,6 +1,7 @@
 var hot, clean_form, container;
 var form_save = false;
-var hotarr=[]; var hotarr1=[]; var btn_evnt_id;
+var hotarr=[]; var hotarr1=[]; var btn_evnt_id; var netval=[];
+// S-12911: Pricing Multi Config download enhancement - Declared netval as an array above that will help store the net value of all the configs
 
 $('button[value="multi_config"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 $(document).ready(function(){
@@ -148,7 +149,22 @@ function form_resize(){
             $('#config'+i).val(configdata[i]);
             $('#config'+i).css("font-weight","normal");
 
-            build_table(table_data1,i);
+// D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Added below if condition not to draw the table
+// and to show the baseline/baseline rev/netvalue as blank for configs which has no Active versions
+           if(table_data1 == ''){
+                o = document.createElement('label');
+                o.innerHTML = '<label for="act'+i+' style="font-weight:bold; color:teal; "> No Active Version found for this config</label><br><br>';
+                document.getElementById('main-body').append(o);
+                document.getElementById('main-body').append(sp);
+                $('#rev'+i).val('');
+                $('#catalog'+i).val('');
+                $('#config'+i).val(configdata[i]);
+                netval.push('');
+                $('#netvalue').val(netval);
+//                document.getElementById('main-body').append(sp);
+           }else{     //Else condition to draw table for all configs that has Active versions
+                 build_table(table_data1,i);
+           }
 
          }
          $('#formbuttons').css("display", "block");
@@ -157,7 +173,7 @@ function form_resize(){
 }
 //This function is added to get rid off the multiple tables drawn on page load while clicking on download button
 function RestrictMultipleUItables(ev){
- btn_evnt_id = ev;
+    btn_evnt_id = ev;
 }
 
 function readonlyRenderer(instance, td, row, col, prop, value, cellProperties) {
@@ -234,7 +250,7 @@ function calcRenderer (instance, td, row, col, prop, value, cellProperties) {
     moneyRenderer(instance, td, row, col, prop, value, cellProperties);
 }
 
-function build_table(table_data1,i) {//alert('pppp')
+function build_table(table_data1,i) {
 
     var headers = ['Line #','Product Number','Internal Product Number','Product Description','Order Qty','Unit Price',
         'Total Price','Manual Override for Total NET Price','Traceability Req. (Serialization)','Linkage','Material Group 5','HW/SW Indicator',
@@ -337,4 +353,12 @@ function calcValue(instance,j){
 
     $('#net_value'+j).val(overall_total.toFixed(2));
     $('#net_value'+j).css("font-weight","normal");
+
+// S-12911: Pricing Multi Config download enhancement - Added below loop to push the calculated netvalue for each config into the netval array
+// to be able to show as the heading in the downloaded file.
+    for(k=j;k<=j;k++){
+          netval.push(overall_total.toFixed(2));
+    }
+    $('#netvalue').val(netval);
+
 }

@@ -761,9 +761,18 @@ def ConfigPricing(oRequest):
                 [oHead.baseline.id, str(oHead.baseline_impacted), str(oHead.baseline_version)] if oHead.baseline else
                 ['None', '(No Baseline)'] for oHead in aConfigMatches
             )
+
+# S - 12898: Need status information on multiple revision selection in Pricing - Added aConfigStatusList below to fetch the status info
+
+            aConfigStatusList = list(
+                [oHead.configuration_status.id, oHead.configuration_status.name] if oHead.configuration_status else
+                ['None', '(No Status)'] for oHead in aConfigMatches
+            )
+
+ # S - 12898: Need status information on multiple revision selection in Pricing - Added configstatus in dcontext to store the status info
             dContext.update(
                 {'prog_list': aProgramList, 'config': sConfig,
-                 'base_list': aBaselineList})
+                 'base_list': aBaselineList, 'configstatus' : aConfigStatusList})
 
         # Only a single match was found, so load the data for the match
         else:
@@ -953,26 +962,49 @@ def MultiConfigPricing(oRequest):
 
             # Start with all Headers that match the name
             if sConfig:
+ # D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Commented the below statememt as it was fetching the latest version &
+ # added the statement below it to fetch the Active version of the config
+                # aConfigMatches = Header.objects.filter(
+                #     configuration_designation__iexact=sConfig).filter(customer_unit_id__in=aAvailableCU).latest('baseline') # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
                 aConfigMatches = Header.objects.filter(
-                    configuration_designation__iexact=sConfig).filter(customer_unit_id__in=aAvailableCU).latest('baseline') # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
+                    configuration_designation__iexact=sConfig).filter(customer_unit_id__in=aAvailableCU).filter(
+                    configuration_status=3)  # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
 
-            if aConfigMatches == 0:
-                status_message = 'No matching configuration found'
-                dContext.update({'config': sConfig})
+            # if aConfigMatches == 0:    #D-07123: commented this line and added below since the non-active configs also used to go to else part
+            if not aConfigMatches:                          # If NO Active Version found
+                status_message = 'No Active configuration found'
+
+                aConfigLines = []
+                aConfigLines1.append(aConfigLines)
+                dContext['configlines'] = aConfigLines1
+
+                aBaselines = []
+                aBaselines1.append(aBaselines)
+                dContext['baselines'] = aBaselines1
+                aBaseRev = []
+                aBaseRev1.append(aBaseRev)
+                dContext['baserevs'] = aBaseRev1
+                aConfigs1.append(sConfig)
+                dContext['configs'] = aConfigs1
+                dContext['configstatus'] = aConfigStatus1
+
+                dContext.update({'config': scon })
 
             # Only a single match was found, so load the data for the match
-            else:
-                iProgValue = aConfigMatches.program.id if \
-                    aConfigMatches.program else None
-                iBaseValue = aConfigMatches.baseline.id if \
-                    aConfigMatches.baseline else None
-                iBaselineValue = aConfigMatches.baseline.title if \
-                    aConfigMatches.baseline else None
-                iBaseRevValue = aConfigMatches.baseline.version if \
-                    aConfigMatches.baseline else None
-    # Added below to add config status for each config for the readonly & editable feature in multi-config pricing page
-                iConfigStatusValue = aConfigMatches.configuration_status.name if \
-                    aConfigMatches.configuration_status else None
+            else:                                           # If Active Version found
+ # D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Iterating aConfigMatches to extract data as it is in object form
+                for obj in aConfigMatches:
+                    iProgValue = obj.program.id if \
+                        obj.program else None
+                    iBaseValue = obj.baseline.id if \
+                        obj.baseline else None
+                    iBaselineValue = obj.baseline.title if \
+                        obj.baseline else None
+                    iBaseRevValue = obj.baseline.version if \
+                        obj.baseline else None
+        # Added below to add config status for each config for the readonly & editable feature in multi-config pricing page
+                    iConfigStatusValue = obj.configuration_status.name if \
+                        obj.configuration_status else None
 
                 if sConfig:
                     dLineFilters = {
@@ -987,50 +1019,6 @@ def MultiConfigPricing(oRequest):
 
                 dLineFilters.update({'config__header__baseline__id': iBaseValue})
                 dConfigFilters.update({'header__baseline__id': iBaseValue})
-
-                # Save data
-                if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
-                    # Ensure user has not changed the configuration value prior to
-                    # saving
-                    if oRequest.POST['config'] == oRequest.POST['initial']:
-                        # net_total = 0
-                        if config_index < len(json.loads(oRequest.POST['data_form'])):
-                            for dLine in json.loads(oRequest.POST['data_form'])[config_index]:
-
-                                # Change dLine to dict with str keys
-                                if isinstance(dLine, list):
-                                    dLine = {
-                                        str(key): val for (key, val) in enumerate(dLine)
-                                        }
-                                elif isinstance(dLine, dict):
-                                    dLine = {
-                                        str(key): val for (key, val) in dLine.items()}
-
-                                dLineFilters.update({'line_number': dLine['0']})
-
-                                # Retrieve ConfigLine matching line number and update
-                                # override_price
-                                oLineToEdit = ConfigLine.objects.filter(
-                                    **dLineFilters)[0]
-                                (oLinePrice, _) = LinePricing.objects.get_or_create(
-                                    config_line=oLineToEdit)
-                                oLinePrice.override_price = float(dLine['7']) if \
-                                    dLine['7'] not in (None, '') else None
-
-                                oLinePrice.save()
-                        # end for
-                        dLineFilters.pop('line_number', None)
-
-                        # Save the configuration
-                        oConfig = Configuration.objects.get(**dConfigFilters)
-                        oConfig.save()
-
-                        status_message = 'Data saved.'
-                    else:
-                        status_message = 'Cannot change configuration during save.'
-                        sConfig = oRequest.POST['initial']
-                    # end if
-                # end if
 
                 # Retrieve ConfigLines that matches the filters and sort by line
                 # number

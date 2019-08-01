@@ -2238,47 +2238,116 @@ def MultiConfigPriceDownload(oRequest):
     if oRequest.POST:
         scon = oRequest.POST['config'] if 'config' in oRequest.POST else None
         scon2 = scon.split(';')
+
+ # S-12911: Pricing Multi Config download enhancement- Added below blocks to set the baseline/ revision/ netvalue data
+ #  to be able to show it in the heading lines before each table in the downloaded excel
+
+        sbaseline = oRequest.POST['baselinedata'] if 'baselinedata' in oRequest.POST else None
+        sbaseline = sbaseline.replace("[","")
+        sbaseline = sbaseline.replace("]", "")
+        sbaseline = sbaseline.replace("'", "")
+        sbaselinearr = sbaseline.split(',')
+
+        sbaselinerev = oRequest.POST['baserevdata'] if 'baserevdata' in oRequest.POST else None
+        sbaselinerev = sbaselinerev.replace("[", "")
+        sbaselinerev = sbaselinerev.replace("]", "")
+        sbaselinerev = sbaselinerev.replace("'", "")
+        sbaselinerevarr = sbaselinerev.split(',')
+
+        snet_value = oRequest.POST['netvalue'] if 'netvalue' in oRequest.POST else None
+        snet_valuearr=snet_value.split(',')
+
         aConfigLines1 = []
-        aConfigLines2 = [{'12': '', '10': '', '11': '', '8': '', '9': '', '0': '', '1': '', '2': '', '3': '', '4': '', '5': '', '6': '', '7': ''}]
-        first_element = []
+        aConfigLines2 = [{'12': '', '10': '', '11': '', '8': '', '9': '', '0': '',
+                           '1': '',  '2': '',  '3': '', '4': '', '5': '', '6': '', '7': ''}]
+
+        count = 0
+
         for sConfig in scon2:
+
+ # D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Renamed below oHeader to oHeader2 to fetch the generic CU name for file name
             # Retrieve desired Header object and determine filename
-            oHeader = Header.objects.filter(
+            oHeader2 = Header.objects.filter(
                 configuration_designation=sConfig).latest('baseline')
-            # Retrieve ConfigLines and sort by line number
-            aLine = oHeader.configuration.configline_set.all()
-            aLine = sorted(aLine,
-                           key=lambda x: ([int(y) for y in x.line_number.split('.')]))
 
-            # Build data rows for .xls file
-            aConfigLines = [
-                {
-                    '0': oLine.line_number,
-                    '1': ('..' if oLine.is_grandchild else '.' if
-                    oLine.is_child else '') + oLine.part.base.product_number,
-                    '2': str(oLine.part.base.product_number) +
-                         str('_' + oLine.spud.name if oLine.spud else ''),
-                    '3': oLine.part.product_description,
-                    '4': float(oLine.order_qty if oLine.order_qty else 0.0),
-                    '5': float(GrabValue(oLine,
-                                         'linepricing.pricing_object.unit_price', 0.0)),
-                    '6': float(oLine.order_qty or 0) * float(GrabValue(
-                        oLine, 'linepricing.pricing_object.unit_price', 0.0)),
-                    '7': GrabValue(oLine, 'linepricing.override_price', ''),
-                    '8': oLine.higher_level_item or '',
-                    '9': oLine.material_group_5 or '',
-                    '10': oLine.commodity_type or '',
-                    '11': oLine.comments or '',
-                    '12': oLine.additional_ref or ''
-                } for oLine in aLine
-            ]
+# D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Added oHeader1 below to fetch the Active version of the config
+            oHeader1 = Header.objects.filter(
+                configuration_designation__iexact=sConfig).filter(configuration_status=3)
 
-            if not oHeader.pick_list:
-                config_total = sum([float(line['6']) for line in aConfigLines])
-                aConfigLines[0]['5'] = aConfigLines[0]['6'] = config_total
+            oHeader = ''
+# D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Added below if condition to let the Active configs enter
+            if len(oHeader1) != 0:                      # For Active configs
+                for obj in oHeader1:            #Iterating oHeader1 as it is object form
+                   oHeader = obj
+                # Retrieve ConfigLines and sort by line number
 
-            aConfigLines1.append(aConfigLines)
-            aConfigLines1.append(aConfigLines2)
+                aLine = oHeader.configuration.configline_set.all()
+                aLine = sorted(aLine,
+                               key=lambda x: ([int(y) for y in x.line_number.split('.')]))
+
+                # Build data rows for .xls file
+                aConfigLines = [
+                    {
+                        '0': oLine.line_number,
+                        '1': ('..' if oLine.is_grandchild else '.' if
+                        oLine.is_child else '') + oLine.part.base.product_number,
+                        '2': str(oLine.part.base.product_number) +
+                             str('_' + oLine.spud.name if oLine.spud else ''),
+                        '3': oLine.part.product_description,
+                        '4': float(oLine.order_qty if oLine.order_qty else 0.0),
+                        '5': float(GrabValue(oLine,
+                                             'linepricing.pricing_object.unit_price', 0.0)),
+                        '6': float(oLine.order_qty or 0) * float(GrabValue(
+                            oLine, 'linepricing.pricing_object.unit_price', 0.0)),
+                        '7': GrabValue(oLine, 'linepricing.override_price', ''),
+                        '8': oLine.higher_level_item or '',
+                        '9': oLine.material_group_5 or '',
+                        '10': oLine.commodity_type or '',
+                        '11': oLine.comments or '',
+                        '12': oLine.additional_ref or ''
+                    } for oLine in aLine
+                ]
+
+ # S-12911- Pricing Multi Config download enhancement: added aConfigLines3[] to have baseline name, rev, net value in downloaded baseline file  
+                aConfigLines3 = [{
+                    '0': "Net Value($):" + snet_valuearr[count]  + "    Configuration:" + sConfig + "     Catalog:" + sbaselinearr[count] + "      Rev:" + sbaselinerevarr[count]  ,
+                    '1': '',  '2': '',  '3': '', '4': '', '5': '', '6': '', '7': '',
+                    '8': '',  '9': '', '10': '', '11': '', '12': ''
+                }]
+
+                count = count + 1
+
+                if not oHeader.pick_list:
+                    config_total = sum([float(line['6']) for line in aConfigLines])
+                    aConfigLines[0]['5'] = aConfigLines[0]['6'] = config_total
+
+                aConfigLines1.append(aConfigLines2)
+                aConfigLines1.append(aConfigLines3)
+                aConfigLines1.append(aConfigLines)
+ # D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Added else part to let the Non-Active configs enter into this
+            else:                                    # For Non Active configs i.e No active version found
+
+                # Build data rows for .xls file
+# D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Table would show this below message when no active version found
+                aConfigLines = [
+                    {
+                        '0': 'No Active Version found for this config'
+                    }
+                ]
+
+# D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Headings would show nothing but blank value except for config name
+                aConfigLines3 = [{
+                    '0': "Net Value($):" + '' + "    Configuration:" + sConfig + "     Catalog:" +
+                         '' + "      Rev:" + '',
+                    '1': '', '2': '', '3': '',  '4': '',  '5': '', '6': '',
+                    '7': '', '8': '', '9': '', '10': '', '11': '', '12': ''
+                }]
+
+                count = count + 1
+
+                aConfigLines1.append(aConfigLines2)
+                aConfigLines1.append(aConfigLines3)
+                aConfigLines1.append(aConfigLines)
 
         headers = ['Line #', 'Product Number', 'Internal Product Number',
                    'Product Description', 'Order Qty', 'Unit Price', 'Total Price',
@@ -2304,7 +2373,7 @@ def MultiConfigPriceDownload(oRequest):
                         rearranged_data[int(v)] = d[v]
                     oSheet.append(rearranged_data)
 
-        sFileName = str(oHeader.customer_unit) + 'Multiple Active configurations' + '_' + str(datetime.datetime.now().strftime('%d%b%Y')) + '_'+ ' Pricing.xlsx'
+        sFileName = str(oHeader2.customer_unit) + 'Multiple Active configurations' + '_' + str(datetime.datetime.now().strftime('%d%b%Y')) + '_'+ ' Pricing.xlsx'
         # Save file stream to HTTP response
         response = HttpResponse(content_type='application/ms-excel')
         response['Content-Disposition'] = 'attachment;filename="{0}"'.format(

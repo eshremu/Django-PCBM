@@ -17,7 +17,8 @@ $(document).ready(function(){
         //     S-11552: Baseline tab changes : changed pop-up message to catalog
             var message = "Multiple matching configurations were found.<br/>Please select the catalog for the desired configuration.";
 
-            message += '<label for="desiredprog" style="padding-right: 5px; margin-left: 30%;">Catalog / Revision - Program</label>';
+//S-12898: Need status information on multiple revision selection in Pricing - Added 'Status' below for the Heading
+            message += '<label for="desiredprog" style="padding-right: 5px; margin-left: 30%;">Catalog / Revision - Program - Status</label>';
             message += '<div style="width:100%;"><div style="width:20%; float:left;"><br/><input id="latest10btn" onclick="selectLatest10()" type="button" class="btn btn-primary" name="latest10" value="Select Latest 10"></input>&nbsp<br/><input id="deselectbtn" onclick="deselectAll()"  class="btn btn-primary" type="button" name="deselectall" value="Deselect All"></input></div>';
 
             message += '<div  style="width:100%;"><ul id="desiredprog" style="height: 155px; margin-left: 25%; width:70%; overflow: auto; list-style-type: none;  overflow-x: hidden;  border: 1px solid #000;">';
@@ -29,8 +30,9 @@ $(document).ready(function(){
                }
 
 //D-07038: On multiple revisions in pricing view, opened incorrect revisions from what was selected :- Added "baseline_list[i][2]" below in the value to include the actual rev value when selected
+//S-12898: Need status information on multiple revision selection in Pricing - Added Status info below to show the status alongside baseline rev & program
                 message += '<li value="'+ program_list[i][0] + "_" + baseline_list[i][0]+'"><label for="'+i+'"><input type="checkbox" name="revs" id="'+i+'" value="'+ program_list[i][0] + "_" + baseline_list[i][0] + "_" + baseline_list[i][2] +'" >' +
-                 ' Rev '+ baseline_list[i][2] + ' - ' + program_list[i][1] +'</label></li>';
+                 ' Rev '+ baseline_list[i][2] + ' - ' + program_list[i][1] + ' - ' + configstatus_list[i][1] + '</label></li>';
                 baseln = baseline_list[i][1];
             }
             message += '</ul></div></div>';
