@@ -120,11 +120,27 @@ def PartPricing(oRequest):
                                     errorfound = True
                                     oCurrentPriceObj.save()
                                     break
-
-                                oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(aRowToSave[6],'%m/%d/%Y').date()
-                                oCurrentPriceObj.is_current_active = True
-                                oCurrentPriceObj.save()
-
+                                elif (datetime.datetime.strptime(aRowToSave[5],'%m/%d/%Y').date() == oCurrentPriceObj.valid_from_date and \
+                                datetime.datetime.strptime(aRowToSave[6],'%m/%d/%Y').date() != oCurrentPriceObj.valid_to_date and \
+                                oCurrentPriceObj.unit_price != float(aRowToSave[4])):
+                                    oCurrentPriceObj.is_current_active = True
+                                    errorfound = True
+                                    oCurrentPriceObj.save()
+                                    break
+                                elif (datetime.datetime.strptime(aRowToSave[5],'%m/%d/%Y').date() == oCurrentPriceObj.valid_from_date and \
+                                datetime.datetime.strptime(aRowToSave[6],'%m/%d/%Y').date() != oCurrentPriceObj.valid_to_date and \
+                                oCurrentPriceObj.unit_price == float(aRowToSave[4])):
+                                    oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(
+                                        aRowToSave[6], '%m/%d/%Y').date()
+                                    oCurrentPriceObj.is_current_active = True
+                                    oCurrentPriceObj.save()
+                                    break
+                                else:
+                                    oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(aRowToSave[6],
+                                                                                                '%m/%d/%Y').date()
+                                    oCurrentPriceObj.is_current_active = True
+                                    oCurrentPriceObj.save()
+                                    break
 
                             if not oCurrentPriceObj or \
                                     oCurrentPriceObj.unit_price != float(
@@ -142,32 +158,41 @@ def PartPricing(oRequest):
         # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.changed aRowToSave[6] to aRowToSave[5]
         # S - 12676: Unit Price Mgmt - Account for valid to and valid from dates in Unit Price Mgmt ( in Pricing tab):  added below conditions to check various combinations
 
-                                if oCurrentPriceObj and oCurrentPriceObj.unit_price != float(
-                                            aRowToSave[4]) and (oCurrentPriceObj.valid_from_date == datetime.datetime.strptime(
-                                        aRowToSave[5],
-                                        '%m/%d/%Y'
-                                    ).date()):
+                                if oCurrentPriceObj and oCurrentPriceObj.unit_price != float(aRowToSave[4]) and \
+                                    (oCurrentPriceObj.valid_from_date == datetime.datetime.strptime( aRowToSave[5],'%m/%d/%Y').date()):
                                     oCurrentPriceObj.is_current_active = True
                                     errorfound = True
                                     oCurrentPriceObj.save()
                                     break
 
-                                elif oCurrentPriceObj and oCurrentPriceObj.unit_price != float(
-                                        aRowToSave[4]) and (oCurrentPriceObj.valid_from_date != datetime.datetime.strptime(
-                                        aRowToSave[5],'%m/%d/%Y').date()) and (oCurrentPriceObj.valid_to_date == datetime.datetime.strptime(
-                                        aRowToSave[6],'%m/%d/%Y').date()):
+                                elif oCurrentPriceObj and (oCurrentPriceObj.valid_to_date != datetime.datetime.strptime(
+                                    aRowToSave[6],'%m/%d/%Y').date() and oCurrentPriceObj.unit_price == float(aRowToSave[4])):
+                                    oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(
+                                        aRowToSave[6], '%m/%d/%Y').date()
+                                    oCurrentPriceObj.is_current_active = True
+                                    oCurrentPriceObj.save()
+                                elif oCurrentPriceObj and (oCurrentPriceObj.unit_price != float(aRowToSave[4]) and \
+                                 oCurrentPriceObj.valid_to_date == datetime.datetime.strptime(aRowToSave[6],'%m/%d/%Y').date() and \
+                                 oCurrentPriceObj.valid_from_date == datetime.datetime.strptime(aRowToSave[5],'%m/%d/%Y').date()):
                                     oCurrentPriceObj.is_current_active = True
                                     errorfound = True
                                     oCurrentPriceObj.save()
-                                    break
-                                elif oCurrentPriceObj and (oCurrentPriceObj.valid_to_date != datetime.datetime.strptime(
-                                        aRowToSave[6],
-                                        '%m/%d/%Y'
-                                    ).date()):
-                                    oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(
-                                        aRowToSave[6], '%m/%d/%Y').date()
-                                    oCurrentPriceObj.is_current_active = False
+
+                                elif oCurrentPriceObj and (oCurrentPriceObj.unit_price != float(
+                                    aRowToSave[4]) and oCurrentPriceObj.valid_to_date != datetime.datetime.strptime(aRowToSave[6],'%m/%d/%Y').date() and \
+                                    oCurrentPriceObj.valid_from_date == datetime.datetime.strptime(aRowToSave[5],'%m/%d/%Y').date()):
+                                    oCurrentPriceObj.is_current_active = True
+                                    errorfound = True
                                     oCurrentPriceObj.save()
+                                elif oCurrentPriceObj and (oCurrentPriceObj.unit_price == float(
+                                    aRowToSave[4])and oCurrentPriceObj.valid_from_date == datetime.datetime.strptime(aRowToSave[5],'%m/%d/%Y').date()):
+                                    oCurrentPriceObj.is_current_active = True
+                                    oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(
+                                            aRowToSave[6],
+                                            '%m/%d/%Y'
+                                        ).date() if aRowToSave[6] else None,
+                                    oCurrentPriceObj.save()
+                                    break
 
                                 # else:
                                 #     oCurrentPriceObj.is_current_active = False
@@ -181,70 +206,18 @@ def PartPricing(oRequest):
                                 #     oCurrentPriceObj.save()
                                 # Create a new PricingObject
            # S - 12676: Unit Price Mgmt - Account for valid to and valid from dates in Unit Price Mgmt ( in Pricing tab): added below conditions to check condition before adding in db.
+                # D-07148: Demo on S-12676: Account for valid to and valid from dates in Unit Price Mgmt (in Pricing tab):
+                # First it will check for list of combination present for CU+SPUD, if its not present it will create an entry else it will check for
+                # valid-to-date, if entered data is greater than existing values then only it will enter data else flag error.
                                 try:
-                                    if oCurrentPriceObj and oCurrentPriceObj.unit_price is not None and oCurrentPriceObj.unit_price != float(
-                                            aRowToSave[4]) and oCurrentPriceObj.valid_to_date is not None and \
-                                                    oCurrentPriceObj.valid_to_date == datetime.datetime.strptime(
-                                        aRowToSave[5],'%m/%d/%Y').date():
-                                        oNewPriceObj = PricingObject.objects.create(
-                                            part=PartBase.objects.get(
-                                                product_number__iexact=aRowToSave[0] or
-                                                oRequest.POST.get('initial', None)),
-                                            customer=REF_CUSTOMER.objects.get(
-                                                name=aRowToSave[1]),
-                                            sold_to=aRowToSave[2] if aRowToSave[2] not
-                                            in ('(None)', None, '', 'null') else None,
-                                            spud=REF_SPUD.objects.get(
-                                                name=aRowToSave[3]) if aRowToSave[3] not
-                                            in ('(None)', '', None, 'null') else None,
-                                            is_current_active=True,
-                                            unit_price=aRowToSave[4],
-            # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed valid_to_date to aRowToSave[7] and valid_from_date to aRowToSave[6]
-                                            valid_from_date=datetime.datetime.strptime(
-                                                aRowToSave[5],
-                                                '%m/%d/%Y'
-                                            ).date() if aRowToSave[5] else None,
-                                            valid_to_date=datetime.datetime.strptime(
-                                                aRowToSave[6],
-                                                '%m/%d/%Y'
-                                            ).date() if aRowToSave[6] else None,
-                                            comments=aRowToSave[7],
-                                            previous_pricing_object=oCurrentPriceObj
-                                        )
-                                    elif oCurrentPriceObj and (oCurrentPriceObj.unit_price != float(
-                                            aRowToSave[4]) and oCurrentPriceObj.valid_to_date == datetime.datetime.strptime(
-                                        aRowToSave[6],
-                                        '%m/%d/%Y'
-                                    ).date() and oCurrentPriceObj.valid_from_date == datetime.datetime.strptime(
-                                        aRowToSave[5],
-                                        '%m/%d/%Y').date()):
-                                        oCurrentPriceObj.is_current_active = True
-                                        errorfound = True
-                                        oCurrentPriceObj.save()
-
-                                    elif oCurrentPriceObj and (oCurrentPriceObj.unit_price != float(
-                                            aRowToSave[4]) and oCurrentPriceObj.valid_to_date != datetime.datetime.strptime(
-                                        aRowToSave[6],
-                                        '%m/%d/%Y'
-                                    ).date() and oCurrentPriceObj.valid_from_date == datetime.datetime.strptime(
-                                        aRowToSave[5],
-                                        '%m/%d/%Y').date()):
-                                        oCurrentPriceObj.is_current_active = True
-                                        errorfound = True
-                                        oCurrentPriceObj.save()
-                                    elif oCurrentPriceObj and (oCurrentPriceObj.unit_price == float(
-                                            aRowToSave[4])and oCurrentPriceObj.valid_from_date == datetime.datetime.strptime(
-                                        aRowToSave[5],'%m/%d/%Y').date()):
-                                        oCurrentPriceObj.is_current_active = True
-                                        oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(
-                                                aRowToSave[6],
-                                                '%m/%d/%Y'
-                                            ).date() if aRowToSave[6] else None,
-                                        oCurrentPriceObj.save()
-                                        break
-
-
-                                    else:
+                                    aPricingList = PricingObject.objects.filter(
+                                        customer=REF_CUSTOMER.objects.get(
+                                            name=aRowToSave[1]),
+                                        part=PartBase.objects.get(
+                                        product_number__iexact=aRowToSave[0] or oRequest.POST.get('initial', None)),
+                                        is_current_active=True,
+                                        spud=REF_SPUD.objects.get(name=aRowToSave[3]) if aRowToSave[3] not in ('(None)', '', None, 'null') else None)
+                                    if len(aPricingList)==0:
                                         oNewPriceObj = PricingObject.objects.create(
                                             part=PartBase.objects.get(
                                                 product_number__iexact=aRowToSave[0] or
@@ -287,6 +260,61 @@ def PartPricing(oRequest):
                                             comments=aRowToSave[7],
                                             previous_pricing_object=oCurrentPriceObj
                                         )
+                                    else:
+
+                                        avalid_to_date= [
+                                                oRow.valid_to_date
+                                            for oRow in aPricingList
+                                        ]
+                                        max_date=max(d for d in avalid_to_date if isinstance(d, datetime.date))
+
+                                        if datetime.datetime.strptime(aRowToSave[5],'%m/%d/%Y').date()< max_date:
+                                            errorfound = True
+                                            break
+                                        else:
+                                            oNewPriceObj = PricingObject.objects.create(
+                                                part=PartBase.objects.get(
+                                                    product_number__iexact=aRowToSave[0] or
+                                                                           oRequest.POST.get('initial', None)),
+                                                customer=REF_CUSTOMER.objects.get(
+                                                    name=aRowToSave[1]),
+                                                sold_to=aRowToSave[2] if aRowToSave[2] not
+                                                                         in ('(None)', None, '', 'null') else None,
+                                                spud=REF_SPUD.objects.get(
+                                                    name=aRowToSave[3]) if aRowToSave[3] not
+                                                                           in (
+                                                                               '(None)', '', None, 'null') else None,
+                                                # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
+                                                # commented-out aRowToSave[4] and changed aRowToSave[5] to aRowToSave[7] -> aRowToSave[4] to aRowToSave[6]
+                                                # technology=REF_TECHNOLOGY.objects.get(
+                                                #     name=aRowToSave[4]) if aRowToSave[4] not
+                                                # in ('(None)', '', None, 'null') else None,
+                                                is_current_active=True,
+                                                unit_price=aRowToSave[4],
+                                                # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed valid_to_date to aRowToSave[7] and valid_from_date to aRowToSave[6]
+                                                valid_from_date=datetime.datetime.strptime(
+                                                    aRowToSave[5],
+                                                    '%m/%d/%Y'
+                                                ).date() if aRowToSave[5] else None,
+                                                valid_to_date=datetime.datetime.strptime(
+                                                    aRowToSave[6],
+                                                    '%m/%d/%Y'
+                                                ).date() if aRowToSave[6] else None,
+                                                # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
+                                                # commented-out aRowToSave[8] to aRowToSave[10] and changed aRowToSave[11] to aRowToSave[7] for comments
+                                                # cutover_date=datetime.datetime.strptime(
+                                                #     aRowToSave[8],
+                                                #     '%m/%d/%Y'
+                                                # ).date() if aRowToSave[8] else None,
+                                                # price_erosion=eval(
+                                                #     aRowToSave[9]
+                                                # ) if aRowToSave[9] else False,
+                                                # erosion_rate=float(
+                                                #     aRowToSave[10]
+                                                # ) if aRowToSave[10] else None,
+                                                comments=aRowToSave[7]
+                                                # previous_pricing_object=oCurrentPriceObj
+                                            )
 
                                     # Update any configurations that are in-process
                                     # or pending approval by CPM to use the new
