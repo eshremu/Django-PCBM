@@ -1603,20 +1603,20 @@ class PricingObject(models.Model):
         oPriceObj = aPricingList.filter(spud=oConfigLine.spud).last()
         # D-07316:Configuration Price Mgmt pulling incorrect unit price : Changed the logic to show the price in config-price management
         #  if today's date lies in date range, else it will show the latest price.
-        avalid_to_date = [oRow.valid_to_date if oRow.valid_to_date else '' for oRow in
+        avalid_to_date = [oRow.valid_to_date if oRow.valid_to_date else None for oRow in
                           aPricingList]
-        avalid_from_date = [oRow.valid_from_date if oRow.valid_from_date else '' for oRow in
+        avalid_from_date = [oRow.valid_from_date if oRow.valid_from_date else None for oRow in
                             aPricingList]
         today = date.today()
         td = today
         for a, b in zip(avalid_from_date, avalid_to_date):
-            if (td >= a) and (td < b):
+            if (a is not None) and (b is not None) and (td >= a) and (td < b):
                 oPriceObj = aPricingList.get(
                     spud=oConfigLine.spud,
                     valid_from_date=a.strftime('%Y-%m-%d'))
                 break
             else:
-                  oPriceObj = aPricingList.filter(
+                oPriceObj = aPricingList.filter(
                     spud=oConfigLine.spud).last()
         return oPriceObj
             # end def
