@@ -11,7 +11,8 @@ from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 from django.conf import settings
-from datetime import datetime
+from datetime import datetime,date
+
 
 import re
 
@@ -1593,27 +1594,32 @@ class PricingObject(models.Model):
         aPricingList = cls.objects.filter(
             customer=oConfigLine.config.header.customer_unit,
             part=oConfigLine.part.base,
+            spud=oConfigLine.spud if oConfigLine.spud else None,
             is_current_active=True)
  # Fix for D-04415- SPUD pricing in not pulled in for configs(SPUD pricing should not consider any other fields except for part number and SPUD. This will mean that we need
  #  to remove the filter by Sold To or any other conditions).Removed all the condition and made it base only on SPUD. If part no
  #        is entered without any spud then latest changed unit price without spud will be shown.)
 
-        # oPriceObj = aPricingList.filter(
-        #     spud=oConfigLine.spud).last()
-
         oPriceObj = aPricingList.filter(spud=oConfigLine.spud).last()
-        today = timezone.datetime.now().date().strftime('%m/%d/%Y')
-        if oPriceObj is not None:
-            vf = oPriceObj.valid_from_date.strftime('%m/%d/%Y') if oPriceObj.valid_from_date else ''
-            vt = oPriceObj.valid_to_date.strftime('%m/%d/%Y') if oPriceObj.valid_to_date else ''
-            if today >= vf and today <= vt:
-                oPriceObj = aPricingList.filter(
-                    spud=oConfigLine.spud).last()
+        # D-07316:Configuration Price Mgmt pulling incorrect unit price : Changed the logic to show the price in config-price management
+        #  if today's date lies in date range, else it will show the latest price.
+        avalid_to_date = [oRow.valid_to_date if oRow.valid_to_date else '' for oRow in
+                          aPricingList]
+        avalid_from_date = [oRow.valid_from_date if oRow.valid_from_date else '' for oRow in
+                            aPricingList]
+        today = date.today()
+        td = today
+        for a, b in zip(avalid_from_date, avalid_to_date):
+            if (td >= a) and (td < b):
+                oPriceObj = aPricingList.get(
+                    spud=oConfigLine.spud,
+                    valid_from_date=a.strftime('%Y-%m-%d'))
+                break
             else:
-                oPriceObj = aPricingList.filter(spud=oConfigLine.spud).first()
+                  oPriceObj = aPricingList.filter(
+                    spud=oConfigLine.spud).last()
         return oPriceObj
             # end def
-
 
 class HeaderLock(models.Model):
     """

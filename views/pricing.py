@@ -375,7 +375,7 @@ def PartPricing(oRequest):
                 aPriceObjs = PricingObject.objects.filter(
                     part=oPart,
                     is_current_active=True).order_by('customer__name',
-                                                     'sold_to', 'spud__name')
+                                                      'spud__name', 'valid_from_date')
 
                 # Create table data from list of objects
                 for oPriceObj in aPriceObjs.filter(customer__in=aAvailableCU): # S-05923: Pricing - Restrict View to allowed CU's based on permissions added filter
@@ -627,10 +627,11 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
 
     if aDuplicateComments or aDuplicateCustomer or aDuplicateEntry  or aInvalidEntries:
         bErrorsLogged = True
-        aDuplicateEntry.sort(key=lambda x: x[3])
-        aDuplicateComments.sort(key=lambda x: x[3])
-        aDuplicateCustomer.sort(key=lambda x: x[3])
-        aInvalidEntries.sort(key=lambda x: x[3])
+        # Commented-out as it is not required
+        # aDuplicateEntry.sort(key=lambda x: x[3])
+        # aDuplicateComments.sort(key=lambda x: x[3])
+        # aDuplicateCustomer.sort(key=lambda x: x[3])
+        # aInvalidEntries.sort(key=lambda x: x[3])
 
 
         subject = 'Price upload errors'
