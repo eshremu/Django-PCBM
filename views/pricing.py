@@ -556,32 +556,92 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
     aDuplicateComments = []
     aDuplicateCustomer = []
     aInvalidEntries = []
+    # D-07324: Unit Price upload adjustment: Added below two variable to append Date fields record
+    aDateUpdates = []
+    aDupDates = []
 
     bErrorsLogged = False
 
     for tPart in aExtractedData:
         # Check if any mappings exists with current info
         # Attempt to find an entry that matches exactly
+        vt_temp = datetime.date.strftime(tPart[7], '%m/%d/%Y') if tPart[7] else ''
+        vf_temp = datetime.date.strftime(tPart[6], '%m/%d/%Y') if tPart[6] else ''
 
         oPart = PartBase.objects.filter( product_number=tPart[0])
         if not oPart:
             aInvalidEntries.append(tPart)
             continue
         try:
-            vt_temp = datetime.date.strftime(tPart[7], '%Y-%m-%d') if tPart[7] else ''
-            vf_temp = datetime.date.strftime(tPart[6], '%Y-%m-%d') if tPart[6] else ''
-            oCurrentPriceObj = PricingObject.objects.filter(
+        # D-07324: Unit Price upload adjustment: Removed Sold-to from filtering condition as it is not dependent on sold-to now,
+        # and added unit price to filter based on price. Removed Valid-to and Valid-from dates from filter
+            oCurrentPriceObj = PricingObject.objects.get(
                 part__product_number__iexact=tPart[0],
                 customer__name=tPart[1],
-                sold_to=tPart[2] if tPart[2] not in ('', '(None)') else None,
-                spud__name=tPart[3] if tPart[3] not in('', '(None)') else None,
-                valid_from_date=vf_temp if vf_temp not in ('', '(None)') else None,
-                valid_to_date=vt_temp if vt_temp not in ('', '(None)') else None,
+                spud__name=tPart[3] if tPart[3] else None,
+                unit_price=tPart[5],
                 is_current_active=True
             )
 
         except PricingObject.DoesNotExist:
             oCurrentPriceObj = None
+    #D-07324: Unit Price upload adjustment: Added belwo check to figure-out if it is a new entry for Current Price object with
+    # new date range or date update of existing object.
+        if oCurrentPriceObj and vt_temp not in ('', '(None)')and vf_temp not in ('', '(None)'):
+            if ( oCurrentPriceObj.valid_from_date is None and oCurrentPriceObj.valid_to_date is None):
+                if (oCurrentPriceObj.unit_price == float(tPart[5])):
+                    oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(vt_temp,'%m/%d/%Y').date()
+                    oCurrentPriceObj.valid_from_date = datetime.datetime.strptime(vf_temp, '%m/%d/%Y').date()
+                    oCurrentPriceObj.is_current_active = True
+                    oCurrentPriceObj.save()
+                    aDateUpdates.append(tPart)
+                    continue
+            else :
+                aPricingList = PricingObject.objects.filter(
+                    part__product_number__iexact=tPart[0],
+                    customer__name=tPart[1],
+                    spud__name=tPart[3] if tPart[3] not in ('', '(None)') else None,
+                    is_current_active=True)
+                avalid_to_date = [
+                    oRow.valid_to_date
+                    for oRow in aPricingList
+                ]
+                max_date = max(d for d in avalid_to_date if isinstance(d, datetime.date))
+
+                if vf_temp >= max_date.strftime('%m/%d/%Y'):
+                    oNewPriceObj = PricingObject.objects.create(
+                        part=PartBase.objects.get(
+                            product_number__iexact=tPart[0]),
+                        spud=REF_SPUD.objects.get(name__iexact=tPart[3]) if tPart[3] not
+                                                                            in (
+                                                                                '(None)', '', None, 'null') else None,
+                        customer=oCustomer,
+                        sold_to=tPart[2] if tPart[2] not
+                                            in ('(None)', '', None, 'null') else None,
+                        unit_price=tPart[5],
+                        valid_from_date=datetime.datetime.strptime(vf_temp,
+                                                                   '%m/%d/%Y'
+                                                                   ).date() if vf_temp not in ('', '(None)') else None,
+                        valid_to_date=datetime.datetime.strptime(vt_temp,
+                                                                 '%m/%d/%Y'
+                                                                 ).date() if vt_temp not in ('', '(None)') else None,
+                        technology=REF_TECHNOLOGY.objects.get(
+                            name=tPart[4]) if tPart[4] not
+                                              in ('(None)', '', None, 'null') else None,
+                        comments=tPart[11] if tPart[11] not
+                                              in ('(None)', '', None, 'null') else None,
+                        is_current_active=True,
+
+                    )
+        # D-07324: Unit Price upload adjustment: This check is for Valid-To date update only
+        if oCurrentPriceObj and vt_temp not in ('', '(None)'):
+            if (oCurrentPriceObj.valid_to_date is None and oCurrentPriceObj.valid_from_date.strftime('%m/%d/%Y') == vf_temp):
+                if (oCurrentPriceObj.unit_price == float(tPart[5])):
+                    oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(vt_temp,'%m/%d/%Y').date()
+                    oCurrentPriceObj.is_current_active = True
+                    oCurrentPriceObj.save()
+                    aDateUpdates.append(tPart)
+                    continue
 
         if not oCurrentPriceObj and str(oCustomer).upper() != str(tPart[1]).upper():
             aDuplicateCustomer.append(tPart)
@@ -601,31 +661,77 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
             # Create a new PricingObject
 
             try:
-                oNewPriceObj = PricingObject.objects.create(
-                    part=PartBase.objects.get(
-                        product_number__iexact=tPart[0]),
-                    spud=REF_SPUD.objects.get(name__iexact=tPart[3])if tPart[3] not
-                                    in ('(None)', '', None, 'null') else None,
-                    customer=oCustomer,
-                    sold_to=tPart[2] if tPart[2] not
-                                    in ('(None)', '', None, 'null') else None,
-                    unit_price=tPart[5],
-                    valid_from_date=vf_temp if vf_temp not in ('', '(None)') else None,
-                    valid_to_date=vt_temp if vt_temp not in ('', '(None)') else None,
-                    technology=REF_TECHNOLOGY.objects.get(
-                                        name=tPart[4]) if tPart[4] not
-                                    in ('(None)', '', None, 'null') else None,
-                    comments=tPart[11] if tPart[11] not
-                                          in ('(None)', '', None, 'null') else None,
-                    is_current_active=True,
+            #D-07324: Unit Price upload adjustment: Declared a list to filter Pricing list,if the combination is not present in DB then it will
+            # create an entry or check for existing date fileds. If it lies in-between the date range it will flag error in mail else create an entry.
 
-                )
+                aPricingList = PricingObject.objects.filter(
+                    part__product_number__iexact=tPart[0],
+                    customer__name=tPart[1],
+                    spud__name=tPart[3] if tPart[3] not in ('', '(None)') else None,
+                    is_current_active=True)
+                if len(aPricingList) == 0:
+                    oNewPriceObj = PricingObject.objects.create(
+                        part=PartBase.objects.get(
+                            product_number__iexact=tPart[0]),
+                        spud=REF_SPUD.objects.get(name__iexact=tPart[3])if tPart[3] not
+                                        in ('(None)', '', None, 'null') else None,
+                        customer=oCustomer,
+                        sold_to=tPart[2] if tPart[2] not
+                                        in ('(None)', '', None, 'null') else None,
+                        unit_price=tPart[5],
+                        valid_from_date=datetime.datetime.strptime(vf_temp,
+                                                    '%m/%d/%Y'
+                                                ).date() if vf_temp not in ('', '(None)') else None,
+                        valid_to_date=datetime.datetime.strptime(vt_temp,
+                                                    '%m/%d/%Y'
+                                                ).date() if vt_temp not in ('', '(None)') else None,
+                        technology=REF_TECHNOLOGY.objects.get(
+                                            name=tPart[4]) if tPart[4] not
+                                        in ('(None)', '', None, 'null') else None,
+                        comments=tPart[11] if tPart[11] not
+                                              in ('(None)', '', None, 'null') else None,
+                        is_current_active=True
+                    )
+                else:
+                    avalid_to_date = [
+                        oRow.valid_to_date
+                        for oRow in aPricingList
+                    ]
+                    max_date = max(d for d in avalid_to_date if isinstance(d, datetime.date))
+
+                    if vf_temp >= max_date.strftime('%m/%d/%Y'):
+                        oNewPriceObj = PricingObject.objects.create(
+                            part=PartBase.objects.get(
+                                product_number__iexact=tPart[0]),
+                            spud=REF_SPUD.objects.get(name__iexact=tPart[3]) if tPart[3] not
+                                                                                in (
+                                                                                '(None)', '', None, 'null') else None,
+                            customer=oCustomer,
+                            sold_to=tPart[2] if tPart[2] not
+                                                in ('(None)', '', None, 'null') else None,
+                            unit_price=tPart[5],
+                            valid_from_date=datetime.datetime.strptime(vf_temp,
+                                                    '%m/%d/%Y'
+                                                ).date() if vf_temp not in ('', '(None)') else None,
+                            valid_to_date=datetime.datetime.strptime(vt_temp,
+                                                    '%m/%d/%Y'
+                                                ).date() if vt_temp not in ('', '(None)') else None,
+                            technology=REF_TECHNOLOGY.objects.get(
+                                name=tPart[4]) if tPart[4] not
+                                                  in ('(None)', '', None, 'null') else None,
+                            comments=tPart[11] if tPart[11] not
+                                                  in ('(None)', '', None, 'null') else None,
+                            is_current_active=True,
+
+                        )
+                    else:
+                        aDupDates.append(tPart)
             except PricingObject.DoesNotExist:
                 oNewPriceObj = None
         # end if
     # end for
-
-    if aDuplicateComments or aDuplicateCustomer or aDuplicateEntry  or aInvalidEntries:
+    # D-07324: Unit Price upload adjustment: added aDateUpdates or aDupDates. Also upadted text_message for the new entries.
+    if aDuplicateComments or aDuplicateCustomer or aDuplicateEntry  or aInvalidEntries or aDateUpdates or aDupDates:
         bErrorsLogged = True
         # Commented-out as it is not required
         # aDuplicateEntry.sort(key=lambda x: x[3])
@@ -642,6 +748,8 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                 'comments': aDuplicateComments,
                 'cu': aDuplicateCustomer,
                 'invalidentry': aInvalidEntries,
+                'updatedate': aDateUpdates,
+                'dupdates': aDupDates,
                 'user': oUser,
                 'filename': oStream.name
             }
@@ -653,6 +761,8 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                 'comments': aDuplicateComments,
                 'cu': aDuplicateCustomer,
                 'invalidentry': aInvalidEntries,
+                'updatedate': aDateUpdates,
+                'dupdates': aDupDates,
                 'user': oUser,
                 'filename': oStream.name
             }
@@ -665,7 +775,8 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
     return bErrorsLogged
 
 # S-12189: Validate pricing for list of parts in pricing tab: Added below function to generate detailed error message
-def GenerateEmailMessage( dupentry=(), comments=(), cu=(), invalidentry=(),
+# D-07324: Unit Price upload adjustment: added updatedate, dupdates to send mail for date updates
+def GenerateEmailMessage( dupentry=(), comments=(), cu=(), invalidentry=(), updatedate=(), dupdates=(),
                          user=None, filename=''):
     """
     Function to generate a plain-text error message detailing any errors
@@ -681,11 +792,14 @@ def GenerateEmailMessage( dupentry=(), comments=(), cu=(), invalidentry=(),
             'while uploading {}:\n\n').format(
         user.first_name, filename
     )
-    aErrorLists = [dupentry, comments, cu, invalidentry ]
+# D-07324: Unit Price upload adjustment: added updatedate,added aTableTitles->Last two titles to send mail for date updates
+    aErrorLists = [dupentry, comments, cu, invalidentry, updatedate, dupdates]
     aTableTitles = ['Same Part Number + Customer + Sold-to + SPUD + Valid From + Valid To already exists in the database with different pricing',
                     'Same Part Number + Customer + Sold-to + SPUD + Valid From + Valid To has different value in Comments',
                     ('Different Customer provided in the file for the selected Customer'),
-                    'Part does not exist in system'
+                    'Part does not exist in system',
+                    'Dates Updated',
+                    'Date Range entered already exists for a CU and SPUD combination.Please select a different date range'
                     ]
 
     for (idx, maplist) in enumerate(aErrorLists):
