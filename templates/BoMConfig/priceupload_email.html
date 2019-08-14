@@ -71,5 +71,32 @@
             </tbody>
         </table>
     {% endif %}
+     <!--D-07324: Unit Price upload adjustment: Added below blocks to flag errors for Date update and date-range-->
+    {% if updatedate %}
+    <h4>Dates Updated</h4>
+        <table>
+            <thead>
+                <tr><th>Part Number</th></tr>
+            </thead>
+            <tbody>
+            {% for map in updatedate %}
+                <tr><td>{{ map.0 }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+    {% if dupdates %}
+    <h4>Date Range entered already exists for a CU and SPUD combination.Please select a different date range</h4>
+        <table>
+            <thead>
+                <tr><th>Part Number</th></tr>
+            </thead>
+            <tbody>
+            {% for map in dupdates %}
+                <tr><td>{{ map.0 }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
 </body>
 </html>
