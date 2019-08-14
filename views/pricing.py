@@ -573,20 +573,25 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
             aInvalidEntries.append(tPart)
             continue
         try:
-        # D-07324: Unit Price upload adjustment: Removed Sold-to from filtering condition as it is not dependent on sold-to now,
-        # and added unit price to filter based on price. Removed Valid-to and Valid-from dates from filter
+            # D-07324: Unit Price upload adjustment: Removed Sold-to from filtering condition as it is not dependent on sold-to now,
+            # and added unit price to filter based on price. Removed Valid-to and Valid-from dates from filter
             oCurrentPriceObj = PricingObject.objects.get(
                 part__product_number__iexact=tPart[0],
                 customer__name=tPart[1],
+                # sold_to=tPart[2] if tPart[2] not in ('', '(None)') else None,
                 spud__name=tPart[3] if tPart[3] else None,
                 unit_price=tPart[5],
+                # valid_from_date=datetime.datetime.strptime(vf_temp,
+                #                                     '%m/%d/%Y'
+                #                                 ).date() if vf_temp else None,
                 is_current_active=True
             )
 
+
         except PricingObject.DoesNotExist:
             oCurrentPriceObj = None
-    #D-07324: Unit Price upload adjustment: Added belwo check to figure-out if it is a new entry for Current Price object with
-    # new date range or date update of existing object.
+        # D-07324: Unit Price upload adjustment: Added belwo check to figure-out if it is a new entry for Current Price object with
+        # new date range or date update of existing object.
         if oCurrentPriceObj and vt_temp not in ('', '(None)')and vf_temp not in ('', '(None)'):
             if ( oCurrentPriceObj.valid_from_date is None and oCurrentPriceObj.valid_to_date is None):
                 if (oCurrentPriceObj.unit_price == float(tPart[5])):
@@ -635,8 +640,10 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                     )
         # D-07324: Unit Price upload adjustment: This check is for Valid-To date update only
         if oCurrentPriceObj and vt_temp not in ('', '(None)'):
+
             if (oCurrentPriceObj.valid_to_date is None and oCurrentPriceObj.valid_from_date.strftime('%m/%d/%Y') == vf_temp):
                 if (oCurrentPriceObj.unit_price == float(tPart[5])):
+
                     oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(vt_temp,'%m/%d/%Y').date()
                     oCurrentPriceObj.is_current_active = True
                     oCurrentPriceObj.save()
@@ -659,16 +666,15 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
 
         if not oCurrentPriceObj:
             # Create a new PricingObject
-
-            try:
-            #D-07324: Unit Price upload adjustment: Declared a list to filter Pricing list,if the combination is not present in DB then it will
+            # D-07324: Unit Price upload adjustment: Declared a list to filter Pricing list,if the combination is not present in DB then it will
             # create an entry or check for existing date fileds. If it lies in-between the date range it will flag error in mail else create an entry.
-
+            try:
                 aPricingList = PricingObject.objects.filter(
                     part__product_number__iexact=tPart[0],
                     customer__name=tPart[1],
                     spud__name=tPart[3] if tPart[3] not in ('', '(None)') else None,
                     is_current_active=True)
+
                 if len(aPricingList) == 0:
                     oNewPriceObj = PricingObject.objects.create(
                         part=PartBase.objects.get(
@@ -693,13 +699,17 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                         is_current_active=True
                     )
                 else:
+
                     avalid_to_date = [
                         oRow.valid_to_date
                         for oRow in aPricingList
                     ]
+
                     max_date = max(d for d in avalid_to_date if isinstance(d, datetime.date))
 
+
                     if vf_temp >= max_date.strftime('%m/%d/%Y'):
+
                         oNewPriceObj = PricingObject.objects.create(
                             part=PartBase.objects.get(
                                 product_number__iexact=tPart[0]),
@@ -775,7 +785,7 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
     return bErrorsLogged
 
 # S-12189: Validate pricing for list of parts in pricing tab: Added below function to generate detailed error message
-# D-07324: Unit Price upload adjustment: added updatedate, dupdates to send mail for date updates
+# D-07324: Unit Price upload adjustment: added updatedate,dupdates to send mail for date updates
 def GenerateEmailMessage( dupentry=(), comments=(), cu=(), invalidentry=(), updatedate=(), dupdates=(),
                          user=None, filename=''):
     """
