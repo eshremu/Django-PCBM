@@ -1290,8 +1290,8 @@ def MultiRevConfigPricing(oRequest):
     # If POSTing data
     if oRequest.method == 'POST' and oRequest.POST:
         sConfig = oRequest.POST['config'] if 'config' in oRequest.POST else None
-
-        # iProgram = oRequest.POST.get('iProgId', None)
+        # Uncommented below line because the Multi Rev saving wasnt working without the program info
+        iProgram = oRequest.POST.get('iProgId', None)
         iBaseline = oRequest.POST.get('iBaseId', None)
 
         if 'action' in oRequest.POST and oRequest.POST['action'] == 'search':
@@ -1306,8 +1306,16 @@ def MultiRevConfigPricing(oRequest):
         # Start with all Headers that match the name
         aConfigMatches = Header.objects.filter(
             configuration_designation__iexact=sConfig).filter(
+
             customer_unit_id__in=aAvailableCU)  # S-05923: Pricing - Restrict View to allowed CU's based on permissions added .filter
 
+    # Added below blocks the Multi Rev saving wasnt working without the program info
+        iProgram = oRequest.POST.get('iProgId', None)
+        # If iProgram has a value, filter Headers by program
+        if iProgram and iProgram not in ('None', 'NONE'):
+            aConfigMatches = aConfigMatches.filter(program__id=iProgram)
+        elif iProgram:
+            aConfigMatches = aConfigMatches.filter(program=None)
 
         if iBaseline and iBaseline not in ('None', 'NONE'):
             aConfigMatches = aConfigMatches.filter(baseline__id=iBaseline)
@@ -1317,13 +1325,11 @@ def MultiRevConfigPricing(oRequest):
             status_message = 'No matching configuration found'
             dContext.update({'config': sConfig})
 
-        # More than one match was found, so create a list with an entry for each
-        # match
-
         # Only a single match was found, so load the data for the match
         else:
-            iBaseValue = aConfigMatches[0].baseline.id if \
-                aConfigMatches[0].baseline else None
+            # Changed the iProgvalue and iBasevalue based on the GET info because Multi Rev saving wasnt working without the program info
+            iProgValue = oRequest.GET.get('iProgId', None)
+            iBaseValue = oRequest.GET.get('iBaseId', None)
 
             dLineFilters = {
                 'config__header__configuration_designation__iexact': sConfig,
@@ -1331,6 +1337,10 @@ def MultiRevConfigPricing(oRequest):
             dConfigFilters = {
                 'header__configuration_designation__iexact': sConfig,
             }
+            # Added below block because Multi Rev saving wasnt working without the program info
+            if iProgValue != 'None':
+                dLineFilters.update({'config__header__program__id': iProgValue})
+                dConfigFilters.update({'header__program__id': iProgValue})
 
             dLineFilters.update({'config__header__baseline__id': iBaseValue})
             dConfigFilters.update({'header__baseline__id': iBaseValue})
