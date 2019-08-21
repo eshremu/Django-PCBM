@@ -584,7 +584,6 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                 customer__name=tPart[1],
                 # sold_to=tPart[2] if tPart[2] not in ('', '(None)') else None,
                 spud__name=tPart[3] if tPart[3] not in ('', '(None)') else None,
-                valid_from_date=vf_temp if vf_temp else None,
                 unit_price=tPart[5],
                 is_current_active=True
             )
