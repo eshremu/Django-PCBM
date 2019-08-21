@@ -11,7 +11,8 @@ from BoMConfig.models import Header, Configuration, ConfigLine, PartBase, \
     REF_TECHNOLOGY, HeaderTimeTracker,User_Customer
 from BoMConfig.views.landing import Unlock, Default
 from BoMConfig.utils import GrabValue, StrToBool
-from datetime import datetime as dt
+# D-07324: Unit Price upload adjustment:
+from datetime import datetime,date
 import openpyxl
 from openpyxl import utils
 import zipfile
@@ -565,8 +566,11 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
     for tPart in aExtractedData:
         # Check if any mappings exists with current info
         # Attempt to find an entry that matches exactly
-        vt_temp = datetime.date.strftime(tPart[7], '%m/%d/%Y') if tPart[7] else ''
-        vf_temp = datetime.date.strftime(tPart[6], '%m/%d/%Y') if tPart[6] else ''
+		# D-07324: Unit Price upload adjustment: Due to excel formatting of date fields changed vt_temp, vf_temp.
+        # vt_temp = datetime.date.strftime(tPart[7], '%m/%d/%Y') if tPart[7] else ''
+        # vf_temp = datetime.date.strftime(tPart[6], '%m/%d/%Y') if tPart[6] else ''
+        vf_temp = tPart[6]
+        vt_temp = tPart[7]
 
         oPart = PartBase.objects.filter( product_number=tPart[0])
         if not oPart:
@@ -579,11 +583,9 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                 part__product_number__iexact=tPart[0],
                 customer__name=tPart[1],
                 # sold_to=tPart[2] if tPart[2] not in ('', '(None)') else None,
-                spud__name=tPart[3] if tPart[3] else None,
+                spud__name=tPart[3] if tPart[3] not in ('', '(None)') else None,
+                valid_from_date=vf_temp if vf_temp else None,
                 unit_price=tPart[5],
-                # valid_from_date=datetime.datetime.strptime(vf_temp,
-                #                                     '%m/%d/%Y'
-                #                                 ).date() if vf_temp else None,
                 is_current_active=True
             )
 
@@ -592,11 +594,18 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
             oCurrentPriceObj = None
         # D-07324: Unit Price upload adjustment: Added belwo check to figure-out if it is a new entry for Current Price object with
         # new date range or date update of existing object.
-        if oCurrentPriceObj and vt_temp not in ('', '(None)')and vf_temp not in ('', '(None)'):
+        if (oCurrentPriceObj and (vt_temp is not None) and (vf_temp is not None)):
+            if ( oCurrentPriceObj.valid_from_date is not None and oCurrentPriceObj.valid_to_date is None):
+                if (oCurrentPriceObj.unit_price == float(tPart[5])):
+                    oCurrentPriceObj.valid_to_date = datetime.datetime.strftime(vt_temp,'%Y-%m-%d')
+                    oCurrentPriceObj.is_current_active = True
+                    oCurrentPriceObj.save()
+                    aDateUpdates.append(tPart)
+                    continue
             if ( oCurrentPriceObj.valid_from_date is None and oCurrentPriceObj.valid_to_date is None):
                 if (oCurrentPriceObj.unit_price == float(tPart[5])):
-                    oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(vt_temp,'%m/%d/%Y').date()
-                    oCurrentPriceObj.valid_from_date = datetime.datetime.strptime(vf_temp, '%m/%d/%Y').date()
+                    oCurrentPriceObj.valid_to_date =datetime.datetime.strftime(vt_temp,'%Y-%m-%d')
+                    oCurrentPriceObj.valid_from_date = datetime.datetime.strftime(vf_temp,'%Y-%m-%d')
                     oCurrentPriceObj.is_current_active = True
                     oCurrentPriceObj.save()
                     aDateUpdates.append(tPart)
@@ -611,40 +620,42 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                     oRow.valid_to_date
                     for oRow in aPricingList
                 ]
-                max_date = max(d for d in avalid_to_date if isinstance(d, datetime.date))
+                if avalid_to_date is not [None]:
+                    max_date = max(d for d in avalid_to_date if isinstance(d, datetime.date))
+                    if max_date <= datetime.datetime.date(vf_temp):
+                        oNewPriceObj = PricingObject.objects.create(
+                            part=PartBase.objects.get(
+                                product_number__iexact=tPart[0]),
+                            spud=REF_SPUD.objects.get(name__iexact=tPart[3]) if tPart[3] not
+                                                                                in (
+                                                                                    '(None)', '', None, 'null') else None,
+                            customer=REF_CUSTOMER.objects.get(
+                                                    name=tPart[1]),
+                            sold_to=tPart[2] if tPart[2] not
+                                                in ('(None)', '', None, 'null') else None,
+                            unit_price=tPart[5],
+                            # valid_from_date=datetime.datetime.strftime(vf_temp,
+                            #                                            '%Y-%m-%d'
+                            #                                            ) if vf_temp is not None else None,
+                            # valid_to_date=datetime.datetime.strptime(vt_temp,
+                            #                         '%Y-%m-%d'
+                            #                     ).date() if vt_temp is not None else None,
+                            valid_from_date=vf_temp if vf_temp is not None else None,
+                            valid_to_date=vt_temp if vt_temp is not None else None,
+                            technology=REF_TECHNOLOGY.objects.get(
+                                name=tPart[4]) if tPart[4] not
+                                                  in ('(None)', '', None, 'null') else None,
+                            comments=tPart[11] if tPart[11] not
+                                                  in ('(None)', '', None, 'null') else None,
+                            is_current_active=True,
 
-                if vf_temp >= max_date.strftime('%m/%d/%Y'):
-                    oNewPriceObj = PricingObject.objects.create(
-                        part=PartBase.objects.get(
-                            product_number__iexact=tPart[0]),
-                        spud=REF_SPUD.objects.get(name__iexact=tPart[3]) if tPart[3] not
-                                                                            in (
-                                                                                '(None)', '', None, 'null') else None,
-                        customer=oCustomer,
-                        sold_to=tPart[2] if tPart[2] not
-                                            in ('(None)', '', None, 'null') else None,
-                        unit_price=tPart[5],
-                        valid_from_date=datetime.datetime.strptime(vf_temp,
-                                                                   '%m/%d/%Y'
-                                                                   ).date() if vf_temp not in ('', '(None)') else None,
-                        valid_to_date=datetime.datetime.strptime(vt_temp,
-                                                                 '%m/%d/%Y'
-                                                                 ).date() if vt_temp not in ('', '(None)') else None,
-                        technology=REF_TECHNOLOGY.objects.get(
-                            name=tPart[4]) if tPart[4] not
-                                              in ('(None)', '', None, 'null') else None,
-                        comments=tPart[11] if tPart[11] not
-                                              in ('(None)', '', None, 'null') else None,
-                        is_current_active=True,
-
-                    )
-        # D-07324: Unit Price upload adjustment: This check is for Valid-To date update only
-        if oCurrentPriceObj and vt_temp not in ('', '(None)'):
-
+                        )
+                else:
+                    print('')
+        if oCurrentPriceObj and vf_temp and vt_temp is not None:
             if (oCurrentPriceObj.valid_to_date is None and oCurrentPriceObj.valid_from_date.strftime('%m/%d/%Y') == vf_temp):
                 if (oCurrentPriceObj.unit_price == float(tPart[5])):
-
-                    oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(vt_temp,'%m/%d/%Y').date()
+                    oCurrentPriceObj.valid_to_date = datetime.datetime.strftime(vt_temp,'%Y-%m-%d')
                     oCurrentPriceObj.is_current_active = True
                     oCurrentPriceObj.save()
                     aDateUpdates.append(tPart)
@@ -681,21 +692,18 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                             product_number__iexact=tPart[0]),
                         spud=REF_SPUD.objects.get(name__iexact=tPart[3])if tPart[3] not
                                         in ('(None)', '', None, 'null') else None,
-                        customer=oCustomer,
+                        customer=REF_CUSTOMER.objects.get(
+                                                    name__iexact=tPart[1]),
                         sold_to=tPart[2] if tPart[2] not
                                         in ('(None)', '', None, 'null') else None,
                         unit_price=tPart[5],
-                        valid_from_date=datetime.datetime.strptime(vf_temp,
-                                                    '%m/%d/%Y'
-                                                ).date() if vf_temp not in ('', '(None)') else None,
-                        valid_to_date=datetime.datetime.strptime(vt_temp,
-                                                    '%m/%d/%Y'
-                                                ).date() if vt_temp not in ('', '(None)') else None,
+                        valid_from_date=vf_temp if vf_temp is not None else None,
+                        valid_to_date=vt_temp if vt_temp is not None else None,
                         technology=REF_TECHNOLOGY.objects.get(
                                             name=tPart[4]) if tPart[4] not
                                         in ('(None)', '', None, 'null') else None,
                         comments=tPart[11] if tPart[11] not
-                                              in ('(None)', '', None, 'null') else None,
+                                        in ('(None)', '', None, 'null') else None,
                         is_current_active=True
                     )
                 else:
@@ -707,25 +715,26 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
 
                     max_date = max(d for d in avalid_to_date if isinstance(d, datetime.date))
 
-
-                    if vf_temp >= max_date.strftime('%m/%d/%Y'):
-
+                    if max_date <= datetime.datetime.date(vf_temp):
                         oNewPriceObj = PricingObject.objects.create(
                             part=PartBase.objects.get(
                                 product_number__iexact=tPart[0]),
                             spud=REF_SPUD.objects.get(name__iexact=tPart[3]) if tPart[3] not
                                                                                 in (
                                                                                 '(None)', '', None, 'null') else None,
-                            customer=oCustomer,
+                            customer=REF_CUSTOMER.objects.get(
+                                                    name=tPart[1]),
                             sold_to=tPart[2] if tPart[2] not
                                                 in ('(None)', '', None, 'null') else None,
                             unit_price=tPart[5],
-                            valid_from_date=datetime.datetime.strptime(vf_temp,
-                                                    '%m/%d/%Y'
-                                                ).date() if vf_temp not in ('', '(None)') else None,
-                            valid_to_date=datetime.datetime.strptime(vt_temp,
-                                                    '%m/%d/%Y'
-                                                ).date() if vt_temp not in ('', '(None)') else None,
+                            valid_from_date=vf_temp if vf_temp is not None else None,
+                            valid_to_date=vt_temp if vt_temp is not None else None,
+                            # valid_from_date=datetime.datetime.strftime(vf_temp,
+                            #                         '%Y-%m-%d'
+                            #                     ) if vf_temp not in ('', '(None)') else None,
+                            # valid_to_date=datetime.datetime.strftime(vt_temp,
+                            #                                          '%Y-%m-%d'
+                            #                                          ) if vt_temp is not None else None,
                             technology=REF_TECHNOLOGY.objects.get(
                                 name=tPart[4]) if tPart[4] not
                                                   in ('(None)', '', None, 'null') else None,
