@@ -601,7 +601,17 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                     oCurrentPriceObj.save()
                     aDateUpdates.append(tPart)
                     continue
-            if ( oCurrentPriceObj.valid_from_date is None and oCurrentPriceObj.valid_to_date is None):
+            #D-07500: Price Upload not modifying Valid To date and adding new price line: Added below block to modify valid-to based on the uploaded file.
+            elif ( oCurrentPriceObj.valid_from_date is not None and oCurrentPriceObj.valid_to_date is not None):
+                if (oCurrentPriceObj.unit_price == float(tPart[5]) and oCurrentPriceObj.valid_from_date<vt_temp.date() and oCurrentPriceObj.valid_to_date!=vt_temp.date()):
+                    oCurrentPriceObj.valid_to_date = datetime.datetime.strftime(vt_temp,'%Y-%m-%d')
+                    oCurrentPriceObj.is_current_active = True
+                    oCurrentPriceObj.save()
+                    aDateUpdates.append(tPart)
+                    continue
+                continue
+
+            elif ( oCurrentPriceObj.valid_from_date is None and oCurrentPriceObj.valid_to_date is None):
                 if (oCurrentPriceObj.unit_price == float(tPart[5])):
                     oCurrentPriceObj.valid_to_date =datetime.datetime.strftime(vt_temp,'%Y-%m-%d')
                     oCurrentPriceObj.valid_from_date = datetime.datetime.strftime(vf_temp,'%Y-%m-%d')
