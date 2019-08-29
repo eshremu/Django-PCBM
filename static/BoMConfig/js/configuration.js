@@ -1068,6 +1068,13 @@ function build_table() {
                                     cellMeta['comment']['value'] += 'X - Invalid Traceability Req.\n';
                                 }
 
+                   //  S-14003: Changes to part validation in BoM Configuration entry / edit: Added below block to flag an error that
+                   // Traceability value is blank(i.e if found NULL)
+                                if(traceability == ''){
+                                    cellMeta['cellStatus'] = "!";
+                                    cellMeta['comment']['value'] += '! - Traceability value unknown.\n';
+                                }
+
                                 tableThis.setDataAtRowProp(parseInt(changes[i][0]), 28, traceability, 'validation');
                                 break;
                             case 29: // Customer Asset
