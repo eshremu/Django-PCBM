@@ -2742,8 +2742,8 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                          #    if dPartData[corePartNumber]['Traceability'][0] == 'Z002' else ''
 
                     # S-14003: Changes to part validation in BoM Configuration entry / edit: Added below block to flag an error that
-                    # Traceability value was not found(i.e if found NULL)
-                    if dPartData[corePartNumber]['Traceability'][0] in (None, ''):
+                    # Traceability value was found NULL in the table cell
+                    if aData[index]['28'] in (None, ''):
                         error_matrix[index][28]['value'] += '! - Traceability value unknown.' + '\n'
                     # end if
 
@@ -3286,6 +3286,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
 #  Also added the ORDER BY T2.[PRIM Traceability] DESC in the end since, for few part #s, NULL Traceability value was getting pulled
 #  Since, Top 1 is used, so Order by Traceability will sort the NOT NULL value on the top and hence the 1st row with NOT NULL Traceability
 #  would get picked
+# Added ORDER BY T1.[ZMVKE Item Category] DESC for same reason as done for traceability,after it was reported that different Itemcats were getting fetched for same part
     oCursor.execute(
         """
         SELECT TOP 1 T1.[Material Description],T1.[MU-Flag], T1.[X-Plant Status]+','+ REFSTATUS.[Description] xplantdesc,T1.[Base Unit of Measure],
@@ -3305,7 +3306,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
         ON T1.[Material] =ZM.Material and T1.Plant=ZM.Plant 
         LEFT JOIN dbo.SAP_ZMVKE ZV
         ON T1.[Material] =ZV.Material and T1.Plant=ZV.Plant
-        WHERE [ZMVKE Item Category]<>'NORM' and T1.Material = %s and T1.[Plant] IN ('2685','2666','2392') ORDER BY T2.[PRIM Traceability] DESC 
+        WHERE [ZMVKE Item Category]<>'NORM' and T1.Material = %s and T1.[Plant] IN ('2685','2666','2392') ORDER BY T1.[ZMVKE Item Category] DESC,T2.[PRIM Traceability] DESC 
         """
         ,
         [bytes(dResult['value'].strip('.'), 'ascii')])
