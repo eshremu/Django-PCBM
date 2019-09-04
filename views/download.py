@@ -2297,8 +2297,9 @@ def WritePriceOverviewToFile(aPricingLines, aComments):
     :return: OpenPyXL file object
     """
     # Create column headers
+    # S - 13218: Pricing Overview file download changes: Added Valid-From and Valid -To in downloaded file
     aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology',
-                'Latest Unit Price ($)']
+                'Latest Unit Price ($)','Valid From','Valid To']
     for j in range(1, 5):
         aHeaders.append(str(datetime.datetime.now().year - j) + ' Price ($)')
 
@@ -2312,13 +2313,15 @@ def WritePriceOverviewToFile(aPricingLines, aComments):
 
     # Write each cell of data and add a cell comment containing any comment data
     # provided
+    # S - 13218: Pricing Overview file download changes: Commented-out below lines as we are already showing date fields in columns,
+    # so comments not required.
     for i in range(len(aPricingLines)):
         for j in range(len(aHeaders)):
             oSheet[utils.get_column_letter(j + 1) + str(2 + i)] = \
                 aPricingLines[i][j]
-            if j >= 5 and aComments[i][j - 5]:
-                oSheet[utils.get_column_letter(j + 1) + str(2 + i)].comment = \
-                    Comment(aComments[i][j - 5], 'System')
+            # if j >= 5 and aComments[i][j - 5]:
+            #     oSheet[utils.get_column_letter(j + 1) + str(2 + i)].comment = \
+            #         Comment(aComments[i][j - 5], 'System')
 
     return oFile
 
