@@ -281,20 +281,22 @@ function determineColumns(readonly, hidden_cols){
     if(AttrVis === true && attr_read_auth){
 // S-08473: Adjust configuration table to include new columns:- Added 'Portfolio-Code'(14),'Plant-Specific Material Status'(18),
 // 'Distribution-Chain Specific Material Status' (19) as readonly & added in next 4 lists [added],
+// D-06861-Price links not hiding unit price,Attribute links incorrectly hiding unit & net price:removed column 21,22 from readony.push
         if (attr_write_auth && configuration_status == 'In Process')
         {
-            readonly.push( 14, 15, 16, 17, 18, 19, 21, 22);  //  [added]
+            readonly.push( 14, 15, 16, 17, 18, 19);  //  [added]
         } else if (attr_write_auth) {
-            readonly.push(11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22);   //  [added]
+            readonly.push(11, 12, 14, 15, 16, 17, 18, 19, 20);   //  [added]
         } else {
-            readonly.push(11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22);   //  [added]
+            readonly.push(11, 12, 13, 14, 15, 16, 17, 18, 19, 20);   //  [added]
         }
 
         // readonly.push(15, 16, 17); # ON HOLD UNTIL PRIM INTERFACE OBTAINED
 
         $('#viewattr').css('background-color', '#FFFF4D');
     } else {
-        hidden_cols.push(11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22);   //  [added]
+// D-06861-Price links not hiding unit price,Attribute links incorrectly hiding unit & net price:removed column 21,22 from hidden_cols.push to remove unit price and net price column from hiding
+        hidden_cols.push(11, 12, 13, 14, 15, 16, 17, 18, 19, 20);   //  [added]
         $('#viewattr').removeAttr('style');
     }
 
@@ -308,7 +310,8 @@ function determineColumns(readonly, hidden_cols){
 
         $('#viewprice').css('background-color', '#FFFF4D');
     } else {
-        hidden_cols.push(22, 23, 24, 25, 26, 27);
+//    D-06861-Price links not hiding unit price: added 21 in hidden-cols.push to hide unit price column upon clicking Price links in config tab
+        hidden_cols.push(21,22, 23, 24, 25, 26, 27);
         $('#viewprice').removeAttr('style');
     }
 
