@@ -25,7 +25,8 @@
         </ul>
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
-                <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Baseline <span class="caret"></span></button>
+                <!--S-11553: Actions tab changes : Changed Baseline to Catalog in Filter Button-->
+                <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Catalog <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for baseline in baselines %}
                     <li><a href="#" onclick="baseline_filter('{{ baseline }}');">{{ baseline }}</a></li>
@@ -58,7 +59,8 @@
                             <th></th><th style="width:15px;"></th>
                             <th>Configuration Designation</th><th style="width:25px;"></th>
                             <th>Program</th><th style="width:25px;"></th>
-                            <th>Baseline</th><th style="width:25px;"></th>
+                        <!--S-11553: Actions tab changes : Changed Baseline to Catalog in Filter Button-->
+                            <th>Catalog</th><th style="width:25px;"></th>
                             <th>Person Responsible</th><th style="width:25px;"></th>
                             <th>BOM Request Type</th><th style="width:25px;"></th>
                             <th>CU</th><th style="width:25px;"></th>

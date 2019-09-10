@@ -25,7 +25,8 @@
         </ul>
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
-                <button id="base_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Baseline <span class="caret"></span></button>
+                <!--S-11553: Actions tab changes : Changed Baseline to Catalog when we select All-->
+                <button id="base_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Catalog <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for baseline in baselines %}
                     <li><a href="#" onclick="base_filter('{{ baseline }}');">{{ baseline }}</a></li>
@@ -52,7 +53,9 @@
                 <table id="document_records">
                     <thead>
                         <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
-                            <th style="width:25px"></th><th style="width:200px">Configuration Designation</th><th style="width:400px">Baseline</th>
+                            <th style="width:25px"></th><th style="width:200px">Configuration Designation</th>
+                        <!--S-11553: Actions tab changes : Changed Baseline to Catalog when we select a CU-->
+                            <th style="width:400px">Catalog</th>
                             <th style="width:75px">BOM Request Type</th><th style="width:115px">Program</th><th style="width:200px">Inquiry / Site Template</th><th style="width:115px"></th><th style="width:115px"></th>
                             {% if user|has_group:"BOM_PSM_SAP_Document" or user|has_group:"BOM_BPMA_Architect" %}
                             <th style="width:115px">Request Error</th>

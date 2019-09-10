@@ -1,0 +1,102 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Price Upload Errors</title>
+    <style>
+        th {
+            text-align: left;
+        }
+        td {
+            padding-right: 10px;
+        }
+        h4 {
+            text-decoration: underline;
+        }
+
+    </style>
+</head>
+<body>
+    <p>Hello {{ user.first_name }},</p>
+
+    <p>The following errors were found while uploading {{ filename }}:</p>
+    {% if dupentry %}
+    <h4>Same "Part Number + Customer + Sold-to + SPUD + Valid From + Valid To" combination already exists in the database</h4>
+        <table>
+            <thead>
+                <tr><th>Part Number</th></tr>
+            </thead>
+            <tbody>
+            {% for map in dupentry %}
+                <tr><td>{{ map.0 }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+    {% if comments %}
+    <h4>Same "Part Number + Customer + Sold-to + SPUD + Valid From + Valid To" combination already has a value in Comments</h4>
+        <table>
+            <thead>
+                <tr><th>Part Number</th></tr>
+            </thead>
+            <tbody>
+            {% for map in comments %}
+                <tr><td>{{ map.0 }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+    {% if cu %}
+    <h4>Different Customer provided in the file for the selected Customer</h4>
+        <table>
+            <thead>
+                <tr><th>Customer</th><td></td><th>Part Number</th></tr>
+            </thead>
+            <tbody>
+            {% for map in cu %}
+                <tr><td>{{ map.1 }}</td><td></td><td>{{ map.0 }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+    {% if invalidentry %}
+    <h4>Part does not exist in system</h4>
+        <table>
+            <thead>
+                <tr><th>Part Number</th></tr>
+            </thead>
+            <tbody>
+            {% for map in invalidentry %}
+                <tr><td>{{ map.0 }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+     <!--D-07324: Unit Price upload adjustment: Added below blocks to flag errors for Date update and date-range-->
+    {% if updatedate %}
+    <h4>Dates Updated</h4>
+        <table>
+            <thead>
+                <tr><th>Part Number</th></tr>
+            </thead>
+            <tbody>
+            {% for map in updatedate %}
+                <tr><td>{{ map.0 }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+    {% if dupdates %}
+    <h4>Date Range entered already exists for a CU and SPUD combination.Please select a different date range</h4>
+        <table>
+            <thead>
+                <tr><th>Part Number</th></tr>
+            </thead>
+            <tbody>
+            {% for map in dupdates %}
+                <tr><td>{{ map.0 }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</body>
+</html>

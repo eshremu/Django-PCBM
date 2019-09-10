@@ -1,9 +1,10 @@
-var hot, clean_form;
+var hot, clean_form, container;
 var form_save = false;
+var hotarr=[]; var hotarr1=[]; var btn_evnt_id; var netval=[];
+// S-12911: Pricing Multi Config download enhancement - Declared netval as an array above that will help store the net value of all the configs
 
-$('button[value="config_price"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+$('button[value="multi_config"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 $(document).ready(function(){
-
     $(window).load(function(){
         form_resize();
 
@@ -11,58 +12,20 @@ $(document).ready(function(){
             clean_form = JSON.stringify(hot.getSourceData());
         }
 
-// S-11538: Open multiple revisions for each configuration - UI Elements :- modified below block to show the UI as per the requirement
-        var baseln = '';
         if(program_list != undefined && program_list.length > 1){
-        //     S-11552: Baseline tab changes : changed pop-up message to catalog
-            var message = "Multiple matching configurations were found.<br/>Please select the catalog for the desired configuration.";
-
-//S-12898: Need status information on multiple revision selection in Pricing - Added 'Status' below for the Heading
-            message += '<label for="desiredprog" style="padding-right: 5px; margin-left: 30%;">Catalog / Revision - Program - Status</label>';
-            message += '<div style="width:100%;"><div style="width:20%; float:left;"><br/><input id="latest10btn" onclick="selectLatest10()" type="button" class="btn btn-primary" name="latest10" value="Select Latest 10"></input>&nbsp<br/><input id="deselectbtn" onclick="deselectAll()"  class="btn btn-primary" type="button" name="deselectall" value="Deselect All"></input></div>';
-
-            message += '<div  style="width:100%;"><ul id="desiredprog" style="height: 155px; margin-left: 25%; width:70%; overflow: auto; list-style-type: none;  overflow-x: hidden;  border: 1px solid #000;">';
+            var message = "Multiple matching configurations were found.<br/>Please select the program & baseline for the desired configuration.";
+            message += '<br/><label for="desiredprog" style="padding-right: 5px;">Program|Baseline:</label><select name="desiredprog">';
             for(var i=0; i<program_list.length; i++) {
-
-               if(baseln !=  baseline_list[i][1]){
-                    message += '<li><label>'+
-                         baseline_list[i][1]+'</label></li>';
-               }
-
-//D-07038: On multiple revisions in pricing view, opened incorrect revisions from what was selected :- Added "baseline_list[i][2]" below in the value to include the actual rev value when selected
-//S-12898: Need status information on multiple revision selection in Pricing - Added Status info below to show the status alongside baseline rev & program
-                message += '<li value="'+ program_list[i][0] + "_" + baseline_list[i][0]+'"><label for="'+i+'"><input type="checkbox" name="revs" id="'+i+'" value="'+ program_list[i][0] + "_" + baseline_list[i][0] + "_" + baseline_list[i][2] +'" >' +
-                 ' Rev '+ baseline_list[i][2] + ' - ' + program_list[i][1] + ' - ' + configstatus_list[i][1] + '</label></li>';
-                baseln = baseline_list[i][1];
+                message += '<option value="'+ program_list[i][0] + "_" + baseline_list[i][0] +'">' +
+                    program_list[i][1] + ' | ' + baseline_list[i][1] + '</option>';
             }
-            message += '</ul></div></div>';
-            message += '<label id="limiterr" style="color:midnightblue; display:none; margin-left: 30%;">*Limit of 10 Revisions</label>';
-            message += '<label id="novalerr" style="color:midnightblue; display:none; margin-left: 30%;">*Please select a revision</label>';
-
-            messageToModalPricing('Multiple configurations found',
+            message += '</select>';
+            messageToModal('Multiple configurations found',
                 message,
                 function(){
-                        var unorderedList = document.getElementById('desiredprog');
-                        ListItems = unorderedList.getElementsByTagName('li');
-                        var list = [];
-                        $.each($("input[name='revs']:checked"), function(){
-                            list.push($(this).val());
-                        });
-
-                        for (var input, i = 0; i < list.length; i++) {
-                             $('input[name="program"]').val( list[i].split("_")[0]);
-                             $('input[name="baseline"]').val( list[i].split("_")[1]);
-//D-07038: On multiple revisions in pricing view, opened incorrect revisions from what was selected :- Added below to set the rev value of the selected revisions in the input box
-                             $('input[name="baselinerev"]').val( list[i].split("_")[2]);
-                       }
-                        if($('input[name="revs"]:checked').length <=10){
-                            for(j=0; j<list.length; j++){
-//D-07038: On multiple revisions in pricing view, opened incorrect revisions from what was selected :- Changed the value part of &rev from 'baseline_list[j][2]' below to show the rev value of the selected record and not according to the list from top
-                                window.open('../pricing_config/mult/'+'?iBaseId='+list[j].split("_")[1]+'&iProgId='+list[j].split("_")[0]+'&iConf='+$('input[name="config"]').val()+'&rev='+list[j].split("_")[2] ,'','left=100,top=100,height=540,width=624,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes');
-                            }
-                        }else{
-                            $('#limiterr').css("display", "block");
-                        }
+                    $('input[name="program"]').val($('select[name="desiredprog"]').val().split("_")[0]);
+                    $('input[name="baseline"]').val($('select[name="desiredprog"]').val().split("_")[1]);
+                    $('#headersubform').submit();
                 }
             );
         }
@@ -75,15 +38,33 @@ $(document).ready(function(){
     $(window).resize(function(){
         form_resize();
     });
-    
+
     $('#saveForm').click(function(event){
         $('#headersubform').removeAttr('action');
-        $('<input/>').attr('id','data_form').attr('type', 'hidden').attr('name','data_form').attr('value',JSON.stringify(hot.getSourceData())).appendTo('#headersubform');form_save=true;
+
+        let data = []
+        for(i=0; i < hotarr.length; i++){
+            hotarr1.push(hotarr[i]);
+            data.push(hotarr[i].getSourceData())
+
+            form_save=true;
+        }
+        $('<input/>').attr('id', 'data_form').attr('type', 'hidden').attr('name','data_form').attr('value', JSON.stringify(data)).appendTo('#headersubform');
+
     });
 
     $('#search').click(function(event) {
-        $('#headersubform').removeAttr('action');
+        str = $('input[name="config"]').val();
+        n = $('input[name="config"]').val().length;
+
+        if(str[n-1]==";"){
+           $('#config').val($('input[name="config"]').val().substring(0,n-1));
+        }
+        else{
+           $('#headersubform').removeAttr('action');
+        }
     });
+
     $('#download').click(function(event){
         $('<input/>').attr('id','cookie').attr('type', 'hidden').attr('name','file_cookie').attr('value', file_cookie).appendTo('#headersubform');
         $('#headersubform').attr('action', download_url);
@@ -94,22 +75,12 @@ $(document).ready(function(){
             }
         },1000);
     });
-
 });
 
-// S-11538: Open multiple revisions for each configuration - UI Elements :- Added below function that gets called on deselect button click
-function deselectAll(){
-     $("input[name='revs']").removeAttr("checked");
-}
-// S-11538: Open multiple revisions for each configuration - UI Elements :- Added below function that gets called on Select latest 10 button click
-function selectLatest10(){
-    $('#novalerr').css("display", "none");
-    var checkboxes=$("input[name='revs']");
-// D-07042: Config Price Mgmt popup - select latest ten error :- Changed the i position from 0 to the checkbox length-1 as it will count from bottom
-// and i >= checkbox length -10 as it will select 10 revisions from below which is claimed to be as the latest 10 revisions.
-    for (var i = checkboxes.length -1; i >= checkboxes.length -10; i--) {
-            checkboxes[i].checked = true;
-    }
+function removeLastSemiColon(strng){
+    var n=strng.lastIndexOf(";");
+    var a=strng.substring(0,n)
+    return a;
 }
 function form_resize(){
     var topbuttonheight = $('#action_buttons').outerHeight(true);
@@ -121,37 +92,88 @@ function form_resize(){
 
     var tableheight = bodyheight - (subformheight + bottombuttonheight + topbuttonheight + displayformheight + 5); //+ crumbheight);
 
-    $('#table-wrapper').css("max-height", tableheight);
-    $('#table-wrapper').css("height", tableheight);
+//This condition is added to get rid off the multiple tables drawn on page load while clicking on download button
+    if(table_data.length > 0 && btn_evnt_id != 'download') {
+         for(i=0; i<table_data.length; i++){
 
-    if(table_data.length > 0) {
-        build_table();
+            sp = document.createElement('br');
+//            if(i>=1){
+                k = document.createElement('label');
+                k.innerHTML = '<label for="net_value'+i+'">Net Value ($): </label><input type="text" id="net_value'+i+'" name="net_value'+i+'" style="border:none;" readonly/>';
+                document.getElementById('main-body').append(k);
+//            }
+
+//            if(i>=1){
+                l = document.createElement('label');
+                l.innerHTML = '<label for="config'+i+'">Configuration: </label><input type="text" id="config'+i+'" name="config'+i+'" style="border:none;" readonly/>';
+                document.getElementById('main-body').append(l);
+//            }
+
+//            if(i>=1){
+                m = document.createElement('label');
+                m.innerHTML = '<label for="catalog'+i+'">Catalog: </label><input type="text" id="catalog'+i+'" name="catalog'+i+'" style="border:none;" readonly/>';
+                document.getElementById('main-body').append(m);
+//            }
+
+//            if(i>=1){
+                n = document.createElement('label');
+                n.innerHTML = '<label for="rev'+i+'">Rev: </label><input type="text" id="rev'+i+'" name="rev'+i+'" style="border:none;" readonly/>';
+                document.getElementById('main-body').append(n);
+//            }
+
+            g = document.createElement('div');
+            g.setAttribute("id", "table-wrapper"+i);
+            document.getElementById('main-body').append(g);
+
+            h = document.createElement('div');
+            h.setAttribute("id", "datatable"+i);
+
+            document.getElementById('main-body').append(h);
+            document.getElementById('main-body').append(sp);
+
+            $('#main-body').css("height", "auto");
+            $('#main-body').css("margin-bottom", "40px;");
+            $('#table-wrapper'+i).css("max-height", tableheight);
+            $('#table-wrapper'+i).css("overflow", "hidden");
+
+            $('#datatable'+i).css("overflow-x", "scroll");
+            $('#datatable'+i).css("overflow", "hidden");
+            $('#table-wrapper'+i).css("height", "auto");
+            $('#datatable'+i).css("height", "auto");
+
+            table_data1 = table_data[i];
+            $('#catalog'+i).val(baselinesdata[i]);
+            $('#catalog'+i).css("font-weight","normal");
+            $('#rev'+i).val(baserevdata[i]);
+            $('#rev'+i).css("font-weight","normal");
+            $('#config'+i).val(configdata[i]);
+            $('#config'+i).css("font-weight","normal");
+
+// D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Added below if condition not to draw the table
+// and to show the baseline/baseline rev/netvalue as blank for configs which has no Active versions
+           if(table_data1 == ''){
+                o = document.createElement('label');
+                o.innerHTML = '<label for="act'+i+' style="font-weight:bold; color:teal; "> No Active Version found for this config</label><br><br>';
+                document.getElementById('main-body').append(o);
+                document.getElementById('main-body').append(sp);
+                $('#rev'+i).val('');
+                $('#catalog'+i).val('');
+                $('#config'+i).val(configdata[i]);
+                netval.push('');
+                $('#netvalue').val(netval);
+//                document.getElementById('main-body').append(sp);
+           }else{     //Else condition to draw table for all configs that has Active versions
+                 build_table(table_data1,i);
+           }
+
+         }
+         $('#formbuttons').css("display", "block");
+         $('#formbuttons').css("z-index", "9999");
     }
 }
-
-function messageToModalPricing(title, message, callback){
-    var params = [];
-    for(var i = 3; i < arguments.length; i++){
-        params.push(arguments[i]);
-    }
-    $('#messageModal .modal-header h4').text(title);
-    $('#messageModal .modal-body').html(message);
-    $('.modal_submit').off('click');
-    $('.modal_submit').click(function(){
-
-// S-11538: Open multiple revisions for each configuration - UI Elements :- Added below block if else to show the error lines
-        if($('input[name="revs"]:checked').length == 0){            // if nothing is selected
-              $('#novalerr').css("display", "block");
-        }else if($('input[name="revs"]:checked').length >10){       // if more than 10 checkboxes are checked
-              $('#limiterr').css("display", "block");
-        }else{
-              $('#messageModal').modal('hide');
-        }
-        if(callback != undefined) {
-            callback.apply(this, params);
-        }
-    });
-    $('#messageModal').modal('show');
+//This function is added to get rid off the multiple tables drawn on page load while clicking on download button
+function RestrictMultipleUItables(ev){
+    btn_evnt_id = ev;
 }
 
 function readonlyRenderer(instance, td, row, col, prop, value, cellProperties) {
@@ -228,15 +250,16 @@ function calcRenderer (instance, td, row, col, prop, value, cellProperties) {
     moneyRenderer(instance, td, row, col, prop, value, cellProperties);
 }
 
-function build_table() {
+function build_table(table_data1,i) {
+
     var headers = ['Line #','Product Number','Internal Product Number','Product Description','Order Qty','Unit Price',
         'Total Price','Manual Override for Total NET Price','Traceability Req. (Serialization)','Linkage','Material Group 5','HW/SW Indicator',
         'Comments (viewable by customer)','Additional Reference (viewable by customer)']; //S-05769: Addition of Product Traceability
-    var container = document.getElementById('datatable');
+    container = document.getElementById('datatable'+i);
     hot = new Handsontable(container, {
-        data: table_data,
+        data: table_data1,
         minRows: 1,
-        maxRows: table_data.length,
+        maxRows: table_data1.length,
         minCols: 13,
         maxCols: 13,
         minSpareRows:0,
@@ -262,10 +285,19 @@ function build_table() {
                             callback(false);
                         }
                     };
+
+                    if(configstatusdata[i] != 'In Process/Pending'){
+                         cellProperties.readOnly = true;
+                    } else {
+                         cellProperties.readOnly = false;
+                    }
+
                     cellProperties.allowInvalid = false;
                     cellProperties.renderer = moneyRenderer;
                 } else {
-                    cellProperties.readOnly = true;
+                    if(configstatusdata[i] != 'In Process/Pending'){
+                        cellProperties.readOnly = true;
+                    }
                     cellProperties.renderer = moneyRenderer;
                 }
             }
@@ -291,10 +323,13 @@ function build_table() {
             calcValue(this);
         }
     });
-    calcValue(hot);
+
+    calcValue(hot,i);
+
+    hotarr[i] = hot;
 }
 
-function calcValue(instance){
+function calcValue(instance,j){
     overall_total = 0;
     stated_total = 0;
 
@@ -316,5 +351,14 @@ function calcValue(instance){
         overall_total = stated_total;
     }
 
-    $('#net_value').val(overall_total.toFixed(2));
+    $('#net_value'+j).val(overall_total.toFixed(2));
+    $('#net_value'+j).css("font-weight","normal");
+
+// S-12911: Pricing Multi Config download enhancement - Added below loop to push the calculated netvalue for each config into the netval array
+// to be able to show as the heading in the downloaded file.
+    for(k=j;k<=j;k++){
+          netval.push(overall_total.toFixed(2));
+    }
+    $('#netvalue').val(netval);
+
 }

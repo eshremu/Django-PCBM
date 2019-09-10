@@ -50,7 +50,8 @@
                 <tbody>
                 <tr>
                   {% if field.label != 'Model replaced link' %}
-                    {% if field.label == 'REACT Request' or field.label == 'BoM Request Type' or field.label == 'Customer Unit' or field.label == 'Person responsible' or field.label == 'Person Responsible' or field.label == 'Customer Name' or field.label == 'Sales Office' or field.label == 'Sales Group' or field.label == 'Sold-to Party' or field.label == 'Ship-to Party' or field.label == 'Ericsson Contract #' or field.label == 'Bill-to Party' or field.label == 'Payment Terms' %}
+                    <!--S-11475-Add region/market areas with the hub below it :- Added Region, hub & supply chain flow-->
+                    {% if field.label == 'REACT Request' or field.label == 'BoM Request Type' or field.label == 'Region' or field.label == 'Hub' or field.label == 'Customer Unit' or field.label == 'Person responsible' or field.label == 'Person Responsible' or field.label == 'Customer Name' or field.label == 'Sales Office' or field.label == 'Sales Group' or field.label == 'Sold-to Party' or field.label == 'Ship-to Party' or field.label == 'Ericsson Contract #' or field.label == 'Supply Chain Flow' or field.label == 'Bill-to Party' or field.label == 'Payment Terms' %}
                         <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</td>
                         {% if field.errors %}
                         <td >
@@ -130,11 +131,13 @@
                 <tr>
                   {% if field.label != 'Model replaced link' %}
      <!--S-08410:Adjust Model and BoM Header Tab:- Added 'Line 100?' field after 'Picklist' field -->
-                    {% if field.label == 'Baseline Impacted' or field.label == 'Model' or field.label == 'Model Description' or field.label == 'What Model is this replacing?' or field.label == 'Initial Revision' or field.label == 'Configuration/Ordering Status' or field.label == 'Readiness Complete (%)' or field.label == 'Pick list' or field.label == 'Line 100?' or field.label == 'Projected Cut-over Date' or field.label == 'Optional Free Text Field 1' or field.label == 'Optional Free Text Field 2' or field.label == 'Optional Free Text Field 3' %}
+                    <!--S-11545: BoM Entry - Header sub tab change: changed the filed.label from Baseline Impacted -->
+                    {% if field.label == 'Catalog Impacted' or field.label == 'Model' or field.label == 'Model Description' or field.label == 'What Model is this replacing?' or field.label == 'Initial Revision' or field.label == 'Configuration/Ordering Status' or field.label == 'Readiness Complete (%)' or field.label == 'Pick list' or field.label == 'Line 100?' or field.label == 'Projected Cut-over Date' or field.label == 'Optional Free Text Field 1' or field.label == 'Optional Free Text Field 2' or field.label == 'Optional Free Text Field 3' %}
                         <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red; font-size:14pt;">*</span>{% endif %}</td>
                         {% if field.errors %}
                         <td >
-                            <div style=" border: 2px solid red; max-width:154px; font-size:10px;  max-height:35px;">
+     <!--S-11115:- Model description should be 40 characters per SAP:- Modified below style to adjest error message of model descriptioni-->
+                            <div style=" border: 2px solid red; max-width:210px; font-size:10px;  max-height:48px;">
                                 {{ field }} {{ field.errors }}
                             </div>
                         </td>
@@ -146,10 +149,11 @@
                         </td>
                         {% endif %}
                     {% endif %}
-                    {% if field.label == 'Baseline Impacted' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
+                    <!--S-11545: BoM Entry - Header sub tab change: changed the filed.label from Baseline Impacted -->
+                    {% if field.label == 'Catalog Impacted' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
                         <td>
-                            &nbsp;&nbsp;
-                            <input id="new_baseline" type="text" name="new_baseline" placeholder="Baseline Name" style="display:none;"/>
+                            <!--S-11552: Baseline tab changes : changed placeholder to catalog--> &nbsp;&nbsp;
+                            <input id="new_baseline" type="text" name="new_baseline" placeholder="Catalog Name" style="display:none;"/>
                             &nbsp;&nbsp;&nbsp;&nbsp;
                         </td>
                         {% elif field.label == 'Configuration/Ordering Status' and headerForm.configuration_status.value == 4 %}
@@ -201,10 +205,12 @@
     var workgroup_id = "#{{ headerForm.workgroup.auto_id }}";
     var customerunit_id = "#{{ headerForm.customer_unit.auto_id }}";
     var ericssoncontract_id = "#{{ headerForm.ericsson_contract.auto_id }}";
+    var hub_id = "#{{ headerForm.hub.auto_id }}";
     var alreadyDiscontinued = {{ discontinuation_done }};
 <!--S-07112 - Change dropdown selection view and value:- Added below 2 variables to fetch the existing sales_group & ericsson contract # for the opened configuration-->
     var headerformsalesgroup = "{{ header.sales_group }}";
     var headerformericssoncontract = "{{ header.ericsson_contract }}";
+    var headerformhub = "{{ header.hub }}";
 <!--S-08410:Adjust Model and BoM Header Tab:- Added below variable to fetch the line 100 value of the config-->
     var isline100 = "{{ header.line_100 }}";
 </script>

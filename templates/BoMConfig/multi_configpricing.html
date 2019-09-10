@@ -1,0 +1,53 @@
+{% extends "BoMConfig/pricelanding.html" %}
+{% load staticfiles %}
+{% load bomconfig_customtemplatetags %}
+{% block subcontent %}
+<script src="{% static 'BoMConfig/handsontable-0.30.1/dist/handsontable.full.min.js' %}"
+        xmlns="http://www.w3.org/1999/html"></script>
+    <script src="{% static 'BoMConfig/js/multi_config.js' %}"></script>
+    <link rel="stylesheet" media="screen" href="{% static 'BoMConfig/handsontable-0.30.1/dist/handsontable.full.min.css' %}"/>
+
+    <form name="headersubform" id="headersubform"
+{#          {% if configlines %}onsubmit="$('<input/>').attr('id','data_form').attr('type', 'hidden').attr('name','data_form')#}
+{#          .attr('value',JSON.stringify(hot.getSourceData())).appendTo('#headersubform');form_save=true;"{% endif %}#}
+          method="post">
+        {% csrf_token %}
+        <label for="config">Configuration</label>
+        <input id="config" name="config" type="text" value="{{ config }}"/>
+        <input id="initial" name="initial" type="hidden" value="{{ config }}"/>
+        <input id="program" name="program" type="hidden" value="{{ program }}"/>
+        <input id="baseline" name="baseline" type="hidden" value="{{ baseline }}"/>
+<!-- S-12911: Pricing Multi Config download enhancement - Added below 3 fields to store the baseline/rev/netvalue data to show it in the downloaded file-->
+        <input id="baselinedata" name="baselinedata" type="hidden" value="{{ baselines|safe }}" />
+        <input id="baserevdata" name="baserevdata" type="hidden" value="{{ baserevs|safe }}" />
+        <input id="netvalue" name="netvalue" type="hidden" />
+
+        <button id="search" class="btn" type="submit" name="action" value="search" >Search</button>
+
+        {% if configlines %}
+         <button id="download" class="btn btn-primary" name="download" type="submit" form="headersubform" onclick="RestrictMultipleUItables(this.id)" value="download" style="">Download</button>
+<!-- D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Commented out Save button as confirmed that save functionality not required anymore -->
+        <!--<button id="saveForm" class="btn btn-primary" type="submit" name="action" form="headersubform" value="save">Save</button>-->
+        {% endif %}
+        <br/>
+        {% if not configlines %}
+         <span style="color:darkblue; font-weight:bold; ">*** Use <span style="color:red;">;</span> as a separator ***</span>
+        {% endif %}
+    <br />
+    </form>
+
+   <script>
+        var not_picklist;{% if is_not_pick_list %}not_picklist = {{ is_not_pick_list|lower }};{% endif %}
+        var can_write = {{ pricing_write_authorized|lower }};
+        var table_data = {{ configlines|safe }};
+        var baselinesdata = {{ baselines|safe }};
+        var baserevdata = {{ baserevs|safe }};
+        var configdata = {{ configs|safe }};
+        var configstatusdata = {{ configstatus|safe }};
+        var program_list;{% if prog_list %}program_list = {{ prog_list|safe }};{% endif %}
+        var baseline_list;{% if base_list %}baseline_list = {{ base_list|safe }};{% endif %}
+        var readonly = {{ readonly|lower }};
+        var download_url = '{% url 'bomconfig:multiconfigpricingdownload' %}';
+        var file_cookie = "{% random_string 10 %}";
+   </script>
+{% endblock %}

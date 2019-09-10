@@ -100,7 +100,8 @@ $(document).ready(function(){
         });
 
         messageToModal('Download Results', $table, function(){
-            var destination = reporturl + '?';
+// <!--D-06762- 414 Request-URI Too Large' error when downloading search results: made destination blank from var destination = reporturl + '?';-->
+            var destination = '';
             var chosenFields = [];
             $('#messageModal .modal-body input:checked').each(function(idx, elem){
                 chosenFields.push(parseInt($(this).attr('id')));
@@ -124,7 +125,36 @@ $(document).ready(function(){
                 });
             });
 
-            window.open(destination, '_blank','left=100,top=100,height=150,width=500,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no');
+//<!--D-06762- 414 Request-URI Too Large' error when downloading search results: deleted window.open and added below code from line 130-157-->
+
+            var today = new Date();
+            var date = today.getFullYear()+ '_' + (today.getMonth()+1) + '_' + today.getDate()  + '_' + today.getHours() + today.getMinutes() + today.getSeconds();
+            var filename = 'Search Results ' + date + '.xlsx'
+
+            var request = new XMLHttpRequest();
+            request.open('POST', reporturl, true);
+            request.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+            request.setRequestHeader('X-CSRFToken', getcookie('csrftoken'));
+            request.responseType = 'blob';
+
+            request.onload = function(e) {
+                if (this.status === 200) {
+                    var blob = this.response;
+                    if(window.navigator.msSaveOrOpenBlob) {
+                        window.navigator.msSaveBlob(blob, filename);
+                    }
+                    else{
+                        var downloadLink = window.document.createElement('a');
+                        var contentTypeHeader = request.getResponseHeader("Content-Type");
+                        downloadLink.href = window.URL.createObjectURL(new Blob([blob], { type: contentTypeHeader }));
+                        downloadLink.download = filename;
+                        document.body.appendChild(downloadLink);
+                        downloadLink.click();
+                        document.body.removeChild(downloadLink);
+                       }
+                   }
+               };
+               request.send(destination);
         });
     });
 });

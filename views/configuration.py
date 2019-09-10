@@ -18,7 +18,7 @@ from BoMConfig.models import Header, Part, Configuration, ConfigLine, PartBase,\
     Baseline, Baseline_Revision, LinePricing, REF_CUSTOMER, HeaderLock, \
     SecurityPermission,REF_PRODUCT_AREA_1, REF_PRODUCT_AREA_2, REF_TECHNOLOGY, REF_RADIO_FREQUENCY, REF_RADIO_BAND,REF_PROGRAM, REF_CONDITION, \
     REF_MATERIAL_GROUP, REF_PRODUCT_PKG, REF_SPUD, REF_REQUEST, PricingObject, \
-    CustomerPartInfo, HeaderTimeTracker,User_Customer
+    CustomerPartInfo, HeaderTimeTracker, User_Customer, Region, Hub, Supply_Chain_Flow
 from BoMConfig.forms import HeaderForm, ConfigForm, DateForm
 from BoMConfig.views.landing import Lock, Default, LockException, Unlock
 from BoMConfig.views.approvals_actions import CloneHeader
@@ -592,10 +592,11 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             # This widget needs to use Baseline_Revision because we need to
             # filter using the completed_date, to ensure we only allow baselines
             # that have an in-process configuration to be selected.
+            # S - 11552: Baseline tab changes: changed choices for new baseline to catalog
             headerForm.fields['baseline_impacted'].widget = \
                 forms.widgets.Select(
                     choices=(('', '---------'),
-                             ('New', 'Create New baseline')) + tuple(
+                             ('New', 'Create New catalog')) + tuple(
                         (obj.title, obj.title) for obj in
                         Baseline_Revision.objects.filter(
                             baseline__customer=oExisting.customer_unit if
@@ -631,6 +632,35 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 forms.widgets.Select(
                     choices=(('', '---------'),) +
                             tuple((obj, obj) for obj in chain.from_iterable(tResults1))
+                )
+
+    # S-11475: Add region/market areas with hub below it :- Added below block to show region field & populate data
+            headerForm.fields['region'].widget = \
+                forms.widgets.Select(
+                    choices=(('', '---------'),)+
+                            tuple((obj.id, obj.name) for obj in Region.objects.all())
+                )
+
+            # tResults = [(obj.id, obj.name) for obj in Hub.objects.filter(region_id=iParentName)]
+
+    # S-11475: Add region/market areas with hub below it :- Added below block to show hub field & populate data based on region selection
+            if oExisting:
+                headerForm.fields['hub'].widget = \
+                    forms.widgets.Select(
+                        choices=(('', '---------'),)+
+                                tuple((obj.id, obj.name) for obj in Hub.objects.filter(region_id=oExisting.region_id))
+                    )
+            else:                                           # show a blank dropdown field on page load
+                headerForm.fields['hub'].widget = \
+                    forms.widgets.Select(
+                        choices=(('', '---------'),)
+                    )
+
+    # S-11475: Add Supply chain flow below Ericsson contract #:- Added below block to show Supply chain flow field & populate data
+            headerForm.fields['supply_chain_flow'].widget = \
+                forms.widgets.Select(
+                    choices=(('', '---------'),)+
+                            tuple((obj.id, obj.name) for obj in Supply_Chain_Flow.objects.all())
                 )
 
             # oCursor.execute(
@@ -1733,7 +1763,8 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                           if Line.is_child else ''
                           ) + Line.part.base.product_number,
                     '3': Line.part.product_description,
-                    '4': str(Line.order_qty or ''),
+# D-06736 : BoM Entry - Configuration Tab - Qty. showing decimal : Changed str to int in the below line to show the Qty in integer format on page load
+                    '4': int(Line.order_qty or ''),
                     '5': Line.part.base.unit_of_measure,
                     '6': Line.contextId,
                     '7': Line.plant,
@@ -1749,7 +1780,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     '16': Line.mu_flag,
                     '17': str(Line.x_plant).zfill(2) if Line.x_plant else None,
  # S-08473: Adjust configuration table to include new columns:-Added below plant_specific_material_status & distribution_change_specific_material_status at no.18 & 19 respectively; this is responsible to show the saved value on page load
-                   '18': Line.plant_specific_material_status,
+                    '18': Line.plant_specific_material_status,
                     '19': Line.distribution_chain_specific_material_status,
                     '20': Line.internal_notes,
 
@@ -2162,6 +2193,9 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
 # S-08474:Pull BCAMDB on Part addition/validation : Changed the query to fetch the values for 3 new columns on page load
 # D-05973:Traceability not pulling for some parts : Added the traceability condition (gmdm.[PRIM Traceability]!='NULL')
 # in line 2179 to pick the part which has traceability as not null
+# S-14003: Changes to part validation in BoM Configuration entry / edit: Removed the AND T2.[PRIM Traceability]!='NULL' in the query to
+# remove the dependency on PRIM Traceability and also modified the order By statement by adding  ORDER BY  bmps.[Material] ASC, gmdm.[PRIM Traceability] DESC
+# so now the Not Null PRIM Traceability value is picked up in the 1st row
 
     if not bFormatCheckOnly:
         # Collect data from database(s)
@@ -2189,10 +2223,9 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                 ON bmps.[X-Plant Status]=xplantstatus.[X-Plant Status Code]
             LEFT JOIN dbo.SAP_ZMARC zmarc
                 ON  bmps.[Material] =zmarc.Material and bmps.Plant=zmarc.Plant
-            WHERE bmps.[Plant] IN ('2685','2666','2392')
-                  AND gmdm.[PRIM Traceability]!='NULL'
+            WHERE bmps.[Plant] IN ('2685','2666','2392')                 
                   AND bmps.[Material] IN %s
-                  ORDER BY  bmps.[Material]       
+                  ORDER BY  bmps.[Material] ASC, gmdm.[PRIM Traceability] DESC                      
             """,
             (tuple(
                 map(lambda val: bytes(val.lstrip('.'), 'ascii'),
@@ -2698,15 +2731,21 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
                     aConfigLines = ConfigLine.objects.filter(config=oConfig).filter(vendor_article_number=aData[index]['33'])
                     for oline in aConfigLines:
                         if oline.traceability_req == 'Y':       # Checks the traceability value for the part number
-                            traceval = 'Z001'
+                            traceval = 'Z001'                   # Y
                         else:
-                            traceval = 'Z002'
+                            traceval = 'Z002'                   # N
 
                         if traceval != dPartData[corePartNumber]['Traceability'][0]:    # Checks if mismatches with the BCAMDB value
                             aData[index]['28'] = oline.traceability_req                  # writes the data in UI
                             # Previous code - line below
                          # aData[index]['28'] = 'Y' if dPartData[corePartNumber]['Traceability'][0] == 'Z001' else 'N' \
                          #    if dPartData[corePartNumber]['Traceability'][0] == 'Z002' else ''
+
+                    # S-14003: Changes to part validation in BoM Configuration entry / edit: Added below block to flag an error that
+                    # Traceability value was found NULL in the table cell
+                    if aData[index]['28'] in (None, ''):
+                        error_matrix[index][28]['value'] += '! - Traceability value unknown.' + '\n'
+                    # end if
 
                     # RE-Code title
                     if aData[index]['20']:
@@ -2998,6 +3037,14 @@ def ListREACTFill(oRequest):
             result = OrderedDict(
                 [(obj, obj) for obj in chain.from_iterable(tResults)]
             )
+ # S-11475: Add region/market areas with hub below it :- Added below block to show hub field & populate data based on region selection
+        elif oRequest.POST['child'] == 'hub':
+
+            tResults = [(obj.id,obj.name) for obj in Hub.objects.filter(region_id=iParentName)]
+
+            result = OrderedDict(
+                [(obj.id, obj.name) for obj in Hub.objects.filter(region_id=iParentName)]
+            )
         else:
             print('to be added.....')
 
@@ -3233,6 +3280,13 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
     oCursor = connections['BCAMDB'].cursor()
 
 # S-08474:Pull BCAMDB on Part addition/validation : Changed the query to fetch the values for 3 new columns on adding part number
+# D-06763: Product number not found after saving configuration: Added  AND T2.[PRIM Traceability]!='NULL' in the query to match with the validator query
+# S-14003: Changes to part validation in BoM Configuration entry / edit: Removed the AND T2.[PRIM Traceability]!='NULL' in the query  as the product description
+#  wasn't getting fetched,also, as discussed, to remove the dependency on PRIM Traceability, condition is being removed.
+#  Also added the ORDER BY T2.[PRIM Traceability] DESC in the end since, for few part #s, NULL Traceability value was getting pulled
+#  Since, Top 1 is used, so Order by Traceability will sort the NOT NULL value on the top and hence the 1st row with NOT NULL Traceability
+#  would get picked
+# Added ORDER BY T1.[ZMVKE Item Category] DESC for same reason as done for traceability,after it was reported that different Itemcats were getting fetched for same part
     oCursor.execute(
         """
         SELECT TOP 1 T1.[Material Description],T1.[MU-Flag], T1.[X-Plant Status]+','+ REFSTATUS.[Description] xplantdesc,T1.[Base Unit of Measure],
@@ -3252,7 +3306,7 @@ def ValidatePartNumber(dData, dResult, oHead, bCanWriteConfig):
         ON T1.[Material] =ZM.Material and T1.Plant=ZM.Plant 
         LEFT JOIN dbo.SAP_ZMVKE ZV
         ON T1.[Material] =ZV.Material and T1.Plant=ZV.Plant
-        WHERE [ZMVKE Item Category]<>'NORM' and T1.Material = %s and T1.[Plant] IN ('2685','2666','2392')
+        WHERE [ZMVKE Item Category]<>'NORM' and T1.Material = %s and T1.[Plant] IN ('2685','2666','2392') ORDER BY T1.[ZMVKE Item Category] DESC,T2.[PRIM Traceability] DESC 
         """
         ,
         [bytes(dResult['value'].strip('.'), 'ascii')])

@@ -538,7 +538,8 @@ def DownloadBaselineMaster(oRequest):
     # oSheet.column_dimensions['A'].width = 10
     # S-05748-Remove columns in downloaded all Baselines Master file for MTW Customer( added Scustomer=MTW , to have a new baseline download format)(line 528-626)
     if sCustomer == 'MTW':
-        oSheet['B1'] = 'Baseline'
+    # S - 11552: Baseline tab changes: changed downloaded table header to catalog
+        oSheet['B1'] = 'Catalog'
         oSheet['B1'].font = headerFont
         oSheet.column_dimensions['B'].width = 25
 
@@ -602,7 +603,8 @@ def DownloadBaselineMaster(oRequest):
         oSheet['O1'].font = headerFont
         oSheet.column_dimensions['O'].width = 30
     #S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer: Added below elif block
-    elif sCustomer in ('Sprint','T-Mobile'):
+    # S-11474- For master download customization added customer ECSO and RBMA
+    elif sCustomer in ('Sprint','T-Mobile','ECSO','RBMA'):
         oSheet['B1'] = 'Configuration File'
         oSheet['B1'].font = headerFont
         oSheet.column_dimensions['B'].width = 25
@@ -658,7 +660,8 @@ def DownloadBaselineMaster(oRequest):
         oSheet.column_dimensions['M'].width = 50
 
     else:
-        oSheet['B1'] = 'Baseline'
+        # S - 11552: Baseline tab changes: changed downloaded table header to catalog
+        oSheet['B1'] = 'Catalog'
         oSheet['B1'].font = headerFont
         oSheet.column_dimensions['B'].width = 25
 
@@ -860,7 +863,8 @@ def DownloadBaselineMaster(oRequest):
                     oSheet['O' + str(iRow)].font = activeFont
 
             # added oHead.customer_unit_id in (3,4) and updated blocks for  S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer
-            elif oHead.customer_unit_id in (3, 4):
+            # added oHead.customer_unit_id in (6,12) and updated blocks for  S-11474- Baseline Master File download changes for ECSO & RBMA Customer
+            elif oHead.customer_unit_id in (3, 4, 6, 12):
                 oSheet['C' + str(iRow)] = oHead.product_area2.name if \
                     oHead.product_area2 else ''
                 oSheet['C' + str(iRow)].alignment = centerAlign
@@ -1248,7 +1252,15 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             str(inst.configuration_status)
         ), reverse=True
     )
-
+    # D - 06860: Incorrect tab alignment on downloaded Baseline file- created a dictionary to save data, 0 is for non-picklist PA2,
+    # 1 for non-picklist none PA2, 2 for picklist. Two variables (sheetName, order) to store sheetname and order of the sheet.
+    sheets = {
+        0:{},
+        1:{},
+        2:{}
+    }
+    sheetName=''
+    order=''
     for oHeader in list(aHeaders):
         if sCustomer:
             # Skip records for the wrong customers
@@ -1264,36 +1276,72 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
         # Records are separated by Product Area 2 value, so each new Product
         # area 2 value encountered needs to be written as a new separation tab
         # S-08413: Adjust category tab name based on Product Area 2 name for picklists:added not oHeader.pick_list
-        if not oHeader.pick_list and oHeader.product_area2 and oHeader.product_area2.name not in \
-                oFile.sheetnames:
-            oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]:\'\?/]', '_',
-                                                     oHeader.product_area2.name)
-                                        )
-            oSheet.sheet_properties.tabColor = '0062FF'
+        # D - 06860: Incorrect tab alignment on downloaded Baseline file- changed below method to add order and sheetName
+        if not oHeader.pick_list and oHeader.product_area2 :
+            sheetName = re.sub(r'[\*\\\[\]:\'\?/]', '_',
+                               oHeader.product_area2.name if oHeader.product_area2.name is not None else 'None')
+            order = 0
+            if sheetName not in oFile.sheetnames:
+                oSheet = oFile.create_sheet(title=sheetName)
+                oSheet.sheet_properties.tabColor = '0062FF'
+                sheets[0][sheetName] = {
+                    'tabColor': '0062FF',
+                    'childs': []
+                }
         # S-08413: Adjust category tab name based on Product Area 2 name for picklists:added not oHeader.pick_list
-        elif not oHeader.pick_list and not oHeader.product_area2 and 'None' not in \
-                oFile.sheetnames:
-            oSheet = oFile.create_sheet(title="None")
-            oSheet.sheet_properties.tabColor = '0062FF'
+        # D - 06860: Incorrect tab alignment on downloaded Baseline file- changed below method to add order and sheetName
+        elif not oHeader.pick_list and not oHeader.product_area2 :
+            sheetName = "None"
+            order = 1
+            if sheetName not in oFile.sheetnames:
+                oSheet = oFile.create_sheet(title=sheetName)
+                oSheet.sheet_properties.tabColor = '0062FF'
+                sheets[1][sheetName] = {
+                    'tabColor': '0062FF',
+                    'childs': []
+                }
+
         # S-08413: Adjust category tab name based on Product Area 2 name for picklists: Commented line 1114 to 1117 and
         #  Added below lines from 1118 to 1132
         # elif oHeader.pick_list and 'Pick Lists' not in oFile.sheetnames \
         #         and 'Optional Hardware' not in oFile.sheetnames:
         #     oSheet = oFile.create_sheet(title="Pick Lists")
         #     oSheet.sheet_properties.tabColor = '0062FF'
+        # D - 06860: Incorrect tab alignment on downloaded Baseline file- changed below method to add order and sheetName
         elif oHeader.pick_list:
-            if not oHeader.product_area2 and 'None (Opt HW)' not in oFile.sheetnames:
-                oSheet = oFile.create_sheet(title="None (Opt HW)")
-                oSheet.sheet_properties.tabColor = '0062FF'
-            elif oHeader.product_area2 and oHeader.product_area2.name == 'Optional Hardware' \
-                    and 'Optional Hardware' not in oFile.sheetnames:
-                oSheet = oFile.create_sheet(title="Optional Hardware")
-                oSheet.sheet_properties.tabColor = '0062FF'
-            elif oHeader.product_area2 and oHeader.product_area2.name != 'Optional Hardware' \
-                    and (oHeader.product_area2.name + '(Opt HW)') not in oFile.sheetnames: # D-04626: Picklist tab names for Opt HW are generating duplicate tabs added 2nd and part
-                oSheet = oFile.create_sheet(title=re.sub(r'[\*\\\[\]:\'\?/]', '_', # D-04403: Unable to download Baseline file
-                                                     oHeader.product_area2.name)+'(Opt HW)')
-                oSheet.sheet_properties.tabColor = '0062FF'
+            if not oHeader.product_area2:
+                sheetName = "None (Opt HW)"
+                order = 2
+                if sheetName not in oFile.sheetnames:
+                    oSheet = oFile.create_sheet(title=sheetName)
+                    oSheet.sheet_properties.tabColor = '0062FF'
+                    sheets[2][sheetName] = {
+                        'tabColor': '0062FF',
+                        'childs': []
+                    }
+
+            elif oHeader.product_area2 and oHeader.product_area2.name == 'Optional Hardware':
+                sheetName = "Optional Hardware"
+                order = 2
+                if sheetName not in oFile.sheetnames:
+                    oSheet = oFile.create_sheet(title=sheetName)
+                    oSheet.sheet_properties.tabColor = '0062FF'
+                    sheets[2][sheetName] = {
+                        'tabColor': '0062FF',
+                        'childs': []
+                    }
+            # D-04626: Picklist tab names for Opt HW are generating duplicate tabs added 2nd and part
+            elif oHeader.product_area2 and oHeader.product_area2.name != 'Optional Hardware':
+                sheetName = re.sub(r'[\*\\\[\]:\'\?/]', '_', oHeader.product_area2.name)+'(Opt HW)'
+                order = 2
+                if sheetName not in oFile.sheetnames :
+                    oSheet = oFile.create_sheet(title=sheetName)
+                    oSheet.sheet_properties.tabColor = '0062FF'
+                    sheets[2][sheetName] = {
+                        'tabColor': '0062FF',
+                        'childs': []
+                    }
+
 
         iCurrentRow = 2
 
@@ -1343,6 +1391,8 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                 dHistory[key] = []
             dHistory[key].append(value)
 
+        # D - 06860: Incorrect tab alignment on downloaded Baseline file- added childs under PA2 tab
+        sheets[order][sheetName]['childs'].append(re.sub(r'[\*\\\[\]:\'\?/]', '_', sTitle))
         oSheet = oFile.create_sheet(
             title=re.sub(r'[\*\\\[\]:\'\?/]', '_', sTitle))
 
@@ -2082,7 +2132,23 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                        str(iCurrentRow)].font = Font(color=colors.BLUE,
                                                      underline='single')
         iCurrentRow += 1
+    #D - 06860: Incorrect tab alignment on downloaded Baseline file- Added below lines from 2144 to 2160
+    # to arrange the sheet based on PA2 and configuration under that PA2
 
+    orderedSheet = []
+    for order in sheets.keys():
+        for pa2 in sorted(sheets.get(order).keys()):
+            orderedSheet.append(pa2)
+            pa2Data = sheets.get(order).get(pa2)
+            for config in pa2Data.get('childs'):
+                orderedSheet.append(config)
+    sheetOrder = [0,1]
+    osheetNames = []
+    for sheet in oFile._sheets[2:]:
+        osheetNames.append(sheet.title)
+    for sheet in orderedSheet:
+        sheetOrder.append(osheetNames.index(sheet)+2)
+    oFile._sheets = [oFile._sheets[i] for i in sheetOrder]
     return oFile
 # end def
 
@@ -2118,16 +2184,17 @@ def EmailDownload(oRequest,oBaseline):
 
     # Build email message
     sSubject = envName + 'New revision released: ' + oBaseline.title  # D-03452: Some emails are not being tagged as test system, added envName
+    # S - 11552: Baseline tab changes: changed sMessage to include catalog
     sMessage = ('Revision {} of {} has been released as of {}.  A copy of the '
-                'baseline has been attached.\nIssues may be addressed with '
+                'catalog has been attached.\nIssues may be addressed with '
                 'Katya Pridgen at Katya.Pridgen@Ericsson.com.\n\n'
                 '***This is an automated message. Do not reply to this '
                 'message.***').format(
         oBaseline.current_active_version, oBaseline.title,
         oBaseline.latest_revision.completed_date.strftime('%m/%d/%Y'))
-
+    # S - 11552: Baseline tab changes: changed sMessageHtml to include catalog
     sMessageHtml = ('Revision {} of {} has been released as of {}.  '
-                    'A copy of the baseline has been attached.<br/>'
+                    'A copy of the catalog has been attached.<br/>'
                     'Issues may be addressed with Katya Pridgen at '
                     '<a href="mailto:Katya.Pridgen@Ericsson.com">'
                     'Katya.Pridgen@ericsson.com</a>.<br/><br/>'
@@ -2158,6 +2225,166 @@ def EmailDownload(oRequest,oBaseline):
 
     oNewMessage.attach(sFileName, oStream.getvalue(), 'application/ms-excel')
     oNewMessage.send()
+# end def
+
+#S-11779- Multiconfig sub tab, download functionality
+def MultiConfigPriceDownload(oRequest):
+    """
+    View to download pricing data for a specific Header/Configuration
+    :param oRequest: Django HTTP request object
+    :return: HttpResponse containing downloaded data file
+    """
+
+    if oRequest.POST:
+        scon = oRequest.POST['config'] if 'config' in oRequest.POST else None
+        scon2 = scon.split(';')
+
+ # S-12911: Pricing Multi Config download enhancement- Added below blocks to set the baseline/ revision/ netvalue data
+ #  to be able to show it in the heading lines before each table in the downloaded excel
+
+        sbaseline = oRequest.POST['baselinedata'] if 'baselinedata' in oRequest.POST else None
+        sbaseline = sbaseline.replace("[","")
+        sbaseline = sbaseline.replace("]", "")
+        sbaseline = sbaseline.replace("'", "")
+        sbaselinearr = sbaseline.split(',')
+
+        sbaselinerev = oRequest.POST['baserevdata'] if 'baserevdata' in oRequest.POST else None
+        sbaselinerev = sbaselinerev.replace("[", "")
+        sbaselinerev = sbaselinerev.replace("]", "")
+        sbaselinerev = sbaselinerev.replace("'", "")
+        sbaselinerevarr = sbaselinerev.split(',')
+
+        snet_value = oRequest.POST['netvalue'] if 'netvalue' in oRequest.POST else None
+        snet_valuearr=snet_value.split(',')
+
+        aConfigLines1 = []
+        aConfigLines2 = [{'12': '', '10': '', '11': '', '8': '', '9': '', '0': '',
+                           '1': '',  '2': '',  '3': '', '4': '', '5': '', '6': '', '7': ''}]
+
+        count = 0
+
+        for sConfig in scon2:
+
+ # D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Renamed below oHeader to oHeader2 to fetch the generic CU name for file name
+            # Retrieve desired Header object and determine filename
+            oHeader2 = Header.objects.filter(
+                configuration_designation=sConfig).latest('baseline')
+
+# D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Added oHeader1 below to fetch the Active version of the config
+            oHeader1 = Header.objects.filter(
+                configuration_designation__iexact=sConfig).filter(configuration_status=3)
+
+            oHeader = ''
+# D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Added below if condition to let the Active configs enter
+            if len(oHeader1) != 0:                      # For Active configs
+                for obj in oHeader1:            #Iterating oHeader1 as it is object form
+                   oHeader = obj
+                # Retrieve ConfigLines and sort by line number
+
+                aLine = oHeader.configuration.configline_set.all()
+                aLine = sorted(aLine,
+                               key=lambda x: ([int(y) for y in x.line_number.split('.')]))
+
+                # Build data rows for .xls file
+                aConfigLines = [
+                    {
+                        '0': oLine.line_number,
+                        '1': ('..' if oLine.is_grandchild else '.' if
+                        oLine.is_child else '') + oLine.part.base.product_number,
+                        '2': str(oLine.part.base.product_number) +
+                             str('_' + oLine.spud.name if oLine.spud else ''),
+                        '3': oLine.part.product_description,
+                        '4': float(oLine.order_qty if oLine.order_qty else 0.0),
+                        '5': float(GrabValue(oLine,
+                                             'linepricing.pricing_object.unit_price', 0.0)),
+                        '6': float(oLine.order_qty or 0) * float(GrabValue(
+                            oLine, 'linepricing.pricing_object.unit_price', 0.0)),
+                        '7': GrabValue(oLine, 'linepricing.override_price', ''),
+                        '8': oLine.higher_level_item or '',
+                        '9': oLine.material_group_5 or '',
+                        '10': oLine.commodity_type or '',
+                        '11': oLine.comments or '',
+                        '12': oLine.additional_ref or ''
+                    } for oLine in aLine
+                ]
+
+ # S-12911- Pricing Multi Config download enhancement: added aConfigLines3[] to have baseline name, rev, net value in downloaded baseline file  
+                aConfigLines3 = [{
+                    '0': "Net Value($):" + snet_valuearr[count]  + "    Configuration:" + sConfig + "     Catalog:" + sbaselinearr[count] + "      Rev:" + sbaselinerevarr[count]  ,
+                    '1': '',  '2': '',  '3': '', '4': '', '5': '', '6': '', '7': '',
+                    '8': '',  '9': '', '10': '', '11': '', '12': ''
+                }]
+
+                count = count + 1
+
+                if not oHeader.pick_list:
+                    config_total = sum([float(line['6']) for line in aConfigLines])
+                    aConfigLines[0]['5'] = aConfigLines[0]['6'] = config_total
+
+                aConfigLines1.append(aConfigLines2)
+                aConfigLines1.append(aConfigLines3)
+                aConfigLines1.append(aConfigLines)
+ # D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Added else part to let the Non-Active configs enter into this
+            else:                                    # For Non Active configs i.e No active version found
+
+                # Build data rows for .xls file
+# D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Table would show this below message when no active version found
+                aConfigLines = [
+                    {
+                        '0': 'No Active Version found for this config'
+                    }
+                ]
+
+# D-07123: Latest active configuration is not the item shown in mulit-config pricing feature - Headings would show nothing but blank value except for config name
+                aConfigLines3 = [{
+                    '0': "Net Value($):" + '' + "    Configuration:" + sConfig + "     Catalog:" +
+                         '' + "      Rev:" + '',
+                    '1': '', '2': '', '3': '',  '4': '',  '5': '', '6': '',
+                    '7': '', '8': '', '9': '', '10': '', '11': '', '12': ''
+                }]
+
+                count = count + 1
+
+                aConfigLines1.append(aConfigLines2)
+                aConfigLines1.append(aConfigLines3)
+                aConfigLines1.append(aConfigLines)
+
+        headers = ['Line #', 'Product Number', 'Internal Product Number',
+                   'Product Description', 'Order Qty', 'Unit Price', 'Total Price',
+                   'Manual Override for Total NET Price', 'Linkage',
+                   'Material Group 5', 'HW/SW Indicator',
+                   'Comments (viewable by customer)',
+                   'Additional Reference (viewable by customer)']
+        # Open new workbook
+        oFile = openpyxl.Workbook()
+        oSheet = oFile.active
+        # Write column titles
+        for i in range(len(headers)):
+            oSheet[utils.get_column_letter(i + 1) + '1'] = headers[i]
+         # Write data to table
+        for c in aConfigLines1:
+            if isinstance(c, list):
+                for d in c:
+                    rearranged_data = [None]*13
+                    for v in d:
+                        if int(v) in (5,6,7):
+                            if d[v] != '':
+                             d[v]= '${:,.2f}'.format(d[v])
+                        rearranged_data[int(v)] = d[v]
+                    oSheet.append(rearranged_data)
+
+        sFileName = str(oHeader2.customer_unit) + 'Multiple Active configurations' + '_' + str(datetime.datetime.now().strftime('%d%b%Y')) + '_'+ ' Pricing.xlsx'
+        # Save file stream to HTTP response
+        response = HttpResponse(content_type='application/ms-excel')
+        response['Content-Disposition'] = 'attachment;filename="{0}"'.format(
+            sFileName)
+        response.set_cookie('fileMark', oRequest.POST['file_cookie'],
+                            max_age=60)
+        oFile.save(response)
+
+        return response
+    else:
+        return HttpResponse()
 # end def
 
 
@@ -2313,8 +2540,7 @@ def WritePriceOverviewToFile(aPricingLines, aComments):
 
     # Write each cell of data and add a cell comment containing any comment data
     # provided
-    # S - 13218: Pricing Overview file download changes: Commented-out below lines as we are already showing date fields in columns,
-    # so comments not required.
+    # S - 13218: Pricing Overview file download changes: Commented-out below lines as we are already showing date fields in columns, so comments not required.
     for i in range(len(aPricingLines)):
         for j in range(len(aHeaders)):
             oSheet[utils.get_column_letter(j + 1) + str(2 + i)] = \
@@ -2347,14 +2573,16 @@ def PartPriceDownload(oRequest):
                           getattr(oPriceObj.spud, 'name', '(None)'),
                           getattr(oPriceObj.technology, 'name', '(None)'),
                           oPriceObj.unit_price or '',
-                          oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
-                          oPriceObj.valid_to_date else '',
+    # S-12188- Unit price mngmnt,Account for Valid From and Valid to: Changed the order of Valid from and valid to for unit price download file
                           oPriceObj.valid_from_date.strftime('%m/%d/%Y') if
                           oPriceObj.valid_from_date else '',
-                          oPriceObj.cutover_date.strftime('%m/%d/%Y') if
-                          oPriceObj.cutover_date else '',
-                          str(oPriceObj.price_erosion),
-                          oPriceObj.erosion_rate or '',
+                          oPriceObj.valid_to_date.strftime('%m/%d/%Y') if
+                          oPriceObj.valid_to_date else '',
+     # S-12189- Part price upload: Commented out below lines.
+                          # oPriceObj.cutover_date.strftime('%m/%d/%Y') if
+                          # oPriceObj.cutover_date else '',
+                          # str(oPriceObj.price_erosion),
+                          # oPriceObj.erosion_rate or '',
                           oPriceObj.comments or '',
                        ] for oPriceObj in aPriceList]
 
@@ -2380,8 +2608,12 @@ def WritePartPriceToFile(aPriceList):
     :return: OpenPyXL file object
     """
     aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology',
-                'Latest Unit Price ($)', 'Valid To', 'Valid From',
-                'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)', 'Comments'
+                'Latest Unit Price ($)',
+    # S-12188- Unit price mngmnt,Account for Valid From and Valid to: Changed the order of Valid from and valid to for unit price download file
+                'Valid From','Valid To',
+    # S-12189- Part price upload: Commented out below lines.
+                # 'Cut-over Date', 'Price Erosion', 'Erosion Rate (%)',
+                'Comments'
                 ]
     oFile = openpyxl.Workbook()
     oSheet = oFile.active
@@ -2502,7 +2734,8 @@ def DownloadSearchResults(oRequest):
     :return: HTTPResponse containing data file download
     """
     # Retrieve data to download from URL query parameters
-    getDict = dict(oRequest.GET)
+ # D-06762 - 414: Request - URI Too Large' error when downloading search results: made getdict to POST instead of GET
+    getDict = dict(oRequest.POST)
     keys = list(getDict.keys())
     keys.remove('header')
     keys.sort(key=lambda x: int(x.replace('row', '')))

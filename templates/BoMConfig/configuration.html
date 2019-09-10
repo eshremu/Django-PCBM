@@ -95,7 +95,8 @@
                 {% endif %}
                 {% if config_baseline_read_authorized %}
                 |
-                <a id="viewbase" onclick="if(!validating) {BaselineVis = !BaselineVis; load_table();}">Baseline</a>
+                <!--S-11546: BoM Entry - Configuration Sub tab changes: Changed Baseline to Catalog -->
+                <a id="viewbase" onclick="if(!validating) {BaselineVis = !BaselineVis; load_table();}">Catalog</a>
                 {% endif %}
             </h5>
         </div>

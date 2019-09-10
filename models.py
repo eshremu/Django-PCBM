@@ -11,6 +11,8 @@ from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 from django.conf import settings
+from datetime import datetime,date
+
 
 import re
 
@@ -62,6 +64,60 @@ class NewsItem(models.Model):
     # end def
 # end class
 
+# S-11475: Add region/market areas with hub below it :- Added below block to show region/hub fields
+class Region(models.Model):
+    """
+    Model for customer objects
+    """
+    class Meta:
+        verbose_name = 'Region'
+    # end class
+
+    name = models.CharField(max_length=50)
+
+    objects = OrderedManager()
+
+    def __str__(self):
+        return self.name
+    # end def
+# end class
+
+class Hub(models.Model):
+    """
+    Model for customer objects
+    """
+    class Meta:
+        verbose_name = 'Hub'
+    # end class
+
+    name = models.CharField(max_length=50)
+    region = models.ForeignKey(Region, db_constraint=False, blank=True,
+                                 null=True)
+
+    objects = OrderedManager()
+
+    def __str__(self):
+        return self.name
+    # end def
+# end class
+
+# S-11475: Add Supply chain flow below Ericsson contract #:- Added below block to show Supply chain flow field
+class Supply_Chain_Flow(models.Model):
+    """
+    Model for customer objects
+    """
+    class Meta:
+        verbose_name = 'Supply Chain Flow'
+    # end class
+
+    name = models.CharField(max_length=50)
+
+    objects = OrderedManager()
+
+    def __str__(self):
+        return self.name
+    # end def
+# end class
 
 class REF_CUSTOMER(models.Model):
     """
@@ -459,6 +515,11 @@ class Header(models.Model):
     bom_request_type = models.ForeignKey(REF_REQUEST,
                                          verbose_name='BoM Request Type',
                                          db_constraint=False)
+
+# S-11475: Add region/market areas with hub below it :- Added below block to show region/hub fields
+    region = models.ForeignKey(Region, verbose_name='Region', blank=True, null=True, db_constraint=False)
+    hub = models.ForeignKey(Hub, verbose_name='Hub', blank=True, null=True, db_constraint=False)
+
     customer_unit = models.ForeignKey(REF_CUSTOMER,
                                       verbose_name='Customer Unit',
                                       db_constraint=False)
@@ -478,6 +539,9 @@ class Header(models.Model):
                                         blank=True, null=True)
     ericsson_contract = models.IntegerField(verbose_name='Ericsson Contract #',
                                             blank=True, null=True)
+# S-11475: Add Supply chain flow below Ericsson contract #:- Added below to show Supply chain flow field
+    supply_chain_flow = models.ForeignKey(Supply_Chain_Flow, verbose_name='Supply Chain Flow', blank=True,
+                                          null=True, db_constraint=False)
     bill_to_party = models.IntegerField(verbose_name='Bill-to Party',
                                         blank=True, null=True)
     payment_terms = models.CharField(max_length=50,
@@ -518,12 +582,13 @@ class Header(models.Model):
     shipping_condition = models.CharField(max_length=50,
                                           verbose_name='Shipping Condition',
                                           blank=True, null=True, default='71')
-
+# S-11545: BoM Entry - Header sub tab change:- changed the verbose_name from Baseline Impacted
     baseline_impacted = models.CharField(max_length=50,
-                                         verbose_name='Baseline Impacted',
+                                         verbose_name='Catalog Impacted',
                                          blank=True, null=True)
     model = models.CharField(max_length=50, verbose_name='Model', blank=True,
                              null=True)
+
     model_description = models.CharField(max_length=50,
                                          verbose_name='Model Description',
                                          blank=True, null=True)
@@ -1529,17 +1594,32 @@ class PricingObject(models.Model):
         aPricingList = cls.objects.filter(
             customer=oConfigLine.config.header.customer_unit,
             part=oConfigLine.part.base,
+            spud=oConfigLine.spud if oConfigLine.spud else None,
             is_current_active=True)
  # Fix for D-04415- SPUD pricing in not pulled in for configs(SPUD pricing should not consider any other fields except for part number and SPUD. This will mean that we need
  #  to remove the filter by Sold To or any other conditions).Removed all the condition and made it base only on SPUD. If part no
  #        is entered without any spud then latest changed unit price without spud will be shown.)
 
-        oPriceObj = aPricingList.filter(
-            spud=oConfigLine.spud).last()
-
+        oPriceObj = aPricingList.filter(spud=oConfigLine.spud).last()
+        # D-07316:Configuration Price Mgmt pulling incorrect unit price : Changed the logic to show the price in config-price management
+        #  if today's date lies in date range, else it will show the latest price.
+        avalid_to_date = [oRow.valid_to_date if oRow.valid_to_date else None for oRow in
+                          aPricingList]
+        avalid_from_date = [oRow.valid_from_date if oRow.valid_from_date else None for oRow in
+                            aPricingList]
+        today = date.today()
+        td = today
+        for a, b in zip(avalid_from_date, avalid_to_date):
+            if (a is not None) and (b is not None) and (td >= a) and (td < b):
+                oPriceObj = aPricingList.get(
+                    spud=oConfigLine.spud,
+                    valid_from_date=a.strftime('%Y-%m-%d'))
+                break
+            else:
+                oPriceObj = aPricingList.filter(
+                    spud=oConfigLine.spud).last()
         return oPriceObj
-    # end def
-
+            # end def
 
 class HeaderLock(models.Model):
     """

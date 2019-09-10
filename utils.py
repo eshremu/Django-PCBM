@@ -1069,11 +1069,11 @@ def HeaderComparison(oHead, oPrev):
                 dCurrent[(sPart, sLine)][6] != dPrevious[(sPart, sLine)][6] or \
                 dCurrent[(sPart, sLine)][7] != dPrevious[(sPart, sLine)][7] or \
                 dCurrent[(sPart, sLine)][8] != dPrevious[(sPart, sLine)][8]:
-
+                # D-06736: BoM Entry - Configuration Tab - Qty. showing decimal: Added int to show integer in baseline downloaded file & email
                 if dCurrent[(sPart, sLine)][0] != dPrevious[(sPart, sLine)][0]:
                     sTemp += '{} - {} quantity changed from {} to {}\n'.format(
-                        sLine, sPart,  dPrevious[(sPart, sLine)][0],
-                        dCurrent[(sPart, sLine)][0]
+                        sLine, sPart,  int(dPrevious[(sPart, sLine)][0]),
+                        int(dCurrent[(sPart, sLine)][0])
                     )
 
                 # The pricing change is only calculated in the following cases:
@@ -1178,11 +1178,12 @@ def HeaderComparison(oHead, oPrev):
                             dPrevious[(sPart, sLine)][0]:
     # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][1] to dPrevious[(sPart, sLine)][1]
     #  It was getting stuck at this point while releasing baselines
+    # D-06736: BoM Entry - Configuration Tab - Qty. showing decimal: Added int to show integer in baseline downloaded file & email
                          sTemp += ('{} - {} quantity changed from {} to {}\n'
                                   ).format(
                             dPrevious[(sPart, sLine)][1],
-                            sPart, dPrevious[(sPart, sLine)][0],
-                            dCurrent[dPrevious[(sPart, sLine)][3]][0]
+                            sPart, int(dPrevious[(sPart, sLine)][0]),
+                            int(dCurrent[dPrevious[(sPart, sLine)][3]][0])
                             )
 
                     if oHead.customer_unit != oMTW and dCurrent[dPrevious[(sPart, sLine)][3]][1] != \
@@ -1314,7 +1315,8 @@ def HeaderComparison(oHead, oPrev):
             sTemp += '{} - {} added\n'.format(key[1], key[0])
 
     # Sort the changes by line number, and return the string
-    aLines = sTemp.split('\n')[:-1]
+    aLines = sorted(sTemp.split('\n')[:-1])
+    # D-07090: Changes showed in revisions tab and downloaded baseline file not in sequential order: Added sorted before sTemp.split('\n')[:-1] to sort the lines sequentially.
     # D-06135: Error during bulk approval :- Commented out the below line as it was getting stuck at this line while releasing baseline
     #  Have done thorough testing and found no change in behaviour after commenting out the below line
     # aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])

@@ -13,14 +13,12 @@
         <input id="part" name="part" type="text" value="{{ part }}" required/>
         <input id="initial" name="initial" type="hidden" value="{{ part }}"/>
         <button id="search" class="btn" type="submit" name="action" value="search">Search</button>
-    </form>
-
-    <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
-
-    <div id="formbuttons">
+        <!--D-07148: Demo on S-12676: Account for valid to and valid from dates in Unit Price Mgmt (in Pricing tab): Changed the alignment of buttons
+        to make it sync with other pages-->
         {% if partlines.0 %}
         <button id="cancelForm" class="btn" name="action" value="cancel" onclick="window.location.href='{% url 'bomconfig:index' %}'">Cancel</button>
         <button id="saveForm" class="btn btn-primary" type="submit" name="action" form="headersubform" value="save">Save</button>
+        <!--<button id="saveForm" class="btn btn-primary" type="submit" name="action" value="save">Save</button>-->
         <button id="download" class="btn" name="download" value="download" style="margin-left: 50px;" type="submit" form="headersubform">Download</button>
         {% endif %}
         {% if status_message %}
@@ -31,11 +29,15 @@
             setTimeout(function(){$('#statuses').fadeOut('slow')}, 5000);
         </script>
         {% endif %}
-    </div>
-
+    </form>
+<!--S - 12676: Unit Price Mgmt - Account for valid to and valid from dates in Unit Price Mgmt ( in Pricing tab)-->
+    <p id="error" style="color:red; font-weight:bold; visibility:hidden; "> Date Range entered already exists for a CU and SPUD combination.Please select a different date range. </p>
+    <!--<p id="error1" style="color:red; font-weight:bold; visibility:hidden; "> Price entered already exists for a CU and SPUD combination for different Date range.Please select different price. </p>-->
+    <div id="table-wrapper" style="overflow-y:hidden;overflow-x: hidden;"><div id="datatable"></div></div>
     <script>
         var spud_list, cust_list, tech_list, orig_data;
         orig_data = {{ partlines|safe }};
+        var error_found = "{{ errorfound }}";
         cust_list = [''].concat({{ customer_list|safe }});
         spud_list = [''].concat({{ spud_list|safe }});
         tech_list = [''].concat({{ tech_list|safe }});
