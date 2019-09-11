@@ -106,8 +106,10 @@ class Supply_Chain_Flow(models.Model):
     """
     Model for customer objects
     """
+
+# S-13699-BoM Header-Change Supply Chain Flow to Supply Chain Flow/Segment:Changed verbose name from Supply Chain Flow to Supply Chain Flow/Segment
     class Meta:
-        verbose_name = 'Supply Chain Flow'
+        verbose_name = 'Supply Chain Flow/Segment'
     # end class
 
     name = models.CharField(max_length=50)
@@ -537,10 +539,12 @@ class Header(models.Model):
                                         blank=True, null=True)
     ship_to_party = models.IntegerField(verbose_name='Ship-to Party',
                                         blank=True, null=True)
-    ericsson_contract = models.IntegerField(verbose_name='Ericsson Contract #',
+# S-12370- BoM Header - Rename Ericsson Contract # -> "Value Contract":  Changed verbose name from Ericsson contract to Value Contract
+    ericsson_contract = models.IntegerField(verbose_name='Value Contract #',
                                             blank=True, null=True)
 # S-11475: Add Supply chain flow below Ericsson contract #:- Added below to show Supply chain flow field
-    supply_chain_flow = models.ForeignKey(Supply_Chain_Flow, verbose_name='Supply Chain Flow', blank=True,
+# S-13699-BoM Header-Change Supply Chain Flow to Supply Chain Flow/Segment:Changed verbose name from Supply Chain Flow to Supply Chain Flow/Segment
+    supply_chain_flow = models.ForeignKey(Supply_Chain_Flow, verbose_name='Supply Chain Flow/Segment', blank=True,
                                           null=True, db_constraint=False)
     bill_to_party = models.IntegerField(verbose_name='Bill-to Party',
                                         blank=True, null=True)
@@ -1785,6 +1789,47 @@ class HeaderTimeTracker(models.Model):
         return self.disapproved_on or self.completed_on or self.hold_on
 
     # end def
+
+ # S-12912 Approval comments backend logic: Added below two functions for approval comments logic (def approval_comments,def approval_comments_append)
+    @property
+    def approval_comments(self):
+        """
+        Returns this objects approval comments value if it exists
+        :return: str
+        """
+        return (
+            "{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}".format(self.approval_comments_append(None, "PSM"),
+                                                            self.approval_comments_append(self.scm1_comments, "SCM1"),
+                                                            self.approval_comments_append(self.scm2_comments, "SCM2"),
+                                                            self.approval_comments_append(self.csr_comments, "CSR"),
+                                                            self.approval_comments_append(self.cpm_comments, "CPM"),
+                                                            self.approval_comments_append(self.acr_comments, "ACR"),
+                                                            self.approval_comments_append(self.blm_comments, "PPM"),
+                                                            self.approval_comments_append(self.cust1_comments, "Cust1"),
+                                                            self.approval_comments_append(self.cust2_comments, "Cust2"),
+                                                            self.approval_comments_append(self.cust_whse_comments,
+                                                                                          "Cust Whse"),
+                                                            self.approval_comments_append(self.evar_comments, "EVar"),
+                                                            self.approval_comments_append(self.brd_comments, "BRD"))
+        )
+
+    # end def
+
+    def approval_comments_append(self, approval_comments, label):
+        """
+        Returns approval comments value after empty check
+        :return: str
+        """
+        if approval_comments:
+            if approval_comments == 'Not required for this customer':
+                # return label + ": " + "\n"
+                return " "
+            else:
+                return label + ": " + approval_comments + "\n"
+        else:
+            # return label + ": " + "\n"
+            return " "
+            # end def
 
     @property
     def header_name(self):

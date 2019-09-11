@@ -161,7 +161,8 @@ def ParseUpload(oSourceFile):
             'sold_to_party': oBOM.dHeaderData['Sold-to Party'],
             'ship_to_party': oBOM.dHeaderData['Ship-to Party'],
             'bill_to_party': oBOM.dHeaderData['Bill-to Party'],
-            'ericsson_contract': oBOM.dHeaderData['Ericsson Contract #'],
+# S-12370- BoM Header - Rename Ericsson Contract # -> "Value Contract":  Changed name from Ericsson contract to Value Contract
+            'ericsson_contract': oBOM.dHeaderData['Value Contract #'],
             'payment_terms': oBOM.dHeaderData['Payment Terms'],
             'projected_cutover': oBOM.dHeaderData['Projected Cut-over Date'],
             'program': REF_PROGRAM.objects.get(name__iexact=oBOM.dHeaderData['Program'],

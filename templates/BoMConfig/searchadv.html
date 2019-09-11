@@ -93,17 +93,18 @@
                         <li><label for="inquiry_site">Inquiry / Site Template Number</label>
                             <input id="inquiry_site" type="text" name="inquiry_site"/>
                         </li>
-                        <li><label for="readiness">Readiness Complete (%)</label>
-                            <select id="readiness_param">
-                                <option value="lt"><</option>
-                                <option value="lte">&le;</option>
-                                <option value="exact" selected>=</option>
-                                <option value="gte">&ge;</option>
-                                <option value="gt">></option>
-                                <option value="ne">&ne;</option>
-                            </select>
-                            <input id="readiness" type="number" name="readiness" min="0" max="100" maxlength="3"/>
-                        </li>
+        <!--S-12372- remove readiness complete in search/avd search page :commented out from line 97-107-->
+                        <!--<li><label for="readiness">Readiness Complete (%)</label>-->
+                            <!--<select id="readiness_param">-->
+                                <!--<option value="lt"><</option>-->
+                                <!--<option value="lte">&le;</option>-->
+                                <!--<option value="exact" selected>=</option>-->
+                                <!--<option value="gte">&ge;</option>-->
+                                <!--<option value="gt">></option>-->
+                                <!--<option value="ne">&ne;</option>-->
+                            <!--</select>-->
+                            <!--<input id="readiness" type="number" name="readiness" min="0" max="100" maxlength="3"/>-->
+                        <!--</li>-->
                          <!--S-11548: Search - Advanced Search sub-tab changes Changed label from Baseline Impacted-->
                         <li><label for="base_impact">Catalog Impacted</label>
                             <select id="base_impact" name="base_impact">

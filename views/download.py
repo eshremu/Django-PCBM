@@ -604,7 +604,8 @@ def DownloadBaselineMaster(oRequest):
         oSheet.column_dimensions['O'].width = 30
     #S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer: Added below elif block
     # S-11474- For master download customization added customer ECSO and RBMA
-    elif sCustomer in ('Sprint','T-Mobile','ECSO','RBMA'):
+    # S-12376- For master download customization added customer Verizon
+    elif sCustomer in ('Sprint','T-Mobile','ECSO','RBMA','Verizon'):
         oSheet['B1'] = 'Configuration File'
         oSheet['B1'].font = headerFont
         oSheet.column_dimensions['B'].width = 25
@@ -862,9 +863,10 @@ def DownloadBaselineMaster(oRequest):
                 else:
                     oSheet['O' + str(iRow)].font = activeFont
 
-            # added oHead.customer_unit_id in (3,4) and updated blocks for  S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer
-            # added oHead.customer_unit_id in (6,12) and updated blocks for  S-11474- Baseline Master File download changes for ECSO & RBMA Customer
-            elif oHead.customer_unit_id in (3, 4, 6, 12):
+    # added oHead.customer_unit_id in (3,4) and updated blocks for  S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer
+    # added oHead.customer_unit_id in (6,12) and updated blocks for  S-11474- Baseline Master File download changes for ECSO & RBMA Customer
+    # added oHead.customer_unit_id in (2) and updated blocks for  S-12376- Baseline Master File download changes for Verizon Customer
+            elif oHead.customer_unit_id in (3, 4, 6, 12, 2):
                 oSheet['C' + str(iRow)] = oHead.product_area2.name if \
                     oHead.product_area2 else ''
                 oSheet['C' + str(iRow)].alignment = centerAlign

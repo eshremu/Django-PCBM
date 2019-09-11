@@ -409,10 +409,23 @@ def Search(oRequest, advanced=False):
                     ).replace(' ', '\W').replace('?', '.').replace('*', '.*') +
                     "$"
                 )
-                sTempHeaderLine += ('<th style="width:175px;">Product Number'
-                                    '</th><th style="width:175px;">SPUD</th>')
+ # S-13694-Additional Columns on Search/Advanced results display: Added 5 column below SPUD as per requirements
+                sTempHeaderLine += ('<th style="width:195px;">Product Number</th>'
+                                    '<th style="width:195px;">SPUD</th>'
+                                    '<th style="width:195px;">Portfolio Code</th>'
+                                    '<th style="width:195px;cellspacing:10px;">Customer Name<p></p></th>'
+                                    '<th style="width:195px;">Program</th>'
+                                    '<th style="width:195px;">Value Contract</th>'
+                                    '<th style="width:195px;">Supply Chain Flow/Segment</th>')
+
                 aTempFilters.append('part.base.product_number')
                 aTempFilters.append('spud')
+                # S-13694-Additional Columns on Search/Advanced results display: Fetched 5 columndata below SPUD as per requirements
+                aTempFilters.append('current_portfolio_code')
+                aTempFilters.append('config.header.customer_name')
+                aTempFilters.append('config.header.program')
+                aTempFilters.append('config.header.ericsson_contract')
+                aTempFilters.append('config.header.supply_chain_flow')
                 bRemoveDuplicates = False
 
             if 'context_id' in oRequest.POST and \

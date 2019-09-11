@@ -2106,6 +2106,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     '6': oHeader.change_notes or '',
                     '7': oHeader.change_comments or '',
                     '8': oHeader.person_responsible,
+                    '9': oHeader.latesttracker.approval_comments,       # S-12912 Approval comments backend logic:added '9' for shwoing approval comments in revision table
                 })
 
                 # Step to previous revision, if it exists
