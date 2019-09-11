@@ -1020,7 +1020,9 @@ def ConfigPricing(oRequest):
                       oLine.is_child else '') + oLine.part.base.product_number,
                 '2': str(oLine.part.base.product_number) +
                 str('_' + oLine.spud.name if oLine.spud else ''),
-                '3': oLine.part.product_description,
+# D-07617: Configuration Price Mgmt does not show table in view :- Added the if else condition below since it was showing the value as None
+# when a part number was not found and as a result, for the presence of 'None' value in the configlines data, could not draw table in JS
+                '3': oLine.part.product_description if oLine.part.product_description else '',
                 '4': float(oLine.order_qty if oLine.order_qty else 0),
                 '5': float(GrabValue(
                     oLine, 'linepricing.pricing_object.unit_price', 0)),
@@ -1204,7 +1206,9 @@ def MultiConfigPricing(oRequest):
                           oLine.is_child else '') + oLine.part.base.product_number,
                     '2': str(oLine.part.base.product_number) +
                     str('_' + oLine.spud.name if oLine.spud else ''),
-                    '3': oLine.part.product_description,
+# D-07617: Configuration Price Mgmt does not show table in view :- Added the if else condition below since it was showing the value as None
+# when a part number was not found and as a result, for the presence of 'None' value in the configlines data, could not draw table in JS
+                    '3': oLine.part.product_description if oLine.part.product_description else '',
                     '4': float(oLine.order_qty if oLine.order_qty else 0),
                     '5': float(GrabValue(
                         oLine, 'linepricing.pricing_object.unit_price', 0)),
@@ -1418,7 +1422,9 @@ def MultiRevConfigPricing(oRequest):
                       oLine.is_child else '') + oLine.part.base.product_number,
                 '2': str(oLine.part.base.product_number) +
                 str('_' + oLine.spud.name if oLine.spud else ''),
-                '3': oLine.part.product_description,
+# D-07617: Configuration Price Mgmt does not show table in view :- Added the if else condition below since it was showing the value as None
+# when a part number was not found and as a result, for the presence of 'None' value in the configlines data, could not draw table in JS
+                '3': oLine.part.product_description if oLine.part.product_description else '',
                 '4': float(oLine.order_qty if oLine.order_qty else 0),
                 '5': float(GrabValue(
                     oLine, 'linepricing.pricing_object.unit_price', 0)),
@@ -1552,7 +1558,9 @@ def MultiRevConfigPricing(oRequest):
                       oLine.is_child else '') + oLine.part.base.product_number,
                 '2': str(oLine.part.base.product_number) +
                 str('_' + oLine.spud.name if oLine.spud else ''),
-                '3': oLine.part.product_description,
+# D-07617: Configuration Price Mgmt does not show table in view :- Added the if else condition below since it was showing the value as None
+# when a part number was not found and as a result, for the presence of 'None' value in the configlines data, could not draw table in JS
+                '3': oLine.part.product_description if oLine.part.product_description else '',
                 '4': float(oLine.order_qty if oLine.order_qty else 0),
                 '5': float(GrabValue(
                     oLine, 'linepricing.pricing_object.unit_price', 0)),
