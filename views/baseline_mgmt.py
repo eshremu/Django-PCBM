@@ -147,13 +147,17 @@ def BaselineMgmt(oRequest):
                     baseline_version=sRev).order_by('configuration_status',
                                                     'pick_list',
                                                     'configuration_designation')
+        # S-11565:Baseline tab - main page adjustments - Added Customer_name in the dTableData below, set here the CNAME for the baselines to be able
+        # to filter based on CName
                 if aHeads:
                     dTableData['revisions'].append({
                         'revision': Baseline_Revision.objects.get(
                             baseline=oBaseline, version=sRev),
                         'configs': aHeads,
                         'customer': oBaseline.customer.name
-                        .replace(" ", "-_").replace("&", "_")})
+                        .replace(" ", "-_").replace("&", "_"),
+                        'customer_name': oBaseline.customer_name
+                    })
                 # end if
             # end for
 
@@ -166,6 +170,7 @@ def BaselineMgmt(oRequest):
             oBaseline = Baseline.objects.get(title='No Associated Baseline')
             aRevisions = [oBaseline.current_inprocess_version or None,
                           oBaseline.current_active_version or None]
+          # S-11565:Baseline tab - main page adjustments - Added Customer_name in the aTable, set here as blank like done for revision
             aTable.append(
                 {
                     'baseline': oBaseline,
@@ -179,7 +184,8 @@ def BaselineMgmt(oRequest):
                                 'configuration_designation'),
                             'customer': " ".join(
                                 [cust.name.replace(" ", "-_").replace("&", "_")
-                                 for cust in REF_CUSTOMER.objects.all()])
+                                 for cust in REF_CUSTOMER.objects.all()]),
+                            'customer_name': ''
                         }
                     ],
                 }

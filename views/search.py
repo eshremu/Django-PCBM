@@ -155,15 +155,16 @@ def Search(oRequest, advanced=False):
                 for header in aHeaders:
                     if header.customer_unit in aAvailableCU:  # added for S-06169 Search and Adv. Search restrict view to CU
                        if header.baseline.isdeleted != 1:
+        # S-11564: Search - Basic & Advanced adjustments - modified <td></td> to show cuname in list view
                             results.write(
                         ('<tr><td><input class="recordselect" type="checkbox" '
-                         'value="{8}"/></td><td><a href="?link={0}">{1}</a>'
+                         'value="{9}"/></td><td><a href="?link={0}">{1}</a>'
                          '</td><td><a href="?link={0}&readonly=1" '
                          'target="_blank"><span class="glyphicon '
                          'glyphicon-new-window" title="Open in new window">'
-                         '</span></a></td><td>{2}</td><td>{10}</td><td>{3}</td>'
+                         '</span></a></td><td>{2}</td><td>{11}</td><td>{3}</td>'
                          '<td>{4}</td><td>{5}</td><td>{6}</td><td>{7}</td>'
-                         '<td>{9}</td></tr>'
+                         '<td>{8}</td><td>{10}</td></tr>'
                          ).format(
                             searchscramble(header.pk),
                             header.configuration_designation,
