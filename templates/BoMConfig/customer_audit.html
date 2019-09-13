@@ -9,10 +9,18 @@
     <form id="select-form" method="post">
         {% csrf_token %}
         <input type="hidden" id="dataForm" name="dataForm" value="" />
-        <label for="customer-select">Customer:</label>
+        <label for="customer-select">Customer Unit:</label>
         <select id="customer-select" name="customerSelect">
+            <option value="" >-------</option>
         {% for customer in customer_list %}
             <option value="{{ customer.id }}"{% if customer.id == selectedCust.id %} selected{% endif %}>{{ customer.name }}</option>
+        {% endfor %}
+        </select>
+        <label for="cuname">Customer Name: </label>
+        <select id="cuname" name="cuname">
+        <option value="" >-------</option>
+        {% for cname in customername_list %}
+             <option value="{{ cname }}"{% if cname == selectedCustName %} selected{% endif %}>{{ cname }}</option>
         {% endfor %}
         </select>
     </form>
@@ -34,6 +42,8 @@
 <script>
     var data = JSON.parse('{{ data|safe }}');
     var validate_url = '{% url 'bomconfig:audit_validate' %}';
+    var listreactfillurl = '{% url 'bomconfig:list_react_fill' %}';
+    var selectedCustName = '{{selectedCustName}}';
 </script>
 <script type="text/javascript" src="{% static 'BoMConfig/js/customer_audit.js' %}"></script>
 {% endblock %}

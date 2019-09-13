@@ -217,8 +217,9 @@ if(!($("#id_pick_list").is(':checked'))){
         list_react_filler('customer_unit', 'customer_name');
         list_react_filler('customer_unit', 'sales_office');
         list_react_filler('customer_unit', 'sales_group');
-        list_filler('customer_unit', 'program');
-        list_filler('customer_unit', 'baseline_impacted', 1);
+// S-12408: Admin adjustments- Commented the below 2 lines to remove dependency from CU
+//        list_filler('customer_unit', 'program');
+//        list_filler('customer_unit', 'baseline_impacted', 1);
         list_filler('customer_unit', 'person_responsible');
     });
 
@@ -229,6 +230,9 @@ if(!($("#id_pick_list").is(':checked'))){
 
     $('#id_customer_name').change(function(){
         list_react_filler('customer_name', 'sold_to_party');
+// S-12408: Admin adjustments- Added the below 2 lines to add dependency based on CName
+        list_react_filler('customer_name', 'program', 1);
+        list_react_filler('customer_name', 'baseline_impacted', 1);
     });
 
     $('#id_sold_to_party').change(function(){
@@ -421,6 +425,7 @@ function list_react_filler(parent, child, index){
             type: "POST",
             data: {
                 id:'',
+                cu:$('#id_customer_unit').val(), // S-12408: Admin adjustments- Added this parameter to send CU value
                 parent: parent,
                 child: child,
                 name: $('#id_' + parent).val(),
@@ -439,6 +444,22 @@ function list_react_filler(parent, child, index){
                     for (var key in data){
                         if(data.hasOwnProperty(key)){
                             $child.append($('<option>',{value:key,text:data[key]}));
+                        }
+                     }
+                }
+// S-12408: Admin adjustments- Added below 2 blocks to populate program & baseline impacted based on CName selection
+                if(child == 'program'){
+                    for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                            $child.append($('<option>',{value:key.toString().slice(1),text:data[key]}));
+                        }
+                     }
+                }
+
+                if(child == 'baseline_impacted'){
+                    for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                            $child.append($('<option>',{value:key.toString().slice(1),text:data[key]}));
                         }
                      }
                 }

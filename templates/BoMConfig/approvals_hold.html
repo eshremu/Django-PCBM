@@ -11,9 +11,14 @@
                 <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for customer in customer_list %}
-                    <li><a onclick="cust_filter('{{ customer }}');">{{ customer }}</a></li>
+                    <li><a onclick="cust_filter('{{ customer.id }}','{{ customer }}');">{{ customer }}</a></li>
                     {% endfor %}
                 </ul>
+            </li>
+        </ul>
+        <ul class="btn" style="border: none; padding:5px 0 0 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="cname_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown" >Customer Name<span class="caret"></span></button>
             </li>
         </ul>
         <ul class="btn" style="border: none; padding: 5px 0 0 0;">
@@ -69,14 +74,14 @@
                     {% for record in on_hold %}
                         {% for tracker in record.get_all_trackers.all %}
 
-                        <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.latesttracker.next_approval|default:'' }} config">
+                        <tr class="{{ record.customer_unit.name|safe|replace:'& _'|replacewhitespace:'-_' }} {{ record.customer_name  }} {{ record.latesttracker.next_approval|default:'' }} config">
                             {% if tracker == record.get_all_trackers.first %}
 
                             <td><input class="pending" type="checkbox" data-index="{{ record.id }}"/><span>&nbsp;&nbsp;</span></td>
                     <!--D-06454: Chevrons not showing correct coloring when view only on On Hold records: Added below url to open configuration from On Hold page-->
                             <td><a href="{% url 'bomconfig:search' %}?link={{ record.pk|searchscramble }}&readonly=1', '{{ record.configuration_designation }}', 'left=100,top=100,menubar=no,toolbar=no,location=no,resizable=no,scrollbars=no'" target="_blank">{{ record.configuration_designation }}</a></td>
                             <td></td>
-                            <td>{{ record.program|default:"------" }}</td>
+                            <td>{{ record.program|default:"------" }} </td>
                             <td></td>
                             <td>{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
                             <td></td>
@@ -121,7 +126,7 @@
                         </tr>
 
                         {% endfor %}
-                        <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.latesttracker.next_approval|default:'' }} config" style="height:10px;">
+                        <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }} {{ record.customer_name  }} {{ record.latesttracker.next_approval|default:'' }} config" style="height:10px;">
                             <td></td><td></td><td></td><td></td><td></td>
                             <td style="visibility: hidden">{{ record.baseline_impacted|default:"(Not Baselined)" }}</td>
                             <td></td>
@@ -186,53 +191,105 @@
                 window.location.href = link.dataset.href;
             }
 
-        }
-    function cust_filter(customer){
-            if(customer !== 'All') {
-                $('#cu_filter').html(customer +" <span class=\"caret\"></span>");
-            } else {
+    }
+
+    function cust_filter(cuid, cuname){
+           if(cuname !== 'All') {
+                $('#cu_filter').html(cuname +" <span class=\"caret\"></span>");
+           } else {
                 $('#cu_filter').html('Customer <span class="caret"></span>');
-            }
-            updateFilters();
-        }
+           }
+           updateFilters();
+           populateCustomernameonCu(cuid);
+    }
 
-        function request_filter(request){
-            if(request !== "All"){
-                $("#request_filter").html(request + "&nbsp;<span class='caret'></span>");
-            }
-            else{
-                $("#request_filter").html("Request Type" + "&nbsp;<span class='caret'></span>");
-            }
-            updateFilters();
+    function request_filter(request){
+        if(request !== "All"){
+            $("#request_filter").html(request + "&nbsp;<span class='caret'></span>");
         }
-
-        function baseline_filter(baseline){
-            if(baseline !== "All"){
-                $("#baseline_filter").html(baseline + "&nbsp;<span class='caret'></span>");
-            }
-            else{
-            <!--S-11555: Approvals tab changes : Changed Baseline to Catalog in Filter-->
-                $("#baseline_filter").html("Catalog" + "&nbsp;<span class='caret'></span>");
-            }
-            updateFilters();
+        else{
+            $("#request_filter").html("Request Type" + "&nbsp;<span class='caret'></span>");
         }
+        updateFilters();
+    }
 
-        function updateFilters(){
+    function baseline_filter(baseline){
+        if(baseline !== "All"){
+            $("#baseline_filter").html(baseline + "&nbsp;<span class='caret'></span>");
+        }
+        else{
+        <!--S-11555: Approvals tab changes : Changed Baseline to Catalog in Filter-->
+            $("#baseline_filter").html("Catalog" + "&nbsp;<span class='caret'></span>");
+        }
+        updateFilters();
+    }
+
+    var approvals_customer_customername_url = "{% url 'bomconfig:approvals_customer_customername' %}";
+    function populateCustomernameonCu(customer,index){
+             index = typeof(index) !== 'undefined' ? index : 0;
+                $.ajax({
+                        url: approvals_customer_customername_url,
+                        type: "POST",
+                        data: {
+                            data: customer
+                        },
+                        headers:{
+                            'X-CSRFToken': getcookie('csrftoken')
+                        },
+                        success: function(data) {
+
+                             $('#cnamefil').find('option:gt(' + index + ')').remove();
+
+                             $('#cname_filter').replaceWith('<select id="cnamefil" type="button" name="cnamefil" onChange ="custname_filter()" style="background-color:#DDDDDD; border:1px solid transparent;" class="btn dropdown-toggle" data-toggle="dropdown">Catalog<option value="All">All</option></select>');
+                             for (var key in data){
+                                if(data.hasOwnProperty(key)){
+                                      $('#cnamefil').append('<option style="background-color:white; border-radius:4px; " value="' + key + '">'+data[key]);
+                                }
+                             }
+
+                        },
+                        error: function(xhr, status, error){
+                            $('#myModal').modal('hide');
+                            console.log('Error returned from list call', status, error);
+                        }
+                });
+    }
+    function custname_filter(){
+         if($('#cnamefil').val() !== 'All') {
+                $('#cname_filter').html($("#cnamefil").val() +" <span class=\"caret\"></span>");
+           } else {
+                $('#cname_filter').html('Customer <span class="caret"></span>');
+           }
+           updateFilters();
+    }
+    function updateFilters(){
             var customer = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
             var request = $("#request_filter").text().trim();
             var baseline = $("#baseline_filter").text().trim();
 
-
+            var cuname1 = $("#cname_filter").text();
+            var cuname2 = $("#cnamefil").val();
+            if(cuname1)
+            {
+                cuname = cuname1.replace(/ /g, ' ');
+            }else{
+                cuname = cuname2.replace(/ /g, ' ');
+            }
 
             $('tbody tr').show();
 
             var rows = $('#hold_approval_records tbody tr').toArray();
-
+<!--alert(customer+'&#45;&#45;'+cuname);-->
             for (var row in rows) {
                 let hide = false;
                 if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
                     hide = true;
                 }
+
+                if(cuname !== "Customer Name" && cuname !== "All" && !$(rows[row]).hasClass(cuname)){
+                    hide = true;
+                }
+
 <!--S-11555: Approvals tab changes : Changed Baseline to Catalog in Filter-->
                 if(baseline !== "Catalog"){
                     var baseline_row = $(rows[row]).find('td:nth-of-type(6):contains("' + baseline + '")');

@@ -14,6 +14,9 @@ from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.conf import settings
 
+from collections import OrderedDict
+from itertools import chain
+
 from BoMConfig.models import Header, Baseline, Baseline_Revision, REF_CUSTOMER,\
     REF_REQUEST, SecurityPermission, HeaderTimeTracker, REF_STATUS, \
     ApprovalList, PartBase, ConfigLine, Part, CustomerPartInfo, PricingObject, \
@@ -107,6 +110,24 @@ def Approval(oRequest):
         for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
             aAvailableCU.append(aFilteredCU)
 
+    # customer = REF_CUSTOMER.objects.filter(id=iCustId)
+    # print('cust', customer)
+    cParentClass = Header._meta.get_field('customer_unit').rel.to
+    oParent = cParentClass.objects.get(pk=oCan.customer_id)
+    # print('custid', iCustId)
+    oCursor = connections['REACT'].cursor()
+    oCursor.execute(
+        'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
+        '[CustomerUnit]=%s AND (SELECT convert(varchar(10), getdate(), 120)) >= [ValidFrom] AND'
+        '(SELECT convert(varchar(10), getdate(), 120)) <= [ValidTo] ORDER BY [Customer]',
+        [bytes(oParent.name, 'ascii')]
+    )
+    tResults = oCursor.fetchall()
+    result = OrderedDict(
+        [(obj, obj) for obj in chain.from_iterable(tResults)]
+    )
+    # print(result)
+
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -129,6 +150,7 @@ def Approval(oRequest):
                  "(Not baselined)" for obj in Header.objects.filter(
                     configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU)]))),
         'customer_list': ['All'] + aAvailableCU,
+        'customername_list': '',
         'approval_seq': HeaderTimeTracker.approvals(),
         'deaddate': timezone.datetime(1900, 1, 1),
  # S-11555: Approvals tab changes: Changed Baseline to Catalog in role header for PSM Baseline Mgmt.(PSM changed to PPM) and  Baseline Release & Dist.
@@ -174,6 +196,21 @@ def ApprovalHold(oRequest):
         for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
             aAvailableCU.append(aFilteredCU)
 
+    cParentClass = Header._meta.get_field('customer_unit').rel.to
+    oParent = cParentClass.objects.get(pk=oCan.customer_id)
+    # print('custid', iCustId)
+    oCursor = connections['REACT'].cursor()
+    oCursor.execute(
+        'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
+        '[CustomerUnit]=%s AND (SELECT convert(varchar(10), getdate(), 120)) >= [ValidFrom] AND'
+        '(SELECT convert(varchar(10), getdate(), 120)) <= [ValidTo] ORDER BY [Customer]',
+        [bytes(oParent.name, 'ascii')]
+    )
+    tResults = oCursor.fetchall()
+    result = OrderedDict(
+        [(obj, obj) for obj in chain.from_iterable(tResults)]
+    )
+
     if 'existing' in oRequest.session:
         try:
             Unlock(oRequest, oRequest.session['existing'])
@@ -195,6 +232,7 @@ def ApprovalHold(oRequest):
                  "(Not baselined)" for obj in Header.objects.filter(
                     configuration_status__name='On Hold').filter(baseline__isdeleted=0).filter(customer_unit__in=aAvailableCU)]))),
         'customer_list': ['All'] + aAvailableCU,
+        'customername_list': result,
         'approval_seq': HeaderTimeTracker.approvals(),
         'deaddate': timezone.datetime(1900, 1, 1),
         # S-11555: Approvals tab changes: Changed Baseline to Catalog in role header for PSM Baseline Mgmt.(PSM changed to PPM) and  Baseline Release & Dist.
@@ -216,10 +254,8 @@ def ApprovalHold(oRequest):
                    dContext=dContext)
 # end def
 
-
-# D-04023-Customer filter on Actions issue for Admin users :- Added ActionCustomer to populate baseline dropdown based on selected CU
 @login_required
-def ActionCustomer(oRequest, iCustId=''):
+def ApprovalCustomerCustomerName(oRequest):
     """
        View for actions on records in various states (In process, active, on-hold,
        etc.)
@@ -227,13 +263,30 @@ def ActionCustomer(oRequest, iCustId=''):
        :param kwargs: Dictionary of keyword arguments passed to the function
        :return: HTML response via Default function
        """
-    # # S-067172 :Actions -Resctrict view to logged in users CU:- Added to get the logged in user's CU list
+    customer = oRequest.POST['data']
+
+    # # S-067172 :Actions -Restrict view to logged in users CU:- Added to get the logged in user's CU list
     aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
     aAvailableCU = []
     for oCan in aFilteredUser:
         for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
             aAvailableCU.append(aFilteredCU)
-    customer = REF_CUSTOMER.objects.filter(id=iCustId)
+
+    cParentClass = Header._meta.get_field('customer_unit').rel.to
+    oParent = cParentClass.objects.get(pk=customer)
+
+    oCursor = connections['REACT'].cursor()
+    oCursor.execute(
+        'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
+        '[CustomerUnit]=%s AND (SELECT convert(varchar(10), getdate(), 120)) >= [ValidFrom] AND'
+        '(SELECT convert(varchar(10), getdate(), 120)) <= [ValidTo] ORDER BY [Customer]',
+        [bytes(oParent.name, 'ascii')]
+    )
+    tResults = oCursor.fetchall()
+    result = OrderedDict(
+        [(obj, obj) for obj in chain.from_iterable(tResults)]
+    )
+    # print('ppp',result)
 
     # Unlock any record previously held
     if 'existing' in oRequest.session:
@@ -246,18 +299,69 @@ def ActionCustomer(oRequest, iCustId=''):
         del oRequest.session['existing']
     # end if
 
+    if oRequest.method == 'POST' and oRequest.POST:
+
+        return JsonResponse(result)
+    else:
+        raise Http404
+# end def
+
+
+
+# D-04023-Customer filter on Actions issue for Admin users :- Added ActionCustomer to populate baseline dropdown based on selected CU
+@login_required
+def ActionCustomer(oRequest, iCustId=''):
+    """
+       View for actions on records in various states (In process, active, on-hold,
+       etc.)
+       :param oRequest: Django request object
+       :param kwargs: Dictionary of keyword arguments passed to the function
+       :return: HTML response via Default function
+       """
+    # S-067172 :Actions -Restrict view to logged in users CU:- Added to get the logged in user's CU list
+    aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
+    aAvailableCU = []
+    for oCan in aFilteredUser:
+        for aFilteredCU in REF_CUSTOMER.objects.filter(id=oCan.customer_id):
+            aAvailableCU.append(aFilteredCU)
+    customer = REF_CUSTOMER.objects.filter(id=iCustId)
+
+    cParentClass = Header._meta.get_field('customer_unit').rel.to
+    oParent = cParentClass.objects.get(pk=iCustId)
+
+    # S-12405: Actions & Approvals adjustments - Added below block for fetching the customer name list
+    oCursor = connections['REACT'].cursor()
+    oCursor.execute(
+        'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
+        '[CustomerUnit]=%s AND (SELECT convert(varchar(10), getdate(), 120)) >= [ValidFrom] AND'
+        '(SELECT convert(varchar(10), getdate(), 120)) <= [ValidTo] ORDER BY [Customer]',
+        [bytes(oParent.name, 'ascii')]
+    )
+    tResults = oCursor.fetchall()
+    result = OrderedDict(
+        [(obj, obj) for obj in chain.from_iterable(tResults)]
+    )
+
+    # Unlock any record previously held
+    if 'existing' in oRequest.session:
+        try:
+            Unlock(oRequest, oRequest.session['existing'])
+        except Header.DoesNotExist:
+            pass
+        # end try
+
+        del oRequest.session['existing']
+    # end if
+
+    # S-12405: Actions & Approvals adjustments - Added customername_list below in the dContext
     dContext = {
         'in_process': Header.objects.filter(
             configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
             customer_unit=customer),
         'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
-        'baselines': sorted(list(
-            set(
-                [str(obj.baseline) if
-                 obj.baseline.title != 'No Associated Baseline' else
-                 "(Not baselined)" for obj in Header.objects.filter(
-                    configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
-                    customer_unit=customer)]))),
+        'baselines': '',
+        'customername_list': result,
+        'custid' : iCustId,
         'active': [obj for obj in Header.objects.filter(
             configuration_status__name='In Process/Pending', ) if
                    HeaderTimeTracker.approvals().index(
@@ -282,6 +386,69 @@ def ActionCustomer(oRequest, iCustId=''):
 
 # end def
 
+# S-12405: Actions & Approvals adjustments - Added below function for populating baselines based on CNAME selection
+@login_required
+def ActionCustomerNameBaseline(oRequest):
+    """
+       View for actions on records in various states (In process, active, on-hold,
+       etc.)
+       :param oRequest: Django request object
+       :param kwargs: Dictionary of keyword arguments passed to the function
+       :return: HTML response via Default function
+       """
+
+    customername = oRequest.POST['data']
+    pagename = oRequest.POST['page']
+    print('tttt',customername,'---')
+    print('tttt',pagename,'---')
+
+    # # S-067172 :Actions -Restrict view to logged in users CU:- Added to get the logged in user's CU list
+
+    # Unlock any record previously held
+    if 'existing' in oRequest.session:
+        try:
+            Unlock(oRequest, oRequest.session['existing'])
+        except Header.DoesNotExist:
+            pass
+        # end try
+
+        del oRequest.session['existing']
+    # end if
+
+    if oRequest.method == 'POST' and oRequest.POST:
+        if pagename == 'actions':                   # in actions_in process page
+            print('000')
+            baseline = OrderedDict(
+                [(str(obj.baseline), str(obj.baseline)) if
+                         obj.baseline.title != 'No Associated Baseline' else
+                         "(Not baselined)" for obj in Header.objects.filter(
+                            configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
+                            customer_name=customername)]
+            )
+            print(baseline)
+        elif pagename == 'actions_active':              # in actions hold page
+            baseline = OrderedDict(
+                [(str(obj.baseline), str(obj.baseline)) if
+                     obj.baseline.title != 'No Associated Baseline' else
+                     "(Not baselined)" for obj in Header.objects.filter(
+                        configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(
+                        customer_name=customername) if
+                     HeaderTimeTracker.approvals().index(
+                         obj.latesttracker.next_approval) >
+                     HeaderTimeTracker.approvals().index('acr')
+                     ])
+        #     baseline = OrderedDict(
+        #         [(str(obj.baseline.title), str(obj.baseline.title)) if
+        #              obj.baseline.title != 'No Associated Baseline' else
+        #              "(Not baselined)" for obj in Header.objects.filter(
+        #                 configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(
+        #                 customer_name=customername)])
+
+        return JsonResponse(baseline)
+    else:
+        raise Http404
+# end def
+
 # S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added below defination to filter baseline on selected CU
 @login_required
 def ActiveCustomer(oRequest, iCustId=''):
@@ -299,6 +466,22 @@ def ActiveCustomer(oRequest, iCustId=''):
             aAvailableCU.append(aFilteredCU)
     customer = REF_CUSTOMER.objects.filter(id=iCustId)
 
+    cParentClass = Header._meta.get_field('customer_unit').rel.to
+    oParent = cParentClass.objects.get(pk=iCustId)
+    print('custid', iCustId)
+    oCursor = connections['REACT'].cursor()
+    oCursor.execute(
+        'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
+        '[CustomerUnit]=%s AND (SELECT convert(varchar(10), getdate(), 120)) >= [ValidFrom] AND'
+        '(SELECT convert(varchar(10), getdate(), 120)) <= [ValidTo] ORDER BY [Customer]',
+        [bytes(oParent.name, 'ascii')]
+    )
+    tResults = oCursor.fetchall()
+    result = OrderedDict(
+        [(obj, obj) for obj in chain.from_iterable(tResults)]
+    )
+    # print('revvv',result)
+
     # Unlock any record previously held
     if 'existing' in oRequest.session:
         try:
@@ -315,6 +498,7 @@ def ActiveCustomer(oRequest, iCustId=''):
             configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(
             customer_unit=customer),
         'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
+        'customername_list' : result,
         'baselines': sorted(list(
             set(
                 [str(obj.baseline) if

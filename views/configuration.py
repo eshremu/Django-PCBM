@@ -238,6 +238,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 
                 # If  the user requested to build a new baseline, create a new
                 # baseline by the name specified.
+    # S-12408: Admin adjustments- Added customer_name parameter in the defaults to get or create baseline based on selected CName
                 if oRequest.POST['baseline_impacted'] and \
                         oRequest.POST['baseline_impacted'] == 'New' and \
                         oRequest.POST.get('new_baseline', None):
@@ -245,7 +246,8 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                         title__iexact=oRequest.POST['new_baseline'],
                         defaults={'title': oRequest.POST['new_baseline'],
                                   'customer': REF_CUSTOMER.objects.get(
-                                      id=oRequest.POST['customer_unit'])
+                                      id=oRequest.POST['customer_unit']),
+                                  'customer_name': oRequest.POST['customer_name']
                                   }
                     )
                     headerForm.data._mutable = True
@@ -609,7 +611,8 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             oCursor = connections['REACT'].cursor()
             oCursor.execute(
                 ('SELECT DISTINCT [Customer] FROM ps_fas_contracts '
-                 'WHERE [CustomerUnit]=%s'),
+                 'WHERE [CustomerUnit]=%s AND (SELECT convert(varchar(10), getdate(), 120)) >= [ValidFrom] AND'
+                '(SELECT convert(varchar(10), getdate(), 120)) <= [ValidTo]'),
                 [bytes(oExisting.customer_unit.name, 'ascii') if oExisting else
                  None]
             )
@@ -2572,76 +2575,227 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         if not bFormatCheckOnly:
             corePartNumber = aData[index]['2'].lstrip('.')
             # Populate Read-only fields
+            # D-07107: Line 10 (100) part not found on validation :- Added below line to fetch the 1st line number in the config table
+            oFirstLine = oHead.configuration.get_first_line()
 
-            if corePartNumber in dPartData.keys():
-                if oHead.configuration_status.name == 'In Process':
-                    # Product Description
-                    if aData[index]['3'] in (None, ''):
-                        aData[index]['3'] = dPartData[corePartNumber]['Description'][0] or ''
+            # D-07107: Line 10 (100) part not found on validation :- Added below multiple if else conditions to check if the config's
+            # first line is 10 or 100 & picklist or non-picklist, based on these, the validation would be stopped for the config name
+            # in the 1st line
+            if not oHead.pick_list:
+                if oFirstLine.line_number == '10':
+                    if aData[index]['1'] != '10':
+                        if corePartNumber in dPartData.keys():
+                            if oHead.configuration_status.name == 'In Process':
+                                # Product Description
+                                if aData[index]['3'] in (None, ''):
+                                    aData[index]['3'] = dPartData[corePartNumber]['Description'][0] or ''
 
-                    # MU-Flag
-                    aData[index]['16'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
+                                # MU-Flag
+                                aData[index]['16'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
 
-                    # X-Plant
-                    aData[index]['17'] = dPartData[corePartNumber]['X-Plant'][0] or ''
+                                # X-Plant
+                                aData[index]['17'] = dPartData[corePartNumber]['X-Plant'][0] or ''
 
-# S-08476: Adjust save process to preserve new columns:-Added below 3 lines to show the saved value of 3 new columns on page load
-                    # Current Portfolio-Code
-                    aData[index]['14'] = dPartData[corePartNumber]['Current Portfolio Code'][0] or ''
+            # S-08476: Adjust save process to preserve new columns:-Added below 3 lines to show the saved value of 3 new columns on page load
+                                # Current Portfolio-Code
+                                aData[index]['14'] = dPartData[corePartNumber]['Current Portfolio Code'][0] or ''
 
-                    # Plant Specific Material Status
-                    aData[index]['18'] = dPartData[corePartNumber]['Plant Specific Material Status'][0] or ''
+                                # Plant Specific Material Status
+                                aData[index]['18'] = dPartData[corePartNumber]['Plant Specific Material Status'][0] or ''
 
-                    # Distribution Chain Specific Material Status
-                    aData[index]['19'] = dPartData[corePartNumber]['Distribution Chain Specific Material Status'][0] or ''
+                                # Distribution Chain Specific Material Status
+                                aData[index]['19'] = dPartData[corePartNumber]['Distribution Chain Specific Material Status'][0] or ''
 
-                    # UoM
-                    aData[index]['5'] = dPartData[corePartNumber]['UOM'][0] or ''
+                                # UoM
+                                aData[index]['5'] = dPartData[corePartNumber]['UOM'][0] or ''
 
-                    # Item Category Group
-                    if not re.match("^Z[A-Z0-9]{3}$|^$",
-                                    aData[index]['9'] or '',
-                                    re.IGNORECASE):
-                        aData[index]['9'] = dPartData[corePartNumber]['ItemCat'][0] or ''
+                                # Item Category Group
+                                if not re.match("^Z[A-Z0-9]{3}$|^$",
+                                                aData[index]['9'] or '',
+                                                re.IGNORECASE):
+                                    aData[index]['9'] = dPartData[corePartNumber]['ItemCat'][0] or ''
 
-                    # Product Package Type
-                    if dPartData[corePartNumber]['ItemCat'][0] == 'ZF26':
-                        aData[index]['12'] = 'Fixed Product Package (FPP)'
-                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZASO':
-                        aData[index]['12'] = 'Assembled Sales Object (ASO)'
-                        if aData[index]['6'] in (None, ''):
-                            error_matrix[index][6]['value'] += \
-                                'X - ContextID must be populated for ASO parts.\n'
-                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZAVA':
-                        aData[index]['12'] = 'Material Variant (MV)'
-                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZEDY':
-                        aData[index]['12'] = 'Dynamic Product Package (DPP)'
+                                # Product Package Type
+                                if dPartData[corePartNumber]['ItemCat'][0] == 'ZF26':
+                                    aData[index]['12'] = 'Fixed Product Package (FPP)'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZASO':
+                                    aData[index]['12'] = 'Assembled Sales Object (ASO)'
+                                    if aData[index]['6'] in (None, ''):
+                                        error_matrix[index][6]['value'] += \
+                                            'X - ContextID must be populated for ASO parts.\n'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZAVA':
+                                    aData[index]['12'] = 'Material Variant (MV)'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZEDY':
+                                    aData[index]['12'] = 'Dynamic Product Package (DPP)'
 
 
- # S-08475: Adjust validation process to flag parts with non-green portfolio code : Added below condition to show the warning message on the cell if the color value is not green
-                    # Portfolio Code
-                    if dPartData[corePartNumber]['Current Portfolio Code'][0] != 'Green':
-                        error_matrix[index][14]['value'] += '! - Portfolio code is Non-Green.' + '\n'
-                    # end if
+             # S-08475: Adjust validation process to flag parts with non-green portfolio code : Added below condition to show the warning message on the cell if the color value is not green
+                                # Portfolio Code
+                                if dPartData[corePartNumber]['Current Portfolio Code'][0] != 'Green':
+                                    error_matrix[index][14]['value'] += '! - Portfolio code is Non-Green.' + '\n'
+                                # end if
 
-                    # X-Plant Description
-                    if dPartData[corePartNumber]['X-Plant Desc'][0]\
-                            and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][17]['value']:
-                        error_matrix[index][17]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
-                    # end if
-                # end if
+                                # X-Plant Description
+                                if dPartData[corePartNumber]['X-Plant Desc'][0]\
+                                        and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][17]['value']:
+                                    error_matrix[index][17]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
+                                # end if
+                            # end if
+                        else:
+                            error_matrix[index][2]['value'] += \
+                                '! - Product Number not found.\n'
+                            if oHead.configuration_status.name == 'In Process':
+                                aData[index]['5'] = ''
+                                aData[index]['14'] = ''
+                                aData[index]['15'] = ''
+                                aData[index]['16'] = ''
+                                aData[index]['17'] = ''
+                                aData[index]['18'] = ''
+                                aData[index]['19'] = ''
+                        # end def
+                else:
+                    if aData[index]['1'] != '100':
+                        if corePartNumber in dPartData.keys():
+                            if oHead.configuration_status.name == 'In Process':
+                                # Product Description
+                                if aData[index]['3'] in (None, ''):
+                                    aData[index]['3'] = dPartData[corePartNumber]['Description'][0] or ''
+
+                                # MU-Flag
+                                aData[index]['16'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
+
+                                # X-Plant
+                                aData[index]['17'] = dPartData[corePartNumber]['X-Plant'][0] or ''
+
+                                # S-08476: Adjust save process to preserve new columns:-Added below 3 lines to show the saved value of 3 new columns on page load
+                                # Current Portfolio-Code
+                                aData[index]['14'] = dPartData[corePartNumber]['Current Portfolio Code'][0] or ''
+
+                                # Plant Specific Material Status
+                                aData[index]['18'] = dPartData[corePartNumber]['Plant Specific Material Status'][0] or ''
+
+                                # Distribution Chain Specific Material Status
+                                aData[index]['19'] = \
+                                dPartData[corePartNumber]['Distribution Chain Specific Material Status'][0] or ''
+
+                                # UoM
+                                aData[index]['5'] = dPartData[corePartNumber]['UOM'][0] or ''
+
+                                # Item Category Group
+                                if not re.match("^Z[A-Z0-9]{3}$|^$",
+                                                aData[index]['9'] or '',
+                                                re.IGNORECASE):
+                                    aData[index]['9'] = dPartData[corePartNumber]['ItemCat'][0] or ''
+
+                                # Product Package Type
+                                if dPartData[corePartNumber]['ItemCat'][0] == 'ZF26':
+                                    aData[index]['12'] = 'Fixed Product Package (FPP)'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZASO':
+                                    aData[index]['12'] = 'Assembled Sales Object (ASO)'
+                                    if aData[index]['6'] in (None, ''):
+                                        error_matrix[index][6]['value'] += \
+                                            'X - ContextID must be populated for ASO parts.\n'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZAVA':
+                                    aData[index]['12'] = 'Material Variant (MV)'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZEDY':
+                                    aData[index]['12'] = 'Dynamic Product Package (DPP)'
+
+                                # S-08475: Adjust validation process to flag parts with non-green portfolio code : Added below condition to show the warning message on the cell if the color value is not green
+                                # Portfolio Code
+                                if dPartData[corePartNumber]['Current Portfolio Code'][0] != 'Green':
+                                    error_matrix[index][14]['value'] += '! - Portfolio code is Non-Green.' + '\n'
+                                # end if
+
+                                # X-Plant Description
+                                if dPartData[corePartNumber]['X-Plant Desc'][0] \
+                                        and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][17][
+                                    'value']:
+                                    error_matrix[index][17]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
+                                # end if
+                            # end if
+                        else:
+                            error_matrix[index][2]['value'] += \
+                                '! - Product Number not found.\n'
+                            if oHead.configuration_status.name == 'In Process':
+                                aData[index]['5'] = ''
+                                aData[index]['14'] = ''
+                                aData[index]['15'] = ''
+                                aData[index]['16'] = ''
+                                aData[index]['17'] = ''
+                                aData[index]['18'] = ''
+                                aData[index]['19'] = ''
+                        # end def
             else:
-                error_matrix[index][2]['value'] += \
-                    '! - Product Number not found.\n'
-                if oHead.configuration_status.name == 'In Process':
-                    aData[index]['5'] = ''
-                    aData[index]['14'] = ''
-                    aData[index]['15'] = ''
-                    aData[index]['16'] = ''
-                    aData[index]['17'] = ''
-                    aData[index]['18'] = ''
-                    aData[index]['19'] = ''
-            # end def
+                if corePartNumber in dPartData.keys():
+                    if oHead.configuration_status.name == 'In Process':
+                        # Product Description
+                        if aData[index]['3'] in (None, ''):
+                            aData[index]['3'] = dPartData[corePartNumber]['Description'][0] or ''
+
+                        # MU-Flag
+                        aData[index]['16'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
+
+                        # X-Plant
+                        aData[index]['17'] = dPartData[corePartNumber]['X-Plant'][0] or ''
+
+                        # S-08476: Adjust save process to preserve new columns:-Added below 3 lines to show the saved value of 3 new columns on page load
+                        # Current Portfolio-Code
+                        aData[index]['14'] = dPartData[corePartNumber]['Current Portfolio Code'][0] or ''
+
+                        # Plant Specific Material Status
+                        aData[index]['18'] = dPartData[corePartNumber]['Plant Specific Material Status'][0] or ''
+
+                        # Distribution Chain Specific Material Status
+                        aData[index]['19'] = \
+                        dPartData[corePartNumber]['Distribution Chain Specific Material Status'][0] or ''
+
+                        # UoM
+                        aData[index]['5'] = dPartData[corePartNumber]['UOM'][0] or ''
+
+                        # Item Category Group
+                        if not re.match("^Z[A-Z0-9]{3}$|^$",
+                                        aData[index]['9'] or '',
+                                        re.IGNORECASE):
+                            aData[index]['9'] = dPartData[corePartNumber]['ItemCat'][0] or ''
+
+                        # Product Package Type
+                        if dPartData[corePartNumber]['ItemCat'][0] == 'ZF26':
+                            aData[index]['12'] = 'Fixed Product Package (FPP)'
+                        elif dPartData[corePartNumber]['M-Type'][0] == 'ZASO':
+                            aData[index]['12'] = 'Assembled Sales Object (ASO)'
+                            if aData[index]['6'] in (None, ''):
+                                error_matrix[index][6]['value'] += \
+                                    'X - ContextID must be populated for ASO parts.\n'
+                        elif dPartData[corePartNumber]['M-Type'][0] == 'ZAVA':
+                            aData[index]['12'] = 'Material Variant (MV)'
+                        elif dPartData[corePartNumber]['M-Type'][0] == 'ZEDY':
+                            aData[index]['12'] = 'Dynamic Product Package (DPP)'
+
+                        # S-08475: Adjust validation process to flag parts with non-green portfolio code : Added below condition to show the warning message on the cell if the color value is not green
+                        # Portfolio Code
+                        if dPartData[corePartNumber]['Current Portfolio Code'][0] != 'Green':
+                            error_matrix[index][14]['value'] += '! - Portfolio code is Non-Green.' + '\n'
+                        # end if
+
+                        # X-Plant Description
+                        if dPartData[corePartNumber]['X-Plant Desc'][0] \
+                                and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][17][
+                            'value']:
+                            error_matrix[index][17]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
+                        # end if
+                    # end if
+                else:
+                    error_matrix[index][2]['value'] += \
+                        '! - Product Number not found.\n'
+                    if oHead.configuration_status.name == 'In Process':
+                        aData[index]['5'] = ''
+                        aData[index]['14'] = ''
+                        aData[index]['15'] = ''
+                        aData[index]['16'] = ''
+                        aData[index]['17'] = ''
+                        aData[index]['18'] = ''
+                        aData[index]['19'] = ''
+                # end def
 
             # P-Code, Fire Code, Description & HW/SW Indicator
             if '10' in aData[index] and aData[index]['10'] in ('', None):  # P-Code is blank, so fill in with data from part (if available)
@@ -2946,9 +3100,16 @@ def ListREACTFill(oRequest):
     if oRequest.method == 'POST' and oRequest.POST:
         #S-06166-Shift Header page to new reference table: Added below code for CU dependency change
         if(oRequest.POST['name'] == '' and oRequest.POST['sold_to'] == '' and oRequest.POST['contract_number'] == ''):
-            iParentID = int(oRequest.POST['id'])
+    # S-12408: Admin adjustments- Added the below condition to assign the CU value based on the ajax block called on
+            if (oRequest.POST['id']).isdigit():   # for CName Ajax
+                iParentID = int(oRequest.POST['id'])
+            else:                                 # for CU Ajax
+                custid = REF_CUSTOMER.objects.get(name=oRequest.POST['id'])
+                iParentID = int(custid.id)
+
             cParentClass = Header._meta.get_field(oRequest.POST['parent']).rel.to
             oParent = cParentClass.objects.get(pk=iParentID)
+
         # S-06166-Shift Header page to new reference table: Added below code for CN dependency change
         if(oRequest.POST['id'] == '' and oRequest.POST['sold_to'] == '' and oRequest.POST['contract_number'] == ''):
             iParentName = oRequest.POST['name']
@@ -2967,7 +3128,8 @@ def ListREACTFill(oRequest):
         if oRequest.POST['child'] == 'customer_name':
             oCursor.execute(
                 'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
-                '[CustomerUnit]=%s ORDER BY [Customer]',
+                '[CustomerUnit]=%s AND (select convert(varchar(10), getdate(), 120)) >= [ValidFrom] AND'
+                '(select convert(varchar(10), getdate(), 120)) <= [ValidTo]',
                 [bytes(oParent.name, 'ascii')]
             )
             tResults = oCursor.fetchall()
@@ -2995,7 +3157,6 @@ def ListREACTFill(oRequest):
             result = OrderedDict(
                 [(obj, obj) for obj in chain.from_iterable(tResults)]
             )
-
         elif oRequest.POST['child'] == 'sold_to_party':
             oCursor.execute(
                 'SELECT DISTINCT [SoldTo] FROM ps_fas_contracts WHERE'
@@ -3005,6 +3166,17 @@ def ListREACTFill(oRequest):
             tResults = oCursor.fetchall()
             result = OrderedDict(
                 [(obj, obj) for obj in chain.from_iterable(tResults)]
+            )
+ # S-12408: Admin adjustments- Added below blocks for populating program/baseline based on selected CName
+        elif oRequest.POST['child'] == 'program':
+            tResults = REF_PROGRAM.objects.filter(parent_id=oRequest.POST['cu']).filter(customer_name=oRequest.POST['name']).exclude(is_inactive=1)
+            result = OrderedDict(
+                [(str(obj.id), obj.name) for obj in tResults]
+            )
+        elif oRequest.POST['child'] == 'baseline_impacted':
+            tResults = Baseline.objects.filter(customer_id=oRequest.POST['cu']).filter(customer_name=oRequest.POST['name']).order_by('title').exclude(isdeleted=1)
+            result = OrderedDict(
+                [('i' + obj.title, obj.title) for obj in tResults]
             )
         # S-06166-Shift Header page to new reference table: Added below code to fetch data from DB based on sold_to for ericsson contract
         elif oRequest.POST['child'] == 'ericsson_contract':
@@ -3017,7 +3189,7 @@ def ListREACTFill(oRequest):
             result = OrderedDict(
                 [(obj, obj) for obj in chain.from_iterable(tResults)]
             )
-       # S-06166-Shift Header page to new reference table: Added below code to fetch data from DB based on ericsson contract for sold_to,payment_terms
+        # S-06166-Shift Header page to new reference table: Added below code to fetch data from DB based on ericsson contract for sold_to,payment_terms
         elif oRequest.POST['child'] == 'bill_to_party':
             oCursor.execute(
                 'SELECT DISTINCT [BillTo] FROM ps_fas_contracts WHERE'

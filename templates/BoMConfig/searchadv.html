@@ -12,6 +12,9 @@
         <h5>NOTE: The asterisk (*) character can be used as multi-character wildcard, and the question mark (?) can be used for single-character wildcard</h5>
         <form id="search_form" method="POST" onsubmit="return search()">
             {% csrf_token %}
+            <div>
+                <button id="search_button" class="btn" type="button" name="search_button" value="search">Search</button>
+            </div>
             <div class="row">
                 <div class="col-md-4">
                     <h4 id="header_search_title">BoM Config Header&nbsp;<span class="caret"></span></h4>
@@ -26,10 +29,18 @@
                             <select id="customer" name="customer">
                                 <option value="">-------</option>
                                 {% for cust in cust_list %}
-                                <option value="{{ cust.name }}">{{ cust.name }}</option>
+                                <option value="{{ cust.id }}">{{ cust.name }}</option>
                                 {% endfor %}
                             </select>
                         </li>
+    <!--S-11564: Search - Basic & Advanced adjustments- Added below block to add CName field-->
+                        <label for="cuname" >Customer Name</label>
+                        <select id="cuname" name="cuname">
+                            <option value="">-------</option>
+                            {% for cname in cnamelist %}
+                               <option value="{{ cname.name }}">{{ cname.name }}</option>
+                            {% endfor %}
+                        </select>
                         <li><label for="person">Person Responsible</label>
                             <input id="person" type="text" name="person"/>
                         </li>
@@ -182,9 +193,7 @@
                     </ul>
                 </div>
             </div>
-            <div>
-                <button id="search_button" class="btn" type="button" name="search_button" value="search">Search</button>
-            </div>
+
 
         </form>
     </div>
@@ -200,6 +209,7 @@
     var downloadmultiurl = "{% url 'bomconfig:downloadmulti' %}";
     var searchurl = "{% url 'bomconfig:searchadv' %}";
     var reporturl = '{% url 'bomconfig:downloadresult' %}';
+    var listreactfillurl = '{% url 'bomconfig:list_react_fill' %}';
 </script>
 <script type="text/javascript" src="{% static 'BoMConfig/js/search_advanced.js' %}"></script>
 <style>

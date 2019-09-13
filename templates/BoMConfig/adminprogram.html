@@ -24,7 +24,8 @@
         <thead>
                 <tr>
                     <th>Name</th>
-                    <th>CU</th>
+                    <th>Customer Unit</th>
+                    <th>Customer Name</th>
                 </tr>
             </thead>
             <tbody id="admin_program">
@@ -33,8 +34,10 @@
                      <td><div onclick="messageToModalAdmin('Edit Program',
                      function(source){
                         $('#mynewModal').modal('show');
-                    },this,'{{ p.name }}','{{ p.id }}','{{ p.parent_id }}')">{{ p.name }}</div></td>
+                    },this,'{{ p.name }}','{{ p.id }}','{{ p.parent_id }}','{{ p.customer_name }}' )">{{ p.name }}</div></td>
                      <td><div>{{ p.parent }}</div></td>
+    <!--S-12408: Admin adjustments- Added Customer name in the admin add program dialog box-->
+                     <td><div>{{ p.customer_name }}</div></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -56,13 +59,21 @@
                     </div>
                     <div class="modal-body">
                          <label>Name:  </label><input id ="program" class="headerprogram" type="text" name="inputprogram"/><br /><br />
-                         <label style="padding-left: 20px">CU:  </label><select id="programcu" name="program" >
+                         <label style="">Customer Unit:  </label><select id="programcu" name="program" >
                                 <option value="">-------</option>
                                 {% for cu in culist %}
                                 <option value="{{ cu.id }}">{{ cu.name }}</option>
                                 {% endfor %}
                             </select>
-                        <p id="cuerror" style="color:red; padding-left: 35px; display:none;" >* Please select a CU</p>
+                        <p id="cuerror" style="color:red; padding-left: 35px; display:none;" >* Please select a Customer unit</p>
+                        <br /><br />
+                        <label style="">Customer Name:  </label><select id="programcname" name="cname" >
+                                <option value="">-------</option>
+                                {% for cname in cnamelist %}
+                                <option value="{{ cname.name }}">{{ cname.name }}</option>
+                                {% endfor %}
+                            </select>
+                        <p id="custnameerror" style="color:red; padding-left: 35px; display:none;" >* Please select a Customer name</p>
                     </div>
 
                 <div class="modal_footer" style="text-align: right;padding: 10px;">
@@ -84,8 +95,12 @@
                         $('#mynewModal').modal('show');
                     },this,'','','');
                     $('#programcu').attr("disabled", false);
+                    $('#id_programcname').attr("disabled", false);
                     document.getElementById('program').value = '';
                     document.getElementById('programcu').value = '';
+   <!--S-12408: Admin adjustments- Added Customer name below to reset the selected option on opening the dialog box -->
+                    $('#id_programcname').replaceWith("<select id='programcname' type='text' name='programcname'><option value=''>-------</option></select>");
+                    $("#programcname").val('');
      });
 
      <!--D-04685-Error with Band/Frequency:- Added below function to remove space at the beginning of the string(left trim)-->
@@ -94,14 +109,20 @@
           return str.replace(/^\s+/g, '');
      }
 
-     function messageToModalAdmin(title, message, callback, programname, programid, cuid){
+     function messageToModalAdmin(title, message, callback, programname, programid, cuid, cname){
             var params = [];
             for(var i = 3; i < arguments.length; i++){
                 params.push(arguments[i]);
             }
             if(programname){
               document.getElementById('program').value = programname;
+              $('#programcname').replaceWith("<input id='id_programcname' type='text' name='programcname' style='width:80%;border:none;'>");
+              $("#id_programcname").val(cname);
+
               $('#programcu').attr("disabled", true);
+              $('#id_programcname').attr("disabled", true);
+              <!--$('#id_programcname').attr("background-color", "white");-->
+              document.getElementById('id_programcname').style.backgroundColor ='white';
               document.getElementById('btndelete').style.display ='block';
               document.getElementById("btnsave").disabled = true;
             }
@@ -127,12 +148,21 @@
              $('#programcu').change(function(){
                 $("#cuerror").hide();
             });
+             <!--S-12408: Admin adjustments- Added below block to hide the error when cname is selected-->
+            $('#programcname').change(function(){
+                $("#custnameerror").hide();
+            });
 
             $('.modal_submit').off('click');
             $('.modal_submit').click(function(){
                    if(programname == ''){      //for add
                        if(document.getElementById("programcu").value == ''){
                             $("#cuerror").show();
+                            return;
+                       }
+     <!--S-12408: Admin adjustments- Added below block to show the error when cname is not selected-->
+                       else if(document.getElementById("programcname").value == ''){
+                            $("#custnameerror").show();
                             return;
                        }else{
                             process(1,'');
@@ -160,14 +190,21 @@
      function process(operval,programid){
        var programval = document.getElementById("program").value;
        var cuval = document.getElementById("programcu").value;
+       if(operval == 1){
+            var cnameval = document.getElementById("programcname").value;
+       }else{
+            var cnameval = document.getElementById("id_programcname").value;
+       }
+       <!--S-12408: Admin adjustments- Added cname in the data list for all operations in ajax call-->
             $('#myModal').modal('show');
             if(operval == '1'){
                 $.ajax({
                     url: addprogram_url,
                     type: "POST",
                     data: {
-                        data:programval,
-                        cuval : cuval
+                        data : programval,
+                        cuval : cuval,
+                        cnameval : cnameval
                     },
                     headers:{
                         'X-CSRFToken': getcookie('csrftoken')
@@ -192,7 +229,8 @@
                     data: {
                         data : programval,
                         progid : programid,
-                        cuid : cuval
+                        cuid : cuval,
+                        cnameval : cnameval
                     },
                     headers:{
                         'X-CSRFToken': getcookie('csrftoken')
@@ -217,7 +255,8 @@
                     data: {
                         data : programval,
                         progid : programid,
-                        cuid : cuval
+                        cuid : cuval,
+                        cnameval : cnameval
                     },
                     headers:{
                         'X-CSRFToken': getcookie('csrftoken')
@@ -241,6 +280,7 @@
         var addprogram_url = "{% url 'bomconfig:programadd' %}";
         var editprogram_url = "{% url 'bomconfig:programedit' %}";
         var deleteprogram_url = "{% url 'bomconfig:programdelete' %}";
+        var listreactfill_url = "{% url 'bomconfig:list_react_fill' %}";
 
              $(function() {
                 function reposition() {
@@ -267,8 +307,54 @@
                 scrollCollapse: true,
                 pageLength: 50,
             });
+<!--S-12408: Admin adjustments- Added below block to populate CName based on CU selection-->
+             $('#programcu').change(function(){
+                list_react_filler('customer_unit', 'customer_name');
+            });
         });
+<!--S-12408: Admin adjustments- Added below block to populate CName based on CU-->
+function list_react_filler(parent, child, index){
+    index = typeof(index) !== 'undefined' ? index : 0;
+    if(parent == 'customer_unit'){
+        $.ajax({
+            url: listreactfill_url,
+            dataType: "json",
+            type: "POST",
+            data: {
+                parent: parent,
+                id:  $('#programcu').val(),
+                child: child,
+                name:'',
+                sold_to:'',
+                contract_number: ''
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
 
+                var $child = $('#programcname');
+                 $child.find('option:gt(' + index + ')').remove();
+
+                if(child == 'customer_name'){
+                  for (var key in data){
+                    if(data.hasOwnProperty(key)){
+                        $child.append($('<option>',{value:key,text:data[key]}));
+                    }
+                  }
+                }
+             },
+            error: function(){
+                var $child = $('#programcname');
+                $child.find('option:gt(' + index + ')').remove();
+            }
+        });
+    }
+   else {
+        var $child = $('#programcname');
+        $child.find('option:gt(' + index + ')').remove();
+    }
+}
         function form_resize(){
             var topbuttonheight = $('#action_buttons').height();
             var bodyheight = $('#main-body').height();

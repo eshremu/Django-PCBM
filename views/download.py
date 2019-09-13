@@ -469,8 +469,15 @@ def DownloadBaselineMaster(oRequest):
     # S-08483:Baseline Master File download changes: Added the customer name in the file name to distinguish for which customer
     # the file has been downloaded
     sCustomer = oRequest.POST['customer']
+    sCustomerName = oRequest.POST['customer_name']
+
     sCookie = oRequest.POST['file-cookie']
-    sFileName = "BOM Master File - {}_{}.xlsx".format(sCustomer,
+
+    if sCustomer == 'MTW':
+        sFileName = "BOM Master File - {}_{}.xlsx".format(sCustomerName,
+                                                      str(datetime.datetime.now().strftime('%d%b%Y')))
+    else:
+        sFileName = "BOM Master File - {}_{}.xlsx".format(sCustomer,
         str(datetime.datetime.now().strftime('%d%b%Y')))
 
     aTable = []
@@ -478,10 +485,15 @@ def DownloadBaselineMaster(oRequest):
     # If no customer was specified, we want to get all actual baselines first,
     # so we exclude the pseudo-baseline "No Associated Baseline". When customer
     # is provided, the filtering will ensure the pseudo-baseline is excluded
-    if not sCustomer:
-        aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
+    # if not sCustomer:
+    #     aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
+    # else:
+    #     aBaselines = Baseline.objects.filter(customer__name=sCustomer).exclude(isdeleted=1)
+
+    if not sCustomerName:
+            aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
     else:
-        aBaselines = Baseline.objects.filter(customer__name=sCustomer).exclude(isdeleted=1)
+            aBaselines = Baseline.objects.filter(customer_name=sCustomerName).exclude(isdeleted=1)
 
     # Add the pseudo-baseline to the end of the list to ensure it is displayed
     # last
@@ -537,7 +549,7 @@ def DownloadBaselineMaster(oRequest):
     # oSheet['A1'].alignment = headerAlign
     # oSheet.column_dimensions['A'].width = 10
     # S-05748-Remove columns in downloaded all Baselines Master file for MTW Customer( added Scustomer=MTW , to have a new baseline download format)(line 528-626)
-    if sCustomer == 'MTW':
+    if sCustomer == 'MTW' and sCustomerName != 'CENTURYLINK INC':
     # S - 11552: Baseline tab changes: changed downloaded table header to catalog
         oSheet['B1'] = 'Catalog'
         oSheet['B1'].font = headerFont
@@ -605,7 +617,8 @@ def DownloadBaselineMaster(oRequest):
     #S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer: Added below elif block
     # S-11474- For master download customization added customer ECSO and RBMA
     # S-12376- For master download customization added customer Verizon
-    elif sCustomer in ('Sprint','T-Mobile','ECSO','RBMA','Verizon'):
+    # S-12374- Download Operations:- For master download customization added CENTURYLINK INC cname of MTW cu to follow format with other below CUs
+    elif sCustomer in ('Sprint','T-Mobile','ECSO','RBMA','Verizon') or (sCustomer == 'MTW' and sCustomerName == 'CENTURYLINK INC'):
         oSheet['B1'] = 'Configuration File'
         oSheet['B1'].font = headerFont
         oSheet.column_dimensions['B'].width = 25
@@ -762,8 +775,8 @@ def DownloadBaselineMaster(oRequest):
         # Write data for each Header in the baseline
         for oHead in aConfigs:
             # added oHead.customer_unit_id==9 and updated blocks for  S-05748- Remove columns in downloaded all Baselines Master file for MTW Customer
-            if oHead.customer_unit_id == 9:
-
+            if oHead.customer_unit_id == 9 and oHead.customer_name != 'CENTURYLINK INC':
+                print('if')
                 oSheet['C' + str(iRow)] = oHead.product_area2.name if \
                     oHead.product_area2 else ''
                 oSheet['C' + str(iRow)].alignment = centerAlign
@@ -866,7 +879,8 @@ def DownloadBaselineMaster(oRequest):
     # added oHead.customer_unit_id in (3,4) and updated blocks for  S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer
     # added oHead.customer_unit_id in (6,12) and updated blocks for  S-11474- Baseline Master File download changes for ECSO & RBMA Customer
     # added oHead.customer_unit_id in (2) and updated blocks for  S-12376- Baseline Master File download changes for Verizon Customer
-            elif oHead.customer_unit_id in (3, 4, 6, 12, 2):
+    # added oHead.customer_unit_id in (9 & cname as CENTURYLINK INC) and updated blocks for  S-12374- Download operations: for CENTURYLINK INC
+            elif oHead.customer_unit_id in (3, 4, 6, 12, 2) or (oHead.customer_unit_id == 9 and oHead.customer_name == 'CENTURYLINK INC'):
                 oSheet['C' + str(iRow)] = oHead.product_area2.name if \
                     oHead.product_area2 else ''
                 oSheet['C' + str(iRow)].alignment = centerAlign

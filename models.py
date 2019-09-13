@@ -253,7 +253,9 @@ class REF_PROGRAM(models.Model):
     name = models.CharField(max_length=50)
     parent = models.ForeignKey(REF_CUSTOMER)
     is_inactive = models.BooleanField(default=0) #S-05903 :Edit drop down option for BoM Entry Header - Program: Added new field
-
+    customer_name = models.CharField(max_length=50,
+                                     verbose_name='Customer Name',
+                                     null=True)  # S-12408: Admin adjustments- Added this field to save CName while creating program
     objects = OrderedManager()
 
     def __str__(self):
@@ -405,6 +407,9 @@ class Baseline(models.Model):
     customer = models.ForeignKey(REF_CUSTOMER, db_constraint=False, blank=True,
                                  null=True)
     isdeleted = models.BooleanField(default=0)
+    customer_name = models.CharField(max_length=50,
+                                     verbose_name='Customer Name',
+                                     null=True) # S-12408: Admin adjustments- Added this field to save CName while creating baseline
     # user = models.ForeignKey(authUser)
 
     def save(self, *args, **kwargs):
@@ -502,7 +507,6 @@ class Baseline_Revision(models.Model):
     # end def
 # end class
 
-
 class Header(models.Model):
     """
     Model for Header objects.
@@ -527,9 +531,9 @@ class Header(models.Model):
                                       db_constraint=False)
     person_responsible = models.CharField(max_length=50,
                                           verbose_name='Person Responsible')
-
+# S-11563: BoM Entry-Header sub-tab adjustments :- Removed blank=True from customer_name field to make in mandatory in BoM entry page
     customer_name = models.CharField(max_length=50,
-                                     verbose_name='Customer Name', blank=True,
+                                     verbose_name='Customer Name',
                                      null=True)
     sales_office = models.CharField(max_length=50, verbose_name='Sales Office',
                                     blank=True, null=True)
@@ -2055,7 +2059,7 @@ class DistroList(models.Model):
 class User_Customer(models.Model):
     class Meta:
         verbose_name = 'User Customer'
-        # end class
+    # end class
 
     user = models.ForeignKey(authUser, db_constraint = False, blank=True, null=True)
     customer = models.ForeignKey(REF_CUSTOMER, db_constraint = False, blank=True, null=True)
@@ -2105,6 +2109,9 @@ class CustomerPartInfo(models.Model):
     traceability_req = models.NullBooleanField(blank=True)
     active = models.BooleanField(default=False)
     priority = models.BooleanField(default=False)
+    customer_name = models.CharField(max_length=50,
+                                     verbose_name='Customer Name',
+                                     null=True) # S-12408: Admin adjustments- Added this field to save CName while uploading part info files
 
     def __str__(self):
         return str(self.part) + " - " + self.customer_number + (

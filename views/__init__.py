@@ -26,7 +26,8 @@ from BoMConfig.views.download import Download, DownloadBaseline, \
     #  added ApprovalHold,HoldApprove
 # S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added ActiveCustomer
 from BoMConfig.views.approvals_actions import Approval, Action, AjaxApprove, \
-    ApprovalData, AjaxApprovalForm, ChangePart, CreateDocument, ActionCustomer, ActiveCustomer, ApprovalHold, HoldApprove
+    ApprovalData, AjaxApprovalForm, ChangePart, CreateDocument, ActionCustomer, ActiveCustomer, \
+    ApprovalHold, HoldApprove, ActionCustomerNameBaseline,ApprovalCustomerCustomerName
 # S-07204 Refine User Admin page added UserDelete logic  in user admin page
 # S-07533 DropDownAdmin added for New sub-tab drop-down admin base template creation
 # S-05903, S-05905, S-05906, S-05907, S-05908,S-05909:- Added From ProductArea1Admin to RFDelete for Admin dropdown functionalities
