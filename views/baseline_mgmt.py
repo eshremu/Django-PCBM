@@ -260,11 +260,9 @@ def BaselineRollbackTest(oRequest):
 def DeleteBaseline(oRequest):
 
     if oRequest.method == 'POST' and oRequest.POST:
-        print(oRequest.POST.get('data'))
         aRecords = [
             int(record) for record in json.loads(oRequest.POST.get('data'))]
 
-        # print(aRecords)
 
         Baseline.objects.filter(pk__in=aRecords).update(
             isdeleted=1)
