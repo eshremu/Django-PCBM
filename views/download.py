@@ -2665,7 +2665,7 @@ def WritePriceOverviewToFile(aPricingLines, aComments):
     # Create column headers
     # S - 13218: Pricing Overview file download changes: Added Valid-From and Valid -To in downloaded file
     aHeaders = ['Part Number', 'Customer', 'Sold-To', 'SPUD', 'Technology',
-                'Latest Unit Price ($)', 'Valid From','Valid To']
+                'Latest Unit Price ($)','Valid From','Valid To']
     for j in range(1, 5):
         aHeaders.append(str(datetime.datetime.now().year - j) + ' Price ($)')
 

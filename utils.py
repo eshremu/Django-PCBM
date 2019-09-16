@@ -1316,13 +1316,15 @@ def HeaderComparison(oHead, oPrev):
 
     # Sort the changes by line number, and return the string
     aLines = sorted(sTemp.split('\n')[:-1])
-    # D-07618: Revision ordering incorrect-  Added below sorted condition to sort based on the part number added/updated and returning the sorted line( changed aLines to aSortedLine in return )
-    aSortedLines = sorted(aLines, key=lambda item: (float(item.partition(' ')[0])
-                                                    if item[0].isdigit() else float('inf'), item))
 
-    # D-07090: Changes showed in revisions tab and downloaded baseline file not in sequential order: Added sorted before sTemp.split('\n')[:-1] to sort the lines sequentially.
+    # D-07618: Revision ordering incorrect :- Added below sorted condition to sort based on the part number added / updated
+    # and returning the sorted line(changed aLines to aSortedLines in return)
+    # aSortedLines = sorted(aLines, key=lambda item: (float(item.partition(' ')[0])
+    #                                                 if item[0].isdigit() else float('inf'), item))
+
+    # D-07090: Changes showed in revisions tab and downloaded baseline file not in sequential order :- Added sorted before sTemp.split('\n')[:-1] to sort the lines sequentially.
     # D-06135: Error during bulk approval :- Commented out the below line as it was getting stuck at this line while releasing baseline
-    #  Have done thorough testing and found no change in behaviour after commenting out the below line
+    # Have done thorough testing and found no change in behaviour after commenting out the below line
     # aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])
     return '\n'.join(aSortedLines)
 # end def
