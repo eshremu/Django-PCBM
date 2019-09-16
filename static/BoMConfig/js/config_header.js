@@ -12,7 +12,9 @@ var old_conf_name;
 var new_conf_name;
 
 $(document).ready(function(){
-
+// D-07037: Catalog Impacted selection empty after catalog name length error: Added below to lines to show/hide the model description field based on error condition found
+$('#modeldesc1').show();
+$('#modeldesc2').hide();
 //D-03994-Manual override pricing fix: Added below old conf name  to distinguish between clone and normal config
 old_conf_name = $('#id_configuration_designation').val();
 // S-07112 - Change dropdown selection view and value:-Added below code to show the option selected in the sales_group & ericsson contract dropdown
@@ -171,6 +173,15 @@ if(!($("#id_pick_list").is(':checked'))){
                 );
                 return false;
             }
+//  D-07037: Catalog Impacted selection empty after catalog name length error: Added below to check the error condition for model description before saving
+            else if($('#id_model_description').val().length > 40){
+                  var vali = $('#id_model_description').val();
+//                   $('#id_model_description').hide();
+                   $('#moderr').show();
+                   document.getElementById("modeldesc1").style.border = "2px solid red";
+                   document.getElementById("modeldesc1").style.maxheight = "48px";
+                   return false;
+            }
     // D-03595 - Problem saving new configuration when using REACT data:- Added below condition to hit only when the REACT data is getting saved
     // i.e if value of reactsearch variable found true
             else if(reactsearch){
@@ -217,8 +228,9 @@ if(!($("#id_pick_list").is(':checked'))){
         list_react_filler('customer_unit', 'customer_name');
         list_react_filler('customer_unit', 'sales_office');
         list_react_filler('customer_unit', 'sales_group');
-        list_filler('customer_unit', 'program');
-        list_filler('customer_unit', 'baseline_impacted', 1);
+// S-12408: Admin adjustments- Commented the below 2 lines to remove dependency from CU in BoM entry page
+//        list_filler('customer_unit', 'program');
+//        list_filler('customer_unit', 'baseline_impacted', 1);
         list_filler('customer_unit', 'person_responsible');
     });
 
@@ -229,6 +241,9 @@ if(!($("#id_pick_list").is(':checked'))){
 
     $('#id_customer_name').change(function(){
         list_react_filler('customer_name', 'sold_to_party');
+// S-12408: Admin adjustments- Added the below 2 lines to add dependency based on CName in BoM entry page
+        list_react_filler('customer_name', 'program', 1);
+        list_react_filler('customer_name', 'baseline_impacted', 1);
     });
 
     $('#id_sold_to_party').change(function(){
@@ -305,13 +320,15 @@ function list_filler(parent, child, index){
 
 // D-04026: Baseline dropdown not populated when starting config with REACT info: Added below to populate Program & Baseline Impacted
 // dropdown based on populated CU on react search
-    if(reactsearch){
-        if(parent == 'customer_unit'){
-            parentval = $("#id_customer_unit").attr("cust_val");    // to send the ID of CU if parent is CU & done through React search
-        }
-    }else{
+//    if(reactsearch){
+//       if(parent == 'customer_unit'){
+//            parentval = $("#id_customer_unit").attr("cust_val");    // to send the ID of CU if parent is CU & done through React search
+//        }
+//    }else{
+// S-11563: BoM Entry - Header sub-tab adjustments - commented all other lines because CU is no more needed when react req search is  done
+// as it will populate based on CNAME now
         parentval = $('#id_' + parent).val();
-    }
+//    }
 
     if($('#id_' + parent).val() != ''){
         $.ajax({
@@ -421,6 +438,7 @@ function list_react_filler(parent, child, index){
             type: "POST",
             data: {
                 id:'',
+                cu:$('#id_customer_unit').val(), // S-12408: Admin adjustments- Added this parameter to send CU value
                 parent: parent,
                 child: child,
                 name: $('#id_' + parent).val(),
@@ -439,6 +457,22 @@ function list_react_filler(parent, child, index){
                     for (var key in data){
                         if(data.hasOwnProperty(key)){
                             $child.append($('<option>',{value:key,text:data[key]}));
+                        }
+                     }
+                }
+// S-12408: Admin adjustments- Added below 2 blocks to populate program & baseline impacted based on CName selection
+                if(child == 'program'){
+                    for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                            $child.append($('<option>',{value:key.toString().slice(1),text:data[key]}));
+                        }
+                     }
+                }
+
+                if(child == 'baseline_impacted'){
+                    for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                            $child.append($('<option>',{value:key.toString().slice(1),text:data[key]}));
                         }
                      }
                 }
@@ -688,8 +722,8 @@ function req_search(){
 
 // D-04026: Baseline dropdown not populated when starting config with REACT info: Added below to populate Program & Baseline Impacted
 // dropdown based on populated CU on react search
-                    list_filler('customer_unit', 'program');
-                    list_filler('customer_unit', 'baseline_impacted', 1);
+                    list_filler('customer_name', 'program');
+                    list_filler('customer_name', 'baseline_impacted', 1);
 
 //                    var ericontdeschtml = "<input id='ericontractdesc' style='width:400px;' type='textbox'/>";
 //                    $(ericssoncontractdesc_id).remove();

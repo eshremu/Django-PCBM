@@ -124,13 +124,15 @@
             build_table();
         }
         <!--S-11547: BoM Entry - Revisions sub-tab changes: Changed Baseline to Catalog-->
+<!-- # S-12912 Approval comments backend logic: Added Approval Comment column in Header.push,added {data: 9} in cols.push, included 9 in readonly.push-->
         function determineColumns(cols, headers, readonly){
-            cols.push({data: 0}, {data: 1}, {data: 2}, {data: 3}, {data: 4}, {data: 5}, {data: 6}, {data: 7}, {data: 8});
-            headers.push('BoM Revision', 'Catalog', 'Catalog Revision', 'Release Date', "Model", 'Customer Number', 'Changes', 'Comments', 'Person Responsible');
+            cols.push({data: 0}, {data: 1}, {data: 2}, {data: 3}, {data: 4}, {data: 5}, {data: 6}, {data: 7}, {data: 8}, {data: 9});
+            headers.push('BoM Revision', 'Catalog', 'Catalog Revision', 'Release Date', "Model", 'Customer Number', 'Changes',
+             'Comments', 'Person Responsible','Approval Comment');
             {% if revision_write_authorized %}
-            readonly.push(0, 1, 2, 4, 5, 6, 8);
+            readonly.push(0, 1, 2, 4, 5, 6, 8,9);
             {% else %}
-            readonly.push(0, 1, 2, 3, 4, 5, 6, 7, 8);
+            readonly.push(0, 1, 2, 3, 4, 5, 6, 7, 8,9);
             {% endif %}
         }
 
@@ -143,7 +145,7 @@
 
             td.style.background = '#DDDDDD';
         }
-
+<!-- # S-12912 Approval comments backend logic:Set  mincols and Maxcols from 9 to 10 to have approval comment column in table-->
         function build_table() {
             var determined_cols = [];
             var headers = [];
@@ -153,8 +155,8 @@
             hot = new Handsontable(container, {
                 data: data,
                 minRows: 1,
-                minCols: 9,
-                maxCols: 9,
+                minCols: 10,
+                maxCols: 10,
                 minSpareRows: 0,
                 rowHeaders: false,
                 colHeaders: headers,

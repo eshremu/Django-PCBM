@@ -10,12 +10,20 @@
     {% endif %}
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
-        <label for="customer">Customer:</label>
+        <label for="customer">Customer Unit:</label>
         <select id="customer" name="customer" required>
             <option value="">------</option>
             {% for cust in customer_list %}
             <option value="{{ cust.id }}">{{ cust.name }}</option>
             {% endfor %}
+        </select>
+        <br/>
+        <label for="customername">Customer Name:</label>
+        <select id="customername" name="customername" required>
+            <option value="">------</option>
+            <!--{% for custname in customername_list %}-->
+            <!--<option value="{{ custname.name }}">{{ custname.name }}</option>-->
+            <!--{% endfor %}-->
         </select>
         <br/>
         <label for="file_type">File Type:</label>
@@ -29,6 +37,7 @@
         <button class="btn btn-primary" type="submit" style="margin-top:10px;">Upload</button>
     </form>
     <script>
+    var listreactfill_url = "{% url 'bomconfig:list_react_fill' %}";
         $('a.headtitle:contains("Customer Audit")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
         $('button[value="upload"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
         function cleanDataCheck(link){
@@ -41,13 +50,64 @@
 
    <!--S-08946:-  Add USCC SAP (MTW as of now) download format to upload for validation -- Added below to show the file type option for MTW CU-->
          $('#customer').change(function(){
-            var customerval =  $('#customer').val();
+         var customerval =  $('#customer').val();
+
    <!--S-08487: Customer upload changes :- Added below condition to show the file type based on CU i.e IM report only if Sprint,T-Mobile or MTW -->
-            if(document.getElementById('customer').value == '3' || document.getElementById('customer').value == '4' || document.getElementById('customer').value == '9' || document.getElementById('customer').value == '6' || document.getElementById('customer').value == '12'){
+     <!--S-11567- For Customer Upload customization added customer ECSO and RBMA(6,12)-->
+  <!--S-12377- For Customer Upload customization added customer Verizon(2)-->
+            if(document.getElementById('customer').value == '3' || document.getElementById('customer').value == '4' ||
+            document.getElementById('customer').value == '9' || document.getElementById('customer').value == '6' ||
+            document.getElementById('customer').value == '12' || document.getElementById('customer').value == '2'){
                 file_type[1].style.display = "none";
             }else{
                 file_type[1].style.display = "block";
             }
+
+            list_react_filler('customer_unit', 'customer_name');
+
         });
+    function list_react_filler(parent, child, index){
+        index = typeof(index) !== 'undefined' ? index : 0;
+
+        if(parent == 'customer_unit'){
+            $.ajax({
+                url: listreactfill_url,
+                dataType: "json",
+                type: "POST",
+                data: {
+                    parent: parent,
+                    id:  $('#customer').val(),
+                    child: child,
+                    name:'',
+                    sold_to:'',
+                    contract_number: ''
+                },
+                headers:{
+                    'X-CSRFToken': getcookie('csrftoken')
+                },
+                success: function(data) {
+
+                    var $child = $('#customername');
+                     $child.find('option:gt(' + index + ')').remove();
+
+                    if(child == 'customer_name'){
+                      for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                            $child.append($('<option>',{value:key,text:data[key]}));
+                        }
+                      }
+                    }
+                 },
+                error: function(){
+                    var $child = $('#programcname');
+                    $child.find('option:gt(' + index + ')').remove();
+                }
+            });
+        }
+       else {
+            var $child = $('#programcname');
+            $child.find('option:gt(' + index + ')').remove();
+        }
+    }
     </script>
 {% endblock %}

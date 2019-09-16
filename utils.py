@@ -1326,7 +1326,7 @@ def HeaderComparison(oHead, oPrev):
     # D-06135: Error during bulk approval :- Commented out the below line as it was getting stuck at this line while releasing baseline
     # Have done thorough testing and found no change in behaviour after commenting out the below line
     # aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])
-    return '\n'.join(aLines)
+    return '\n'.join(aSortedLines)
 # end def
 
 

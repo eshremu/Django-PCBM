@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, \
     REF_STATUS, REF_PROGRAM, REF_PRODUCT_AREA_1, REF_PRODUCT_AREA_2, \
-    REF_TECHNOLOGY, REF_RADIO_BAND, REF_RADIO_FREQUENCY, Baseline,User_Customer
+    REF_TECHNOLOGY, REF_RADIO_BAND, REF_RADIO_FREQUENCY, Baseline, User_Customer, Supply_Chain_Flow
 
 from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
 from BoMConfig.views.landing import Unlock, Default
@@ -116,7 +116,13 @@ def Search(oRequest, advanced=False):
 
             if 'customer' in oRequest.POST and oRequest.POST['customer'] != '':
                 aHeaders = aHeaders.filter(
-                    customer_unit__name=oRequest.POST['customer'])
+                    customer_unit=oRequest.POST['customer'])
+            # end if
+
+  # S - 11564: Search - Basic & Advanced adjustments - Added below block to filter based on CName in basic search
+            if 'cuname' in oRequest.POST and oRequest.POST['cuname'] != '':
+                aHeaders = aHeaders.filter(
+                    customer_name=oRequest.POST['cuname'])
             # end if
 
             if 'status' in oRequest.POST and oRequest.POST['status'] != '':
@@ -143,20 +149,25 @@ def Search(oRequest, advanced=False):
                     '<th style="width:175px;">Person Responsible</th>'
                     '<th style="width:175px;">BoM Request Type</th>'
                     '<th style="width:175px;">Customer Unit</th>'
+                    '<th style="width:175px;">Customer Name</th>'  # S-11564: Search - Basic & Advanced adjustments - Added to show the CName column in basic search resultset
                     '<th style="width:175px;">Status</th>'
-                    '<th>Readiness Complete</th></tr></thead><tbody>')
+                    # '<th>Readiness Complete</th>'   # S-12372- remove readiness complete in search/avd search page -commented out mentioned field to remove the field in Basic search reslut set
+                    '</tr></thead><tbody>')
                 for header in aHeaders:
                     if header.customer_unit in aAvailableCU:  # added for S-06169 Search and Adv. Search restrict view to CU
                        if header.baseline.isdeleted != 1:
+        # S-11564: Search - Basic & Advanced adjustments - modified <td></td> to show cuname in list view
                             results.write(
                         ('<tr><td><input class="recordselect" type="checkbox" '
-                         'value="{8}"/></td><td><a href="?link={0}">{1}</a>'
+                         'value="{9}"/></td><td><a href="?link={0}">{1}</a>'
                          '</td><td><a href="?link={0}&readonly=1" '
                          'target="_blank"><span class="glyphicon '
                          'glyphicon-new-window" title="Open in new window">'
                          '</span></a></td><td>{2}</td><td>{10}</td><td>{3}</td>'
                          '<td>{4}</td><td>{5}</td><td>{6}</td><td>{7}</td>'
-                         '<td>{9}</td></tr>'
+                         '<td>{8}</td>'
+                         # '<td>{10}</td>'  # S-12372- remove readiness complete in search/avd search page -commented out mentioned <td>to remove the field in Basic search reslut set and set {11} to {10}in line 166
+                         '</tr>'
                          ).format(
                             searchscramble(header.pk),
                             header.configuration_designation,
@@ -165,9 +176,10 @@ def Search(oRequest, advanced=False):
                             header.person_responsible,
                             header.bom_request_type.name,
                             header.customer_unit.name,
+                            header.customer_name,  # S-11564: Search - Basic & Advanced adjustments - Added to show the CName column in basic search resultset
                             header.configuration_status.name,
                             header.pk,
-                            header.readiness_complete or 0,
+                            # header.readiness_complete or 0, # S-12372- remove readiness complete in search/avd search page -commented out mentioned field to remove the field in Basic search reslut set
                             header.baseline.title if header.baseline else
                             '(Not Baselined)'
                         )
@@ -245,9 +257,19 @@ def Search(oRequest, advanced=False):
             if 'customer' in oRequest.POST and oRequest.POST['customer'] != '':
                 if oRequest.POST['customer'] != 'n/a':
                     aConfigLines = aConfigLines.filter(
-                        config__header__customer_unit__name=oRequest.POST[
+                        config__header__customer_unit=oRequest.POST[
                             'customer']
                     )
+
+ # S - 11564: Search - Basic & Advanced adjustments - Added below block to filter based on CName in advanced search
+            if 'cuname' in oRequest.POST and oRequest.POST['cuname'] != '':
+                if oRequest.POST['cuname'] != 'n/a':
+                    aConfigLines = aConfigLines.filter(
+                        config__header__customer_name=oRequest.POST[
+                            'cuname']
+                    )
+            sTableHeader += '<th style="width:175px;">Customer Name</th>'
+            aLineFilter.append('config.header.customer_name')
 
             if 'person' in oRequest.POST and oRequest.POST['person'] != '':
                 aConfigLines = aConfigLines.filter(
@@ -409,10 +431,23 @@ def Search(oRequest, advanced=False):
                     ).replace(' ', '\W').replace('?', '.').replace('*', '.*') +
                     "$"
                 )
-                sTempHeaderLine += ('<th style="width:175px;">Product Number'
-                                    '</th><th style="width:175px;">SPUD</th>')
+ # S-13694-Additional Columns on Search/Advanced results display: Added 5 column below SPUD as per requirements
+                sTempHeaderLine += ('<th style="width:195px;">Product Number</th>'
+                                    '<th style="width:195px;">SPUD</th>'
+                                    '<th style="width:195px;">Portfolio Code</th>'
+                                    '<th style="width:195px;cellspacing:10px;">Customer Name<p></p></th>'
+                                    '<th style="width:195px;">Program</th>'
+                                    '<th style="width:195px;">Value Contract</th>'
+                                    '<th style="width:195px;">Supply Chain Flow/Segment</th>')
+
                 aTempFilters.append('part.base.product_number')
                 aTempFilters.append('spud')
+                # S-13694-Additional Columns on Search/Advanced results display: Fetched 5 columndata below SPUD as per requirements
+                aTempFilters.append('current_portfolio_code')
+                aTempFilters.append('config.header.customer_name')
+                aTempFilters.append('config.header.program')
+                aTempFilters.append('config.header.ericsson_contract')
+                aTempFilters.append('config.header.supply_chain_flow')
                 bRemoveDuplicates = False
 
             if 'context_id' in oRequest.POST and \

@@ -6,13 +6,13 @@
         <div id="hintBox"></div>
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
-                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
+                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown" >Customer <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for customer in customer_list %}
 <!--D-04023-Customer filter on Actions issue for Admin users :- Added below to check if the CU is not 'All' then the href will have the customer ID to
  redirect to the respective inprocess customer page else if it is 'All' then it will stay in the same page(url ending with #)-->
                       {% if customer != 'All' %}
-                        <li><a  href="{% url 'bomconfig:action_inprocess_customer' customer.id %}" onclick="cust_filter('{{ customer }}');">{{ customer }}</a></li>
+                        <li><a  href="{% url 'bomconfig:action_inprocess_customer' customer.id %}" value="customer.id" onclick="cust_filter('{{ customer }}');">{{ customer }}</a></li>
                       {% else %}
                         <li><a  href="#" onclick="cust_filter('{{ customer }}');">{{ customer }}</a></li>
                       {% endif %}
@@ -20,6 +20,16 @@
                 </ul>
             </li>
         </ul>
+<!--S-12405:Actions & Approvals adjustments - Added below block for the customer name filter-->
+       <ul class="btn" style="border: none; padding: 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="cname_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown" >Customer Name<span class="caret"></span></button>
+                <ul class="dropdown-menu">
+                    <option value="">-------</option>
+                </ul>
+            </li>
+        </ul>
+
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
         <!--S-11553: Actions tab changes : Changed Baseline to Catalog in Filter Button-->
@@ -52,7 +62,7 @@
                 <div><br/></div>
                 <table id="in_process_records">
                     <thead>
-                        <tr class="{% for cust in customer_list %}{{ cust|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
+                        <tr class="{% for cust in customer_list %}{{ cust|replace:"& _"|replacewhitespace:"-_" }} {% endfor %} ">
                             <th></th><th style="width:15px;"></th>
                             <th>Configuration Designation</th><th style="width:25px;"></th>
                             <th>Program</th><th style="width:25px;"></th>
@@ -91,7 +101,7 @@
                                     {% for level in approval_seq|slice:"1:" %}
                             <td class="approval"><div data-id="{{ tracker.id }}" data-level="{{ level }}">
                             {% with level|add:'_approver' as approver%}
-                            {% with level|add:'_approved_on' as approvedate%}
+                            {% with level|add:'_approved_on' as approvedate %}
                             {% with level|add:'_denied_approval' as disapprovedate%}
                             {% if tracker|getattr:disapprovedate %}
                             <span class="glyphicon glyphicon-remove" style="color:#DD0000;"></span>
@@ -154,6 +164,8 @@
             </style>
             <script>
                 var approval_url = "{% url 'bomconfig:approve_info' %}";
+                var listreactfill_url = "{% url 'bomconfig:list_react_fill' %}";
+
             </script>
             {% else %}
                 <h5>NO IN-PROCESS RECORDS</h5>

@@ -27,7 +27,15 @@
             <select id="customer" name="customer">
                 <option value="">-------</option>
                 {% for cust in cust_list %}
-                <option value="{{ cust.name }}">{{ cust.name }}</option>
+                <option value="{{ cust.id }}">{{ cust.name }}</option>
+                {% endfor %}
+            </select>
+        <!--S-11564: Search - Basic & Advanced adjustments- Added below block to add CName field-->
+            <label for="cuname" >Customer Name</label>
+            <select id="cuname" name="cuname">
+                <option value="">-------</option>
+                {% for cname in cnamelist %}
+                <option value="{{ cname.name }}">{{ cname.name }}</option>
                 {% endfor %}
             </select>
             <label for="status">Configuration/Ordering Status</label>
@@ -93,17 +101,28 @@
 </div>
 <link type="text/css" rel="stylesheet" href="{% static 'BoMConfig/DataTables/datatables.min.css' %}"/>
 <script type="text/javascript" src="{% static 'BoMConfig/DataTables/datatables.min.js' %}"></script>
+<script type="text/javascript" src="{% static 'BoMConfig/jQuery/jquery-ui.min.js' %}"></script>
+<!--<script type="text/javascript" src="{% static 'BoMConfig/js/config_header.js' %}"></script>-->
 <script>
     $('a.headtitle:contains("Search")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
     $('button[value="basic"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
     var xhr;
+ <!--S-11564: Search - Basic & Advanced adjustments- Added below line to add declare the URL link for fetching Cust name-->
+    var listreactfillurl = '{% url 'bomconfig:list_react_fill' %}';
     $(document).ready(function(){
         $('#status option[value="active"]').attr("selected",true);
+        $(window).load(function () {
+        <!--S-11564: Search - Basic & Advanced adjustments- Added below block to call the URL on CU selection for CName field data-->
+            $('#customer').change(function(){
+                list_react_filler('customer_unit', 'customer_name');
+            });
+        });
+
         $('#search_button').click(function(){
            $('#search_form').submit();
         });
 
-        $('#config, #person, #request, #status, #customer').keydown(function(e){
+        $('#config, #person, #request, #status, #customer, #cuname').keydown(function(e){
            if (e.keyCode == 13){
                $('#search_form').submit();
            }
@@ -242,7 +261,7 @@
                     ]
                 });
     });
-
+  <!--S-11564: Search - Basic & Advanced adjustments- Added cuname in the data list to send the selected cunme value for search to function -->
     function search(eventObj){
         $('#myModal').modal('show');
         xhr = $.ajax({
@@ -254,7 +273,8 @@
                 person: $('#person').val(),
                 customer: $('#customer').val(),
                 request: $('#request').val(),
-                status: $('#status').val()
+                status: $('#status').val(),
+                cuname: $('#cuname').val()
             },
             headers:{
                 'X-CSRFToken': getcookie('csrftoken'),
@@ -295,6 +315,51 @@
         } else {
             window.location.href = link.dataset.href;
         }
+    }
+
+ <!--S-11564: Search - Basic & Advanced adjustments- Added below block to populate  CName field data based on CU selection-->
+    function list_react_filler(parent, child, index){
+            index = typeof(index) !== 'undefined' ? index : 0;
+
+            if(parent == 'customer_unit'){
+                $.ajax({
+                    url: listreactfillurl,
+                    dataType: "json",
+                    type: "POST",
+                    data: {
+                        parent: parent,
+                        id:  $('#customer').val(),
+                        child: child,
+                        name:'',
+                        sold_to:'',
+                        contract_number: ''
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+
+                        var $child = $('#cuname');
+                         $child.find('option:gt(' + index + ')').remove();
+
+                        if(child == 'customer_name'){
+                          for (var key in data){
+                            if(data.hasOwnProperty(key)){
+                                $child.append($('<option>',{value:key,text:data[key]}));
+                            }
+                          }
+                        }
+                     },
+                    error: function(){
+                        var $child = $('#cuname');
+                        $child.find('option:gt(' + index + ')').remove();
+                    }
+                });
+            }
+           else {
+                var $child = $('#cuname');
+                $child.find('option:gt(' + index + ')').remove();
+            }
     }
 </script>
 <style>
