@@ -53,7 +53,11 @@
          var customerval =  $('#customer').val();
 
    <!--S-08487: Customer upload changes :- Added below condition to show the file type based on CU i.e IM report only if Sprint,T-Mobile or MTW -->
-            if(document.getElementById('customer').value == '3' || document.getElementById('customer').value == '4' || document.getElementById('customer').value == '9' || document.getElementById('customer').value == '6' || document.getElementById('customer').value == '12'){
+     <!--S-11567- For Customer Upload customization added customer ECSO and RBMA(6,12)-->
+  <!--S-12377- For Customer Upload customization added customer Verizon(2)-->
+            if(document.getElementById('customer').value == '3' || document.getElementById('customer').value == '4' ||
+            document.getElementById('customer').value == '9' || document.getElementById('customer').value == '6' ||
+            document.getElementById('customer').value == '12' || document.getElementById('customer').value == '2'){
                 file_type[1].style.display = "none";
             }else{
                 file_type[1].style.display = "block";
