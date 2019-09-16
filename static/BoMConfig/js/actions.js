@@ -128,8 +128,9 @@ function populateCatalogonCname(cname,index){
     $.ajax({
             url: action_customername_baseline_url,
             type: "POST",
+            dataType: "json",
             data: {
-                data: cname,
+                custname: cname,
                 page: pagename
             },
             headers:{

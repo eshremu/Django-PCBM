@@ -151,7 +151,8 @@ def Search(oRequest, advanced=False):
                     '<th style="width:175px;">Customer Unit</th>'
                     '<th style="width:175px;">Customer Name</th>'  # S-11564: Search - Basic & Advanced adjustments - Added to show the CName column in basic search resultset
                     '<th style="width:175px;">Status</th>'
-                    '<th>Readiness Complete</th></tr></thead><tbody>')
+                    '<th>Readiness Complete</th>'
+                    '</tr></thead><tbody>')
                 for header in aHeaders:
                     if header.customer_unit in aAvailableCU:  # added for S-06169 Search and Adv. Search restrict view to CU
                        if header.baseline.isdeleted != 1:

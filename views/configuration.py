@@ -3052,27 +3052,40 @@ def ListFill(oRequest):
     # Results are prepended with an "i" to allow client-side javascript to order
     # values as strings instead of as integers
     if oRequest.method == 'POST' and oRequest.POST:
-        iParentID = int(oRequest.POST['id'])
-        cParentClass = Header._meta.get_field(oRequest.POST['parent']).rel.to
-        oParent = cParentClass.objects.get(pk=iParentID)
+   # S-11563: BoM Entry - Header sub - tab adjustments: Added below block to prepare data for the program & catalog dependent on CNAME on react req search
+        if oRequest.POST['child'] == 'program' or oRequest.POST['child'] == 'baseline_impacted':
+            oParent = oRequest.POST['id']
+        else:
+            iParentID = int(oRequest.POST['id'])
+            cParentClass = Header._meta.get_field(oRequest.POST['parent']).rel.to
+            oParent = cParentClass.objects.get(pk=iParentID)
+
         # S-06756 : Restricting BOM entry based on logged in user's CU:-- Added below & else block to restrict Person_responsible dropdown based on selected CU
         userculist = []
         userculist = User_Customer.objects.filter(customer_name=oParent)
         ausers = []
         ausers = userculist.values_list('user_id')
+
+# S-11563: BoM Entry - Header sub - tab adjustments: Separated program & product area 2 from similar block since program is now dependent on CNAME on react req search
+        if oRequest.POST['child'] == 'program':
+            cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
+            result = OrderedDict(
+                [('i' + str(obj.id), obj.name) for obj in
+                 cChildClass.objects.filter(customer_name=oParent).order_by('name').exclude(is_inactive=1)]
+            )
         # added for S-05907 Edit drop down option for BoM Entry Header -  Product Area 2(exclude deleted prodarea2)
-        if oRequest.POST['child'] == 'program' or oRequest.POST['child'] == 'product_area2' :
+        elif oRequest.POST['child'] == 'product_area2' :
             cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
             result = OrderedDict(
                 [('i' + str(obj.id), obj.name) for obj in
                  cChildClass.objects.filter(parent=oParent).order_by('name').exclude(is_inactive=1)]
             )
-
+    # S-11563: BoM Entry - Header sub - tab adjustments: Changed the filter condition from customer to customer_name since catalog is dependent on CNAME now
         elif oRequest.POST['child'] == 'baseline_impacted':
             cChildClass = Baseline
             result = OrderedDict(
                 [('i' + obj.title, obj.title) for obj in
-                 cChildClass.objects.filter(customer=oParent).order_by('title').exclude(isdeleted=1)]
+                 cChildClass.objects.filter(customer_name=oParent).order_by('title').exclude(isdeleted=1)]
             )
         else:
             cChildClass = User

@@ -247,7 +247,7 @@ function list_react_filler(parent, child, index){
             }
     }
 
-function search(eventObj){//alert($('#customer').val()+"--+----"+$('select#supply_chain_flow').val())
+function search(eventObj){
     var selectednumbers = [];
     if( $('#supply_chain_flow :selected').length > 0){
         //build an array of selected values
@@ -269,7 +269,7 @@ function search(eventObj){//alert($('#customer').val()+"--+----"+$('select#suppl
             selectedportcode[i] = $(selected).val();
         });
     }
-//alert(JSON.stringify(selectedcontnumbers))
+
     $('#myModal').modal('show');
     xhr = $.ajax({
         url: searchurl,

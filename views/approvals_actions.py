@@ -111,10 +111,9 @@ def Approval(oRequest):
             aAvailableCU.append(aFilteredCU)
 
     # customer = REF_CUSTOMER.objects.filter(id=iCustId)
-    # print('cust', customer)
     cParentClass = Header._meta.get_field('customer_unit').rel.to
     oParent = cParentClass.objects.get(pk=oCan.customer_id)
-    # print('custid', iCustId)
+
     oCursor = connections['REACT'].cursor()
     oCursor.execute(
         'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
@@ -198,7 +197,7 @@ def ApprovalHold(oRequest):
 
     cParentClass = Header._meta.get_field('customer_unit').rel.to
     oParent = cParentClass.objects.get(pk=oCan.customer_id)
-    # print('custid', iCustId)
+
     oCursor = connections['REACT'].cursor()
     oCursor.execute(
         'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
@@ -286,7 +285,6 @@ def ApprovalCustomerCustomerName(oRequest):
     result = OrderedDict(
         [(obj, obj) for obj in chain.from_iterable(tResults)]
     )
-    # print('ppp',result)
 
     # Unlock any record previously held
     if 'existing' in oRequest.session:
@@ -397,12 +395,10 @@ def ActionCustomerNameBaseline(oRequest):
        :return: HTML response via Default function
        """
 
-    customername = oRequest.POST['data']
+    customername = oRequest.POST['custname']
     pagename = oRequest.POST['page']
-    print('tttt',customername,'---')
-    print('tttt',pagename,'---')
 
-    # # S-067172 :Actions -Restrict view to logged in users CU:- Added to get the logged in user's CU list
+    # S-067172 :Actions -Restrict view to logged in users CU:- Added to get the logged in user's CU list
 
     # Unlock any record previously held
     if 'existing' in oRequest.session:
@@ -417,15 +413,13 @@ def ActionCustomerNameBaseline(oRequest):
 
     if oRequest.method == 'POST' and oRequest.POST:
         if pagename == 'actions':                   # in actions_in process page
-            print('000')
             baseline = OrderedDict(
                 [(str(obj.baseline), str(obj.baseline)) if
                          obj.baseline.title != 'No Associated Baseline' else
                          "(Not baselined)" for obj in Header.objects.filter(
-                            configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
-                            customer_name=customername)]
+                            configuration_status__name='In Process').filter(
+                            customer_name=customername).filter(baseline__isdeleted=0)]
             )
-            print(baseline)
         elif pagename == 'actions_active':              # in actions hold page
             baseline = OrderedDict(
                 [(str(obj.baseline), str(obj.baseline)) if
@@ -468,7 +462,7 @@ def ActiveCustomer(oRequest, iCustId=''):
 
     cParentClass = Header._meta.get_field('customer_unit').rel.to
     oParent = cParentClass.objects.get(pk=iCustId)
-    print('custid', iCustId)
+
     oCursor = connections['REACT'].cursor()
     oCursor.execute(
         'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
@@ -480,7 +474,6 @@ def ActiveCustomer(oRequest, iCustId=''):
     result = OrderedDict(
         [(obj, obj) for obj in chain.from_iterable(tResults)]
     )
-    # print('revvv',result)
 
     # Unlock any record previously held
     if 'existing' in oRequest.session:
