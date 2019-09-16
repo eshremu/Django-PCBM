@@ -151,7 +151,7 @@ def Search(oRequest, advanced=False):
                     '<th style="width:175px;">Customer Unit</th>'
                     '<th style="width:175px;">Customer Name</th>'  # S-11564: Search - Basic & Advanced adjustments - Added to show the CName column in basic search resultset
                     '<th style="width:175px;">Status</th>'
-                    '<th>Readiness Complete</th>'
+                    # '<th>Readiness Complete</th>'   # S-12372- remove readiness complete in search/avd search page -commented out mentioned field to remove the field in Basic search reslut set
                     '</tr></thead><tbody>')
                 for header in aHeaders:
                     if header.customer_unit in aAvailableCU:  # added for S-06169 Search and Adv. Search restrict view to CU
@@ -163,9 +163,11 @@ def Search(oRequest, advanced=False):
                          '</td><td><a href="?link={0}&readonly=1" '
                          'target="_blank"><span class="glyphicon '
                          'glyphicon-new-window" title="Open in new window">'
-                         '</span></a></td><td>{2}</td><td>{11}</td><td>{3}</td>'
+                         '</span></a></td><td>{2}</td><td>{10}</td><td>{3}</td>'
                          '<td>{4}</td><td>{5}</td><td>{6}</td><td>{7}</td>'
-                         '<td>{8}</td><td>{10}</td></tr>'
+                         '<td>{8}</td>'
+                         # '<td>{10}</td>'  # S-12372- remove readiness complete in search/avd search page -commented out mentioned <td>to remove the field in Basic search reslut set and set {11} to {10}in line 166
+                         '</tr>'
                          ).format(
                             searchscramble(header.pk),
                             header.configuration_designation,
@@ -177,7 +179,7 @@ def Search(oRequest, advanced=False):
                             header.customer_name,  # S-11564: Search - Basic & Advanced adjustments - Added to show the CName column in basic search resultset
                             header.configuration_status.name,
                             header.pk,
-                            header.readiness_complete or 0,
+                            # header.readiness_complete or 0, # S-12372- remove readiness complete in search/avd search page -commented out mentioned field to remove the field in Basic search reslut set
                             header.baseline.title if header.baseline else
                             '(Not Baselined)'
                         )
