@@ -1325,7 +1325,8 @@ def HeaderComparison(oHead, oPrev):
     # D-07090: Changes showed in revisions tab and downloaded baseline file not in sequential order :- Added sorted before sTemp.split('\n')[:-1] to sort the lines sequentially.
     # D-06135: Error during bulk approval :- Commented out the below line as it was getting stuck at this line while releasing baseline
     # Have done thorough testing and found no change in behaviour after commenting out the below line
-    # aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])
+    # D-07618: Revision ordering incorrect :-Uncommented below line of code after lot of testing .
+    aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])
     return '\n'.join(aLines)
 # end def
 
