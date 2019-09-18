@@ -36,7 +36,7 @@
 <!-- D-04023-Customer filter on Actions issue for Admin users :- Added below to check if the CU is not 'All' then the href will have the customer ID to
  redirect to the respective inprocess customer page else if it is 'All' then it will redirect to the inprocess page-->
                       {% if customername != 'All' %}
-                          <li><a  onclick="custname_filter('{{ customername }}');">{{ customername }} </a></li>
+                          <li><a  onclick="custname_filter('{{ customername }}');">{{ customername }}</a></li>
                       {% else %}
                         <li><a  href="{% url 'bomconfig:action_active' %}" onclick="custname_filter('{{ customername }}');">{{ customername }}</a></li>
                       {% endif %}
@@ -47,13 +47,13 @@
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
                 <!--S-11553: Actions tab changes : Changed Baseline to Catalog when we select All-->
-  <!-- S-12405: Actions & Approvals adjustments - Commented the UL tag below-->
+                <!-- S-12405: Actions & Approvals adjustments - Commented the UL tag below-->
                 <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Catalog <span class="caret"></span></button>
-                <!--<ul class="dropdown-menu">-->
-                    <!--{% for baseline in baselines %}-->
-                    <!--<li><a href="#" onclick="base_filter('{{ baseline }}');">{{ baseline }}</a></li>-->
-                    <!--{% endfor %}-->
-                <!--</ul>-->
+                <ul id="catfilterdropdown" class="dropdown-menu">
+                        {% for baseline in baselines %}
+                            <li><a href="#" onclick="catalog_filter('{{ baseline }}')">{{ baseline }}</a></li>
+                        {% endfor %}
+                </ul>
             </li>
         </ul>
         <ul class="btn" style="border: none; padding: 0;">

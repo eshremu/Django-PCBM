@@ -537,11 +537,25 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                         parent=(headerForm.cleaned_data['product_area1'] if
                                 headerForm.cleaned_data.get('product_area1',
                                                             None) else None))
-                headerForm.fields['program'].queryset = \
-                    REF_PROGRAM.objects.filter(
-                        parent=(headerForm.cleaned_data['customer_unit'] if
-                                headerForm.cleaned_data.get('customer_unit',
-                                                            None) else None))
+
+# S-11563: BoM Entry - Header sub-tab adjustments - Added below if condition to return the program queryset dependent on Tier 1 CUs \
+# after saving and else condition to return the program queryset dependent on Cnames(Tier 2,3 CUs) after saving
+                if str(headerForm.cleaned_data['customer_unit']) == 'AT&T' or str(headerForm.cleaned_data['customer_unit']) == 'Sprint' \
+                        or str(headerForm.cleaned_data['customer_unit']) == 'T-Mobile' or str(headerForm.cleaned_data['customer_unit']) == 'Verizon':
+                    headerForm.fields['program'].queryset = \
+                        REF_PROGRAM.objects.filter(
+                            parent=(headerForm.cleaned_data['customer_unit'] if
+                                    headerForm.cleaned_data.get('customer_unit',
+                                                                None) else None)).exclude(is_inactive=1)
+                else:
+                    headerForm.fields['program'].queryset = \
+                        REF_PROGRAM.objects.filter(
+                            parent=(headerForm.cleaned_data['customer_unit'] if
+                                    headerForm.cleaned_data.get('customer_unit',
+                                                                None) else None)).filter(
+                            customer_name=(headerForm.cleaned_data['customer_name'] if
+                                    headerForm.cleaned_data.get('customer_name',
+                                                                None) else None)).exclude(is_inactive=1)
             else:
                 # If this is just to view the header, pre-populate the header
                 # form
@@ -552,9 +566,29 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 headerForm.fields['product_area2'].queryset = \
                     REF_PRODUCT_AREA_2.objects.filter(
                         parent=(oExisting.product_area1 if oExisting else None))
-                headerForm.fields['program'].queryset = \
-                    REF_PROGRAM.objects.filter(
-                        parent=(oExisting.customer_unit if oExisting else None))
+
+                # S-11563: BoM Entry - Header sub-tab adjustments - Added below if condition to return the program queryset dependent on Tier 1 CUs \
+                # after saving and else condition to return the program queryset dependent on Cnames(Tier 2,3 CUs) after saving
+
+                # if existing config is opened or page is loaded after save, if CU selected is tier-1 then program will get populated based on selected CU
+                # else program will get populated based on selected CName
+                if oExisting:
+                    if str(oExisting.customer_unit) == 'AT&T' or \
+                       str(oExisting.customer_unit) == 'Sprint' or \
+                       str(oExisting.customer_unit) == 'T-Mobile' or \
+                       str(oExisting.customer_unit) == 'Verizon':
+
+                        headerForm.fields['program'].queryset = \
+                            REF_PROGRAM.objects.filter(
+                                parent=(oExisting.customer_unit if oExisting else None))
+                    else:
+                        headerForm.fields['program'].queryset = \
+                            REF_PROGRAM.objects.filter(
+                                customer_name=(oExisting.customer_name if oExisting else None))
+                else:                    # called when page is loaded freshly
+                    headerForm.fields['program'].queryset = \
+                        REF_PROGRAM.objects.filter(
+                            parent=(oExisting.customer_unit if oExisting else None))
             # end if
         except LockException:
             # If the Header is locked, show the user an error message
@@ -595,18 +629,55 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             # filter using the completed_date, to ensure we only allow baselines
             # that have an in-process configuration to be selected.
             # S - 11552: Baseline tab changes: changed choices for new baseline to catalog
-            headerForm.fields['baseline_impacted'].widget = \
-                forms.widgets.Select(
-                    choices=(('', '---------'),
-                             ('New', 'Create New catalog')) + tuple(
-                        (obj.title, obj.title) for obj in
-                        Baseline_Revision.objects.filter(
-                            baseline__customer=oExisting.customer_unit if
-                            oExisting else None).filter(
-                            completed_date=None).exclude(
-                            baseline__title='No Associated Baseline').exclude(baseline__isdeleted=1).order_by(
-                            'baseline__title'))
-                )
+
+            # S-11563: BoM Entry - Header sub-tab adjustments - Added below if condition to return the catalog queryset dependent on Tier 1 CUs \
+            # after saving and else condition to return the catalog queryset dependent on Cnames(Tier 2,3 CUs) after saving
+
+            # if existing config is opened or page is loaded after save, if CU selected is tier-1 then catalog will get populated based on selected CU
+            # else catalog will get populated based on selected CName
+            if oExisting:
+                if str(oExisting.customer_unit) == 'AT&T' or str(oExisting.customer_unit) == 'Verizon' or \
+                    str(oExisting.customer_unit) == 'Sprint' or str(oExisting.customer_unit) == 'T-Mobile' :
+                        headerForm.fields['baseline_impacted'].widget = \
+                            forms.widgets.Select(
+                                choices=(('', '---------'),
+                                         ('New', 'Create New catalog')) + tuple(
+                                    (obj.title, obj.title) for obj in
+                                    Baseline_Revision.objects.filter(
+                                        baseline__customer=oExisting.customer_unit if
+                                        oExisting else None).filter(
+                                        completed_date=None).exclude(
+                                        baseline__title='No Associated Baseline').exclude(baseline__isdeleted=1).order_by(
+                                        'baseline__title'))
+                            )
+                else:
+                    headerForm.fields['baseline_impacted'].widget = \
+                        forms.widgets.Select(
+                            choices=(('', '---------'),
+                                     ('New', 'Create New catalog')) + tuple(
+                                (obj.title, obj.title) for obj in
+                                Baseline_Revision.objects.filter(
+                                    baseline__customer=oExisting.customer_unit if
+                                    oExisting else None).filter(
+                                    baseline__customer_name=oExisting.customer_name if
+                                    oExisting else None).filter(
+                                    completed_date=None).exclude(
+                                    baseline__title='No Associated Baseline').exclude(baseline__isdeleted=1).order_by(
+                                    'baseline__title'))
+                        )
+            else:                   # called when page is loaded freshly
+                headerForm.fields['baseline_impacted'].widget = \
+                    forms.widgets.Select(
+                        choices=(('', '---------'),
+                                 ('New', 'Create New catalog')) + tuple(
+                            (obj.title, obj.title) for obj in
+                            Baseline_Revision.objects.filter(
+                                baseline__customer=oExisting.customer_unit if
+                                oExisting else None).filter(
+                                completed_date=None).exclude(
+                                baseline__title='No Associated Baseline').exclude(baseline__isdeleted=1).order_by(
+                                'baseline__title'))
+                    )
 
             oCursor = connections['REACT'].cursor()
             oCursor.execute(
@@ -770,7 +841,6 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 
         return Default(oRequest, sTemplate, dContext)
 # end def
-
 
 @login_required
 def AddConfig(oRequest):
@@ -3053,7 +3123,7 @@ def ListFill(oRequest):
     # values as strings instead of as integers
     if oRequest.method == 'POST' and oRequest.POST:
    # S-11563: BoM Entry - Header sub - tab adjustments: Added below block to prepare data for the program & catalog dependent on CNAME on react req search
-        if oRequest.POST['child'] == 'program' or oRequest.POST['child'] == 'baseline_impacted':
+        if oRequest.POST['parent'] == 'customer_name' and (oRequest.POST['child'] == 'program' or oRequest.POST['child'] == 'baseline_impacted'):
             oParent = oRequest.POST['id']
         else:
             iParentID = int(oRequest.POST['id'])
@@ -3066,13 +3136,21 @@ def ListFill(oRequest):
         ausers = []
         ausers = userculist.values_list('user_id')
 
-# S-11563: BoM Entry - Header sub - tab adjustments: Separated program & product area 2 from similar block since program is now dependent on CNAME on react req search
+# S-11563: BoM Entry - Header sub - tab adjustments: Separated program & product area 2 from similar block since program is now dependent on CNAME(Tier-2,3) & on CU(Tier-1) on react req search
         if oRequest.POST['child'] == 'program':
-            cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
-            result = OrderedDict(
-                [('i' + str(obj.id), obj.name) for obj in
-                 cChildClass.objects.filter(customer_name=oParent).order_by('name').exclude(is_inactive=1)]
-            )
+            if oRequest.POST['parent'] == 'customer_name':              # Called when dependent on CNAME(Tier 2,3 CUs)
+                # oParent = oRequest.POST['id']
+                cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
+                result = OrderedDict(
+                    [('i' + str(obj.id), obj.name) for obj in
+                     cChildClass.objects.filter(customer_name=oParent).order_by('name').exclude(is_inactive=1)]
+                )
+            else:                                                       # Called when dependent on CU(Tier 1 CUs)
+                cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
+                result = OrderedDict(
+                    [('i' + str(obj.id), obj.name) for obj in
+                     cChildClass.objects.filter(parent=oParent).order_by('name').exclude(is_inactive=1)]
+                )
         # added for S-05907 Edit drop down option for BoM Entry Header -  Product Area 2(exclude deleted prodarea2)
         elif oRequest.POST['child'] == 'product_area2' :
             cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
@@ -3080,13 +3158,21 @@ def ListFill(oRequest):
                 [('i' + str(obj.id), obj.name) for obj in
                  cChildClass.objects.filter(parent=oParent).order_by('name').exclude(is_inactive=1)]
             )
-    # S-11563: BoM Entry - Header sub - tab adjustments: Changed the filter condition from customer to customer_name since catalog is dependent on CNAME now
+    # S-11563: BoM Entry - Header sub - tab adjustments: Changed the filter condition from customer to customer_name since catalog is dependent on CNAME(Tier-2,3) & on CU(Tier-1) now
         elif oRequest.POST['child'] == 'baseline_impacted':
-            cChildClass = Baseline
-            result = OrderedDict(
-                [('i' + obj.title, obj.title) for obj in
-                 cChildClass.objects.filter(customer_name=oParent).order_by('title').exclude(isdeleted=1)]
-            )
+            if oRequest.POST['parent'] == 'customer_name':                       # Called when dependent on CNAME(Tier 2,3 CUs)
+                # oParent = oRequest.POST['id']
+                cChildClass = Baseline
+                result = OrderedDict(
+                    [('i' + obj.title, obj.title) for obj in
+                     cChildClass.objects.filter(customer_name=oParent).order_by('title').exclude(isdeleted=1)]
+                )
+            else:                                                                # Called when dependent on CU(Tier 1 CUs)
+                cChildClass = Baseline
+                result = OrderedDict(
+                    [('i' + obj.title, obj.title) for obj in
+                     cChildClass.objects.filter(customer=oParent).order_by('title').exclude(isdeleted=1)]
+                )
         else:
             cChildClass = User
             result = OrderedDict(
@@ -3100,7 +3186,6 @@ def ListFill(oRequest):
         raise Http404
     # end if
 # end def
-
 
 def ListREACTFill(oRequest):
     """

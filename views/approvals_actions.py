@@ -102,7 +102,7 @@ def Approval(oRequest):
     :param oRequest: Django request object
     :return: HTML response via Default function
     """
-    # S-067173 :Approvals -Resctrict view to logged in users CU:- Added to get the logged in user's CU list
+    # S-067173 :Approvals -Restrict view to logged in users CU:- Added to get the logged in user's CU list
     aFilteredUser = User_Customer.objects.filter(user_id=oRequest.user.id)
     aAvailableCU = []
     for oCan in aFilteredUser:
@@ -179,6 +179,7 @@ def Approval(oRequest):
     return Default(oRequest, sTemplate='BoMConfig/approvals.html',
                    dContext=dContext)
 # end def
+
 # S-08947: Add filter functionality to show only on hold records and  S-08477: Add button for On hold filter /
 #  added below function
 @login_required
@@ -304,8 +305,6 @@ def ApprovalCustomerCustomerName(oRequest):
         raise Http404
 # end def
 
-
-
 # D-04023-Customer filter on Actions issue for Admin users :- Added ActionCustomer to populate baseline dropdown based on selected CU
 @login_required
 def ActionCustomer(oRequest, iCustId=''):
@@ -351,13 +350,26 @@ def ActionCustomer(oRequest, iCustId=''):
         del oRequest.session['existing']
     # end if
 
+    # S-12405: Actions & Approvals adjustments - Added below if else condition since the catalog filter will get populated based on CU
+    # if selected CU is Tier-1(AT&T,Veriozon,Sprint,T-Mobile) else will be blank initially & get populated on selection of CNAME in Actions- In Process Page
+    if iCustId == '1' or iCustId == '2' or iCustId == '3' or iCustId == '4':
+        baseline = ['All'] + sorted(list(
+            set(
+                [str(obj.baseline) if
+                 obj.baseline.title != 'No Associated Baseline' else
+                 "(Not baselined)" for obj in Header.objects.filter(
+                    configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(
+                    customer_unit=customer)])))
+    else:
+        baseline = ''
+
     # S-12405: Actions & Approvals adjustments - Added customername_list below in the dContext
     dContext = {
         'in_process': Header.objects.filter(
             configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
             customer_unit=customer),
         'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
-        'baselines': '',
+        'baselines': baseline,
         'customername_list': result,
         'custid' : iCustId,
         'active': [obj for obj in Header.objects.filter(
@@ -486,13 +498,10 @@ def ActiveCustomer(oRequest, iCustId=''):
         del oRequest.session['existing']
     # end if
 
-    dContext = {
-        'in_process': Header.objects.filter(
-            configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(
-            customer_unit=customer),
-        'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
-        'customername_list' : result,
-        'baselines': sorted(list(
+    # S-12405: Actions & Approvals adjustments - Added below if else condition since the catalog filter will get populated based on CU
+    # if selected CU is Tier-1(AT&T,Veriozon,Sprint,T-Mobile) else will be blank initially & get populated on selection of CNAME in Actions-Documents Page
+    if iCustId == '1' or iCustId == '2' or iCustId == '3' or iCustId == '4':
+        baseline = ['All'] + sorted(list(
             set(
                 [str(obj.baseline) if
                  obj.baseline.title != 'No Associated Baseline' else
@@ -502,7 +511,17 @@ def ActiveCustomer(oRequest, iCustId=''):
                  HeaderTimeTracker.approvals().index(
                      obj.latesttracker.next_approval) >
                  HeaderTimeTracker.approvals().index('acr')
-                 ]))),
+                 ])))
+    else:
+        baseline = ''
+
+    dContext = {
+        'in_process': Header.objects.filter(
+            configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(
+            customer_unit=customer),
+        'requests': ['All'] + [obj.name for obj in REF_REQUEST.objects.all()],
+        'customername_list' : result,
+        'baselines': baseline,
         'active': [obj for obj in Header.objects.filter(
             configuration_status__name='In Process/Pending', ).filter(baseline__isdeleted=0).filter(
             customer_unit=customer)

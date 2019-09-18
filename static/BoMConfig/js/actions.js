@@ -41,11 +41,14 @@ function cust_filter(customer){
 }
 
 // S-12405:Actions & Approvals adjustments - Added below block to function Baseline field filter accordingly
-function catalog_filter(){
-    if($("#basefil").val() !== "All"){
+function catalog_filter(cat){
+    if(cat){                                        // For CU dependent catalog
+         $("#baseline_filter").html(cat + "&nbsp;<span class='caret'></span>");
+    }
+    else if($("#basefil").val() !== "All"){         // For CNAME dependent catalog
         $("#baseline_filter").html($("#basefil").val() + "&nbsp;<span class='caret'></span>");
-
-    } else {
+    }
+    else {
         $('#baseline_filter').html('Catalog <span class="caret"></span>');
     }
     updateFilters();
@@ -156,13 +159,19 @@ function populateCatalogonCname(cname,index){
 
 // S-12405:Actions & Approvals adjustments - Added below block to function customer name filter accordingly
 function custname_filter(custname){
+    var customerunit = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
     if(custname !== 'All') {
         $('#cname_filter').html(custname +"<span class=\"caret\"></span>");
     } else {
         $('#cname_filter').html('Customer Name<span class="caret"></span>');
     }
     updateFilters();
-    populateCatalogonCname(custname);
+//  S-12405: Actions & Approvals adjustments - Added below if else condition since the catalog filter will get populated
+// based on selected CNAME only if selected CU is not Tier-1(AT&T,Veriozon,Sprint,T-Mobile)
+    if(customerunit != 'AT_T' && customerunit != 'Verizon' && customerunit != 'Sprint' && customerunit != 'T-Mobile'){
+         $("#catfilterdropdown").hide();
+         populateCatalogonCname(custname);
+    }
 }
 
 function updateFilters(){
@@ -277,7 +286,6 @@ function updateFiltersActive(){
         }
     }
 }
-
 
 function process(action){
     var records = [];
