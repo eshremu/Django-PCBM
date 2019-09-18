@@ -41,10 +41,13 @@
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
                 <!--S-11553: Actions tab changes : Changed Baseline to Catalog in Filter Button-->
-                <button id="baseline_filter" class="btn dropdown-toggle" type="button" >Catalog <span class="caret"></span></button>
-            <!--S-12405:Actions & Approvals adjustments - Commented & removed below block as the baseline gets populated based on customer name now-->
-                <!--<ul id="basefil" class="dropdown-menu">-->
-                <!--</ul>-->
+                <button id="baseline_filter" class="btn dropdown-toggle" type="button" >Catalog<span class="caret"></span></button>
+                <!-- S-12405:Actions & Approvals adjustments - Commented & removed below block as the baseline gets populated based on customer name now-->
+                <ul id="catfilterdropdown" class="dropdown-menu">
+                    {% for baseline in baselines %}
+                            <li><a href="#" onclick="catalog_filter('{{ baseline }}')">{{ baseline }}</a></li>
+                    {% endfor %}
+                </ul>
             </li>
         </ul>
         <ul class="btn" style="border: none; padding: 0;">
