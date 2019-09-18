@@ -358,7 +358,7 @@ def ActionCustomer(oRequest, iCustId=''):
                 [str(obj.baseline) if
                  obj.baseline.title != 'No Associated Baseline' else
                  "(Not baselined)" for obj in Header.objects.filter(
-                    configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(
+                    configuration_status__name='In Process').filter(baseline__isdeleted=0).filter(
                     customer_unit=customer)])))
     else:
         baseline = ''
