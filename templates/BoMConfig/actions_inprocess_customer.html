@@ -28,9 +28,10 @@
             <li class="dropdown" style="list-style-type: none;">
                 <button id="cname_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown" >Customer Name<span class="caret"></span></button>
                 <ul class="dropdown-menu" style="overflow:scroll; height:300px;">
+                    <li><a onclick="custname_filter('All');">All </a></li>
                     {% for customername in customername_list %}
                       {% if customername != 'All' %}
-                          <li><a  onclick="custname_filter('{{ customername }}');">{{ customername }} </a></li>
+                          <li><a onclick="custname_filter('{{ customername }}');">{{ customername }} </a></li>
                       {% else %}
                         <li><a  href="{% url 'bomconfig:action_inprocess' %}" onclick="custname_filter('{{ customername }}');">{{ customername }}</a></li>
                       {% endif %}

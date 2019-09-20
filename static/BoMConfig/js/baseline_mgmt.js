@@ -124,7 +124,6 @@ function BuildTable(){
     if (searchText != undefined) {
         table.search(searchText).draw();
     }
-
 }
 
 function downloadModal(){
@@ -241,31 +240,24 @@ function list_react_filler1(parent, child, index){
         }
 }
 
-function cust_filter0(customer){
-    if(customer !== 'All') {
-        $('tbody tr').not('.' + customer).css('display','none');
-        $('tbody tr.' + customer).css('display','');
-        $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
-    } else {
-        $('tbody tr').css('display', '');
-        $('#cu_filter').html('Customer <span class="caret"></span>');
-    }
-    list_react_filler($('#cu_filter').text());
-    table.draw();
-}
-
 //S-11565:Baseline tab - main page adjustments - Added below function to filter based on selected CNAME
 function custname_filter(){
-    var cust=$("#cu_filter").text().replace(' ','-_').replace('&','_');
-
+// D-07676: Customer Unit filter doesn't apply when removing Customer Name filter in Catalog tab :- Added trim below since, the formatting wasn't working properly
+    var cust=$("#cu_filter").text().trim().replace(' ','-_').replace('&','_');
     $('tbody tr').show();
     var rows = $('#data_table tbody tr').toArray();
 
     for (var row in rows) {
         let hide = false;
         var cuname=$("#cnamefil").val();
-        if(($("#cnamefil").val() !== "All") && !$(rows[row]).hasClass(cuname)){
+        if($("#cnamefil").val() !== "All" && $("#cnamefil").val() !== "Customer Name" &&  !$(rows[row]).hasClass(cuname)){
                 hide = true;
+        }
+
+// D-07676: Customer Unit filter doesn't apply when removing Customer Name filter in Catalog tab :- Added below condition for functioning
+// CNAME filter when CNAME is selected ALL
+        if($("#cnamefil").val() == "All" && cust !== "Customer" && !$(rows[row]).hasClass(cust)){
+                    hide = true;
         }
 
         if (hide){
@@ -274,29 +266,6 @@ function custname_filter(){
         }
     }
     table.draw();
-}
-
-function custname_filter1(){
-var cust=$("#cu_filter").text().replace(' ','-_').replace('&','_');
-
-     if($("#cnamefil").val() !== "All"){//alert($("#cnamefil").val());
-        var custname=$("#cnamefil").val().replace(/ /g,'_');
-        var custname1 = custname.replace(/\./g,'_').replace(/\-/g,'_').replace(/\&/g,'_').replace(/\,/g,'_');
-//        alert(cust+'--'+custname1)
-//        .replace('-_',' ').replace("_","&").replace(".","_");alert(custname)
-            $("#cname_filter").html($("#cnamefil").val() + "&nbsp;<span class='caret'></span>");
-//customer.replace('-_',' ').replace("_","&")
-            $('tbody tr').not('.'+custname1).css('display','none');
-            $('tbody tr.'+ custname1).css('display','');
-//        $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
-        }
-        else{
-//            $('tbody tr.'+cust).css('display', '');
-            $('tbody tr').not('.' + cust).css('display','none');
-            $('tbody tr.' + cust).css('display','');
-            $('#cname_filter').html('Customer Name<span class="caret"></span>');
-        }
-
 }
 
 function rollbackTest(){

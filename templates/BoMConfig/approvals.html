@@ -8,7 +8,7 @@
         <div id="hintBox"></div>
         <ul class="btn" style="border: none; padding: 5px 0 0 0;">
             <li class="dropdown" style="list-style-type: none;">
-                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
+                <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer<span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for customer in customer_list %}
                     <li><a onclick="cust_filter('{{ customer.id }}','{{ customer }}');">{{ customer }}</a></li>
@@ -254,7 +254,6 @@
             table#pending_approval_records td, table#pending_approval_records th{
 
             }
-
             table#pending_approval_records td.approval{
                 transform:
                     translate(25px)
@@ -391,7 +390,6 @@
                                       $('#cnamefil').append('<option style="background-color:white; border-radius:4px; " value="' + key + '">'+data[key]);
                                 }
                              }
-
                         },
                         error: function(xhr, status, error){
                             $('#myModal').modal('hide');

@@ -18,8 +18,9 @@
             {% endfor %}
         </select>
         <br/>
-        <label for="customername">Customer Name:</label>
-        <select id="customername" name="customername" required>
+        <!--  S-12407: Customer Audit - Upload adjustments :- Added below field for Customer name selection-->
+        <label id="customernamelabel" for="customername" style="display:none;">Customer Name:</label>
+        <select id="customername" name="customername" style="display:none;">
             <option value="">------</option>
             <!--{% for custname in customername_list %}-->
             <!--<option value="{{ custname.name }}">{{ custname.name }}</option>-->
@@ -51,6 +52,15 @@
    <!--S-08946:-  Add USCC SAP (MTW as of now) download format to upload for validation -- Added below to show the file type option for MTW CU-->
          $('#customer').change(function(){
          var customerval =  $('#customer').val();
+         <!--  S-12407: Customer Audit - Upload adjustments :- Added below condition to hide/show based on selected CU-->
+         <!--  If not tier-1 then CNAME field will be visible else hidden -->
+            if(customerval != '1' && customerval != '2' && customerval != '3' && customerval != '4' ){
+                $("#customernamelabel").show();
+                $("#customername").show();
+            }else{
+                $("#customernamelabel").hide();
+                $("#customername").hide();
+            }
 
    <!--S-08487: Customer upload changes :- Added below condition to show the file type based on CU i.e IM report only if Sprint,T-Mobile or MTW -->
    <!--S-11567- For Customer Upload customization added customer ECSO and RBMA(6,12)-->

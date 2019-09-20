@@ -118,7 +118,6 @@ def CustomerAudit(oRequest):
         dContext['data'] = json.dumps(aData)
         dContext['selectedCust'] = oCustomer
         dContext['selectedCustName'] = oCustomerName
-        print(oCustomer,'pppp',oCustomerName)
 
     return Default(oRequest, 'BoMConfig/customer_audit.html', dContext)
 # end def
@@ -383,7 +382,6 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
    # S-12375: Upload Operations:- Added CENTURYLINK INC in the condition below with MTW to exclude the format of all the other
    #  MTW customer names from CENTURYLINK INC
     if str(oCustomer) == 'MTW' and str(oCustomerName)!= 'CENTURYLINK INC':
-        print('mtw')
         if iFileType == 2:
             sSheetName = "FAA Y Report"
             aColumns = [[1, 6, 5, 2, 4, 3]]
