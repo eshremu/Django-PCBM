@@ -211,9 +211,17 @@ def ProgramAdd(oRequest):
     """
 
     if oRequest.method == 'POST' and oRequest.POST:
+ # D - 07677: Program  Admin - CustomerName should be optional for all customers: - Added below condition to assign the cname as 'None' if
+ # no CNAME is selected in the UI
+
+        if oRequest.POST.get('cnameval'):
+            cnameval = oRequest.POST.get('cnameval')
+        else:
+            cnameval = None
+
  # S - 12408:Admin adjustments - Added for Cname in the below condition
         if not REF_PROGRAM.objects.filter(name=oRequest.POST.get('data'),parent_id=oRequest.POST.get('cuval'),customer_name=oRequest.POST.get('cnameval'),is_inactive=0):
-            oprog = REF_PROGRAM(name=oRequest.POST.get('data'), parent_id=oRequest.POST.get('cuval'), customer_name=oRequest.POST.get('cnameval'))
+            oprog = REF_PROGRAM(name=oRequest.POST.get('data'), parent_id=oRequest.POST.get('cuval'), customer_name=cnameval)
             oprog.save()
             oRequest.session['errors'] = ['Program Added successfully']
             oRequest.session['message_type_is_error'] = False

@@ -299,7 +299,6 @@ def ApprovalCustomerCustomerName(oRequest):
     # end if
 
     if oRequest.method == 'POST' and oRequest.POST:
-
         return JsonResponse(result)
     else:
         raise Http404

@@ -553,9 +553,9 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                             parent=(headerForm.cleaned_data['customer_unit'] if
                                     headerForm.cleaned_data.get('customer_unit',
                                                                 None) else None)).filter(
-                            customer_name=(headerForm.cleaned_data['customer_name'] if
+                            Q(customer_name=(headerForm.cleaned_data['customer_name'] if
                                     headerForm.cleaned_data.get('customer_name',
-                                                                None) else None)).exclude(is_inactive=1)
+                                                                None) else None))| Q(customer_name=None)).exclude(is_inactive=1)
             else:
                 # If this is just to view the header, pre-populate the header
                 # form
@@ -584,11 +584,13 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                     else:
                         headerForm.fields['program'].queryset = \
                             REF_PROGRAM.objects.filter(
-                                customer_name=(oExisting.customer_name if oExisting else None))
+                                parent=(oExisting.customer_unit if oExisting else None)).\
+                                filter(Q(customer_name=oExisting.customer_name if oExisting else None)|Q(customer_name=None)).exclude(is_inactive=1)
                 else:                    # called when page is loaded freshly
                     headerForm.fields['program'].queryset = \
                         REF_PROGRAM.objects.filter(
                             parent=(oExisting.customer_unit if oExisting else None))
+
             # end if
         except LockException:
             # If the Header is locked, show the user an error message
@@ -3130,7 +3132,7 @@ def ListFill(oRequest):
             cParentClass = Header._meta.get_field(oRequest.POST['parent']).rel.to
             oParent = cParentClass.objects.get(pk=iParentID)
 
-        # S-06756 : Restricting BOM entry based on logged in user's CU:-- Added below & else block to restrict Person_responsible dropdown based on selected CU
+        # S-06756 : Restricting BOM entry based on logged in user's CU:- Added below & else block to restrict Person_responsible dropdown based on selected CU
         userculist = []
         userculist = User_Customer.objects.filter(customer_name=oParent)
         ausers = []
@@ -3138,19 +3140,26 @@ def ListFill(oRequest):
 
 # S-11563: BoM Entry - Header sub - tab adjustments: Separated program & product area 2 from similar block since program is now dependent on CNAME(Tier-2,3) & on CU(Tier-1) on react req search
         if oRequest.POST['child'] == 'program':
-            if oRequest.POST['parent'] == 'customer_name':              # Called when dependent on CNAME(Tier 2,3 CUs)
+            if oRequest.POST['parent'] == 'customer_name':              # executes when dependent on CNAME(Tier 2,3 CUs)
                 # oParent = oRequest.POST['id']
                 cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
                 result = OrderedDict(
                     [('i' + str(obj.id), obj.name) for obj in
                      cChildClass.objects.filter(customer_name=oParent).order_by('name').exclude(is_inactive=1)]
                 )
-            else:                                                       # Called when dependent on CU(Tier 1 CUs)
-                cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
-                result = OrderedDict(
-                    [('i' + str(obj.id), obj.name) for obj in
-                     cChildClass.objects.filter(parent=oParent).order_by('name').exclude(is_inactive=1)]
-                )
+            else:                                                       # executes when dependent on CU(Tier 1 CUs)
+                if str(oParent) == 'AT&T' or str(oParent) == 'Verizon' or str(oParent) == 'Sprint' or str(oParent) == 'Verizon':
+                    cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
+                    result = OrderedDict(
+                        [('i' + str(obj.id), obj.name) for obj in
+                         cChildClass.objects.filter(parent=oParent).order_by('name').exclude(is_inactive=1)]
+                    )
+                else:
+                    cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
+                    result = OrderedDict(
+                        [('i' + str(obj.id), obj.name) for obj in
+                         cChildClass.objects.filter(parent=oParent).filter(customer_name=None).order_by('name').exclude(is_inactive=1)]
+                    )
         # added for S-05907 Edit drop down option for BoM Entry Header -  Product Area 2(exclude deleted prodarea2)
         elif oRequest.POST['child'] == 'product_area2' :
             cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
@@ -3266,8 +3275,11 @@ def ListREACTFill(oRequest):
                 [(obj, obj) for obj in chain.from_iterable(tResults)]
             )
  # S-12408: Admin adjustments- Added below blocks for populating program/baseline based on selected CName
+ # D-07677: Program Admin- Customer Name should be optional for all customers- Modified the filter below for customer name.
+ # Filtering will be done based on selected CNAME and also the CNAME which is none which means, if program is tagged to a CU but not any
+ # CNAME, it will be shown to in the program list for all CNAMES under that selected CU
         elif oRequest.POST['child'] == 'program':
-            tResults = REF_PROGRAM.objects.filter(parent_id=oRequest.POST['cu']).filter(customer_name=oRequest.POST['name']).exclude(is_inactive=1)
+            tResults = REF_PROGRAM.objects.filter(parent_id=oRequest.POST['cu']).filter(Q(customer_name=oRequest.POST['name'])|Q(customer_name=None)).exclude(is_inactive=1)
             result = OrderedDict(
                 [(str(obj.id), obj.name) for obj in tResults]
             )
@@ -3324,7 +3336,6 @@ def ListREACTFill(oRequest):
         raise Http404
     # end if
 # end def
-
 
 def Clone(oRequest):
     """

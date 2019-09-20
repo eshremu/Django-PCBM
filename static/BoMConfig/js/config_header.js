@@ -234,6 +234,10 @@ if(!($("#id_pick_list").is(':checked'))){
         if( cunit == 1 || cunit == 2 || cunit == 3 || cunit == 4 ){
             list_filler('customer_unit', 'program');
             list_filler('customer_unit', 'baseline_impacted', 1);
+        }else{
+// D-07677: Program Admin- Customer Name should be optional for all customers - added this else block since program will be populated based
+// on selected CU if the CNAME is blank/none
+             list_filler('customer_unit', 'program');
         }
         list_filler('customer_unit', 'person_responsible');
     });

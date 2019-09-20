@@ -212,7 +212,6 @@ def BaselineMgmt(oRequest):
                    dContext=dContext)
 # end def
 
-
 def BaselineRollbackTest(oRequest):
     """
     View to initiate a test BaselineRollback to ensure that a baseline is

@@ -163,7 +163,7 @@ function custname_filter(custname){
     if(custname !== 'All') {
         $('#cname_filter').html(custname +"<span class=\"caret\"></span>");
     } else {
-        $('#cname_filter').html('Customer Name<span class="caret"></span>');
+        $('#cname_filter').html(custname +"<span class=\"caret\"></span>");
     }
     updateFilters();
 //  S-12405: Actions & Approvals adjustments - Added below if else condition since the catalog filter will get populated
@@ -203,7 +203,7 @@ function updateFilters(){
         // S-12405:Actions & Approvals adjustments - Deleted customer unit condition block since,filtering happens on new page redirection
 
         // S-12405: Actions & Approvals adjustments - Added below for customer name
-        if(cuname !== "Customer Name" && !$(rows[row]).hasClass(cuname)){
+        if(cuname !== "All" && !$(rows[row]).hasClass(cuname)){
                 hide = true;
         }
 

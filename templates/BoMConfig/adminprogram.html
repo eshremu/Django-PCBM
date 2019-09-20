@@ -65,8 +65,9 @@
                                 <option value="{{ cu.id }}">{{ cu.name }}</option>
                                 {% endfor %}
                             </select>
+                        <br />
                         <p id="cuerror" style="color:red; padding-left: 35px; display:none;" >* Please select a Customer unit</p>
-                        <br /><br />
+                        <br />
                         <label style="">Customer Name:  </label><select id="programcname" name="cname" >
                                 <option value="">-------</option>
                                 {% for cname in cnamelist %}
@@ -148,10 +149,11 @@
              $('#programcu').change(function(){
                 $("#cuerror").hide();
             });
-             <!--S-12408: Admin adjustments- Added below block to hide the error when cname is selected-->
-            $('#programcname').change(function(){
-                $("#custnameerror").hide();
-            });
+<!-- D-07677: Program Admin - Customer Name should be optional for all customers:- Commented below lines to remove CNAME as mandatory field-->
+<!-- S-12408: Admin adjustments- Added below block to hide the error when cname is selected-->
+<!--            $('#programcname').change(function(){-->
+<!--                $("#custnameerror").hide();-->
+<!--            });-->
 
             $('.modal_submit').off('click');
             $('.modal_submit').click(function(){
@@ -160,11 +162,13 @@
                             $("#cuerror").show();
                             return;
                        }
-     <!--S-12408: Admin adjustments- Added below block to show the error when cname is not selected-->
-                       else if(document.getElementById("programcname").value == ''){
-                            $("#custnameerror").show();
-                            return;
-                       }else{
+<!-- D-07677: Program Admin - Customer Name should be optional for all customers:- Commented below lines to remove CNAME as mandatory field-->
+<!-- S-12408: Admin adjustments- Added below block to show the error when cname is not selected-->
+<!--                       else if(document.getElementById("programcname").value == ''){-->
+<!--                            $("#custnameerror").show();-->
+<!--                            return;-->
+<!--                       }-->
+                       else{
                             process(1,'');
                         }
                     }else{                     //for edit
