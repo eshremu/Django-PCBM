@@ -164,9 +164,9 @@ $(document).ready(function(){
     });
 });
 
-//$('#soldto').mouseleave(function(){
-//        list_react_filler('sold_to_party', 'ericsson_contract');
-//    });
+$('#soldto').mouseleave(function(){
+        list_react_filler('sold_to_party', 'ericsson_contract');
+    });
 
 // S-11564: Search - Basic & Advanced adjustments- Added below block to populate  CName field data based on CU selection
 function list_react_filler(parent, child, index){
@@ -248,6 +248,8 @@ function list_react_filler(parent, child, index){
     }
 
 function search(eventObj){
+// S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added the Supply Chain flow/Value contract #/Portfolio code
+// blocks below to fetch the selected values & pass the values in respective parameters in the ajax call below
     var selectednumbers = [];
     if( $('#supply_chain_flow :selected').length > 0){
         //build an array of selected values
@@ -288,6 +290,11 @@ function search(eventObj){
             model_desc:$("#model_desc").val(),
             init_rev: $("#init_rev").val(),
             status: $('#status').val(),
+
+            ericsson_contract: JSON.stringify(selectedcontnumbers),
+            supply_chain_flow: JSON.stringify(selectednumbers),
+            portfolio_code: JSON.stringify(selectedportcode),
+
             inquiry_site: $('#inquiry_site').val(),
             person: $('#person').val(),
             product1: $('#prod1').val(),

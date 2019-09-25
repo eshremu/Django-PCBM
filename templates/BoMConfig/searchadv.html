@@ -143,6 +143,19 @@
                                 {% endfor %}
                             </select>
                         </li>
+<!-- S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added the Value contract & Supply chain flow field below-->
+                        <li><label for="ericsson_contract">Value Contract #</label>
+                            <select id="ericsson_contract" name="ericsson_contract" multiple>
+                            </select>
+                        </li>
+                        <li><label for="supply_chain_flow">Supply Chain Flow/Segment</label>
+                            <select id="supply_chain_flow" name="supply_chain_flow" multiple>
+<!--                               <option value="n/a">Any</option>-->
+                                {% for supply in supply_chain_flow_list %}
+                                <option value="{{ supply.name }}">{{ supply }}</option>
+                                {% endfor %}
+                            </select>
+                        </li>
                     </ul>
                 </div>
 
@@ -163,7 +176,17 @@
                         </li>
                       <!--Added for S-05767:Addition of Second Cust No. in advance search filter -->
                         <li><label for="sec_cust_num">Second Customer Number</label>
-                            <input id="sec_cust_num" type="text"/>
+                           <input id="sec_cust_num" type="text"/>
+                        </li>
+
+<!-- S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added the Portfolio code field below-->
+                        <li><label for="portfolio_code">Portfolio Code</label>
+                            <select id="portfolio_code" name="portfolio_code" multiple>
+                                <option value="Green">Green</option>
+                                <option value="Yellow">Yellow</option>
+                                <option value="Red">Red</option>
+                                <option value="Obsolete">Obsolete</option>
+                            </select>
                         </li>
                     </ul>
                 </div>
