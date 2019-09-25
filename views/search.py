@@ -18,7 +18,9 @@ from BoMConfig.utils import GrabValue
 
 import re
 import functools
-
+# S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- imported below package to evaluate in a simpler form
+# eg.- ["green","red"] -> ['green','red']
+import ast
 
 @login_required
 def Search(oRequest, advanced=False):
@@ -407,7 +409,7 @@ def Search(oRequest, advanced=False):
                 sTableHeader += '<th style="width:175px;">Initial Revision</th>'
                 aLineFilter.append('config.header.initial_revision')
 
-            if 'status' in oRequest.POST and  oRequest.POST['status'] != '':
+            if 'status' in oRequest.POST and oRequest.POST['status'] != '':
                 if oRequest.POST['status'] != 'n/a':
                     aConfigLines = aConfigLines.filter(
                         config__header__configuration_status__name__iexact=
@@ -419,6 +421,24 @@ def Search(oRequest, advanced=False):
             else:
                 aConfigLines = aConfigLines.filter(
                     config__header__configuration_status__name='Active')
+
+# S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added below block for multiple selection of ericsson contract
+            if 'ericsson_contract' in oRequest.POST and len(oRequest.POST['ericsson_contract']) > 2:
+                # if oRequest.POST['ericsson_contract'] != 'n/a':
+                selectedcontvals = ast.literal_eval(oRequest.POST['ericsson_contract'])
+                aConfigLines = aConfigLines.filter(config__header__ericsson_contract__in=selectedcontvals)
+
+                sTableHeader += '<th style="width:175px;">Value Contract</th>'
+                aLineFilter.append('config.header.ericsson_contract')
+
+# S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added below block for multiple selection of supply flow chain
+            if 'supply_chain_flow' in oRequest.POST and len(oRequest.POST['supply_chain_flow']) > 2:
+                # if oRequest.POST['supply_chain_flow'] != 'n/a':
+                selectedvals = ast.literal_eval(oRequest.POST['supply_chain_flow'])
+                aConfigLines = aConfigLines.filter(config__header__supply_chain_flow__name__in=selectedvals)
+
+                sTableHeader += '<th style="width:175px;">Supply Chain Flow</th>'
+                aLineFilter.append('config.header.supply_chain_flow')
 
             sTempHeaderLine = ''
             aTempFilters = ['line_number']
@@ -500,6 +520,20 @@ def Search(oRequest, advanced=False):
                 sTempHeaderLine += \
                     '<th style="width:175px;">Second Customer Number</th>'
                 aTempFilters.append('sec_customer_number')
+                bRemoveDuplicates = False
+
+ # S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added below block for multiple selection of portfolio code
+            if 'portfolio_code' in oRequest.POST and len(oRequest.POST['portfolio_code'])>2:
+                if oRequest.POST['portfolio_code'] != 'n/a':
+                    selectedportvals = ast.literal_eval(oRequest.POST['portfolio_code'])
+                    aConfigLines = aConfigLines.filter(current_portfolio_code__in=selectedportvals)
+
+                # sTableHeader += '<th style="width:175px;">Portfolio Code</th>'
+                # aLineFilter.append('current_portfolio_code')
+
+                sTempHeaderLine += \
+                    '<th style="width:175px;">Portfolio Code</th>'
+                aTempFilters.append('current_portfolio_code')
                 bRemoveDuplicates = False
 
             if sTempHeaderLine:
@@ -636,7 +670,8 @@ def Search(oRequest, advanced=False):
             key=lambda x: str(x).upper()),
         'band_list': REF_RADIO_BAND.objects.all().exclude(is_inactive=1).order_by('name'),
         'freq_list': sorted(list(set(
-            REF_RADIO_FREQUENCY.objects.all().exclude(is_inactive=1).values_list('name', flat=True))))
+            REF_RADIO_FREQUENCY.objects.all().exclude(is_inactive=1).values_list('name', flat=True)))),
+        'supply_chain_flow_list': Supply_Chain_Flow.objects.all().order_by('name')
     }
     return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def
