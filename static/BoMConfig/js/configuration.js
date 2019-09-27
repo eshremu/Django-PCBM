@@ -769,10 +769,12 @@ function build_table() {
 
                                     var van = partnumber;
 
-                                    // If partnumber is all digits, and slash to end
-                                    if(/^\d+$/.test(partnumber)){
-                                        partnumber += "/";
-                                    }
+ // S-14209: Stop adding the "/" after numeric only part numbers :- Commented below condition as now / is not required to append
+ // after adding any numeric part number
+                        // If partnumber is all digits, and slash to end
+//                                    if(/^\d+$/.test(partnumber)){
+//                                        partnumber += "/";
+//                                    }
 
                                     // Test if length of part number is too long
                                     if(partnumber.length > 18){
