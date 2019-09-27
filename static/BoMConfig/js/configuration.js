@@ -1247,7 +1247,14 @@ function estimateLineNumbers(changes, current_line_numbers) {
             continue;
         }
 
-        if (/^\d+(?:\.\d+){0,2}$/.test(current_line_numbers[i])){ // This is a line number
+// D-07693: parts that are Numbers are showing in line# when added to product Number:- Added below variable that will fetch the parent portion
+// of the line number by splitting. Also added the && part in the if condition; logic behind is to check if the length of the picked part number
+// is greater than 6, so that it would fail to become a line number(assuming line # parent portion to be max of 6 digits).Then the numeric part number
+// would move to else condition and the line number would be fetched accordingly as it does for any other alphanumeric part number.
+
+        var linenumlength = current_line_numbers[i].split('.');
+
+        if (/^\d+(?:\.\d+){0,2}$/.test(current_line_numbers[i]) && linenumlength[0].length < 6){ // This is a line number
             var matchobj = current_line_numbers[i].match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?$/);
             parent = Math.max(matchobj[1] == undefined ? 0 : matchobj[1], parent);
             child = matchobj[2] == undefined ? 1 : parseInt(matchobj[2]);
