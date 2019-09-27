@@ -1458,14 +1458,12 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                         'childs': []
                     }
 
-
         iCurrentRow = 2
 
     # D-03942:Column width error on baseline download:- Changed the 2nd,8th,10th,13th width value in the array aColumnWidths below from (23,22,18,22) to (30,30,40,30) to increase the size of column(B,H,J,M)
     # Product Number(B),Traceability Req. (Serialization)(H),Customer Asset Tagging Requirement(J),VAN (M) in the downloaded excel
     # Also for UoM(E),USCC Article Code FAA(K) ,USCC Article code ZENG(L) from (6,18,18) to (10,25,25) for MTW
-
-        if(oHeader.customer_unit_id==9):
+        if oHeader.customer_unit_id == 9 and oHeader.customer_name != 'CENTURYLINK INC':
             aColumnWidths = [9, 30, 58, 12, 10, 15, 18, 30, 30, 25, 25, 25, 30, 22, 23,
                              67, 83]
             aDynamicWidths = [0]*17
@@ -1522,8 +1520,8 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             oSheet.sheet_properties.tabColor = 'FF0000'
 
         # Build Header row
-        if(oHeader.customer_unit_id == 9):
-#  S-05743: Renaming Baseline columns for USCC Customer added if clause
+        if oHeader.customer_unit_id == 9 and oHeader.customer_name != 'CENTURYLINK INC':
+# S-05743: Renaming Baseline columns for USCC Customer added if clause
 # S-08087: Change to Customer Asset? and Customer Asset tagging rename "Customer Asset?":- Removed Customer Asset Tagging Requirement column & renamed
 # Customer Asset column to "in the USCC BOM"
             aColumnTitles = ['Line #', 'Product Number', 'Product Description',
@@ -1704,8 +1702,6 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                     oSheet['G' + str(iCurrentRow)].font = Font(bold=True)
                 elif iCurrentRow % 2 == 0:
                     oSheet['G' + str(iCurrentRow)].fill = oOffRowColor
-
-
 
                 if oHeader.pick_list:
                     if GrabValue(oLineItem,
@@ -2136,8 +2132,9 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     # Write Table of Contents tab.  This is last so that we only write ToC data
     # for Header objects still in the array after the previous section
     oSheet = oFile.create_sheet('ToC', 0)
-    #  S-05743: Renaming Baseline columns for USCC Customer added if clause
-    if oBaseline.customer_id == 9 or sCustomer == 'MTW':
+    # S-05743: Renaming Baseline columns for USCC Customer added if clause
+    # D-07744: Centurylink needs to follow Sprint/TMobile templates : Added the condition for customer name below
+    if (oBaseline.customer_id == 9 or sCustomer == 'MTW') and oBaseline.customer_name != 'CENTURYLINK INC':
         dTOCData = {
             3: ['Configuration', 'configuration_designation', 25],
             15: ['Customer Designation', 'customer_designation', 15],
