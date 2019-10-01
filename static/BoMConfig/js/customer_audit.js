@@ -281,6 +281,13 @@ function list_react_filler(parent, child, index){
                             }
                           }
                         }
+
+//  D-07795: Customer Audit / Search Tab: Customer name clearing on save, no selections available in dropdown:- Added below block to
+// show the selected Customer name in the dropdown after saving
+                        if(selectedCustName){
+                            selectedCustName = selectedCustName.replace('&amp;','&')
+                            $('#cuname').find("option:contains('"+selectedCustName+"')").attr("selected","selected");
+                        }
                     },
                     error: function(){
                         var $child = $('#cuname');
@@ -294,17 +301,14 @@ function list_react_filler(parent, child, index){
             }
     }
 
-$(document).ready(function(){//alert(selectedCustName)
+$(document).ready(function(){
     $('a.headtitle:contains("Customer Audit")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 
-
-//       var $ericchild = $('#cuname');
-//         $('#cuname').find("option:contains('"+selectedCustName+"')").attr("selected","selected");
-
-//    $('#cuname').find("option:contains('"+selectedCust+"')").attr("selected","selected");
-//    $(window).load(function () {
-//        list_react_filler('customer_unit', 'customer_name');
-//    });
+//  D-07795: Customer Audit / Search Tab: Customer name clearing on save, no selections available in dropdown:- Added below block to
+// load the customer_name list on page load
+    $(window).load(function () {
+        list_react_filler('customer_unit', 'customer_name');
+    });
 
     $('#customer-select').change(function(){
         list_react_filler('customer_unit', 'customer_name');
