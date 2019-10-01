@@ -77,6 +77,7 @@ def CustomerAudit(oRequest):
             # Create expected entry from data submitted
             dNewCustInfo = {
                 'customer': oCustomer,
+                # 'selectedCustName':'',
                 'customer_name': oCustomerName,
                 'customer_number': aLine[1],
                 'second_customer_number': aLine[2] or None,
@@ -642,6 +643,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                     oExactMap = CustomerPartInfo.objects.filter(
                         part=oPart,
                         customer=oCustomer,
+                        customer_name=oCustomerName,
                         customer_number=tPart[0],
                         customer_asset=tPart[2],
                         customer_asset_tagging=tPart[1]
@@ -653,6 +655,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                             oExactMap = CustomerPartInfo.objects.get(
                                 part=oPart,
                                 customer=oCustomer,
+                                customer_name=oCustomerName,
                                 customer_number=tPart[0],
                                 customer_asset=tPart[2],
                                 customer_asset_tagging=tPart[1],
@@ -662,6 +665,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                         oExactMap = CustomerPartInfo.objects.get(
                             part=oPart,
                             customer=oCustomer,
+                            customer_name=oCustomerName,
                             customer_number=tPart[0],
                             customer_asset=tPart[2],
                             customer_asset_tagging=tPart[1]
@@ -673,7 +677,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                 # Attempt to find an entry that only matches part number
                 try:
                     oPartMap = CustomerPartInfo.objects.get(
-                        part=oPart, customer=oCustomer, active=True)
+                        part=oPart, customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oPartMap = None
                 # end try
@@ -681,7 +685,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                 # Attempt to find an entry that only matches customer part number
                 try:
                     oCustMap = CustomerPartInfo.objects.get(
-                        customer_number=tPart[0], customer=oCustomer, active=True)
+                        customer_number=tPart[0], customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oCustMap = None
                 # end try
@@ -831,6 +835,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                         oExactMap = CustomerPartInfo.objects.get(
                             part=oPart,
                             customer=oCustomer,
+                            customer_name=oCustomerName,
                             customer_number=tPart[0],
                             active=True
                         )
@@ -838,6 +843,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                         oExactMap = CustomerPartInfo.objects.get(
                             part=oPart,
                             customer=oCustomer,
+                            customer_name=oCustomerName,
                             customer_number=tPart[0]
                         )
                 except CustomerPartInfo.DoesNotExist:
@@ -847,14 +853,14 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                 # Attempt to find an entry that only matches part number
                 try:
                     oPartMap = CustomerPartInfo.objects.get(
-                        part=oPart, customer=oCustomer, active=True)
+                        part=oPart, customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oPartMap = None
                 # end try
                 # Attempt to find an entry that only matches customer part number
                 try:
                     oCustMap = CustomerPartInfo.objects.get(
-                        customer_number=tPart[0], customer=oCustomer, active=True)
+                        customer_number=tPart[0], customer=oCustomer,  customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oCustMap = None
                 # end try
@@ -1030,6 +1036,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                         oExactMap = CustomerPartInfo.objects.get(
                             part=oPart,
                             customer=oCustomer,
+                            customer_name=oCustomerName,
                             customer_number=tPart[0],
                             customer_asset=tPart[2],
                             second_customer_number=tPart[1],
@@ -1039,6 +1046,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                         oExactMap = CustomerPartInfo.objects.get(
                             part=oPart,
                             customer=oCustomer,
+                            customer_name=oCustomerName,
                             customer_number=tPart[0],
                             customer_asset=tPart[2],
                             second_customer_number=tPart[1]
@@ -1050,14 +1058,14 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                 # Attempt to find an entry that only matches part number
                 try:
                     oPartMap = CustomerPartInfo.objects.get(
-                        part=oPart, customer=oCustomer, active=True)
+                        part=oPart, customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oPartMap = None
                 # end try
                 # Attempt to find an entry that only matches customer part number
                 try:
                     oCustMap = CustomerPartInfo.objects.get(
-                        customer_number=tPart[0], customer=oCustomer, active=True)
+                        customer_number=tPart[0], customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oCustMap = None
                 # end try
@@ -1066,7 +1074,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
                 try:
                     if tPart[1]:
                         oSecCustMap = CustomerPartInfo.objects.get(
-                            customer_number=tPart[0], second_customer_number=tPart[1], customer=oCustomer, active=True)
+                            customer_number=tPart[0], second_customer_number=tPart[1], customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oSecCustMap = None
                     # end try
