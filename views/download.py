@@ -469,8 +469,15 @@ def DownloadBaselineMaster(oRequest):
     # S-08483:Baseline Master File download changes: Added the customer name in the file name to distinguish for which customer
     # the file has been downloaded
     sCustomer = oRequest.POST['customer']
+    sCustomerName = oRequest.POST['customer_name']
+
     sCookie = oRequest.POST['file-cookie']
-    sFileName = "BOM Master File - {}_{}.xlsx".format(sCustomer,
+
+    if sCustomer == 'MTW':
+        sFileName = "BOM Master File - {}_{}.xlsx".format(sCustomerName,
+                                                      str(datetime.datetime.now().strftime('%d%b%Y')))
+    else:
+        sFileName = "BOM Master File - {}_{}.xlsx".format(sCustomer,
         str(datetime.datetime.now().strftime('%d%b%Y')))
 
     aTable = []
@@ -478,10 +485,15 @@ def DownloadBaselineMaster(oRequest):
     # If no customer was specified, we want to get all actual baselines first,
     # so we exclude the pseudo-baseline "No Associated Baseline". When customer
     # is provided, the filtering will ensure the pseudo-baseline is excluded
-    if not sCustomer:
-        aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
+    # if not sCustomer:
+    #     aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
+    # else:
+    #     aBaselines = Baseline.objects.filter(customer__name=sCustomer).exclude(isdeleted=1)
+
+    if not sCustomerName:
+            aBaselines = Baseline.objects.exclude(title='No Associated Baseline').exclude(isdeleted=1)
     else:
-        aBaselines = Baseline.objects.filter(customer__name=sCustomer).exclude(isdeleted=1)
+            aBaselines = Baseline.objects.filter(customer_name=sCustomerName).exclude(isdeleted=1)
 
     # Add the pseudo-baseline to the end of the list to ensure it is displayed
     # last
@@ -537,7 +549,8 @@ def DownloadBaselineMaster(oRequest):
     # oSheet['A1'].alignment = headerAlign
     # oSheet.column_dimensions['A'].width = 10
     # S-05748-Remove columns in downloaded all Baselines Master file for MTW Customer( added Scustomer=MTW , to have a new baseline download format)(line 528-626)
-    if sCustomer == 'MTW':
+    # S-13698 :Add ZUST and pcode columns to the downloadable BOM master file: Added Pcode and zust for MTW customer
+    if sCustomer == 'MTW' and sCustomerName != 'CENTURYLINK INC':
     # S - 11552: Baseline tab changes: changed downloaded table header to catalog
         oSheet['B1'] = 'Catalog'
         oSheet['B1'].font = headerFont
@@ -602,9 +615,20 @@ def DownloadBaselineMaster(oRequest):
         oSheet['O1'] = 'Comments'
         oSheet['O1'].font = headerFont
         oSheet.column_dimensions['O'].width = 30
+
+        oSheet['P1'] = 'ZUST'
+        oSheet['P1'].font = headerFont
+        oSheet.column_dimensions['P'].width = 12
+
+        oSheet['Q1'] = 'P-Code'
+        oSheet['Q1'].font = headerFont
+        oSheet.column_dimensions['Q'].width = 12
     #S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer: Added below elif block
     # S-11474- For master download customization added customer ECSO and RBMA
-    elif sCustomer in ('Sprint','T-Mobile','ECSO','RBMA'):
+    # S-12376- For master download customization added customer Verizon
+    # S-12374- Download Operations:- For master download customization added CENTURYLINK INC cname of MTW cu to follow format with other below CUs
+    # S-13698 :Add ZUST and pcode columns to the downloadable BOM master file: added pcode and zust column header
+    elif sCustomer in ('Sprint','T-Mobile','ECSO','RBMA','Verizon') or (sCustomer == 'MTW' and sCustomerName == 'CENTURYLINK INC'):
         oSheet['B1'] = 'Configuration File'
         oSheet['B1'].font = headerFont
         oSheet.column_dimensions['B'].width = 25
@@ -659,8 +683,17 @@ def DownloadBaselineMaster(oRequest):
         oSheet['M1'].font = headerFont
         oSheet.column_dimensions['M'].width = 50
 
+        oSheet['N1'] = 'ZUST'
+        oSheet['N1'].font = headerFont
+        oSheet.column_dimensions['P'].width = 12
+
+        oSheet['O1'] = 'P-Code'
+        oSheet['O1'].font = headerFont
+        oSheet.column_dimensions['Q'].width = 12
+
     else:
         # S - 11552: Baseline tab changes: changed downloaded table header to catalog
+        # S-13698 :Add ZUST and pcode columns to the downloadable BOM master file: added pcode and zust column header
         oSheet['B1'] = 'Catalog'
         oSheet['B1'].font = headerFont
         oSheet.column_dimensions['B'].width = 25
@@ -725,6 +758,14 @@ def DownloadBaselineMaster(oRequest):
         oSheet['O1'].font = headerFont
         oSheet.column_dimensions['O'].width = 50
 
+        oSheet['P1'] = 'ZUST'
+        oSheet['P1'].font = headerFont
+        oSheet.column_dimensions['P'].width = 12
+
+        oSheet['Q1'] = 'P-Code'
+        oSheet['Q1'].font = headerFont
+        oSheet.column_dimensions['Q'].width = 12
+
     iRow = 2
     for dBaseline in aTable:
         if not dBaseline['revisions']:
@@ -761,8 +802,7 @@ def DownloadBaselineMaster(oRequest):
         # Write data for each Header in the baseline
         for oHead in aConfigs:
             # added oHead.customer_unit_id==9 and updated blocks for  S-05748- Remove columns in downloaded all Baselines Master file for MTW Customer
-            if oHead.customer_unit_id == 9:
-
+            if oHead.customer_unit_id == 9 and oHead.customer_name != 'CENTURYLINK INC':
                 oSheet['C' + str(iRow)] = oHead.product_area2.name if \
                     oHead.product_area2 else ''
                 oSheet['C' + str(iRow)].alignment = centerAlign
@@ -862,9 +902,36 @@ def DownloadBaselineMaster(oRequest):
                 else:
                     oSheet['O' + str(iRow)].font = activeFont
 
-            # added oHead.customer_unit_id in (3,4) and updated blocks for  S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer
-            # added oHead.customer_unit_id in (6,12) and updated blocks for  S-11474- Baseline Master File download changes for ECSO & RBMA Customer
-            elif oHead.customer_unit_id in (3, 4, 6, 12):
+    # S-13698 :Add ZUST and pcode columns to the downloadable BOM master file: added below block of codes to fetch zust amount and pcode
+                first_line = oHead.configuration.get_first_line()
+                if first_line is not None:
+                    if not oHead.pick_list and first_line.condition_type == 'ZUST':
+                        oSheet['P' + str(iRow)] = first_line.amount
+                        oSheet['P' + str(iRow)].number_format = \
+                            '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+                        if 'In Process' in oHead.configuration_status.name:
+                            oSheet['P' + str(iRow)].font = ipFont
+                        else:
+                            oSheet['P' + str(iRow)].font = activeFont
+                    else:
+                        oSheet['P' + str(iRow)] = ''
+
+                if first_line is not None and not oHead.pick_list:
+                    if first_line.pcode is not None:
+                        pcode_temp = first_line.pcode
+                        oSheet['Q' + str(iRow)] = pcode_temp[1:4]
+                        if 'In Process' in oHead.configuration_status.name:
+                            oSheet['Q' + str(iRow)].font = ipFont
+                        else:
+                            oSheet['Q' + str(iRow)].font = activeFont
+                    else:
+                        oSheet['Q' + str(iRow)] = ''
+
+    # added oHead.customer_unit_id in (3,4) and updated blocks for  S-08483- Baseline Master File download changes for Sprint & T-Mobile Customer
+    # added oHead.customer_unit_id in (6,12) and updated blocks for  S-11474- Baseline Master File download changes for ECSO & RBMA Customer
+    # added oHead.customer_unit_id in (2) and updated blocks for  S-12376- Baseline Master File download changes for Verizon Customer
+    # added oHead.customer_unit_id in (9 & cname as CENTURYLINK INC) and updated blocks for  S-12374- Download operations: for CENTURYLINK INC
+            elif oHead.customer_unit_id in (3, 4, 6, 12, 2) or (oHead.customer_unit_id == 9 and oHead.customer_name == 'CENTURYLINK INC'):
                 oSheet['C' + str(iRow)] = oHead.product_area2.name if \
                     oHead.product_area2 else ''
                 oSheet['C' + str(iRow)].alignment = centerAlign
@@ -949,6 +1016,31 @@ def DownloadBaselineMaster(oRequest):
                     oSheet['M' + str(iRow)].font = ipFont
                 else:
                     oSheet['M' + str(iRow)].font = activeFont
+        # S-13698 :Add ZUST and pcode columns to the downloadable BOM master file: added below block of codes to fetch zust amount and pcode
+                first_line = oHead.configuration.get_first_line()
+                if first_line is not None:
+                    if not oHead.pick_list and first_line.condition_type == 'ZUST':
+                        oSheet['N' + str(iRow)] = first_line.amount
+                        oSheet['N' + str(iRow)].number_format = \
+                            '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+                        if 'In Process' in oHead.configuration_status.name:
+                            oSheet['N' + str(iRow)].font = ipFont
+                        else:
+                            oSheet['N' + str(iRow)].font = activeFont
+                    else:
+                        oSheet['N' + str(iRow)] = ''
+
+                if first_line is not None and not oHead.pick_list:
+                    if first_line.pcode is not None:
+                        pcode_temp = first_line.pcode
+                        oSheet['O' + str(iRow)] = pcode_temp[1:4]
+                        if 'In Process' in oHead.configuration_status.name:
+                            oSheet['O' + str(iRow)].font = ipFont
+                        else:
+                            oSheet['O' + str(iRow)].font = activeFont
+                    else:
+                        oSheet['O' + str(iRow)] = ''
+
             else:
                 oSheet['C' + str(iRow)] = oHead.product_area2.name if \
                     oHead.product_area2 else ''
@@ -1069,6 +1161,30 @@ def DownloadBaselineMaster(oRequest):
                 else:
                     oSheet['O' + str(iRow)].font = activeFont
 
+        # S-13698 :Add ZUST and pcode columns to the downloadable BOM master file: added below block of codes to fetch zust amount and pcode
+                first_line = oHead.configuration.get_first_line()
+                if first_line is not None:
+                    if not oHead.pick_list and first_line.condition_type == 'ZUST':
+                        oSheet['P' + str(iRow)] = first_line.amount
+                        oSheet['P' + str(iRow)].number_format = \
+                            '_($* #,##0.00_);_($* (#,##0.00);_($* "-"??_);_(@_)'
+                        if 'In Process' in oHead.configuration_status.name:
+                            oSheet['P' + str(iRow)].font = ipFont
+                        else:
+                            oSheet['P' + str(iRow)].font = activeFont
+                    else:
+                        oSheet['P' + str(iRow)] = ''
+
+                if first_line is not None and not oHead.pick_list:
+                    if first_line.pcode is not None:
+                        pcode_temp = first_line.pcode
+                        oSheet['Q' + str(iRow)] = pcode_temp[1:4]
+                        if 'In Process' in oHead.configuration_status.name:
+                            oSheet['Q' + str(iRow)].font = ipFont
+                        else:
+                            oSheet['Q' + str(iRow)].font = activeFont
+                    else:
+                        oSheet['Q' + str(iRow)] = ''
 
             iRow += 1
         # end for
@@ -1342,14 +1458,12 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                         'childs': []
                     }
 
-
         iCurrentRow = 2
 
     # D-03942:Column width error on baseline download:- Changed the 2nd,8th,10th,13th width value in the array aColumnWidths below from (23,22,18,22) to (30,30,40,30) to increase the size of column(B,H,J,M)
     # Product Number(B),Traceability Req. (Serialization)(H),Customer Asset Tagging Requirement(J),VAN (M) in the downloaded excel
     # Also for UoM(E),USCC Article Code FAA(K) ,USCC Article code ZENG(L) from (6,18,18) to (10,25,25) for MTW
-
-        if(oHeader.customer_unit_id==9):
+        if oHeader.customer_unit_id == 9 and oHeader.customer_name != 'CENTURYLINK INC':
             aColumnWidths = [9, 30, 58, 12, 10, 15, 18, 30, 30, 25, 25, 25, 30, 22, 23,
                              67, 83]
             aDynamicWidths = [0]*17
@@ -1406,8 +1520,8 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
             oSheet.sheet_properties.tabColor = 'FF0000'
 
         # Build Header row
-        if(oHeader.customer_unit_id == 9):
-#  S-05743: Renaming Baseline columns for USCC Customer added if clause
+        if oHeader.customer_unit_id == 9 and oHeader.customer_name != 'CENTURYLINK INC':
+# S-05743: Renaming Baseline columns for USCC Customer added if clause
 # S-08087: Change to Customer Asset? and Customer Asset tagging rename "Customer Asset?":- Removed Customer Asset Tagging Requirement column & renamed
 # Customer Asset column to "in the USCC BOM"
             aColumnTitles = ['Line #', 'Product Number', 'Product Description',
@@ -1533,25 +1647,48 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                     oSheet['F' + str(iCurrentRow)].font = Font(bold=True)
                 elif iCurrentRow % 2 == 0:
                     oSheet['F' + str(iCurrentRow)].fill = oOffRowColor
-                #
+        # S-12369:Pricing and Traceability in downloaded baseline file: modified logic to show unit price only for USCC customer name when
+        # traceability_req is set to Y, for other customers log will be same as earlier. no dependency on traceability_req.
                 if not oHeader.pick_list:
                     if oLineItem == oFirstItem :
                         oSheet['G' + str(iCurrentRow)] = ''
                     else:
-                        if GrabValue(oLineItem, 'linepricing.override_price'):
-                            oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.override_price')
-                        elif GrabValue(oLineItem,'linepricing.pricing_object.unit_price'):
-                            oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.pricing_object.unit_price')
+                        if oHeader.customer_name == 'U.S. CELLULAR' and oLineItem.traceability_req == 'Y':
+                            if GrabValue(oLineItem, 'linepricing.override_price'):
+                                oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.override_price')
+                            elif GrabValue(oLineItem,'linepricing.pricing_object.unit_price'):
+                                oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.pricing_object.unit_price')
+                            else:
+                                oSheet['G' + str(iCurrentRow)] = ''
+                        elif oHeader.customer_name != 'U.S. CELLULAR':
+                            if GrabValue(oLineItem, 'linepricing.override_price'):
+                                oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.override_price')
+                            elif GrabValue(oLineItem,'linepricing.pricing_object.unit_price'):
+                                oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.pricing_object.unit_price')
+                            else:
+                                oSheet['G' + str(iCurrentRow)] = ''
                         else:
                             oSheet['G' + str(iCurrentRow)] = ''
                             # end if
                             # end if
                             # end if
                 else:
-                    if GrabValue(oLineItem, 'linepricing.override_price'):
-                        oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.override_price')
-                    elif GrabValue(oLineItem, 'linepricing.pricing_object.unit_price'):
-                        oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.pricing_object.unit_price')
+                    if oHeader.customer_name == 'U.S. CELLULAR' and oLineItem.traceability_req == 'Y':
+                        if GrabValue(oLineItem, 'linepricing.override_price'):
+                            oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.override_price')
+                        elif GrabValue(oLineItem, 'linepricing.pricing_object.unit_price'):
+                            oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem,
+                                                                       'linepricing.pricing_object.unit_price')
+                        else:
+                            oSheet['G' + str(iCurrentRow)] = ''
+                    elif oHeader.customer_name != 'U.S. CELLULAR':
+                        if GrabValue(oLineItem, 'linepricing.override_price'):
+                            oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem, 'linepricing.override_price')
+                        elif GrabValue(oLineItem, 'linepricing.pricing_object.unit_price'):
+                            oSheet['G' + str(iCurrentRow)] = GrabValue(oLineItem,
+                                                                       'linepricing.pricing_object.unit_price')
+                        else:
+                            oSheet['G' + str(iCurrentRow)] = ''
                     else:
                         oSheet['G' + str(iCurrentRow)] = ''
 
@@ -1565,8 +1702,6 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
                     oSheet['G' + str(iCurrentRow)].font = Font(bold=True)
                 elif iCurrentRow % 2 == 0:
                     oSheet['G' + str(iCurrentRow)].fill = oOffRowColor
-
-
 
                 if oHeader.pick_list:
                     if GrabValue(oLineItem,
@@ -1997,8 +2132,9 @@ def WriteBaselineToFile(oBaseline, sVersion, sCustomer):
     # Write Table of Contents tab.  This is last so that we only write ToC data
     # for Header objects still in the array after the previous section
     oSheet = oFile.create_sheet('ToC', 0)
-    #  S-05743: Renaming Baseline columns for USCC Customer added if clause
-    if oBaseline.customer_id == 9 or sCustomer == 'MTW':
+    # S-05743: Renaming Baseline columns for USCC Customer added if clause
+    # D-07744: Centurylink needs to follow Sprint/TMobile templates : Added the condition for customer name below
+    if (oBaseline.customer_id == 9 or sCustomer == 'MTW') and oBaseline.customer_name != 'CENTURYLINK INC':
         dTOCData = {
             3: ['Configuration', 'configuration_designation', 25],
             15: ['Customer Designation', 'customer_designation', 15],

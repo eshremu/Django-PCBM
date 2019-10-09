@@ -55,7 +55,8 @@ class BillOfMaterials(object):
         "Sold-to Party",
         "Ship-to Party",
         "Bill-to Party",
-        "Ericsson Contract #",
+ # S-12370- BoM Header - Rename Ericsson Contract # -> "Value Contract"
+        "Value Contract #",
         "Payment Terms",
         "Projected Cut-over Date",
         "Program",

@@ -7,11 +7,15 @@ from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.template.loader import render_to_string
 from django.contrib.auth.decorators import login_required
+from django.db import transaction, connections
 
 from BoMConfig.models import CustomerPartInfo, PartBase, REF_CUSTOMER, \
-    ConfigLine, User_Customer
+    ConfigLine, User_Customer,Header
 from BoMConfig.views.landing import Default
 from BoMConfig.utils import StrToBool
+
+from collections import OrderedDict
+from itertools import chain
 
 import openpyxl
 from openpyxl import utils
@@ -47,7 +51,7 @@ def CustomerAudit(oRequest):
     dContext = {
         'customer_list': aAvailableCU, # S-06174- Customer Audit restrict view changed to aAvailableCU
         'data': json.dumps([[]]),
-        'selectedCust': REF_CUSTOMER.objects.first()
+        'selectedCust': ''
     }
 
     # If POSTing save data
@@ -56,6 +60,7 @@ def CustomerAudit(oRequest):
         aData = json.loads(oRequest.POST.get('dataForm', '[]'))
         oCustomer = REF_CUSTOMER.objects.get(
             id=oRequest.POST.get('customerSelect'))
+        oCustomerName = oRequest.POST.get('cuname')
 
         # Remove empty data rows from data set
         if aData:
@@ -72,6 +77,8 @@ def CustomerAudit(oRequest):
             # Create expected entry from data submitted
             dNewCustInfo = {
                 'customer': oCustomer,
+                # 'selectedCustName':'',
+                'customer_name': oCustomerName,
                 'customer_number': aLine[1],
                 'second_customer_number': aLine[2] or None,
                 'part': oPart,
@@ -111,6 +118,7 @@ def CustomerAudit(oRequest):
 
         dContext['data'] = json.dumps(aData)
         dContext['selectedCust'] = oCustomer
+        dContext['selectedCustName'] = oCustomerName
 
     return Default(oRequest, 'BoMConfig/customer_audit.html', dContext)
 # end def
@@ -335,7 +343,7 @@ def CustomerAuditUpload(oRequest):
             bErrors = ProcessUpload(
                 oRequest.FILES['file'],
                 int(oRequest.POST['file_type']),
-                REF_CUSTOMER.objects.get(id=oRequest.POST['customer']),
+                REF_CUSTOMER.objects.get(id=oRequest.POST['customer']), oRequest.POST['customername'],
                 oRequest.user
             )
             status_message = 'Upload completed.' + \
@@ -357,7 +365,7 @@ def CustomerAuditUpload(oRequest):
                    dContext=dContext)
 # end def
 
-def ProcessUpload(oStream, iFileType, oCustomer, oUser):
+def ProcessUpload(oStream, iFileType, oCustomer, oCustomerName, oUser):
     """
     Function to parse information from a data stream provided in oStream into
     CustomerPartInfo objects.  There are currently two supported file types.
@@ -371,7 +379,10 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
     # S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:-
     # Based on customer and file type, determine what sheet name and column titles are
     # expected in the file
-    if str(oCustomer) == 'MTW':
+
+   # S-12375: Upload Operations:- Added CENTURYLINK INC in the condition below with MTW to exclude the format of all the other
+   #  MTW customer names from CENTURYLINK INC
+    if str(oCustomer) == 'MTW' and str(oCustomerName)!= 'CENTURYLINK INC':
         if iFileType == 2:
             sSheetName = "FAA Y Report"
             aColumns = [[1, 6, 5, 2, 4, 3]]
@@ -381,8 +392,11 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
             raise ValueError('Invalid file type')
 
 # S-08487: Customer upload changes :- Added below elif condition for Sprint & T-Mobile for creating the template headings
-    # S-11567- For Customer Upload customization added customer ECSO and RBMA
-    elif str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile'or str(oCustomer) == 'ECSO' or str(oCustomer) == 'RBMA':
+# S-11567: For Customer Upload customization added customer ECSO and RBMA
+    # S-12377: For Customer Upload customization added customer Verizon
+    # S-12375: Upload Operations:- Added CENTURYLINK INC cname of MTW cu to follow format with other below CUs
+    elif (str(oCustomer) == 'MTW' and str(oCustomerName)== 'CENTURYLINK INC') or str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile'or str(oCustomer) == 'ECSO' or \
+                    str(oCustomer) == 'RBMA' or str(oCustomer) == 'Verizon':
         if iFileType == 2:
             sSheetName = "Customer Upload Template"
             aColumns = [[6, 3, 9, 5, 7, 4 ]]
@@ -441,7 +455,9 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
     # S-08946: Add USCC SAP (MTW as of now) download format to upload for validation:-
     # Added the if condition for MTW customer
     # Parse out relevant data from file
-    if str(oCustomer) == 'MTW':                                 # For MTW
+    # S-12375: Upload Operations:- Added CENTURYLINK INC in the condition below with MTW to exclude the format of all the other
+    #  MTW customer names from CENTURYLINK INC
+    if str(oCustomer) == 'MTW' and str(oCustomerName)!= 'CENTURYLINK INC':                                 # For MTW
         for row in aSheetData:
             for aDataGroup in aColumns:
                 aTemp = []
@@ -477,8 +493,11 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
             # end for
         # end for
 # S-08487: Customer upload changes :- Added below elif block to process the data based on Sprint & T-Mobile CU template
-    # S-11567- For Customer Upload customization added customer ECSO and RBMA
-    elif str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile'or str(oCustomer) == 'ECSO' or str(oCustomer) == 'RBMA':   # For Sprint & T-Mobile
+    # S-11567: For Customer Upload customization added customer ECSO and RBMA
+    # S-12377: For Customer Upload customization added customer Verizon
+    # S-12375: Upload Operations:- Added CENTURYLINK INC cname of MTW cu to follow format with other below CUs
+    elif (str(oCustomer) == 'MTW' and str(oCustomerName)== 'CENTURYLINK INC') or str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile'or str(oCustomer) == 'ECSO' or\
+                    str(oCustomer) == 'RBMA' or str(oCustomer) == 'Verizon':   # For Sprint & T-Mobile
         for row in aSheetData:
             for aDataGroup in aColumns:
                 aTemp = []
@@ -561,7 +580,9 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
     # This helps when uploading records.  Since active records will be processed
     # first, we can assume that any conflicts experienced by phased records are
     # not critical errors
-    if str(oCustomer) == 'AT&T' or str(oCustomer) == 'MTW':
+    # S-12375: Upload Operations:- Added CENTURYLINK INC in the condition below with MTW to exclude the format of all the other
+    #  MTW customer names from CENTURYLINK INC
+    if str(oCustomer) == 'AT&T' or (str(oCustomer) == 'MTW' and str(oCustomerName)!= 'CENTURYLINK INC'):
         aExtractedData.sort(key=lambda x: 1 if x[5] in ['Inactive', 'Obsolete'] else
                             3 if 'Phase' in x[5] else 2 if 'Active' in x[5] else 0)
 
@@ -605,7 +626,8 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                     customer=oCustomer,
                     customer_number=tPart[0],
                     customer_asset=tPart[2],
-                    customer_asset_tagging=tPart[1]
+                    customer_asset_tagging=tPart[1],
+                    customer_name=oCustomerName
                 )
                 if not bCreated and not oMap.priority:
                     oMap.active = False
@@ -621,6 +643,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                     oExactMap = CustomerPartInfo.objects.filter(
                         part=oPart,
                         customer=oCustomer,
+                        customer_name=oCustomerName,
                         customer_number=tPart[0],
                         customer_asset=tPart[2],
                         customer_asset_tagging=tPart[1]
@@ -632,6 +655,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                             oExactMap = CustomerPartInfo.objects.get(
                                 part=oPart,
                                 customer=oCustomer,
+                                customer_name=oCustomerName,
                                 customer_number=tPart[0],
                                 customer_asset=tPart[2],
                                 customer_asset_tagging=tPart[1],
@@ -641,6 +665,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                         oExactMap = CustomerPartInfo.objects.get(
                             part=oPart,
                             customer=oCustomer,
+                            customer_name=oCustomerName,
                             customer_number=tPart[0],
                             customer_asset=tPart[2],
                             customer_asset_tagging=tPart[1]
@@ -652,7 +677,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                 # Attempt to find an entry that only matches part number
                 try:
                     oPartMap = CustomerPartInfo.objects.get(
-                        part=oPart, customer=oCustomer, active=True)
+                        part=oPart, customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oPartMap = None
                 # end try
@@ -660,7 +685,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                 # Attempt to find an entry that only matches customer part number
                 try:
                     oCustMap = CustomerPartInfo.objects.get(
-                        customer_number=tPart[0], customer=oCustomer, active=True)
+                        customer_number=tPart[0], customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oCustMap = None
                 # end try
@@ -704,7 +729,8 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                         customer=oCustomer,
                         customer_number=tPart[0],
                         customer_asset=tPart[2],
-                        customer_asset_tagging=tPart[1]
+                        customer_asset_tagging=tPart[1],
+                        customer_name=oCustomerName
                     )
 
                     if 'Phase' in tPart[5] or oPartMap.priority:
@@ -731,6 +757,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                     CustomerPartInfo.objects.get_or_create(
                         part=oPart,
                         customer=oCustomer,
+                        customer_name=oCustomerName,
                         customer_number=tPart[0],
                         customer_asset=tPart[2],
                         customer_asset_tagging=tPart[1]
@@ -747,6 +774,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                 (oMap, _) = CustomerPartInfo.objects.get_or_create(
                     part=oPart,
                     customer=oCustomer,
+                    customer_name=oCustomerName,
                     customer_number=tPart[0],
                     customer_asset=tPart[2],
                     customer_asset_tagging=tPart[1]
@@ -758,8 +786,11 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
         # end if
         # end for
 # S-08487: Customer upload changes :- Added below block to check the discrepancies and form the arrays with invalid records for Sprint & T-Mobile
-    # S-11567- For Customer Upload customization added customer ECSO and RBMA
-    elif str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile'or str(oCustomer) == 'ECSO' or str(oCustomer) == 'RBMA':
+    # S-11567: For Customer Upload customization added customer ECSO and RBMA
+    # S-12377: For Customer Upload customization added customer Verizon
+    # S-12375: Upload Operations:- Added CENTURYLINK INC cname of MTW cu to follow format with other below CUs
+    elif (str(oCustomer) == 'MTW' and str(oCustomerName)== 'CENTURYLINK INC') or str(oCustomer) == 'Sprint' or str(oCustomer) == 'T-Mobile'or str(oCustomer) == 'ECSO' or \
+                    str(oCustomer) == 'RBMA' or str(oCustomer) == 'Verizon':
         # Add/Remove each part
         for tPart in aExtractedData:
             if 'VARIOUS' in tPart[3].upper() or 'UNKNOWN' in tPart[3].upper() or \
@@ -781,7 +812,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                     str(tPart[4]).upper():
                 (oMap, bCreated) = CustomerPartInfo.objects.get_or_create(
                     part=oPart,
-                    customer=oCustomer,
+                    customer=oCustomer,customer_name=oCustomerName,
                     customer_number=tPart[0],
                 )
                 if not bCreated and not oMap.priority:
@@ -804,6 +835,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                         oExactMap = CustomerPartInfo.objects.get(
                             part=oPart,
                             customer=oCustomer,
+                            customer_name=oCustomerName,
                             customer_number=tPart[0],
                             active=True
                         )
@@ -811,6 +843,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                         oExactMap = CustomerPartInfo.objects.get(
                             part=oPart,
                             customer=oCustomer,
+                            customer_name=oCustomerName,
                             customer_number=tPart[0]
                         )
                 except CustomerPartInfo.DoesNotExist:
@@ -820,14 +853,14 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                 # Attempt to find an entry that only matches part number
                 try:
                     oPartMap = CustomerPartInfo.objects.get(
-                        part=oPart, customer=oCustomer, active=True)
+                        part=oPart, customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oPartMap = None
                 # end try
                 # Attempt to find an entry that only matches customer part number
                 try:
                     oCustMap = CustomerPartInfo.objects.get(
-                        customer_number=tPart[0], customer=oCustomer, active=True)
+                        customer_number=tPart[0], customer=oCustomer,  customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oCustMap = None
                 # end try
@@ -874,7 +907,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
 
                     CustomerPartInfo.objects.get_or_create(
                         part=oPart,
-                        customer=oCustomer,
+                        customer=oCustomer,customer_name=oCustomerName,
                         customer_number=tPart[0]
                     )
 
@@ -902,7 +935,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
 
                     CustomerPartInfo.objects.get_or_create(
                         part=oPart,
-                        customer=oCustomer,
+                        customer=oCustomer,customer_name=oCustomerName,
                         customer_number=tPart[0],
                     )
 
@@ -946,7 +979,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                 # active in the database.
                 (oMap, _) = CustomerPartInfo.objects.get_or_create(
                     part=oPart,
-                    customer=oCustomer,
+                    customer=oCustomer,customer_name=oCustomerName,
                     customer_number=tPart[0]
                 )
 
@@ -976,7 +1009,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                     str(tPart[4]).upper():
                 (oMap, bCreated) = CustomerPartInfo.objects.get_or_create(
                     part=oPart,
-                    customer=oCustomer,
+                    customer=oCustomer,customer_name=oCustomerName,
                     customer_number=tPart[0],
                     customer_asset=tPart[2],
                     second_customer_number=tPart[1]
@@ -1003,6 +1036,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                         oExactMap = CustomerPartInfo.objects.get(
                             part=oPart,
                             customer=oCustomer,
+                            customer_name=oCustomerName,
                             customer_number=tPart[0],
                             customer_asset=tPart[2],
                             second_customer_number=tPart[1],
@@ -1012,6 +1046,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                         oExactMap = CustomerPartInfo.objects.get(
                             part=oPart,
                             customer=oCustomer,
+                            customer_name=oCustomerName,
                             customer_number=tPart[0],
                             customer_asset=tPart[2],
                             second_customer_number=tPart[1]
@@ -1023,14 +1058,14 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                 # Attempt to find an entry that only matches part number
                 try:
                     oPartMap = CustomerPartInfo.objects.get(
-                        part=oPart, customer=oCustomer, active=True)
+                        part=oPart, customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oPartMap = None
                 # end try
                 # Attempt to find an entry that only matches customer part number
                 try:
                     oCustMap = CustomerPartInfo.objects.get(
-                        customer_number=tPart[0], customer=oCustomer, active=True)
+                        customer_number=tPart[0], customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oCustMap = None
                 # end try
@@ -1039,7 +1074,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                 try:
                     if tPart[1]:
                         oSecCustMap = CustomerPartInfo.objects.get(
-                            customer_number=tPart[0], second_customer_number=tPart[1], customer=oCustomer, active=True)
+                            customer_number=tPart[0], second_customer_number=tPart[1], customer=oCustomer, customer_name=oCustomerName, active=True)
                 except CustomerPartInfo.DoesNotExist:
                     oSecCustMap = None
                     # end try
@@ -1076,7 +1111,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
 
                     CustomerPartInfo.objects.get_or_create(
                         part=oPart,
-                        customer=oCustomer,
+                        customer=oCustomer,customer_name=oCustomerName,
                         customer_number=tPart[0],
                         customer_asset=tPart[2],
                         second_customer_number=tPart[1]
@@ -1106,7 +1141,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
 
                     CustomerPartInfo.objects.get_or_create(
                         part=oPart,
-                        customer=oCustomer,
+                        customer=oCustomer,customer_name=oCustomerName,
                         customer_number=tPart[0],
                         customer_asset=tPart[2],
                         second_customer_number=tPart[1]
@@ -1136,7 +1171,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
 
                     CustomerPartInfo.objects.get_or_create(
                         part=oPart,
-                        customer=oCustomer,
+                        customer=oCustomer,customer_name=oCustomerName,
                         customer_number=tPart[0],
                         customer_asset=tPart[2],
                         second_customer_number=tPart[1]
@@ -1152,7 +1187,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                 # active in the database.
                 (oMap, _) = CustomerPartInfo.objects.get_or_create(
                     part=oPart,
-                    customer=oCustomer,
+                    customer=oCustomer,customer_name=oCustomerName,
                     customer_number=tPart[0],
                     customer_asset=tPart[2],
                     second_customer_number=tPart[1]
@@ -1191,7 +1226,8 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
                 'invalid': aInvalidEntries,
                 'filename': oStream.name,
                 'doc_type': iFileType,
-                'customer': str(oCustomer)
+                'customer': str(oCustomer),
+                'customername': str(oCustomerName)
             }
         )
         html_message = render_to_string(
@@ -1218,7 +1254,7 @@ def ProcessUpload(oStream, iFileType, oCustomer, oUser):
 
 
 def GenerateEmailMessage(cust=(), seccust=(), mpn=(), tag=(), inactive=(), invalid=(),
-                         user=None, filename='', doc_type=0, customer=''):
+                         user=None, filename='', doc_type=0, customer='', customername=''):
     """
     Function to generate a plain-text error message detailing any errors
     encountered during file upload
@@ -1268,8 +1304,10 @@ def GenerateEmailMessage(cust=(), seccust=(), mpn=(), tag=(), inactive=(), inval
             # end if
         # end for
 # S-08487: Customer upload changes :- Added below block to generate email with the discrepancies headings & data for Sprint & T-Mobile
-    # S-11567- For Customer Upload customization added customer ECSO and RBMA
-    elif customer == 'Sprint' or customer == 'T-Mobile' or customer == 'ECSO' or customer == 'RBMA':
+    # S-11567: For Customer Upload customization added customer ECSO and RBMA
+    # S-12377: For Customer Upload customization added customer Verizon
+    # S-12375: Upload Operations:- Added CENTURYLINK INC cname of MTW cu to follow format with other below CUs
+    elif (customer == 'MTW' and customername == 'CENTURYLINK INC') or customer == 'Sprint' or customer == 'T-Mobile' or customer == 'ECSO' or customer == 'RBMA' or customer == 'Verizon':
         aErrorLists = [inactive, mpn, cust, invalid]
         aTableTitles = ['Attempted to change priority Customer Number/MPN mapping',
                         ('MPN priority mapped to different Customer number'),

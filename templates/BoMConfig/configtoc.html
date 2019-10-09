@@ -13,24 +13,26 @@
                         <td style="width:130px;"><b>REACT Request #:</b></td>
                             <td style="border: 1px inset grey; width:180px;">{{ header.react_request }}</td>
                         <td style="width:50px;"></td>
-                        <td style="width:170px;"><b>Projected Cut-over Date:</b></td>
-                            <td style="border: 1px inset grey; width:100px;">{% if header.projected_cutover %}{{ header.projected_cutover }}{% endif %}</td>
+    <!--S-13695- Remove fields in Table Of Contents tab:Commented out below two line for removing Projected cut over date-->
+                        <!--<td style="width:170px;"><b>Projected Cut-over Date:</b></td>-->
+                            <!--<td style="border: 1px inset grey; width:100px;">{% if header.projected_cutover %}{{ header.projected_cutover }}{% endif %}</td>-->
                         <td style="width:50px;"></td>
                         <td>{{ form.total_value.label_tag }}{{ form.total_value }}</td>
                     </tr>
                 </tbody>
             </table>
-            <table>
-                <tbody>
-                    <tr>
-                        <td style="width:200px;">{{ form.ready_for_forecast.label_tag }}{{ form.ready_for_forecast }}</td>
-                        <td style="width:150px;">{{ form.PSM_on_hold.label_tag }}{{ form.PSM_on_hold }}</td>
-                        <td style="width:225px;"></td>
-                        <td style="width:170px;"></td>
-                        <td style="width:300px;">{{ form.zpru_total.label_tag }}{{ form.zpru_total }}</td>
-                    </tr>
-                </tbody>
-            </table>
+     <!--S-13695- Remove fields in Table Of Contents tab:Commented out below table for removing Readytoforecast,PSM-onhold,zpru_total-->
+            <!--<table>-->
+                <!--<tbody>-->
+                    <!--<tr>-->
+                        <!--<td style="width:200px;">{{ form.ready_for_forecast.label_tag }}{{ form.ready_for_forecast }}</td>-->
+                        <!--<td style="width:150px;">{{ form.PSM_on_hold.label_tag }}{{ form.PSM_on_hold }}</td>-->
+                        <!--<td style="width:225px;"></td>-->
+                        <!--<td style="width:170px;"></td>-->
+                        <!--<td style="width:300px;">{{ form.zpru_total.label_tag }}{{ form.zpru_total }}</td>-->
+                    <!--</tr>-->
+                <!--</tbody>-->
+            <!--</table>-->
         </div>
 
         <input type="hidden" id="formaction" name="formaction" value="" />

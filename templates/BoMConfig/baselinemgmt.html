@@ -22,17 +22,25 @@
 			{% endfor %}
 {#			<input class="btn" type="submit" value="Search" />#}
             {% if not downloadable and not detailed %}
-            <ul class="btn" style="border: none; padding: 0 0 0 20px;">
-                <li class="dropdown" style="list-style-type: none;">
-                    <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
-                    <ul class="dropdown-menu">
-                        <li><a href="#" onclick="cust_filter('All');">All</a></li>
-                        {% for customer in cust_list %}
-                        <li><a href="#" onclick="cust_filter('{{ customer.name|replacewhitespace:"-_"|replace:"& _" }}');">{{ customer }}</a></li>
-                        {% endfor %}
+                    <ul class="btn" style="border: none; padding: 0 0 0 20px;">
+                        <li class="dropdown" style="list-style-type: none;">
+                            <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
+                            <ul class="dropdown-menu">
+                                <li><a href="#" onclick="cust_filter('All');">All</a></li>
+                                {% for customer in cust_list %}
+                                <li><a href="#" onclick="cust_filter('{{ customer.name|replacewhitespace:"-_"|replace:"& _" }}');">{{ customer }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        </li>
                     </ul>
-                </li>
-            </ul>
+
+            <!-- S-11565:Baseline tab - main page adjustments - Added below block for showing the customer name field-->
+                    <ul class="btn" style="border: none; padding: 0 0 0 20px;">
+                        <li class="dropdown" style="list-style-type: none;">
+                            <button id="cname_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer Name<span class="caret"></span></button>
+                        </li>
+                    </ul>
+
             {% endif %}
         </form>
 	</div>
@@ -56,26 +64,28 @@
             <tbody>
             {% for table in tables %}
                 {% if table.revisions %}
+      <!-- S-11565:Baseline tab - main page adjustments - Added customer name value for the 1st column(Catalog) in the class -->
                 {% for revision in table.revisions %}
-                    <tr class="first_row {{ revision.customer }}">
+                    <tr class="first_row {{ revision.customer }} {{ revision.customer_name }}">
                         <td class="baseline_name">
                             {% if user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_PSM_Tool_Administrator" %}
                             <input type="checkbox" class="baselineChk" data-index="{{table.baseline_id}}" value="{{table.baseline.id}}">
                             {% endif %}
                             {% if not downloadable %}
                             <a onclick="$('#id_baseline_title').val('{{ table.baseline.id }}'); $('#headersubform form').submit();" style="cursor: pointer">
-                                {{ table.baseline.title }}{% if revision.revision.version %}{% if downloadable or not downloadable and table.baseline.title != 'No Associated Baseline'  %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}{% endif %}
+                            {{ table.baseline.title }}{% if revision.revision.version %}{% if downloadable or not downloadable and table.baseline.title != 'No Associated Baseline'  %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}{% endif %}
                             </a>
                             {% else %}
-                            {{ table.baseline.title }}{% if revision.revision.version %}{% if downloadable or not downloadable and table.baseline.title != 'No Associated Baseline'  %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}{% endif %}
+                              {{ table.baseline.title }}{% if revision.revision.version %}{% if downloadable or not downloadable and table.baseline.title != 'No Associated Baseline'  %} REV {{ revision.revision.version }}{% if revision.revision.completed_date %} {{ revision.revision.completed_date|date:"mdy" }} C{% endif %}{% endif %}{% endif %}
                             {% endif %}
                         </td>
                         <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                         <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                     </tr>
                     {% for header in revision.configs %}
+            <!-- S-11565:Baseline tab - main page adjustments - Added customer name value for each row in the class -->
                     <tr style="{% if header.configuration_status.name == 'In Process' or header.configuration_status.name == 'In Process/Pending' %}color: #22BB33;{% elif header.configuration_status.name == 'On Hold' %}color: #E82828;{% elif header.configuration_status.name != 'Active' %}color: #999999;{% endif %}"
-                        class="{{ header.customer_unit|replacewhitespace:"-_"|replace:"& _" }}"
+                        class="{{ header.customer_unit|replacewhitespace:'-_'|replace:'& _' }} {{ header.customer_name }}"
                     >
                         <td class="body_dummy1" style="visibility: hidden;">{{ table.baseline.title }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
                         <!--<td class="body_dummy2"></td>-->
@@ -136,14 +146,16 @@
                     </tr>
                     {% endfor %}
                 {% endfor %}
-                <tr class="{{ table.baseline.customer.name|replacewhitespace:"-_"|replace:"& _" }}">
+             <!-- S-11565:Baseline tab - main page adjustments - Added customer name value for each row in the class -->
+                <tr class="{{ table.baseline.customer.name|replacewhitespace:'-_'|replace:'& _' }} {{ header.customer_name }}">
                     <td style="visibility: hidden; min-height: 18px;">{{ table.baseline.title }}{% if revision.revision.version %} REV {{ revision.revision.version }}{% endif %}</td>
                     <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                     <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
                 </tr>
 
             {% else %}
-            <tr class="first_row {{ revision.customer }}" >
+    <!-- S-11565:Baseline tab - main page adjustments - Added customer name value for the 1st column(Catalog) in the class -->
+            <tr class="first_row {{ revision.customer }} {{ revision.customer_name }}" >
                 <td class="baseline_name">
                 {% if user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_PSM_Tool_Administrator" %}
                 <input type="checkbox" class="baselineChk" data-index="{{table.baseline_id}}" value="{{table.baseline.id}}">{{table.baseline.title}} (No Revision and Configuration Available)
@@ -169,6 +181,8 @@
             {% csrf_token %}
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
             <input id="master-cust-unit" name="customer" type="hidden" value="">
+   <!-- S-11565:Baseline tab - main page adjustments - Added customer name value in an input hidden field -->
+            <input id="master-cust-name" name="customer_name" type="hidden" value="">
             <input name="baseline" type="hidden" value="{{ tables.0.baseline.title }}"/>
             <input name="version" type="hidden" value=""/>
             <button style="display: inline" id="download" class="btn" type="button" onclick="downloadModal()">Download</button>
@@ -188,6 +202,8 @@
         <form id="downloadform" method="POST" onsubmit="downloadtoken();" action="{% url 'bomconfig:baselinemasterdownload' %}">
             {% csrf_token %}
             <input id="master-cust-unit" name="customer" type="hidden" value="">
+     <!-- S-11565:Baseline tab - main page adjustments -  Added an input hidden field for customer name -->
+            <input id="master-cust-name" name="customer_name" type="hidden" value="">
             <input id="cookie" name="file-cookie" type="hidden" value="{% random_string 10 %}"/>
             <button style="display: inline" id="download" class="btn" type="button" onclick="pickCustomer()">Download</button>
             {% if user|has_group:"BOM_PSM_Baseline_Manager" or user|has_group:"BOM_PSM_Tool_Administrator" %}
@@ -208,6 +224,9 @@
     var rollback_url = "{% url 'bomconfig:baselinerollback' %}";
     var rollbacktest_url = "{% url 'bomconfig:baselinerollbacktest' %}";
     var deletebaseline_url = "{% url 'bomconfig:baselinedelete' %}";
+<!-- S-11565:Baseline tab - main page adjustments - Added below URL to fetch cust name list based on selected CU -->
+    var listreactfill_url = "{% url 'bomconfig:list_react_fill' %}";
+
 </script>
 
 <style>

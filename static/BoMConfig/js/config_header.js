@@ -8,11 +8,13 @@ var model_replace_override = false;
 // D-03595 - Problem saving new configuration when using REACT data:- Added below variable to change to true only when the REACT data is getting saved
 var reactsearch = false;
 //D-03994-Manual override pricing fix: Added below old conf name and new conf name to distinguish between clone and normal config
-var old_conf_name;
-var new_conf_name;
+var old_conf_name;
+var new_conf_name;
 
 $(document).ready(function(){
-
+// D-07037: Catalog Impacted selection empty after catalog name length error: Added below to lines to show/hide the model description field based on error condition found
+$('#modeldesc1').show();
+$('#modeldesc2').hide();
 //D-03994-Manual override pricing fix: Added below old conf name  to distinguish between clone and normal config
 old_conf_name = $('#id_configuration_designation').val();
 // S-07112 - Change dropdown selection view and value:-Added below code to show the option selected in the sales_group & ericsson contract dropdown
@@ -78,28 +80,28 @@ old_conf_name = $('#id_configuration_designation').val();
 //When status of a config (non-picklist) is changed to "Discontinue", no change should occur to the manual override pricing
 //Added line 73-97
 new_conf_name = $('#id_configuration_designation').val();
-var status_type = $('#id_bom_request_type').val();
+var status_type = $('#id_bom_request_type').val();
 
 if(!($("#id_pick_list").is(':checked'))){
- if(old_conf_name.indexOf('_______CLONE')!= -1 && status_type== 1 ){
-   if(new_conf_name.indexOf('_______CLONE')== -1){
-           $.ajax({
-            url: checkclone_url,
-            dataType: "json",
-            type: "POST",
-            data: {
-                headerID : header_id
-            },
-            headers:{
-                'X-CSRFToken': getcookie('csrftoken')
-            },
-            success: function(data) {
-            },
-            error: function(){
-            }
-        });
-    }
- }
+ if(old_conf_name.indexOf('_______CLONE')!= -1 && status_type== 1 ){
+   if(new_conf_name.indexOf('_______CLONE')== -1){
+           $.ajax({
+            url: checkclone_url,
+            dataType: "json",
+            type: "POST",
+            data: {
+                headerID : header_id
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+            },
+            error: function(){
+            }
+        });
+    }
+ }
 }
         $('#formaction').val('save');
         $('#headerform').submit();
@@ -171,6 +173,15 @@ if(!($("#id_pick_list").is(':checked'))){
                 );
                 return false;
             }
+//  D-07037: Catalog Impacted selection empty after catalog name length error: Added below to check the error condition for model description before saving
+            else if($('#id_model_description').val().length > 40){
+                 var vali = $('#id_model_description').val();
+//                   $('#id_model_description').hide();
+                   $('#moderr').show();
+                   document.getElementById("modeldesc1").style.border = "2px solid red";
+                   document.getElementById("modeldesc1").style.maxheight = "48px";
+                   return false;
+            }
     // D-03595 - Problem saving new configuration when using REACT data:- Added below condition to hit only when the REACT data is getting saved
     // i.e if value of reactsearch variable found true
             else if(reactsearch){
@@ -217,8 +228,17 @@ if(!($("#id_pick_list").is(':checked'))){
         list_react_filler('customer_unit', 'customer_name');
         list_react_filler('customer_unit', 'sales_office');
         list_react_filler('customer_unit', 'sales_group');
-        list_filler('customer_unit', 'program');
-        list_filler('customer_unit', 'baseline_impacted', 1);
+// S-11563: BoM Entry - Header sub - tab adjustments: Added the below lines to add dependency based on CU in BoM entry page,if CU is from Tier-1
+// AT&T(1),Verizon(2),Sprint(3),T-Mobile(4) then the program & baseline get populated based on selected CU
+        var cunit = $('#id_customer_unit').val();
+        if( cunit == 1 || cunit == 2 || cunit == 3 || cunit == 4 ){
+            list_filler('customer_unit', 'program');
+            list_filler('customer_unit', 'baseline_impacted', 1);
+        }else{
+// D-07677: Program Admin- Customer Name should be optional for all customers - added this else block since program will be populated based
+// on selected CU if the CNAME is blank/none
+             list_filler('customer_unit', 'program');
+        }
         list_filler('customer_unit', 'person_responsible');
     });
 
@@ -229,6 +249,13 @@ if(!($("#id_pick_list").is(':checked'))){
 
     $('#id_customer_name').change(function(){
         list_react_filler('customer_name', 'sold_to_party');
+// S-11563: BoM Entry - Header sub - tab adjustments:  Added the below lines to add dependency based on CName in BoM entry page,if CU is apart from Tier-1
+// AT&T(1),Verizon(2),Sprint(3),T-Mobile(4) then the program & baseline get populated based on selected CNAME
+        var cunit = $('#id_customer_unit').val();
+        if( cunit != '1' && cunit != '2' && cunit != '3' && cunit != '4' ){
+            list_react_filler('customer_name', 'program');
+            list_react_filler('customer_name', 'baseline_impacted', 1);
+        }
     });
 
     $('#id_sold_to_party').change(function(){
@@ -243,13 +270,13 @@ if(!($("#id_pick_list").is(':checked'))){
 // S-08410:Adjust Model and BoM Header Tab:- Added below if conditions to check the line 100 value of the config
 // If a new config is opened then checkbox should be checked, if existing opens then depending on the value it will show checked or unchecked
     if(isline100==''){                          // For New config on BoM entry page load
-     $('#id_line_100').prop('checked', true);
+     $('#id_line_100').prop('checked', true);
     }
     if(isline100 == 'True'){                    // For existing config on opening a line 100 config
-         $('#id_line_100').prop('checked', true);
+         $('#id_line_100').prop('checked', true);
     }
     if(isline100 == 'False'){                   // For existing config on opening a line 10 config
-        $('#id_line_100').prop('checked', false);
+        $('#id_line_100').prop('checked', false);
     }
 
     $('#id_baseline_impacted').change(function(){
@@ -290,7 +317,7 @@ function cleanDataCheck(link){
                         window.location.href = link.dataset.href;
                     }
                 }
-        );
+       );
     } else {
         if (link.target == "_blank"){
             window.open(link.dataset.href);
@@ -306,12 +333,17 @@ function list_filler(parent, child, index){
 // D-04026: Baseline dropdown not populated when starting config with REACT info: Added below to populate Program & Baseline Impacted
 // dropdown based on populated CU on react search
     if(reactsearch){
-        if(parent == 'customer_unit'){
-            parentval = $("#id_customer_unit").attr("cust_val");    // to send the ID of CU if parent is CU & done through React search
-        }
+// S-11563: BoM Entry - Header sub-tab adjustments - Added 2 if else condition below as when react req search is done, if resultant CU is tier 1 then
+// prog & catalog will get populated based on CU; if tier-2,3 then based on resultant cname; data is prepared accordingly
+       if(parent == 'customer_unit'){
+            parentval = $("#id_customer_unit").attr("cust_val");    // to send the ID of CU if parent is CU & done through React search
+       }
+       if(parent == 'customer_name'){
+            parentval = $("#id_customer_name").val();    // to send the cname as the parentval when CU is not Tier 1 and dependent on cname & done through React search
+       }
     }else{
-        parentval = $('#id_' + parent).val();
-    }
+        parentval = $('#id_' + parent).val();
+    }
 
     if($('#id_' + parent).val() != ''){
         $.ajax({
@@ -421,6 +453,7 @@ function list_react_filler(parent, child, index){
             type: "POST",
             data: {
                 id:'',
+                cu:$('#id_customer_unit').val(), // S-12408: Admin adjustments- Added this parameter to send CU value
                 parent: parent,
                 child: child,
                 name: $('#id_' + parent).val(),
@@ -439,6 +472,22 @@ function list_react_filler(parent, child, index){
                     for (var key in data){
                         if(data.hasOwnProperty(key)){
                             $child.append($('<option>',{value:key,text:data[key]}));
+                        }
+                     }
+                }
+// S-12408: Admin adjustments- Added below 2 blocks to populate program & baseline impacted based on CName selection
+                if(child == 'program'){
+                    for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                            $child.append($('<option>',{value:key.toString(),text:data[key]}));
+                        }
+                     }
+                }
+
+                if(child == 'baseline_impacted'){
+                    for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                            $child.append($('<option>',{value:key.toString().slice(1),text:data[key]}));
                         }
                      }
                 }
@@ -492,7 +541,7 @@ function list_react_filler(parent, child, index){
             url: listreactfill_url,
             dataType: "json",
             type: "POST",
-            data: {
+           data: {
                 id: '',
                 parent: parent,
                 child: child,
@@ -688,8 +737,18 @@ function req_search(){
 
 // D-04026: Baseline dropdown not populated when starting config with REACT info: Added below to populate Program & Baseline Impacted
 // dropdown based on populated CU on react search
-                    list_filler('customer_unit', 'program');
-                    list_filler('customer_unit', 'baseline_impacted', 1);
+
+// S-11563: BoM Entry - Header sub-tab adjustments - Added 2 if else condition below as when react req search is done, if resultant CU is tier 1 then
+// prog & catalog will get populated based on CU; if tier-2,3 then based on resultant cname
+
+                    var cunit = $('#id_customer_unit').val();
+                    if( cunit == 'AT&T' || cunit == 'Verizon' || cunit == 'Sprint' || cunit == 'T-Mobile' ){
+                        list_filler('customer_unit', 'program');
+                        list_filler('customer_unit', 'baseline_impacted', 1);
+                    }else{
+                        list_filler('customer_name', 'program');
+                        list_filler('customer_name', 'baseline_impacted', 1);
+                    }
 
 //                    var ericontdeschtml = "<input id='ericontractdesc' style='width:400px;' type='textbox'/>";
 //                    $(ericssoncontractdesc_id).remove();
@@ -743,3 +802,4 @@ function cloneHeader(headerId){
         }
     });
 }
+

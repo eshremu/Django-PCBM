@@ -2,13 +2,17 @@
 {% load bomconfig_customtemplatetags %}
 {% load staticfiles %}
 {% block subcontent %}
-        <script>$('button[value="active"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');</script>
+        <script>$('button[value="active"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+<!--S-12405: Actions & Approvals adjustments - Added the URL below for populating the baseline dropdown based on selected CNAME -->
+            var action_customername_baseline_url = "{% url 'bomconfig:action_customername_baseline' %}";
+        </script>
         <div id="hintBox"></div>
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
 <!--D-04023-Customer filter on Actions issue for Admin users :- Added below to show the selected CU in the dropdown title-->
                 {% for customer in selectedcustomer %}
-                    <button id="cust_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown" >{{customer}}<span class="caret"></span></button>
+<!-- S-12405: Actions & Approvals adjustments - Changed from cust_filter to cu_filter below -->
+                    <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown" >{{customer}}<span class="caret"></span></button>
                 {% endfor %}
                 <ul class="dropdown-menu">
                     {% for customer in customer_list %}
@@ -23,20 +27,39 @@
                 </ul>
             </li>
         </ul>
-        <ul class="btn" style="border: none; padding: 0;">
+         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
-                <!--S-11553: Actions tab changes : Changed Baseline to Catalog when we select All-->
-                <button id="base_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Catalog <span class="caret"></span></button>
-                <ul class="dropdown-menu">
-                    {% for baseline in baselines %}
-                    <li><a href="#" onclick="base_filter('{{ baseline }}');">{{ baseline }}</a></li>
+<!--D-04023-Customer filter on Actions issue for Admin users :- Added below to show the selected CU in the dropdown title-->
+                <button id="cname_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown" >Customer Name<span class="caret"></span></button>
+                <ul class="dropdown-menu" style="overflow:scroll; height:300px;">
+                     <li><a  onclick="custname_filter('All');">All</a></li>
+                    {% for customername in customername_list %}
+<!-- D-04023-Customer filter on Actions issue for Admin users :- Added below to check if the CU is not 'All' then the href will have the customer ID to
+ redirect to the respective inprocess customer page else if it is 'All' then it will redirect to the inprocess page-->
+                      {% if customername != 'All' %}
+                          <li><a  onclick="custname_filter('{{ customername }}');">{{ customername }}</a></li>
+                      {% else %}
+                        <li><a  href="{% url 'bomconfig:action_active' %}" onclick="custname_filter('{{ customername }}');">{{ customername }}</a></li>
+                      {% endif %}
                     {% endfor %}
                 </ul>
             </li>
         </ul>
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
-                <button id="req_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Request Type <span class="caret"></span></button>
+                <!--S-11553: Actions tab changes : Changed Baseline to Catalog when we select All-->
+                <!-- S-12405: Actions & Approvals adjustments - Commented the UL tag below-->
+                <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Catalog <span class="caret"></span></button>
+                <ul id="catfilterdropdown" class="dropdown-menu">
+                        {% for baseline in baselines %}
+                            <li><a href="#" onclick="catalog_filter('{{ baseline }}')">{{ baseline }}</a></li>
+                        {% endfor %}
+                </ul>
+            </li>
+        </ul>
+        <ul class="btn" style="border: none; padding: 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="request_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Request Type <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for request in requests %}
                     <li><a href="#" onclick="req_filter('{{ request }}');">{{ request }}</a></li>
@@ -52,7 +75,7 @@
                 <div><br/></div>
                 <table id="document_records">
                     <thead>
-                        <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
+                        <tr class="{% for customer in customer_list %}{{ customer|replace:'& _'|replacewhitespace:'-_' }} {% endfor %}">
                             <th style="width:25px"></th><th style="width:200px">Configuration Designation</th>
                         <!--S-11553: Actions tab changes : Changed Baseline to Catalog when we select a CU-->
                             <th style="width:400px">Catalog</th>
@@ -64,7 +87,8 @@
                     </thead>
                     <tbody>
                     {% for record in active %}
-                        <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }}">
+<!--  S-12405: Actions & Approvals adjustments - Added customer name below to filter based on having in the class -->
+                        <tr class="{{ record.customer_unit.name|safe|replace:'& _'|replacewhitespace:'-_' }} {{ record.customer_name }} {{ record.baseline }}">
                             <td><input class="active" type="checkbox" data-index="{{ record.id }}"/></td>
                             <td>{{ record.configuration_designation }}</td>
                             <!--<td>{{ record.baseline | default:"(Not baselined)" }}</td>-->

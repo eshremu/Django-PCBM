@@ -12,6 +12,9 @@
         <h5>NOTE: The asterisk (*) character can be used as multi-character wildcard, and the question mark (?) can be used for single-character wildcard</h5>
         <form id="search_form" method="POST" onsubmit="return search()">
             {% csrf_token %}
+            <div>
+                <button id="search_button" class="btn" type="button" name="search_button" value="search">Search</button>
+            </div>
             <div class="row">
                 <div class="col-md-4">
                     <h4 id="header_search_title">BoM Config Header&nbsp;<span class="caret"></span></h4>
@@ -26,10 +29,18 @@
                             <select id="customer" name="customer">
                                 <option value="">-------</option>
                                 {% for cust in cust_list %}
-                                <option value="{{ cust.name }}">{{ cust.name }}</option>
+                                <option value="{{ cust.id }}">{{ cust.name }}</option>
                                 {% endfor %}
                             </select>
                         </li>
+    <!--S-11564: Search - Basic & Advanced adjustments- Added below block to add CName field-->
+                        <label for="cuname" >Customer Name</label>
+                        <select id="cuname" name="cuname">
+                            <option value="">-------</option>
+                            {% for cname in cnamelist %}
+                               <option value="{{ cname.name }}">{{ cname.name }}</option>
+                            {% endfor %}
+                        </select>
                         <li><label for="person">Person Responsible</label>
                             <input id="person" type="text" name="person"/>
                         </li>
@@ -93,17 +104,18 @@
                         <li><label for="inquiry_site">Inquiry / Site Template Number</label>
                             <input id="inquiry_site" type="text" name="inquiry_site"/>
                         </li>
-                        <li><label for="readiness">Readiness Complete (%)</label>
-                            <select id="readiness_param">
-                                <option value="lt"><</option>
-                                <option value="lte">&le;</option>
-                                <option value="exact" selected>=</option>
-                                <option value="gte">&ge;</option>
-                                <option value="gt">></option>
-                                <option value="ne">&ne;</option>
-                            </select>
-                            <input id="readiness" type="number" name="readiness" min="0" max="100" maxlength="3"/>
-                        </li>
+        <!--S-12372- remove readiness complete in search/avd search page :commented out from line 97-107-->
+                        <!--<li><label for="readiness">Readiness Complete (%)</label>-->
+                            <!--<select id="readiness_param">-->
+                                <!--<option value="lt"><</option>-->
+                                <!--<option value="lte">&le;</option>-->
+                                <!--<option value="exact" selected>=</option>-->
+                                <!--<option value="gte">&ge;</option>-->
+                                <!--<option value="gt">></option>-->
+                                <!--<option value="ne">&ne;</option>-->
+                            <!--</select>-->
+                            <!--<input id="readiness" type="number" name="readiness" min="0" max="100" maxlength="3"/>-->
+                        <!--</li>-->
                          <!--S-11548: Search - Advanced Search sub-tab changes Changed label from Baseline Impacted-->
                         <li><label for="base_impact">Catalog Impacted</label>
                             <select id="base_impact" name="base_impact">
@@ -131,6 +143,19 @@
                                 {% endfor %}
                             </select>
                         </li>
+<!-- S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added the Value contract & Supply chain flow field below-->
+                        <li><label for="ericsson_contract">Value Contract #</label>
+                            <select id="ericsson_contract" name="ericsson_contract" multiple>
+                            </select>
+                        </li>
+                        <li><label for="supply_chain_flow">Supply Chain Flow/Segment</label>
+                            <select id="supply_chain_flow" name="supply_chain_flow" multiple>
+<!--                               <option value="n/a">Any</option>-->
+                                {% for supply in supply_chain_flow_list %}
+                                <option value="{{ supply.name }}">{{ supply }}</option>
+                                {% endfor %}
+                            </select>
+                        </li>
                     </ul>
                 </div>
 
@@ -151,7 +176,17 @@
                         </li>
                       <!--Added for S-05767:Addition of Second Cust No. in advance search filter -->
                         <li><label for="sec_cust_num">Second Customer Number</label>
-                            <input id="sec_cust_num" type="text"/>
+                           <input id="sec_cust_num" type="text"/>
+                        </li>
+
+<!-- S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added the Portfolio code field below-->
+                        <li><label for="portfolio_code">Portfolio Code</label>
+                            <select id="portfolio_code" name="portfolio_code" multiple>
+                                <option value="Green">Green</option>
+                                <option value="Yellow">Yellow</option>
+                                <option value="Red">Red</option>
+                                <option value="Obsolete">Obsolete</option>
+                            </select>
                         </li>
                     </ul>
                 </div>
@@ -181,9 +216,7 @@
                     </ul>
                 </div>
             </div>
-            <div>
-                <button id="search_button" class="btn" type="button" name="search_button" value="search">Search</button>
-            </div>
+
 
         </form>
     </div>
@@ -199,6 +232,7 @@
     var downloadmultiurl = "{% url 'bomconfig:downloadmulti' %}";
     var searchurl = "{% url 'bomconfig:searchadv' %}";
     var reporturl = '{% url 'bomconfig:downloadresult' %}';
+    var listreactfillurl = '{% url 'bomconfig:list_react_fill' %}';
 </script>
 <script type="text/javascript" src="{% static 'BoMConfig/js/search_advanced.js' %}"></script>
 <style>

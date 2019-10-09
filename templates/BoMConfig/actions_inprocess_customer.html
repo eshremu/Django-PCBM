@@ -23,13 +23,30 @@
                 </ul>
             </li>
         </ul>
+<!--S-12405:Actions & Approvals adjustments - Added below block for the customer name filter-->
+        <ul class="btn" style="border: none; padding: 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="cname_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown" >Customer Name<span class="caret"></span></button>
+                <ul class="dropdown-menu" style="overflow:scroll; height:300px;">
+                    <li><a onclick="custname_filter('All');">All </a></li>
+                    {% for customername in customername_list %}
+                      {% if customername != 'All' %}
+                          <li><a onclick="custname_filter('{{ customername }}');">{{ customername }} </a></li>
+                      {% else %}
+                        <li><a  href="{% url 'bomconfig:action_inprocess' %}" onclick="custname_filter('{{ customername }}');">{{ customername }}</a></li>
+                      {% endif %}
+                    {% endfor %}
+                </ul>
+            </li>
+        </ul>
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
                 <!--S-11553: Actions tab changes : Changed Baseline to Catalog in Filter Button-->
-                <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Catalog <span class="caret"></span></button>
-                <ul class="dropdown-menu">
+                <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Catalog<span class="caret"></span></button>
+                <!-- S-12405:Actions & Approvals adjustments - Commented & removed below block as the baseline gets populated based on customer name now-->
+                <ul id="catfilterdropdown" class="dropdown-menu">
                     {% for baseline in baselines %}
-                    <li><a href="#" onclick="baseline_filter('{{ baseline }}');">{{ baseline }}</a></li>
+                            <li><a href="#" onclick="catalog_filter('{{ baseline }}')">{{ baseline }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
@@ -72,10 +89,11 @@
                     </thead>
                     <tbody>
                     {% for record in in_process %}
-                        <tr class="{{ record.customer_unit.name|safe|replace:"& _"|replacewhitespace:"-_" }}">
+                    <!--S-12405:Actions & Approvals adjustments - Added customer name & baseline below in the class for the filter to function -->
+                        <tr class="{{ record.customer_unit.name|safe|replace:'& _'|replacewhitespace:'-_' }} {{ record.customer_name }} {{ record.baseline }}">
                             <td><input class="inprocess" type="checkbox" data-index="{{ record.id }}"/></td>
                             <td></td>
-                            <td><a href="{% url 'bomconfig:search' %}?link={{ record.pk|searchscramble }}">{{ record.configuration_designation }}</a></td>
+                            <td><a href="{% url 'bomconfig:search' %}?link={{ record.pk|searchscramble }}">{{ record.configuration_designation }} </a></td>
                             <td></td>
                             <td>{{ record.program|default:"------" }}</td>
                             <td></td>
@@ -157,6 +175,12 @@
             </style>
             <script>
                 var approval_url = "{% url 'bomconfig:approve_info' %}";
+<!--  S-12405:Actions & Approvals adjustments - Added below URL to populate CNAME list based on CU selection -->
+                var listreactfill_url = "{% url 'bomconfig:list_react_fill' %}";
+                var custid = {{custid}};
+<!--S-12405:Actions & Approvals adjustments - Added below URL to populate baseline list based on CNAME selection -->
+                var action_customername_baseline_url = "{% url 'bomconfig:action_customername_baseline' %}";
+                var baselinelist = "{{baselines}}";
             </script>
             {% else %}
                 <h5>NO IN-PROCESS RECORDS</h5>

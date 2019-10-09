@@ -238,6 +238,7 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 
                 # If  the user requested to build a new baseline, create a new
                 # baseline by the name specified.
+    # S-12408: Admin adjustments- Added customer_name parameter in the defaults to get or create baseline based on selected CName
                 if oRequest.POST['baseline_impacted'] and \
                         oRequest.POST['baseline_impacted'] == 'New' and \
                         oRequest.POST.get('new_baseline', None):
@@ -245,7 +246,8 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                         title__iexact=oRequest.POST['new_baseline'],
                         defaults={'title': oRequest.POST['new_baseline'],
                                   'customer': REF_CUSTOMER.objects.get(
-                                      id=oRequest.POST['customer_unit'])
+                                      id=oRequest.POST['customer_unit']),
+                                  'customer_name': oRequest.POST['customer_name']
                                   }
                     )
                     headerForm.data._mutable = True
@@ -535,11 +537,25 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                         parent=(headerForm.cleaned_data['product_area1'] if
                                 headerForm.cleaned_data.get('product_area1',
                                                             None) else None))
-                headerForm.fields['program'].queryset = \
-                    REF_PROGRAM.objects.filter(
-                        parent=(headerForm.cleaned_data['customer_unit'] if
-                                headerForm.cleaned_data.get('customer_unit',
-                                                            None) else None))
+
+# S-11563: BoM Entry - Header sub-tab adjustments - Added below if condition to return the program queryset dependent on Tier 1 CUs \
+# after saving and else condition to return the program queryset dependent on Cnames(Tier 2,3 CUs) after saving
+                if str(headerForm.cleaned_data['customer_unit']) == 'AT&T' or str(headerForm.cleaned_data['customer_unit']) == 'Sprint' \
+                        or str(headerForm.cleaned_data['customer_unit']) == 'T-Mobile' or str(headerForm.cleaned_data['customer_unit']) == 'Verizon':
+                    headerForm.fields['program'].queryset = \
+                        REF_PROGRAM.objects.filter(
+                            parent=(headerForm.cleaned_data['customer_unit'] if
+                                    headerForm.cleaned_data.get('customer_unit',
+                                                                None) else None)).exclude(is_inactive=1)
+                else:
+                    headerForm.fields['program'].queryset = \
+                        REF_PROGRAM.objects.filter(
+                            parent=(headerForm.cleaned_data['customer_unit'] if
+                                    headerForm.cleaned_data.get('customer_unit',
+                                                                None) else None)).filter(
+                            Q(customer_name=(headerForm.cleaned_data['customer_name'] if
+                                    headerForm.cleaned_data.get('customer_name',
+                                                                None) else None))| Q(customer_name=None)).exclude(is_inactive=1)
             else:
                 # If this is just to view the header, pre-populate the header
                 # form
@@ -550,9 +566,31 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
                 headerForm.fields['product_area2'].queryset = \
                     REF_PRODUCT_AREA_2.objects.filter(
                         parent=(oExisting.product_area1 if oExisting else None))
-                headerForm.fields['program'].queryset = \
-                    REF_PROGRAM.objects.filter(
-                        parent=(oExisting.customer_unit if oExisting else None))
+
+                # S-11563: BoM Entry - Header sub-tab adjustments - Added below if condition to return the program queryset dependent on Tier 1 CUs \
+                # after saving and else condition to return the program queryset dependent on Cnames(Tier 2,3 CUs) after saving
+
+                # if existing config is opened or page is loaded after save, if CU selected is tier-1 then program will get populated based on selected CU
+                # else program will get populated based on selected CName
+                if oExisting:
+                    if str(oExisting.customer_unit) == 'AT&T' or \
+                       str(oExisting.customer_unit) == 'Sprint' or \
+                       str(oExisting.customer_unit) == 'T-Mobile' or \
+                       str(oExisting.customer_unit) == 'Verizon':
+
+                        headerForm.fields['program'].queryset = \
+                            REF_PROGRAM.objects.filter(
+                                parent=(oExisting.customer_unit if oExisting else None))
+                    else:
+                        headerForm.fields['program'].queryset = \
+                            REF_PROGRAM.objects.filter(
+                                parent=(oExisting.customer_unit if oExisting else None)).\
+                                filter(Q(customer_name=oExisting.customer_name if oExisting else None)|Q(customer_name=None)).exclude(is_inactive=1)
+                else:                    # called when page is loaded freshly
+                    headerForm.fields['program'].queryset = \
+                        REF_PROGRAM.objects.filter(
+                            parent=(oExisting.customer_unit if oExisting else None))
+
             # end if
         except LockException:
             # If the Header is locked, show the user an error message
@@ -593,23 +631,61 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
             # filter using the completed_date, to ensure we only allow baselines
             # that have an in-process configuration to be selected.
             # S - 11552: Baseline tab changes: changed choices for new baseline to catalog
-            headerForm.fields['baseline_impacted'].widget = \
-                forms.widgets.Select(
-                    choices=(('', '---------'),
-                             ('New', 'Create New catalog')) + tuple(
-                        (obj.title, obj.title) for obj in
-                        Baseline_Revision.objects.filter(
-                            baseline__customer=oExisting.customer_unit if
-                            oExisting else None).filter(
-                            completed_date=None).exclude(
-                            baseline__title='No Associated Baseline').exclude(baseline__isdeleted=1).order_by(
-                            'baseline__title'))
-                )
+
+            # S-11563: BoM Entry - Header sub-tab adjustments - Added below if condition to return the catalog queryset dependent on Tier 1 CUs \
+            # after saving and else condition to return the catalog queryset dependent on Cnames(Tier 2,3 CUs) after saving
+
+            # if existing config is opened or page is loaded after save, if CU selected is tier-1 then catalog will get populated based on selected CU
+            # else catalog will get populated based on selected CName
+            if oExisting:
+                if str(oExisting.customer_unit) == 'AT&T' or str(oExisting.customer_unit) == 'Verizon' or \
+                    str(oExisting.customer_unit) == 'Sprint' or str(oExisting.customer_unit) == 'T-Mobile' :
+                        headerForm.fields['baseline_impacted'].widget = \
+                            forms.widgets.Select(
+                                choices=(('', '---------'),
+                                         ('New', 'Create New catalog')) + tuple(
+                                    (obj.title, obj.title) for obj in
+                                    Baseline_Revision.objects.filter(
+                                        baseline__customer=oExisting.customer_unit if
+                                        oExisting else None).filter(
+                                        completed_date=None).exclude(
+                                        baseline__title='No Associated Baseline').exclude(baseline__isdeleted=1).order_by(
+                                        'baseline__title'))
+                            )
+                else:
+                    headerForm.fields['baseline_impacted'].widget = \
+                        forms.widgets.Select(
+                            choices=(('', '---------'),
+                                     ('New', 'Create New catalog')) + tuple(
+                                (obj.title, obj.title) for obj in
+                                Baseline_Revision.objects.filter(
+                                    baseline__customer=oExisting.customer_unit if
+                                    oExisting else None).filter(
+                                    baseline__customer_name=oExisting.customer_name if
+                                    oExisting else None).filter(
+                                    completed_date=None).exclude(
+                                    baseline__title='No Associated Baseline').exclude(baseline__isdeleted=1).order_by(
+                                    'baseline__title'))
+                        )
+            else:                   # called when page is loaded freshly
+                headerForm.fields['baseline_impacted'].widget = \
+                    forms.widgets.Select(
+                        choices=(('', '---------'),
+                                 ('New', 'Create New catalog')) + tuple(
+                            (obj.title, obj.title) for obj in
+                            Baseline_Revision.objects.filter(
+                                baseline__customer=oExisting.customer_unit if
+                                oExisting else None).filter(
+                                completed_date=None).exclude(
+                                baseline__title='No Associated Baseline').exclude(baseline__isdeleted=1).order_by(
+                                'baseline__title'))
+                    )
 
             oCursor = connections['REACT'].cursor()
             oCursor.execute(
                 ('SELECT DISTINCT [Customer] FROM ps_fas_contracts '
-                 'WHERE [CustomerUnit]=%s'),
+                 'WHERE [CustomerUnit]=%s AND (SELECT convert(varchar(10), getdate(), 120)) >= [ValidFrom] AND'
+                '(SELECT convert(varchar(10), getdate(), 120)) <= [ValidTo]'),
                 [bytes(oExisting.customer_unit.name, 'ascii') if oExisting else
                  None]
             )
@@ -767,7 +843,6 @@ def AddHeader(oRequest, sTemplate='BoMConfig/entrylanding.html'):
 
         return Default(oRequest, sTemplate, dContext)
 # end def
-
 
 @login_required
 def AddConfig(oRequest):
@@ -2106,6 +2181,7 @@ def BuildDataArray(oHeader=None, config=False, toc=False, inquiry=False,
                     '6': oHeader.change_notes or '',
                     '7': oHeader.change_comments or '',
                     '8': oHeader.person_responsible,
+                    '9': oHeader.latesttracker.approval_comments,       # S-12912 Approval comments backend logic:added '9' for shwoing approval comments in revision table
                 })
 
                 # Step to previous revision, if it exists
@@ -2571,76 +2647,227 @@ def Validator(aData, oHead, bCanWriteConfig, bFormatCheckOnly):
         if not bFormatCheckOnly:
             corePartNumber = aData[index]['2'].lstrip('.')
             # Populate Read-only fields
+            # D-07107: Line 10 (100) part not found on validation :- Added below line to fetch the 1st line number in the config table
+            oFirstLine = oHead.configuration.get_first_line()
 
-            if corePartNumber in dPartData.keys():
-                if oHead.configuration_status.name == 'In Process':
-                    # Product Description
-                    if aData[index]['3'] in (None, ''):
-                        aData[index]['3'] = dPartData[corePartNumber]['Description'][0] or ''
+            # D-07107: Line 10 (100) part not found on validation :- Added below multiple if else conditions to check if the config's
+            # first line is 10 or 100 & picklist or non-picklist, based on these, the validation would be stopped for the config name
+            # in the 1st line
+            if not oHead.pick_list:
+                if oFirstLine.line_number == '10':
+                    if aData[index]['1'] != '10':
+                        if corePartNumber in dPartData.keys():
+                            if oHead.configuration_status.name == 'In Process':
+                                # Product Description
+                                if aData[index]['3'] in (None, ''):
+                                    aData[index]['3'] = dPartData[corePartNumber]['Description'][0] or ''
 
-                    # MU-Flag
-                    aData[index]['16'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
+                                # MU-Flag
+                                aData[index]['16'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
 
-                    # X-Plant
-                    aData[index]['17'] = dPartData[corePartNumber]['X-Plant'][0] or ''
+                                # X-Plant
+                                aData[index]['17'] = dPartData[corePartNumber]['X-Plant'][0] or ''
 
-# S-08476: Adjust save process to preserve new columns:-Added below 3 lines to show the saved value of 3 new columns on page load
-                    # Current Portfolio-Code
-                    aData[index]['14'] = dPartData[corePartNumber]['Current Portfolio Code'][0] or ''
+            # S-08476: Adjust save process to preserve new columns:-Added below 3 lines to show the saved value of 3 new columns on page load
+                                # Current Portfolio-Code
+                                aData[index]['14'] = dPartData[corePartNumber]['Current Portfolio Code'][0] or ''
 
-                    # Plant Specific Material Status
-                    aData[index]['18'] = dPartData[corePartNumber]['Plant Specific Material Status'][0] or ''
+                                # Plant Specific Material Status
+                                aData[index]['18'] = dPartData[corePartNumber]['Plant Specific Material Status'][0] or ''
 
-                    # Distribution Chain Specific Material Status
-                    aData[index]['19'] = dPartData[corePartNumber]['Distribution Chain Specific Material Status'][0] or ''
+                                # Distribution Chain Specific Material Status
+                                aData[index]['19'] = dPartData[corePartNumber]['Distribution Chain Specific Material Status'][0] or ''
 
-                    # UoM
-                    aData[index]['5'] = dPartData[corePartNumber]['UOM'][0] or ''
+                                # UoM
+                                aData[index]['5'] = dPartData[corePartNumber]['UOM'][0] or ''
 
-                    # Item Category Group
-                    if not re.match("^Z[A-Z0-9]{3}$|^$",
-                                    aData[index]['9'] or '',
-                                    re.IGNORECASE):
-                        aData[index]['9'] = dPartData[corePartNumber]['ItemCat'][0] or ''
+                                # Item Category Group
+                                if not re.match("^Z[A-Z0-9]{3}$|^$",
+                                                aData[index]['9'] or '',
+                                                re.IGNORECASE):
+                                    aData[index]['9'] = dPartData[corePartNumber]['ItemCat'][0] or ''
 
-                    # Product Package Type
-                    if dPartData[corePartNumber]['ItemCat'][0] == 'ZF26':
-                        aData[index]['12'] = 'Fixed Product Package (FPP)'
-                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZASO':
-                        aData[index]['12'] = 'Assembled Sales Object (ASO)'
-                        if aData[index]['6'] in (None, ''):
-                            error_matrix[index][6]['value'] += \
-                                'X - ContextID must be populated for ASO parts.\n'
-                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZAVA':
-                        aData[index]['12'] = 'Material Variant (MV)'
-                    elif dPartData[corePartNumber]['M-Type'][0] == 'ZEDY':
-                        aData[index]['12'] = 'Dynamic Product Package (DPP)'
+                                # Product Package Type
+                                if dPartData[corePartNumber]['ItemCat'][0] == 'ZF26':
+                                    aData[index]['12'] = 'Fixed Product Package (FPP)'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZASO':
+                                    aData[index]['12'] = 'Assembled Sales Object (ASO)'
+                                    if aData[index]['6'] in (None, ''):
+                                        error_matrix[index][6]['value'] += \
+                                            'X - ContextID must be populated for ASO parts.\n'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZAVA':
+                                    aData[index]['12'] = 'Material Variant (MV)'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZEDY':
+                                    aData[index]['12'] = 'Dynamic Product Package (DPP)'
 
 
- # S-08475: Adjust validation process to flag parts with non-green portfolio code : Added below condition to show the warning message on the cell if the color value is not green
-                    # Portfolio Code
-                    if dPartData[corePartNumber]['Current Portfolio Code'][0] != 'Green':
-                        error_matrix[index][14]['value'] += '! - Portfolio code is Non-Green.' + '\n'
-                    # end if
+             # S-08475: Adjust validation process to flag parts with non-green portfolio code : Added below condition to show the warning message on the cell if the color value is not green
+                                # Portfolio Code
+                                if dPartData[corePartNumber]['Current Portfolio Code'][0] != 'Green':
+                                    error_matrix[index][14]['value'] += '! - Portfolio code is Non-Green.' + '\n'
+                                # end if
 
-                    # X-Plant Description
-                    if dPartData[corePartNumber]['X-Plant Desc'][0]\
-                            and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][17]['value']:
-                        error_matrix[index][17]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
-                    # end if
-                # end if
+                                # X-Plant Description
+                                if dPartData[corePartNumber]['X-Plant Desc'][0]\
+                                        and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][17]['value']:
+                                    error_matrix[index][17]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
+                                # end if
+                            # end if
+                        else:
+                            error_matrix[index][2]['value'] += \
+                                '! - Product Number not found.\n'
+                            if oHead.configuration_status.name == 'In Process':
+                                aData[index]['5'] = ''
+                                aData[index]['14'] = ''
+                                aData[index]['15'] = ''
+                                aData[index]['16'] = ''
+                                aData[index]['17'] = ''
+                                aData[index]['18'] = ''
+                                aData[index]['19'] = ''
+                        # end def
+                else:
+                    if aData[index]['1'] != '100':
+                        if corePartNumber in dPartData.keys():
+                            if oHead.configuration_status.name == 'In Process':
+                                # Product Description
+                                if aData[index]['3'] in (None, ''):
+                                    aData[index]['3'] = dPartData[corePartNumber]['Description'][0] or ''
+
+                                # MU-Flag
+                                aData[index]['16'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
+
+                                # X-Plant
+                                aData[index]['17'] = dPartData[corePartNumber]['X-Plant'][0] or ''
+
+                                # S-08476: Adjust save process to preserve new columns:-Added below 3 lines to show the saved value of 3 new columns on page load
+                                # Current Portfolio-Code
+                                aData[index]['14'] = dPartData[corePartNumber]['Current Portfolio Code'][0] or ''
+
+                                # Plant Specific Material Status
+                                aData[index]['18'] = dPartData[corePartNumber]['Plant Specific Material Status'][0] or ''
+
+                                # Distribution Chain Specific Material Status
+                                aData[index]['19'] = \
+                                dPartData[corePartNumber]['Distribution Chain Specific Material Status'][0] or ''
+
+                                # UoM
+                                aData[index]['5'] = dPartData[corePartNumber]['UOM'][0] or ''
+
+                                # Item Category Group
+                                if not re.match("^Z[A-Z0-9]{3}$|^$",
+                                                aData[index]['9'] or '',
+                                                re.IGNORECASE):
+                                    aData[index]['9'] = dPartData[corePartNumber]['ItemCat'][0] or ''
+
+                                # Product Package Type
+                                if dPartData[corePartNumber]['ItemCat'][0] == 'ZF26':
+                                    aData[index]['12'] = 'Fixed Product Package (FPP)'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZASO':
+                                    aData[index]['12'] = 'Assembled Sales Object (ASO)'
+                                    if aData[index]['6'] in (None, ''):
+                                        error_matrix[index][6]['value'] += \
+                                            'X - ContextID must be populated for ASO parts.\n'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZAVA':
+                                    aData[index]['12'] = 'Material Variant (MV)'
+                                elif dPartData[corePartNumber]['M-Type'][0] == 'ZEDY':
+                                    aData[index]['12'] = 'Dynamic Product Package (DPP)'
+
+                                # S-08475: Adjust validation process to flag parts with non-green portfolio code : Added below condition to show the warning message on the cell if the color value is not green
+                                # Portfolio Code
+                                if dPartData[corePartNumber]['Current Portfolio Code'][0] != 'Green':
+                                    error_matrix[index][14]['value'] += '! - Portfolio code is Non-Green.' + '\n'
+                                # end if
+
+                                # X-Plant Description
+                                if dPartData[corePartNumber]['X-Plant Desc'][0] \
+                                        and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][17][
+                                    'value']:
+                                    error_matrix[index][17]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
+                                # end if
+                            # end if
+                        else:
+                            error_matrix[index][2]['value'] += \
+                                '! - Product Number not found.\n'
+                            if oHead.configuration_status.name == 'In Process':
+                                aData[index]['5'] = ''
+                                aData[index]['14'] = ''
+                                aData[index]['15'] = ''
+                                aData[index]['16'] = ''
+                                aData[index]['17'] = ''
+                                aData[index]['18'] = ''
+                                aData[index]['19'] = ''
+                        # end def
             else:
-                error_matrix[index][2]['value'] += \
-                    '! - Product Number not found.\n'
-                if oHead.configuration_status.name == 'In Process':
-                    aData[index]['5'] = ''
-                    aData[index]['14'] = ''
-                    aData[index]['15'] = ''
-                    aData[index]['16'] = ''
-                    aData[index]['17'] = ''
-                    aData[index]['18'] = ''
-                    aData[index]['19'] = ''
-            # end def
+                if corePartNumber in dPartData.keys():
+                    if oHead.configuration_status.name == 'In Process':
+                        # Product Description
+                        if aData[index]['3'] in (None, ''):
+                            aData[index]['3'] = dPartData[corePartNumber]['Description'][0] or ''
+
+                        # MU-Flag
+                        aData[index]['16'] = dPartData[corePartNumber]['MU-Flag'][0] or ''
+
+                        # X-Plant
+                        aData[index]['17'] = dPartData[corePartNumber]['X-Plant'][0] or ''
+
+                        # S-08476: Adjust save process to preserve new columns:-Added below 3 lines to show the saved value of 3 new columns on page load
+                        # Current Portfolio-Code
+                        aData[index]['14'] = dPartData[corePartNumber]['Current Portfolio Code'][0] or ''
+
+                        # Plant Specific Material Status
+                        aData[index]['18'] = dPartData[corePartNumber]['Plant Specific Material Status'][0] or ''
+
+                        # Distribution Chain Specific Material Status
+                        aData[index]['19'] = \
+                        dPartData[corePartNumber]['Distribution Chain Specific Material Status'][0] or ''
+
+                        # UoM
+                        aData[index]['5'] = dPartData[corePartNumber]['UOM'][0] or ''
+
+                        # Item Category Group
+                        if not re.match("^Z[A-Z0-9]{3}$|^$",
+                                        aData[index]['9'] or '',
+                                        re.IGNORECASE):
+                            aData[index]['9'] = dPartData[corePartNumber]['ItemCat'][0] or ''
+
+                        # Product Package Type
+                        if dPartData[corePartNumber]['ItemCat'][0] == 'ZF26':
+                            aData[index]['12'] = 'Fixed Product Package (FPP)'
+                        elif dPartData[corePartNumber]['M-Type'][0] == 'ZASO':
+                            aData[index]['12'] = 'Assembled Sales Object (ASO)'
+                            if aData[index]['6'] in (None, ''):
+                                error_matrix[index][6]['value'] += \
+                                    'X - ContextID must be populated for ASO parts.\n'
+                        elif dPartData[corePartNumber]['M-Type'][0] == 'ZAVA':
+                            aData[index]['12'] = 'Material Variant (MV)'
+                        elif dPartData[corePartNumber]['M-Type'][0] == 'ZEDY':
+                            aData[index]['12'] = 'Dynamic Product Package (DPP)'
+
+                        # S-08475: Adjust validation process to flag parts with non-green portfolio code : Added below condition to show the warning message on the cell if the color value is not green
+                        # Portfolio Code
+                        if dPartData[corePartNumber]['Current Portfolio Code'][0] != 'Green':
+                            error_matrix[index][14]['value'] += '! - Portfolio code is Non-Green.' + '\n'
+                        # end if
+
+                        # X-Plant Description
+                        if dPartData[corePartNumber]['X-Plant Desc'][0] \
+                                and dPartData[corePartNumber]['X-Plant Desc'][0] not in error_matrix[index][17][
+                            'value']:
+                            error_matrix[index][17]['value'] += dPartData[corePartNumber]['X-Plant Desc'][0] + '\n'
+                        # end if
+                    # end if
+                else:
+                    error_matrix[index][2]['value'] += \
+                        '! - Product Number not found.\n'
+                    if oHead.configuration_status.name == 'In Process':
+                        aData[index]['5'] = ''
+                        aData[index]['14'] = ''
+                        aData[index]['15'] = ''
+                        aData[index]['16'] = ''
+                        aData[index]['17'] = ''
+                        aData[index]['18'] = ''
+                        aData[index]['19'] = ''
+                # end def
 
             # P-Code, Fire Code, Description & HW/SW Indicator
             if '10' in aData[index] and aData[index]['10'] in ('', None):  # P-Code is blank, so fill in with data from part (if available)
@@ -2897,28 +3124,64 @@ def ListFill(oRequest):
     # Results are prepended with an "i" to allow client-side javascript to order
     # values as strings instead of as integers
     if oRequest.method == 'POST' and oRequest.POST:
-        iParentID = int(oRequest.POST['id'])
-        cParentClass = Header._meta.get_field(oRequest.POST['parent']).rel.to
-        oParent = cParentClass.objects.get(pk=iParentID)
-        # S-06756 : Restricting BOM entry based on logged in user's CU:-- Added below & else block to restrict Person_responsible dropdown based on selected CU
+   # S-11563: BoM Entry - Header sub - tab adjustments: Added below block to prepare data for the program & catalog dependent on CNAME on react req search
+        if oRequest.POST['parent'] == 'customer_name' and (oRequest.POST['child'] == 'program' or oRequest.POST['child'] == 'baseline_impacted'):
+            oParent = oRequest.POST['id']
+        else:
+            iParentID = int(oRequest.POST['id'])
+            cParentClass = Header._meta.get_field(oRequest.POST['parent']).rel.to
+            oParent = cParentClass.objects.get(pk=iParentID)
+
+        # S-06756 : Restricting BOM entry based on logged in user's CU:- Added below & else block to restrict Person_responsible dropdown based on selected CU
         userculist = []
         userculist = User_Customer.objects.filter(customer_name=oParent)
         ausers = []
         ausers = userculist.values_list('user_id')
+
+# S-11563: BoM Entry - Header sub - tab adjustments: Separated program & product area 2 from similar block since program is now dependent on CNAME(Tier-2,3) & on CU(Tier-1) on react req search
+        if oRequest.POST['child'] == 'program':
+            if oRequest.POST['parent'] == 'customer_name':              # executes when dependent on CNAME(Tier 2,3 CUs)
+                # oParent = oRequest.POST['id']
+                cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
+                result = OrderedDict(
+                    [('i' + str(obj.id), obj.name) for obj in
+                     cChildClass.objects.filter(customer_name=oParent).order_by('name').exclude(is_inactive=1)]
+                )
+            else:                                                       # executes when dependent on CU(Tier 1 CUs)
+                if str(oParent) == 'AT&T' or str(oParent) == 'Verizon' or str(oParent) == 'Sprint' or str(oParent) == 'Verizon':
+                    cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
+                    result = OrderedDict(
+                        [('i' + str(obj.id), obj.name) for obj in
+                         cChildClass.objects.filter(parent=oParent).order_by('name').exclude(is_inactive=1)]
+                    )
+                else:
+                    cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
+                    result = OrderedDict(
+                        [('i' + str(obj.id), obj.name) for obj in
+                         cChildClass.objects.filter(parent=oParent).filter(customer_name=None).order_by('name').exclude(is_inactive=1)]
+                    )
         # added for S-05907 Edit drop down option for BoM Entry Header -  Product Area 2(exclude deleted prodarea2)
-        if oRequest.POST['child'] == 'program' or oRequest.POST['child'] == 'product_area2' :
+        elif oRequest.POST['child'] == 'product_area2' :
             cChildClass = Header._meta.get_field(oRequest.POST['child']).rel.to
             result = OrderedDict(
                 [('i' + str(obj.id), obj.name) for obj in
                  cChildClass.objects.filter(parent=oParent).order_by('name').exclude(is_inactive=1)]
             )
-
+    # S-11563: BoM Entry - Header sub - tab adjustments: Changed the filter condition from customer to customer_name since catalog is dependent on CNAME(Tier-2,3) & on CU(Tier-1) now
         elif oRequest.POST['child'] == 'baseline_impacted':
-            cChildClass = Baseline
-            result = OrderedDict(
-                [('i' + obj.title, obj.title) for obj in
-                 cChildClass.objects.filter(customer=oParent).order_by('title').exclude(isdeleted=1)]
-            )
+            if oRequest.POST['parent'] == 'customer_name':                       # Called when dependent on CNAME(Tier 2,3 CUs)
+                # oParent = oRequest.POST['id']
+                cChildClass = Baseline
+                result = OrderedDict(
+                    [('i' + obj.title, obj.title) for obj in
+                     cChildClass.objects.filter(customer_name=oParent).order_by('title').exclude(isdeleted=1)]
+                )
+            else:                                                                # Called when dependent on CU(Tier 1 CUs)
+                cChildClass = Baseline
+                result = OrderedDict(
+                    [('i' + obj.title, obj.title) for obj in
+                     cChildClass.objects.filter(customer=oParent).order_by('title').exclude(isdeleted=1)]
+                )
         else:
             cChildClass = User
             result = OrderedDict(
@@ -2933,7 +3196,6 @@ def ListFill(oRequest):
     # end if
 # end def
 
-
 def ListREACTFill(oRequest):
     """
     View used to determine list of customer names from REACT database based on
@@ -2945,9 +3207,16 @@ def ListREACTFill(oRequest):
     if oRequest.method == 'POST' and oRequest.POST:
         #S-06166-Shift Header page to new reference table: Added below code for CU dependency change
         if(oRequest.POST['name'] == '' and oRequest.POST['sold_to'] == '' and oRequest.POST['contract_number'] == ''):
-            iParentID = int(oRequest.POST['id'])
+    # S-12408: Admin adjustments- Added the below condition to assign the CU value based on the ajax block called on
+            if (oRequest.POST['id']).isdigit():   # for CName Ajax
+                iParentID = int(oRequest.POST['id'])
+            else:                                 # for CU Ajax
+                custid = REF_CUSTOMER.objects.get(name=oRequest.POST['id'])
+                iParentID = int(custid.id)
+
             cParentClass = Header._meta.get_field(oRequest.POST['parent']).rel.to
             oParent = cParentClass.objects.get(pk=iParentID)
+
         # S-06166-Shift Header page to new reference table: Added below code for CN dependency change
         if(oRequest.POST['id'] == '' and oRequest.POST['sold_to'] == '' and oRequest.POST['contract_number'] == ''):
             iParentName = oRequest.POST['name']
@@ -2966,7 +3235,8 @@ def ListREACTFill(oRequest):
         if oRequest.POST['child'] == 'customer_name':
             oCursor.execute(
                 'SELECT DISTINCT [Customer] FROM ps_fas_contracts WHERE '
-                '[CustomerUnit]=%s ORDER BY [Customer]',
+                '[CustomerUnit]=%s AND (select convert(varchar(10), getdate(), 120)) >= [ValidFrom] AND'
+                '(select convert(varchar(10), getdate(), 120)) <= [ValidTo]',
                 [bytes(oParent.name, 'ascii')]
             )
             tResults = oCursor.fetchall()
@@ -2994,7 +3264,6 @@ def ListREACTFill(oRequest):
             result = OrderedDict(
                 [(obj, obj) for obj in chain.from_iterable(tResults)]
             )
-
         elif oRequest.POST['child'] == 'sold_to_party':
             oCursor.execute(
                 'SELECT DISTINCT [SoldTo] FROM ps_fas_contracts WHERE'
@@ -3004,6 +3273,20 @@ def ListREACTFill(oRequest):
             tResults = oCursor.fetchall()
             result = OrderedDict(
                 [(obj, obj) for obj in chain.from_iterable(tResults)]
+            )
+ # S-12408: Admin adjustments- Added below blocks for populating program/baseline based on selected CName
+ # D-07677: Program Admin- Customer Name should be optional for all customers- Modified the filter below for customer name.
+ # Filtering will be done based on selected CNAME and also the CNAME which is none which means, if program is tagged to a CU but not any
+ # CNAME, it will be shown to in the program list for all CNAMES under that selected CU
+        elif oRequest.POST['child'] == 'program':
+            tResults = REF_PROGRAM.objects.filter(parent_id=oRequest.POST['cu']).filter(Q(customer_name=oRequest.POST['name'])|Q(customer_name=None)).exclude(is_inactive=1)
+            result = OrderedDict(
+                [(str(obj.id), obj.name) for obj in tResults]
+            )
+        elif oRequest.POST['child'] == 'baseline_impacted':
+            tResults = Baseline.objects.filter(customer_id=oRequest.POST['cu']).filter(customer_name=oRequest.POST['name']).order_by('title').exclude(isdeleted=1)
+            result = OrderedDict(
+                [('i' + obj.title, obj.title) for obj in tResults]
             )
         # S-06166-Shift Header page to new reference table: Added below code to fetch data from DB based on sold_to for ericsson contract
         elif oRequest.POST['child'] == 'ericsson_contract':
@@ -3016,7 +3299,7 @@ def ListREACTFill(oRequest):
             result = OrderedDict(
                 [(obj, obj) for obj in chain.from_iterable(tResults)]
             )
-       # S-06166-Shift Header page to new reference table: Added below code to fetch data from DB based on ericsson contract for sold_to,payment_terms
+        # S-06166-Shift Header page to new reference table: Added below code to fetch data from DB based on ericsson contract for sold_to,payment_terms
         elif oRequest.POST['child'] == 'bill_to_party':
             oCursor.execute(
                 'SELECT DISTINCT [BillTo] FROM ps_fas_contracts WHERE'
@@ -3053,7 +3336,6 @@ def ListREACTFill(oRequest):
         raise Http404
     # end if
 # end def
-
 
 def Clone(oRequest):
     """

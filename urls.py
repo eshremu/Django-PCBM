@@ -45,12 +45,15 @@ urlpatterns = patterns(
         name='erosiondownload'),
     url(r'^reporting/$', views.Report, name='reporting'),
     url(r'^approvals/$', views.Approval, name='approval'),
+    # url(r'^approvalsbaseline/$', views.ApprovalCustomerNameBaseline, name='approvals_customername_baseline'),
+    url(r'^approvalss/$', views.ApprovalCustomerCustomerName, name='approvals_customer_customername'),
     url(r'^approvals/hold/$', views.ApprovalHold, name='approval_hold'),
     url(r'^actions/$', views.Action, name='action'),
     url(r'^actions/inprocess/$', views.Action, {'type':'inprocess'},
         name='action_inprocess'),
  # D-04023-Customer filter on Actions issue for Admin users :- Added below url to redirect to this page based on selected CU
     url(r'^actions/inprocess/customer/(?P<iCustId>\d+)/$', views.ActionCustomer, name='action_inprocess_customer'),
+    url(r'^actions/inprocess/customerr/$', views.ActionCustomerNameBaseline, name='action_customername_baseline'),
     url(r'^actions/active/$', views.Action, {'type':'active'},
         name='action_active'),
 # S-10575: Add 3 filters for Customer, Baseline and Request Type in Documents Tab: Added below url to redirect to this page based on selected CU

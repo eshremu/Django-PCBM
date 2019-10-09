@@ -50,8 +50,10 @@
                 <tbody>
                 <tr>
                   {% if field.label != 'Model replaced link' %}
-                    <!--S-11475-Add region/market areas with the hub below it :- Added Region, hub & supply chain flow-->
-                    {% if field.label == 'REACT Request' or field.label == 'BoM Request Type' or field.label == 'Region' or field.label == 'Hub' or field.label == 'Customer Unit' or field.label == 'Person responsible' or field.label == 'Person Responsible' or field.label == 'Customer Name' or field.label == 'Sales Office' or field.label == 'Sales Group' or field.label == 'Sold-to Party' or field.label == 'Ship-to Party' or field.label == 'Ericsson Contract #' or field.label == 'Supply Chain Flow' or field.label == 'Bill-to Party' or field.label == 'Payment Terms' %}
+    <!--S-11475-Add region/market areas with the hub below it :- Added Region, hub & supply chain flow-->
+    <!--# S-12370- BoM Header - Rename Ericsson Contract # -> "Value Contract":  Changed field.label== Ericsson contract to Value Contract-->
+    <!--# S-13699-BoM Header-Change Supply Chain Flow to Supply Chain Flow/Segment:Changed verbose name from Supply Chain Flow to Supply Chain Flow/Segment-->
+                    {% if field.label == 'REACT Request' or field.label == 'BoM Request Type' or field.label == 'Region' or field.label == 'Hub' or field.label == 'Customer Unit' or field.label == 'Person responsible' or field.label == 'Person Responsible' or field.label == 'Customer Name' or field.label == 'Sales Office' or field.label == 'Sales Group' or field.label == 'Sold-to Party' or field.label == 'Ship-to Party' or field.label == 'Value Contract #' or field.label == 'Supply Chain Flow/Segment' or field.label == 'Bill-to Party' or field.label == 'Payment Terms' %}
                         <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</td>
                         {% if field.errors %}
                         <td >
@@ -131,12 +133,14 @@
                 <tr>
                   {% if field.label != 'Model replaced link' %}
      <!--S-08410:Adjust Model and BoM Header Tab:- Added 'Line 100?' field after 'Picklist' field -->
-                    <!--S-11545: BoM Entry - Header sub tab change: changed the filed.label from Baseline Impacted -->
-                    {% if field.label == 'Catalog Impacted' or field.label == 'Model' or field.label == 'Model Description' or field.label == 'What Model is this replacing?' or field.label == 'Initial Revision' or field.label == 'Configuration/Ordering Status' or field.label == 'Readiness Complete (%)' or field.label == 'Pick list' or field.label == 'Line 100?' or field.label == 'Projected Cut-over Date' or field.label == 'Optional Free Text Field 1' or field.label == 'Optional Free Text Field 2' or field.label == 'Optional Free Text Field 3' %}
+      <!--S-11545: BoM Entry - Header sub tab change: changed the filed.label from Baseline Impacted -->
+      <!--S-12372: remove readiness complete in Bom entry additional information:removed field.label == 'Readiness Complete from if condition below-->
+      <!--D-07037: Catalog Impacted selection empty after catalog name length error:removed field.label == 'Model Description' from if condition below-->
+                    {% if field.label == 'Catalog Impacted' or field.label == 'Model' or field.label == 'What Model is this replacing?' or field.label == 'Initial Revision' or field.label == 'Configuration/Ordering Status' or field.label == 'Pick list' or field.label == 'Line 100?' or field.label == 'Projected Cut-over Date' or field.label == 'Optional Free Text Field 1' or field.label == 'Optional Free Text Field 2' or field.label == 'Optional Free Text Field 3' %}
                         <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red; font-size:14pt;">*</span>{% endif %}</td>
                         {% if field.errors %}
                         <td >
-     <!--S-11115:- Model description should be 40 characters per SAP:- Modified below style to adjest error message of model descriptioni-->
+     <!--S-11115:- Model description should be 40 characters per SAP:- Modified below style to adjust error message of model descriptioni-->
                             <div style=" border: 2px solid red; max-width:210px; font-size:10px;  max-height:48px;">
                                 {{ field }} {{ field.errors }}
                             </div>
@@ -149,7 +153,16 @@
                         </td>
                         {% endif %}
                     {% endif %}
-                    <!--S-11545: BoM Entry - Header sub tab change: changed the filed.label from Baseline Impacted -->
+<!--    D-07037: Catalog Impacted selection empty after catalog name length error: Added the block below for model description separately below to show the error conditions prior save-->
+                    {% if field.label == 'Model Description' %}
+                        <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red; font-size:14pt;">*</span>{% endif %}</td>
+                        <td>
+                            <div id='modeldesc1' style="">
+                             {{ field }}<p id='moderr' style="display:none; color:red;"> Model description title exceeds 40 characters</p>
+                            </div>
+                        </td>
+                    {% endif %}
+                    <!--S-11545: BoM Entry - Header sub tab change: changed the field.label from Baseline Impacted -->
                     {% if field.label == 'Catalog Impacted' and headerForm.configuration_status.value == 1 and header_write_authorized and not frame_readonly %}
                         <td>
                             <!--S-11552: Baseline tab changes : changed placeholder to catalog--> &nbsp;&nbsp;

@@ -10,7 +10,12 @@ $(document).ready(function(){
     $('#search_button').click(function(){
         $('#search_form').submit();
     });
-
+    $(window).load(function () {
+    //  S-11564: Search - Basic & Advanced adjustments- Added below block to call the URL on CU selection for CName field data
+        $('#customer').change(function(){
+            list_react_filler('customer_unit', 'customer_name');
+        });
+    });
     $('#readiness').change(function(event){
         if($(this).val() < 0){
             $(this).val(0);
@@ -159,7 +164,114 @@ $(document).ready(function(){
     });
 });
 
+$('#soldto').mouseleave(function(){
+        list_react_filler('sold_to_party', 'ericsson_contract');
+    });
+
+// S-11564: Search - Basic & Advanced adjustments- Added below block to populate  CName field data based on CU selection
+function list_react_filler(parent, child, index){
+            index = typeof(index) !== 'undefined' ? index : 0;
+
+            if(parent == 'customer_unit'){
+                $.ajax({
+                    url: listreactfillurl,
+                    dataType: "json",
+                    type: "POST",
+                    data: {
+                        parent: parent,
+                        id:  $('#customer').val(),
+                        child: child,
+                        name:'',
+                        sold_to:'',
+                        contract_number: ''
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+
+                        var $child = $('#cuname');
+                         $child.find('option:gt(' + index + ')').remove();
+
+                        if(child == 'customer_name'){
+                          for (var key in data){
+                            if(data.hasOwnProperty(key)){
+                                $child.append($('<option>',{value:key,text:data[key]}));
+                            }
+                          }
+                        }
+                     },
+                    error: function(){
+                        var $child = $('#cuname');
+                        $child.find('option:gt(' + index + ')').remove();
+                    }
+                });
+            }else if(parent=='sold_to_party'){
+        $.ajax({
+            url: listreactfillurl,
+            dataType: "json",
+            type: "POST",
+            data: {
+                id:'',
+                parent: parent,
+                child: child,
+                name: '',
+                sold_to:$('#soldto').val(),
+                contract_number: ''
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+               var $child = $('#ericsson_contract');
+
+//     S-07112- Change drop down selection view and value - Added below code to show the code & description in the UI but save only the code when sent to DB
+               var contractnum=0;
+                $child.find('option:gt(' + index + ')').remove();
+                for (var key in data){
+                    if(data.hasOwnProperty(key)){
+                        contractnum = key.split('-');
+                        $child.append($('<option>',{value:contractnum[0],text:data[key]}));
+                    }
+                }
+            },
+            error: function(){
+                var $child = $('#id_' + child);
+                $child.find('option:gt(' + index + ')').remove();
+            }
+        });
+    }
+           else {
+                var $child = $('#cuname');
+                $child.find('option:gt(' + index + ')').remove();
+            }
+    }
+
 function search(eventObj){
+// S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added the Supply Chain flow/Value contract #/Portfolio code
+// blocks below to fetch the selected values & pass the values in respective parameters in the ajax call below
+    var selectednumbers = [];
+    if( $('#supply_chain_flow :selected').length > 0){
+        //build an array of selected values
+        $('#supply_chain_flow :selected').each(function(i, selected) {
+            selectednumbers[i] = $(selected).val();
+        });
+    }
+
+    var selectedcontnumbers = [];
+    if( $('#ericsson_contract :selected').length > 0){
+        $('#ericsson_contract :selected').each(function(i, selected) {
+            selectedcontnumbers[i] = $(selected).val();
+        });
+    }
+
+    var selectedportcode = [];
+    if( $('#portfolio_code :selected').length > 0){
+        $('#portfolio_code :selected').each(function(i, selected) {
+            selectedportcode[i] = $(selected).val();
+        });
+    }
+
     $('#myModal').modal('show');
     xhr = $.ajax({
         url: searchurl,
@@ -168,6 +280,7 @@ function search(eventObj){
         data: {
             request: $('#request').val(),
             customer: $('#customer').val(),
+            cuname: $('#cuname').val(),
             sold_to: $('#soldto').val(),
             program: $('#program').val(),
             config_design: $('#config').val(),
@@ -177,6 +290,11 @@ function search(eventObj){
             model_desc:$("#model_desc").val(),
             init_rev: $("#init_rev").val(),
             status: $('#status').val(),
+
+            ericsson_contract: JSON.stringify(selectedcontnumbers),
+            supply_chain_flow: JSON.stringify(selectednumbers),
+            portfolio_code: JSON.stringify(selectedportcode),
+
             inquiry_site: $('#inquiry_site').val(),
             person: $('#person').val(),
             product1: $('#prod1').val(),

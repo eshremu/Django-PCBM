@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 
 from BoMConfig.models import Header, ConfigLine, REF_REQUEST, REF_CUSTOMER, \
     REF_STATUS, REF_PROGRAM, REF_PRODUCT_AREA_1, REF_PRODUCT_AREA_2, \
-    REF_TECHNOLOGY, REF_RADIO_BAND, REF_RADIO_FREQUENCY, Baseline,User_Customer
+    REF_TECHNOLOGY, REF_RADIO_BAND, REF_RADIO_FREQUENCY, Baseline, User_Customer, Supply_Chain_Flow
 
 from BoMConfig.templatetags.bomconfig_customtemplatetags import searchscramble
 from BoMConfig.views.landing import Unlock, Default
@@ -18,7 +18,9 @@ from BoMConfig.utils import GrabValue
 
 import re
 import functools
-
+# S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- imported below package to evaluate in a simpler form
+# eg.- ["green","red"] -> ['green','red']
+import ast
 
 @login_required
 def Search(oRequest, advanced=False):
@@ -116,7 +118,13 @@ def Search(oRequest, advanced=False):
 
             if 'customer' in oRequest.POST and oRequest.POST['customer'] != '':
                 aHeaders = aHeaders.filter(
-                    customer_unit__name=oRequest.POST['customer'])
+                    customer_unit=oRequest.POST['customer'])
+            # end if
+
+  # S - 11564: Search - Basic & Advanced adjustments - Added below block to filter based on CName in basic search
+            if 'cuname' in oRequest.POST and oRequest.POST['cuname'] != '':
+                aHeaders = aHeaders.filter(
+                    customer_name=oRequest.POST['cuname'])
             # end if
 
             if 'status' in oRequest.POST and oRequest.POST['status'] != '':
@@ -143,20 +151,25 @@ def Search(oRequest, advanced=False):
                     '<th style="width:175px;">Person Responsible</th>'
                     '<th style="width:175px;">BoM Request Type</th>'
                     '<th style="width:175px;">Customer Unit</th>'
+                    '<th style="width:175px;">Customer Name</th>'  # S-11564: Search - Basic & Advanced adjustments - Added to show the CName column in basic search resultset
                     '<th style="width:175px;">Status</th>'
-                    '<th>Readiness Complete</th></tr></thead><tbody>')
+                    # '<th>Readiness Complete</th>'   # S-12372- remove readiness complete in search/avd search page -commented out mentioned field to remove the field in Basic search reslut set
+                    '</tr></thead><tbody>')
                 for header in aHeaders:
                     if header.customer_unit in aAvailableCU:  # added for S-06169 Search and Adv. Search restrict view to CU
                        if header.baseline.isdeleted != 1:
+        # S-11564: Search - Basic & Advanced adjustments - modified <td></td> to show cuname in list view
                             results.write(
                         ('<tr><td><input class="recordselect" type="checkbox" '
-                         'value="{8}"/></td><td><a href="?link={0}">{1}</a>'
+                         'value="{9}"/></td><td><a href="?link={0}">{1}</a>'
                          '</td><td><a href="?link={0}&readonly=1" '
                          'target="_blank"><span class="glyphicon '
                          'glyphicon-new-window" title="Open in new window">'
                          '</span></a></td><td>{2}</td><td>{10}</td><td>{3}</td>'
                          '<td>{4}</td><td>{5}</td><td>{6}</td><td>{7}</td>'
-                         '<td>{9}</td></tr>'
+                         '<td>{8}</td>'
+                         # '<td>{10}</td>'  # S-12372- remove readiness complete in search/avd search page -commented out mentioned <td>to remove the field in Basic search reslut set and set {11} to {10}in line 166
+                         '</tr>'
                          ).format(
                             searchscramble(header.pk),
                             header.configuration_designation,
@@ -165,9 +178,10 @@ def Search(oRequest, advanced=False):
                             header.person_responsible,
                             header.bom_request_type.name,
                             header.customer_unit.name,
+                            header.customer_name,  # S-11564: Search - Basic & Advanced adjustments - Added to show the CName column in basic search resultset
                             header.configuration_status.name,
                             header.pk,
-                            header.readiness_complete or 0,
+                            # header.readiness_complete or 0, # S-12372- remove readiness complete in search/avd search page -commented out mentioned field to remove the field in Basic search reslut set
                             header.baseline.title if header.baseline else
                             '(Not Baselined)'
                         )
@@ -245,9 +259,19 @@ def Search(oRequest, advanced=False):
             if 'customer' in oRequest.POST and oRequest.POST['customer'] != '':
                 if oRequest.POST['customer'] != 'n/a':
                     aConfigLines = aConfigLines.filter(
-                        config__header__customer_unit__name=oRequest.POST[
+                        config__header__customer_unit=oRequest.POST[
                             'customer']
                     )
+
+ # S - 11564: Search - Basic & Advanced adjustments - Added below block to filter based on CName in advanced search
+            if 'cuname' in oRequest.POST and oRequest.POST['cuname'] != '':
+                if oRequest.POST['cuname'] != 'n/a':
+                    aConfigLines = aConfigLines.filter(
+                        config__header__customer_name=oRequest.POST[
+                            'cuname']
+                    )
+            sTableHeader += '<th style="width:175px;">Customer Name</th>'
+            aLineFilter.append('config.header.customer_name')
 
             if 'person' in oRequest.POST and oRequest.POST['person'] != '':
                 aConfigLines = aConfigLines.filter(
@@ -385,7 +409,7 @@ def Search(oRequest, advanced=False):
                 sTableHeader += '<th style="width:175px;">Initial Revision</th>'
                 aLineFilter.append('config.header.initial_revision')
 
-            if 'status' in oRequest.POST and  oRequest.POST['status'] != '':
+            if 'status' in oRequest.POST and oRequest.POST['status'] != '':
                 if oRequest.POST['status'] != 'n/a':
                     aConfigLines = aConfigLines.filter(
                         config__header__configuration_status__name__iexact=
@@ -398,6 +422,24 @@ def Search(oRequest, advanced=False):
                 aConfigLines = aConfigLines.filter(
                     config__header__configuration_status__name='Active')
 
+# S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added below block for multiple selection of ericsson contract
+            if 'ericsson_contract' in oRequest.POST and len(oRequest.POST['ericsson_contract']) > 2:
+                # if oRequest.POST['ericsson_contract'] != 'n/a':
+                selectedcontvals = ast.literal_eval(oRequest.POST['ericsson_contract'])
+                aConfigLines = aConfigLines.filter(config__header__ericsson_contract__in=selectedcontvals)
+
+                sTableHeader += '<th style="width:175px;">Value Contract</th>'
+                aLineFilter.append('config.header.ericsson_contract')
+
+# S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added below block for multiple selection of supply flow chain
+            if 'supply_chain_flow' in oRequest.POST and len(oRequest.POST['supply_chain_flow']) > 2:
+                # if oRequest.POST['supply_chain_flow'] != 'n/a':
+                selectedvals = ast.literal_eval(oRequest.POST['supply_chain_flow'])
+                aConfigLines = aConfigLines.filter(config__header__supply_chain_flow__name__in=selectedvals)
+
+                sTableHeader += '<th style="width:175px;">Supply Chain Flow</th>'
+                aLineFilter.append('config.header.supply_chain_flow')
+
             sTempHeaderLine = ''
             aTempFilters = ['line_number']
 
@@ -409,10 +451,23 @@ def Search(oRequest, advanced=False):
                     ).replace(' ', '\W').replace('?', '.').replace('*', '.*') +
                     "$"
                 )
-                sTempHeaderLine += ('<th style="width:175px;">Product Number'
-                                    '</th><th style="width:175px;">SPUD</th>')
+ # S-13694-Additional Columns on Search/Advanced results display: Added 5 column below SPUD as per requirements
+                sTempHeaderLine += ('<th style="width:195px;">Product Number</th>'
+                                    '<th style="width:195px;">SPUD</th>'
+                                    '<th style="width:195px;">Portfolio Code</th>'
+                                    '<th style="width:195px;cellspacing:10px;">Customer Name<p></p></th>'
+                                    '<th style="width:195px;">Program</th>'
+                                    '<th style="width:195px;">Value Contract</th>'
+                                    '<th style="width:195px;">Supply Chain Flow/Segment</th>')
+
                 aTempFilters.append('part.base.product_number')
                 aTempFilters.append('spud')
+                # S-13694-Additional Columns on Search/Advanced results display: Fetched 5 columndata below SPUD as per requirements
+                aTempFilters.append('current_portfolio_code')
+                aTempFilters.append('config.header.customer_name')
+                aTempFilters.append('config.header.program')
+                aTempFilters.append('config.header.ericsson_contract')
+                aTempFilters.append('config.header.supply_chain_flow')
                 bRemoveDuplicates = False
 
             if 'context_id' in oRequest.POST and \
@@ -465,6 +520,20 @@ def Search(oRequest, advanced=False):
                 sTempHeaderLine += \
                     '<th style="width:175px;">Second Customer Number</th>'
                 aTempFilters.append('sec_customer_number')
+                bRemoveDuplicates = False
+
+ # S-11113: Multiple Selections and Choices on Dropdowns in Search / Advanced Search:- Added below block for multiple selection of portfolio code
+            if 'portfolio_code' in oRequest.POST and len(oRequest.POST['portfolio_code'])>2:
+                if oRequest.POST['portfolio_code'] != 'n/a':
+                    selectedportvals = ast.literal_eval(oRequest.POST['portfolio_code'])
+                    aConfigLines = aConfigLines.filter(current_portfolio_code__in=selectedportvals)
+
+                # sTableHeader += '<th style="width:175px;">Portfolio Code</th>'
+                # aLineFilter.append('current_portfolio_code')
+
+                sTempHeaderLine += \
+                    '<th style="width:175px;">Portfolio Code</th>'
+                aTempFilters.append('current_portfolio_code')
                 bRemoveDuplicates = False
 
             if sTempHeaderLine:
@@ -601,7 +670,8 @@ def Search(oRequest, advanced=False):
             key=lambda x: str(x).upper()),
         'band_list': REF_RADIO_BAND.objects.all().exclude(is_inactive=1).order_by('name'),
         'freq_list': sorted(list(set(
-            REF_RADIO_FREQUENCY.objects.all().exclude(is_inactive=1).values_list('name', flat=True))))
+            REF_RADIO_FREQUENCY.objects.all().exclude(is_inactive=1).values_list('name', flat=True)))),
+        'supply_chain_flow_list': Supply_Chain_Flow.objects.all().order_by('name')
     }
     return Default(oRequest, sTemplate=sTemplate, dContext=dContext)
 # end def

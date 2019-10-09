@@ -11,6 +11,8 @@ var keys=[];
 var returnedFormData = null;
 var approvalFormData = {};
 
+// S-12405:Actions & Approvals adjustments - Declared baseline filter field globally
+var $child = $('#basefil');
 function cleanDataCheck(link){
     if (link.target == "_blank"){
         window.open(link.dataset.href);
@@ -31,13 +33,27 @@ function customer_filter(customer){
 function cust_filter(customer){
     if(customer !== 'All') {
         $('#cu_filter').html(customer +" <span class=\"caret\"></span>");
-// D-04023-Customer filter on Actions issue for Admin users :- Added baselineonselectcu() to populate baseline dropdown based on selected CU
-        baselineonselectcu();
+// S-12405:Actions & Approvals adjustments - Removed the code space here as the baseline field will get populated based on CNAME selection
     } else {
         $('#cu_filter').html('Customer <span class="caret"></span>');
     }
     updateFilters();
 }
+
+// S-12405:Actions & Approvals adjustments - Added below block to function Baseline field filter accordingly
+function catalog_filter(cat){
+    if(cat){                                        // For CU dependent catalog
+         $("#baseline_filter").html(cat + "&nbsp;<span class='caret'></span>");
+    }
+    else if($("#basefil").val() !== "All"){         // For CNAME dependent catalog
+        $("#baseline_filter").html($("#basefil").val() + "&nbsp;<span class='caret'></span>");
+    }
+    else {
+        $('#baseline_filter').html('Catalog <span class="caret"></span>');
+    }
+    updateFilters();
+}
+
 //S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added baselineonselectcuactive() to populate baseline dropdown based on selected CU
 function baselineonselectcuactive(){
             var cu=  $('#cust_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
@@ -45,13 +61,14 @@ function baselineonselectcuactive(){
             url: action_active_customer_url,
             type: "POST",
             data: {
-                data: cu
+                data: cu,
+                page: 'actions'         // S-12405:Actions & Approvals adjustments - Added this parameter so that the call can be recognised for which page
             },
             headers:{
                 'X-CSRFToken': getcookie('csrftoken')
             },
             success: function(data) {
-            alert('success')
+
             },
             error: function(xhr, status, error){
                 $('#myModal').modal('hide');
@@ -59,6 +76,7 @@ function baselineonselectcuactive(){
             }
         });
 }
+
 // D-04023-Customer filter on Actions issue for Admin users :- Added baselineonselectcu() to populate baseline dropdown based on selected CU
 function baselineonselectcu(){
             var cu=  $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
@@ -72,7 +90,6 @@ function baselineonselectcu(){
                 'X-CSRFToken': getcookie('csrftoken')
             },
             success: function(data) {
-            alert('success')
             },
             error: function(xhr, status, error){
                 $('#myModal').modal('hide');
@@ -90,6 +107,7 @@ function req_filter(request){
     }
     updateFiltersActive();
 }
+
 function request_filter(request){
     if(request !== "All"){
         $("#request_filter").html(request + "&nbsp;<span class='caret'></span>");
@@ -99,6 +117,116 @@ function request_filter(request){
     }
     updateFilters();
 }
+
+// S-12405:Actions & Approvals adjustments - Added below block to populate catalog filter based on CNAME selection
+function populateCatalogonCname(cname,index){
+     var endstr = 'active';
+            var end = window.location.href.indexOf("active");
+            if(end > -1){
+                 var pagename = 'actions_active';
+            }else{
+                 var pagename = 'actions';
+            }
+    index = typeof(index) !== 'undefined' ? index : 0;
+    $.ajax({
+            url: action_customername_baseline_url,
+            type: "POST",
+            dataType: "json",
+            data: {
+                custname: cname,
+                page: pagename
+            },
+            headers:{
+                'X-CSRFToken': getcookie('csrftoken')
+            },
+            success: function(data) {
+
+                $('#basefil').find('option:gt(' + index + ')').remove();
+
+                $('#baseline_filter').replaceWith('<select id="basefil" type="button" name="basefil" onChange ="catalog_filter()" style="background-color:#DDDDDD; border:1px solid transparent;" class="btn dropdown-toggle" data-toggle="dropdown">Catalog<option value="All">All</option></select>');
+                for (var key in data){
+                    if(data.hasOwnProperty(key)){
+                          $('#basefil').append('<option style="background-color:white; border-radius:4px; " value="' + key + '">'+data[key]);
+                    }
+                }
+            },
+            error: function(xhr, status, error){
+                $('#myModal').modal('hide');
+                console.log('Error returned from list call', status, error);
+            }
+    });
+}
+
+// S-12405:Actions & Approvals adjustments - Added below block to function customer name filter accordingly
+function custname_filter(custname){
+    var customerunit = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+    if(custname !== 'All') {
+        $('#cname_filter').html(custname +"<span class=\"caret\"></span>");
+    } else {
+        $('#cname_filter').html(custname +"<span class=\"caret\"></span>");
+    }
+    updateFilters();
+//  S-12405: Actions & Approvals adjustments - Added below if else condition since the catalog filter will get populated
+// based on selected CNAME only if selected CU is not Tier-1(AT&T,Veriozon,Sprint,T-Mobile)
+    if(customerunit != 'AT_T' && customerunit != 'Verizon' && customerunit != 'Sprint' && customerunit != 'T-Mobile'){
+         $("#catfilterdropdown").hide();
+         populateCatalogonCname(custname);
+    }
+}
+
+function updateFilters(){
+    var customer = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+    var request = $("#request_filter").text().trim();
+    // S-12405:Actions & Approvals adjustments - Added below line to pick the text on page load
+    var baseline1 = $("#baseline_filter").text();
+    // S-12405:Actions & Approvals adjustments - Added below line to pick the baseline value on selection
+    var baseline2 = $("#basefil").val();
+    if(baseline1){
+        baseline = baseline1.trim();
+    }else{
+        baseline = baseline2.trim();
+    }
+
+    var cuname = $('#cname_filter').text();
+
+    $('tbody tr').show();
+     var endstr = 'active';
+            var end = window.location.href.indexOf("active");
+            if(end > -1){
+                 var rows = $('#document_records tbody tr').toArray();
+            }else{
+                 var rows = $('#in_process_records tbody tr').toArray();
+            }
+
+    for (var row in rows) {
+        let hide = false;
+        // S-12405:Actions & Approvals adjustments - Deleted customer unit condition block since,filtering happens on new page redirection
+
+        // S-12405: Actions & Approvals adjustments - Added below for customer name
+        if(cuname !== "All" && !$(rows[row]).hasClass(cuname)){
+                hide = true;
+        }
+
+// S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
+// S-12405: Actions & Approvals adjustments - Changed condition block for baseline filtering
+          if(baseline !== "Catalog" && baseline !== "All" && !$(rows[row]).hasClass(baseline)){
+                hide = true;
+        }
+
+        if(request !== "Request Type"){
+            var request_row = $(rows[row]).find('td:nth-of-type(11):contains("' + request + '")');
+            if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
+                hide = true;
+            }
+        }
+
+        if (hide){
+            $(rows[row]).hide();
+            $(rows[row]).find('input').removeAttr('checked');
+        }
+    }
+}
+
 //S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added req_filter() to populate baseline in Document page
 function base_filter(baseline){
     if(baseline !== "All"){
@@ -147,41 +275,6 @@ function updateFiltersActive(){
 
         if(request !== "Request Type"){
             var request_row = $(rows[row]).find('td:nth-of-type(4):contains("' + request + '")');
-            if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
-                hide = true;
-            }
-        }
-
-        if (hide){
-            $(rows[row]).hide();
-            $(rows[row]).find('input').removeAttr('checked');
-        }
-    }
-}
-function updateFilters(){
-    var customer = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
-    var request = $("#request_filter").text().trim();
-    var baseline = $("#baseline_filter").text().trim();
-
-    $('tbody tr').show();
-
-    var rows = $('#in_process_records tbody tr').toArray();
-
-    for (var row in rows) {
-        let hide = false;
-        if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
-            hide = true;
-        }
-//   S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
-        if(baseline !== "Catalog"){
-            var baseline_row = $(rows[row]).find('td:nth-of-type(7):contains("' + baseline + '")');
-            if (!(baseline_row.length !== 0 && $(baseline_row[0]).text() == baseline)){
-                hide = true;
-            }
-        }
-
-        if(request !== "Request Type"){
-            var request_row = $(rows[row]).find('td:nth-of-type(11):contains("' + request + '")');
             if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
                 hide = true;
             }

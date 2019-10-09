@@ -1,3 +1,4 @@
+
 function cleanDataCheck(link){
     if (link.target == "_blank"){
         window.open(link.dataset.href);
@@ -249,8 +250,69 @@ function duplicateCheck(list, allowBlank){
     }
 }
 
+function list_react_filler(parent, child, index){
+            index = typeof(index) !== 'undefined' ? index : 0;
+
+            if(parent == 'customer_unit'){
+                $.ajax({
+                    url: listreactfillurl,
+                    dataType: "json",
+                    type: "POST",
+                    data: {
+                        parent: parent,
+                        id:  $('#customer-select').val(),
+                        child: child,
+                        name:'',
+                        sold_to:'',
+                        contract_number: ''
+                    },
+                    headers:{
+                        'X-CSRFToken': getcookie('csrftoken')
+                    },
+                    success: function(data) {
+
+                        var $child = $('#cuname');
+                         $child.find('option:gt(' + index + ')').remove();
+
+                        if(child == 'customer_name'){
+                          for (var key in data){
+                            if(data.hasOwnProperty(key)){
+                                $child.append($('<option>',{value:key,text:data[key]}));
+                            }
+                          }
+                        }
+
+//  D-07795: Customer Audit / Search Tab: Customer name clearing on save, no selections available in dropdown:- Added below block to
+// show the selected Customer name in the dropdown after saving
+                        if(selectedCustName){
+                            selectedCustName = selectedCustName.replace('&amp;','&')
+                            $('#cuname').find("option:contains('"+selectedCustName+"')").attr("selected","selected");
+                        }
+                    },
+                    error: function(){
+                        var $child = $('#cuname');
+                        $child.find('option:gt(' + index + ')').remove();
+                    }
+                });
+            }
+           else {
+                var $child = $('#cuname');
+                $child.find('option:gt(' + index + ')').remove();
+            }
+    }
+
 $(document).ready(function(){
     $('a.headtitle:contains("Customer Audit")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+
+//  D-07795: Customer Audit / Search Tab: Customer name clearing on save, no selections available in dropdown:- Added below block to
+// load the customer_name list on page load
+    $(window).load(function () {
+        list_react_filler('customer_unit', 'customer_name');
+    });
+
+    $('#customer-select').change(function(){
+        list_react_filler('customer_unit', 'customer_name');
+    });
 
     $(document).on('change','#customer-select,#override', function(){
         if($(this).is($('#customer-select'))){
@@ -305,3 +367,4 @@ $(document).ready(function(){
         }
     });
 });
+

@@ -995,7 +995,7 @@ def HeaderComparison(oHead, oPrev):
             oConfigLine.part.product_description or None,
             oConfigLine.comments or None,
             oConfigLine.additional_ref or None,
-        # D-06102: Unit Price column incorrectly highlighted in Baseline download: Added belwo two lines to hold the value of unit price & net Price
+        # D-06102: Unit Price column incorrectly highlighted in Baseline download: Added below two lines to hold the value of unit price & net Price
             GrabValue(
                 oConfigLine, 'linepricing.pricing_object.unit_price'),
             GrabValue(
@@ -1042,7 +1042,7 @@ def HeaderComparison(oHead, oPrev):
             oConfigLine.part.product_description or None,
             oConfigLine.comments or None,
             oConfigLine.additional_ref or None,
-        # D-06102: Unit Price column incorrectly highlighted in Baseline download: Added belwo two lines to hold the value of unit price & net Price
+        # D-06102: Unit Price column incorrectly highlighted in Baseline download: Added below two lines to hold the value of unit price & net Price
             GrabValue(
                 oConfigLine, 'linepricing.pricing_object.unit_price'),
             GrabValue(
@@ -1179,9 +1179,12 @@ def HeaderComparison(oHead, oPrev):
     # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][1] to dPrevious[(sPart, sLine)][1]
     #  It was getting stuck at this point while releasing baselines
     # D-06736: BoM Entry - Configuration Tab - Qty. showing decimal: Added int to show integer in baseline downloaded file & email
+
+    # D-07618: Revision ordering incorrect :- Changed dPrevious[(sPart, sLine)][0] to sLine to add changes with line number to sTemp where description of part number was coming earlier,
+    # thats why line number based sorting was failing.
                          sTemp += ('{} - {} quantity changed from {} to {}\n'
                                   ).format(
-                            dPrevious[(sPart, sLine)][1],
+                            sLine,
                             sPart, int(dPrevious[(sPart, sLine)][0]),
                             int(dCurrent[dPrevious[(sPart, sLine)][3]][0])
                             )
@@ -1193,9 +1196,11 @@ def HeaderComparison(oHead, oPrev):
                             continue
     # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][1] to dPrevious[(sPart, sLine)][1]
     #  It was getting stuck at this point while releasing baselines due to formatting issue with data
+    # D-07618: Revision ordering incorrect :- Changed dPrevious[(sPart, sLine)][1] to sLine to add changes with line number to sTemp where description of part number was coming earlier,
+    # thats why line number based sorting was failing.
                         sTemp += ('{} - {} line price changed \n' # S-05747: Remove price from Comments upon baseline file download in revision tab removed,deleted from {} to {}
                                   ).format(
-                            dPrevious[(sPart, sLine)][1], sPart,
+                            sLine, sPart,
                             dPrevious[(sPart, sLine)][1],
                             dCurrent[dPrevious[(sPart, sLine)][3]][1]
                         )
@@ -1204,10 +1209,12 @@ def HeaderComparison(oHead, oPrev):
                             dPrevious[(sPart, sLine)][4]:
     # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][4] to dPrevious[(sPart, sLine)][4]
     #  It was getting stuck at this point while releasing baselines due to formatting issue with data
+    # D-07618: Revision ordering incorrect :- Changed dPrevious[(sPart, sLine)][4] to sLine to add changes with line number to sTemp where description of part number was coming earlier,
+    # thats why line number based sorting was failing.
                         sTemp += ('{} - {} description changed \n'
                                   )\
                             .format(
-                            dPrevious[(sPart, sLine)][4],
+                            sLine,
                             sPart, dPrevious[(sPart, sLine)][4],
                             dCurrent[dPrevious[(sPart, sLine)][3]][4]
                         )
@@ -1216,9 +1223,11 @@ def HeaderComparison(oHead, oPrev):
                             dPrevious[(sPart, sLine)][5]:
     # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][5] to dPrevious[(sPart, sLine)][5]
     #  It was getting stuck at this point while releasing baselines due to formatting issue with data
+    # D-07618: Revision ordering incorrect :- Changed dPrevious[(sPart, sLine)][5] to sLine to add changes with line number to sTemp where description of part number was coming earlier,
+    # thats why line number based sorting was failing.
                         sTemp += ('{} - {} comments changed\n'
                                   ).format(
-                            dPrevious[(sPart, sLine)][5],
+                            sLine,
                             sPart, dPrevious[(sPart, sLine)][5],
                             dCurrent[dPrevious[(sPart, sLine)][3]][5]
                         )
@@ -1227,13 +1236,15 @@ def HeaderComparison(oHead, oPrev):
                             dPrevious[(sPart, sLine)][6]:
     # D-06135: Error during bulk approval :- Changed the 1st parameter in format function from dPrevious[(sPart, sLine)][3][6] to dPrevious[(sPart, sLine)][6]
     #  It was getting stuck at this point while releasing baselines due to formatting issue with data
+    # D-07618: Revision ordering incorrect :- Changed dPrevious[(sPart, sLine)][6] to sLine to add changes with line number to sTemp where description of part number was coming earlier,
+    # thats why line number based sorting was failing.
                         sTemp += ('{} - {} Additional Reference changed \n'
                                   ).format(
-                            dPrevious[(sPart, sLine)][6],
+                            sLine,
                             sPart, dPrevious[(sPart, sLine)][6],
                             dCurrent[dPrevious[(sPart, sLine)][3]][6]
                         )
-                # D-06102: Unit Price column incorrectly highlighted in Baseline download: commented belwo two blocks to determine the changes
+                # D-06102: Unit Price column incorrectly highlighted in Baseline download: commented below two blocks to determine the changes
                         # on unit price and net price individually.
 
     #                 if oHead.customer_unit == oMTW and dCurrent[dPrevious[(sPart, sLine)][3]][7] != \
@@ -1316,10 +1327,12 @@ def HeaderComparison(oHead, oPrev):
 
     # Sort the changes by line number, and return the string
     aLines = sorted(sTemp.split('\n')[:-1])
-    # D-07090: Changes showed in revisions tab and downloaded baseline file not in sequential order: Added sorted before sTemp.split('\n')[:-1] to sort the lines sequentially.
+
+    # D-07090: Changes showed in revisions tab and downloaded baseline file not in sequential order :- Added sorted before sTemp.split('\n')[:-1] to sort the lines sequentially.
     # D-06135: Error during bulk approval :- Commented out the below line as it was getting stuck at this line while releasing baseline
-    #  Have done thorough testing and found no change in behaviour after commenting out the below line
-    # aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])
+    # Have done thorough testing and found no change in behaviour after commenting out the below line
+    # D-07618: Revision ordering incorrect :-Uncommented below line of code after lot of testing .
+    aLines.sort(key=lambda x: [int(y) for y in x[:x.find(' -')].split('.')])
     return '\n'.join(aLines)
 # end def
 
