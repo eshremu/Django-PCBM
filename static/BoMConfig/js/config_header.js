@@ -12,9 +12,14 @@ var old_conf_name;
 var new_conf_name;
 
 $(document).ready(function(){
+// D-07831: Catalog name disappears when config exceeds 18 characters: Added below to lines to show/hide the configuration field based on error condition found
+$('#confname1').show();
+$('#confnameerr').hide();
+
 // D-07037: Catalog Impacted selection empty after catalog name length error: Added below to lines to show/hide the model description field based on error condition found
 $('#modeldesc1').show();
-$('#modeldesc2').hide();
+$('#moderr').hide();
+
 //D-03994-Manual override pricing fix: Added below old conf name  to distinguish between clone and normal config
 old_conf_name = $('#id_configuration_designation').val();
 // S-07112 - Change dropdown selection view and value:-Added below code to show the option selected in the sales_group & ericsson contract dropdown
@@ -173,10 +178,31 @@ if(!($("#id_pick_list").is(':checked'))){
                 );
                 return false;
             }
+//  D-07831: Catalog name disappears when config exceeds 18 characters: Added below to check the error condition for config title length before saving
+            else if($('#id_configuration_designation').val().length > 18){
+                 var configval = $('#id_configuration_designation').val();
+    //  D-07831: Catalog name disappears when config exceeds 18 characters:  Added below 3 lines to remove the error
+    //  message if exists for model description field
+                  $('#moderr').hide();
+                  document.getElementById("modeldesc1").style.border = "2px solid white";
+                  document.getElementById("modeldesc1").style.maxheight = "48px";
+
+                  $('#confnameerr').show();
+                  document.getElementById("confname1").style.border = "2px solid red";
+                  document.getElementById("confname1").style.maxheight = "48px";
+                  return false;
+            }
 //  D-07037: Catalog Impacted selection empty after catalog name length error: Added below to check the error condition for model description before saving
             else if($('#id_model_description').val().length > 40){
                  var vali = $('#id_model_description').val();
 //                   $('#id_model_description').hide();
+
+        //  D-07831: Catalog name disappears when config exceeds 18 characters:  Added below 3 lines to remove the error
+        //  message if exists for configuration field
+                   $('#confnameerr').hide();
+                   document.getElementById("confname1").style.border = "2px solid white";
+                   document.getElementById("confname1").style.maxheight = "48px";
+
                    $('#moderr').show();
                    document.getElementById("modeldesc1").style.border = "2px solid red";
                    document.getElementById("modeldesc1").style.maxheight = "48px";

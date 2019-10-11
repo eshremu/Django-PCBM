@@ -97,7 +97,8 @@
                 <tbody>
                 <tr>
                   {% if field.label != 'Model replaced link' %}
-                     {% if field.label == 'Configuration' or field.label == 'Program' or field.label == 'Customer Designation' or field.label == 'Technology' or field.label == 'Product Area 1' or field.label == 'Product Area 2' or field.label == 'Radio Frequency' or field.label == 'Radio Band' or field.label == 'Inquiry/Site Template #' or field.label == 'Valid-from Date' or field.label == 'Valid-to Date' or field.label == 'Complete Delivery' or field.label == 'No ZipRouting'   or field.label == 'Shipping Condition'%}
+     <!-- D-07831: Catalog name disappears when config exceeds 18 characters: removed field.label == 'Configuration' from if condition below-->
+                     {% if field.label == 'Program' or field.label == 'Customer Designation' or field.label == 'Technology' or field.label == 'Product Area 1' or field.label == 'Product Area 2' or field.label == 'Radio Frequency' or field.label == 'Radio Band' or field.label == 'Inquiry/Site Template #' or field.label == 'Valid-from Date' or field.label == 'Valid-to Date' or field.label == 'Complete Delivery' or field.label == 'No ZipRouting'   or field.label == 'Shipping Condition'%}
                         <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red;font-size:14pt;">*</span>{% endif %}</td>
                         {% if field.errors %}
                         <td >
@@ -115,6 +116,15 @@
                     {% endif %}
                   {% endif %}
                 </tr>
+     <!-- D-07831: Catalog name disappears when config exceeds 18 characters: Added the block below for Configuration separately below to show the error conditions prior save-->
+                {% if field.label == 'Configuration' %}
+                    <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red; font-size:14pt;">*</span>{% endif %}</td>
+                    <td>
+                        <div id='confname1' style="">
+                         {{ field }}<p id='confnameerr' style="display:none; color:red;">Configuration title exceeds 18 characters</p>
+                        </div>
+                    </td>
+                {% endif %}
                 {% if field.label in break_list %}
                     <tr><td><h3></h3></td></tr>
                 {% endif %}
@@ -132,10 +142,10 @@
                 <tbody>
                 <tr>
                   {% if field.label != 'Model replaced link' %}
-     <!--S-08410:Adjust Model and BoM Header Tab:- Added 'Line 100?' field after 'Picklist' field -->
-      <!--S-11545: BoM Entry - Header sub tab change: changed the filed.label from Baseline Impacted -->
-      <!--S-12372: remove readiness complete in Bom entry additional information:removed field.label == 'Readiness Complete from if condition below-->
-      <!--D-07037: Catalog Impacted selection empty after catalog name length error:removed field.label == 'Model Description' from if condition below-->
+     <!--S-08410: Adjust Model and BoM Header Tab:- Added 'Line 100?' field after 'Picklist' field -->
+     <!--S-11545: BoM Entry - Header sub tab change: changed the filed.label from Baseline Impacted -->
+     <!--S-12372: remove readiness complete in Bom entry additional information: removed field.label == 'Readiness Complete from if condition below-->
+     <!--D-07037: Catalog Impacted selection empty after catalog name length error: removed field.label == 'Model Description' from if condition below-->
                     {% if field.label == 'Catalog Impacted' or field.label == 'Model' or field.label == 'What Model is this replacing?' or field.label == 'Initial Revision' or field.label == 'Configuration/Ordering Status' or field.label == 'Pick list' or field.label == 'Line 100?' or field.label == 'Projected Cut-over Date' or field.label == 'Optional Free Text Field 1' or field.label == 'Optional Free Text Field 2' or field.label == 'Optional Free Text Field 3' %}
                         <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red; font-size:14pt;">*</span>{% endif %}</td>
                         {% if field.errors %}
@@ -153,7 +163,7 @@
                         </td>
                         {% endif %}
                     {% endif %}
-<!--    D-07037: Catalog Impacted selection empty after catalog name length error: Added the block below for model description separately below to show the error conditions prior save-->
+     <!--    D-07037: Catalog Impacted selection empty after catalog name length error: Added the block below for model description separately below to show the error conditions prior save-->
                     {% if field.label == 'Model Description' %}
                         <td>{{ field.label_tag }}{% if field.field.required %}<span style="color:red; font-size:14pt;">*</span>{% endif %}</td>
                         <td>
