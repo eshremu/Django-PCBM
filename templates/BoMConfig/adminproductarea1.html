@@ -67,7 +67,8 @@
 
 
      <script type="text/javascript">
-
+     <!--D-07815: Catalog tab not highlighted when it is selected - added below line as highlighting was missing in admin dropdown page-->
+     $('button[value="dropdown"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
      $('#addproductarea1').click(function(){
                     document.getElementById("btnsave").disabled = true;
                     document.getElementById('btndelete').style.display ='none';

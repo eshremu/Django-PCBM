@@ -552,7 +552,9 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                 # end for
 
     # Remove duplicate entries
-    aExtractedData = list(set(aExtractedData))
+    # D-07529: Not all lines processed in Price upload: After analysis we found that due to below line data is processed randomly.
+    # Commented-out the same to process all lines in price upload
+    # aExtractedData = list(set(aExtractedData))
     aDuplicateEntry = []
     aDuplicateComments = []
     aDuplicateCustomer = []

@@ -19,5 +19,9 @@
      <p><b><u><a href="{% url 'bomconfig:spudadmin' %}"><font color="blue"; size="3"> SPUD</font></a></u></b></p><br>
      {% endif %}
  </div>
+ <!--D-07815: Catalog tab not highlighted when it is selected - added below script as highlighting was missing in admin dropdown page-->
+<script type="text/javascript">
+     $('button[value="dropdown"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+ </script>
 {% endif %}
 {% endblock %}
