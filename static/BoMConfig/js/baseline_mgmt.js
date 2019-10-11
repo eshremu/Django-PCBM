@@ -1,8 +1,8 @@
 /**
  * Created by epastag on 5/11/2016.
  */
-
-$('a.headtitle:contains("Baseline")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+// D-07815: Catalog tab not highlighted when it is selected - Changed Baseline to Catalog to highlight it upon selection
+$('a.headtitle:contains("Catalog")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 
 var timer, table, submitActor;
 $(document).ready(function() {

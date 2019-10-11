@@ -73,7 +73,8 @@
 
 
      <script type="text/javascript">
-
+      <!--D-07815: Catalog tab not highlighted when it is selected - added below line as highlighting was missing in admin dropdown page-->
+     $('button[value="dropdown"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
      $('#addproductarea2').click(function(){
      <!--S-08414: Adjust admin for Product Area 2 to limit text to 22 characters: added $("#pa2error").hide(); -->
                     $("#pa2error").hide();
