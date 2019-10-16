@@ -43,12 +43,12 @@ function cust_filter(customer){
 // S-12405:Actions & Approvals adjustments - Added below block to function Baseline field filter accordingly
 function catalog_filter(cat){
     if(cat){                                        // For CU dependent catalog
-         $("#baseline_filter").html(cat + "&nbsp;<span class='caret'></span>");
+        $("#baseline_filter").html(cat + "&nbsp;<span class='caret'></span>");
     }
     else if($("#basefil").val() !== "All"){         // For CNAME dependent catalog
         $("#baseline_filter").html($("#basefil").val() + "&nbsp;<span class='caret'></span>");
     }
-    else {
+    else{
         $('#baseline_filter').html('Catalog <span class="caret"></span>');
     }
     updateFilters();
@@ -117,6 +117,81 @@ function request_filter(request){
     }
     updateFilters();
 }
+//  D-07890: Catalog filtering not working : Added below function since request filter was also not working in the Active(Doc) Customer page when this defect came
+function request_filterActive(request){
+    if(request !== "All"){
+        $("#request_filter").html(request + "&nbsp;<span class='caret'></span>");
+    }
+    else{
+        $("#request_filter").html("Request Type" + "&nbsp;<span class='caret'></span>");
+    }
+    updateFiltersReqActive();
+}
+
+//  D-07890: Catalog filtering not working : Added below function since request filter was also not working in the In Process page when this defect came
+function request_filterInPro(request){
+    if(request !== "All"){
+        $("#request_filter").html(request + "&nbsp;<span class='caret'></span>");
+    }
+    else{
+        $("#request_filter").html("Request Type" + "&nbsp;<span class='caret'></span>");
+    }
+    updateFiltersInProcess();
+}
+//  D-07890: Catalog filtering not working : Added below function since request filter was also not working in the Active(Doc) Customer page when this defect came
+function updateFiltersReqActive(){
+    var customer = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+    var request = $("#request_filter").text().trim();
+    // S-12405:Actions & Approvals adjustments - Added below line to pick the text on page load
+    var baseline1 = $("#baseline_filter").text();
+    // S-12405:Actions & Approvals adjustments - Added below line to pick the baseline value on selection
+    var baseline2 = $("#basefil").val();
+    if(baseline1){
+        baseline = baseline1.trim();
+    }else{
+        baseline = baseline2.trim();
+    }
+
+    var cuname = $('#cname_filter').text();
+
+    $('tbody tr').show();
+     var endstr = 'active';
+     var end = window.location.href.indexOf("active");
+        if(end > -1){
+             var rows = $('#document_records tbody tr').toArray();
+        }else{
+             var rows = $('#in_process_records tbody tr').toArray();
+        }
+
+    for (var row in rows) {
+        let hide = false;
+        // S-12405:Actions & Approvals adjustments - Deleted customer unit condition block since,filtering happens on new page redirection
+
+        // S-12405: Actions & Approvals adjustments - Added below for customer name
+        if(cuname !== "All" && cuname !== "Customer Name" && !$(rows[row]).hasClass(cuname)){
+                hide = true;
+        }
+
+// S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
+// S-12405: Actions & Approvals adjustments - Changed condition block for baseline filtering
+        if(baseline !== "Catalog" && baseline !== "All" && !$(rows[row]).hasClass(baseline)){
+                hide = true;
+        }
+
+        if(request !== "Request Type" && request !== "All"){
+            var request_row = $(rows[row]).find('td:nth-of-type(4):contains("' + request + '")');
+            if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
+                hide = true;
+            }
+        }
+
+        if (hide){
+            $(rows[row]).hide();
+            $(rows[row]).find('input').removeAttr('checked');
+        }
+    }
+}
+
 
 // S-12405:Actions & Approvals adjustments - Added below block to populate catalog filter based on CNAME selection
 function populateCatalogonCname(cname,index){
@@ -191,25 +266,25 @@ function updateFilters(){
 
     $('tbody tr').show();
      var endstr = 'active';
-            var end = window.location.href.indexOf("active");
-            if(end > -1){
-                 var rows = $('#document_records tbody tr').toArray();
-            }else{
-                 var rows = $('#in_process_records tbody tr').toArray();
-            }
+     var end = window.location.href.indexOf("active");
+        if(end > -1){
+             var rows = $('#document_records tbody tr').toArray();
+        }else{
+             var rows = $('#in_process_records tbody tr').toArray();
+        }
 
     for (var row in rows) {
         let hide = false;
         // S-12405:Actions & Approvals adjustments - Deleted customer unit condition block since,filtering happens on new page redirection
 
         // S-12405: Actions & Approvals adjustments - Added below for customer name
-        if(cuname !== "All" && !$(rows[row]).hasClass(cuname)){
+        if(cuname !== "All" && cuname !== "Customer Name" && !$(rows[row]).hasClass(cuname)){
                 hide = true;
         }
 
 // S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
 // S-12405: Actions & Approvals adjustments - Changed condition block for baseline filtering
-          if(baseline !== "Catalog" && baseline !== "All" && !$(rows[row]).hasClass(baseline)){
+        if(baseline !== "Catalog" && baseline !== "All" && !$(rows[row]).hasClass(baseline)){
                 hide = true;
         }
 
@@ -244,10 +319,11 @@ function baseline_filter(baseline){
         $("#baseline_filter").html(baseline + "&nbsp;<span class='caret'></span>");
     }
     else{
-  //   S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
+  //  S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
         $("#baseline_filter").html("Catalog" + "&nbsp;<span class='caret'></span>");
     }
-    updateFilters();
+//  D-07890: Catalog filtering not working : Changed the function call below from updateFilters() to a newly defined updateFiltersInProcess()
+    updateFiltersInProcess();
 }
 //S-10575: Add 3 filters for Customer, Baseline and Request Type  in Documents Tab: Added updateFiltersActive() for updating filter/view in Document page
 function updateFiltersActive(){
@@ -275,6 +351,42 @@ function updateFiltersActive(){
 
         if(request !== "Request Type"){
             var request_row = $(rows[row]).find('td:nth-of-type(4):contains("' + request + '")');
+            if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
+                hide = true;
+            }
+        }
+
+        if (hide){
+            $(rows[row]).hide();
+            $(rows[row]).find('input').removeAttr('checked');
+        }
+    }
+}
+//  D-07890: Catalog filtering not working : Added below as a newly defined function to function the catalog filtering in the Actions-in_process tab
+function updateFiltersInProcess(){
+    var customer = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
+    var request = $("#request_filter").text().trim();
+    var baseline = $("#baseline_filter").text().trim();
+
+    $('tbody tr').show();
+
+    var rows = $('#in_process_records tbody tr').toArray();
+
+    for (var row in rows) {
+        let hide = false;
+        if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
+            hide = true;
+        }
+//   S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
+        if(baseline !== "Catalog" ){
+            var baseline_row = $(rows[row]).find('td:nth-of-type(7):contains("' + baseline + '")');
+            if (!(baseline_row.length !== 0 && $(baseline_row[0]).text() == baseline)){
+                hide = true;
+            }
+        }
+
+        if(request !== "Request Type"){
+            var request_row = $(rows[row]).find('td:nth-of-type(11):contains("' + request + '")');
             if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
                 hide = true;
             }

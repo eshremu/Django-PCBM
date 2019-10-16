@@ -61,8 +61,9 @@
             <li class="dropdown" style="list-style-type: none;">
                 <button id="request_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Request Type <span class="caret"></span></button>
                 <ul class="dropdown-menu">
+        <!-- D-07890: Catalog filtering not working : Changed the onclick function call below from request_filter to request_filterActive-->
                     {% for request in requests %}
-                    <li><a href="#" onclick="req_filter('{{ request }}');">{{ request }}</a></li>
+                    <li><a href="#" onclick="request_filterActive('{{ request }}');">{{ request }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
