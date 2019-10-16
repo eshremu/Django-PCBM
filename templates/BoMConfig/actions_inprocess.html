@@ -35,6 +35,7 @@
         <!--S-11553: Actions tab changes : Changed Baseline to Catalog in Filter Button-->
                 <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Catalog <span class="caret"></span></button>
                 <ul class="dropdown-menu">
+        <!-- D-07890: Catalog filtering not working : Changed the onclick function call below from catalog_filter to baseline_filter-->
                     {% for baseline in baselines %}
                     <li><a href="#" onclick="baseline_filter('{{ baseline }}');">{{ baseline }}</a></li>
                     {% endfor %}
@@ -45,8 +46,9 @@
             <li class="dropdown" style="list-style-type: none;">
                 <button id="request_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Request Type <span class="caret"></span></button>
                 <ul class="dropdown-menu">
+        <!-- D-07890: Catalog filtering not working : Changed the onclick function call below from request_filter to request_filterInPro-->
                     {% for request in requests %}
-                    <li><a href="#" onclick="request_filter('{{ request }}');">{{ request }}</a></li>
+                    <li><a href="#" onclick="request_filterInPro('{{ request }}');">{{ request }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
