@@ -192,7 +192,6 @@ function updateFiltersReqActive(){
     }
 }
 
-
 // S-12405:Actions & Approvals adjustments - Added below block to populate catalog filter based on CNAME selection
 function populateCatalogonCname(cname,index){
      var endstr = 'active';
@@ -476,6 +475,16 @@ function credentialTest(event){
 }
 
 $(document).ready(function(){
+// S-14498: Actions - In Process: Select all checkbox implementation:- Added below to make select all checkbox functional on click
+    $(document).on('click', '.selectall', function(){
+            if($(this).prop('checked')){
+                $('.inprocess').attr('checked', 'checked');
+            } else {
+                $('.inprocess').removeAttr('checked');
+            }
+            $($('.inprocess')[0]).change();
+    });
+
     $('#approval_submit').click(function(){
         if($('.inprocess:checked').length > 0) {
             messageToModal('Confirm submission','Are you sure you wish to submit the selected records for approval?', function(source){

@@ -73,7 +73,10 @@
                 <table id="in_process_records">
                     <thead>
                         <tr class="{% for cust in customer_list %}{{ cust|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
-                            <th></th><th style="width:15px;"></th>
+<!--                            <th></th><th style="width:15px;"></th>-->
+                        <!-- S-14498: Actions - In Process: Select all checkbox implementation:- Commented above line. Added below line to show checkbox fir select all-->
+                            <th style="width: 20px;"><input class="selectall" type="checkbox"></th>
+                            <th></th>
                             <th>Configuration Designation</th><th style="width:25px;"></th>
                             <th>Program</th><th style="width:25px;"></th>
                         <!--S-11553: Actions tab changes : Changed Baseline to Catalog in Filter Button-->
