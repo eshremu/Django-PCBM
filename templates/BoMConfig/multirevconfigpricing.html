@@ -55,25 +55,15 @@
 
 $(document).ready(function(){
          $(window).load(function(){
-        <!--form_resize();-->
-        <!--alert('test');-->
         var baseid = getUrlVars()["iBaseId"];
 var progid = getUrlVars()["iProgId"];
 var conf = getUrlVars()["iConf"];
 var rev = getUrlVars()["rev"];
-<!--alert('baseid'+baseid+'prog'+progid);-->
 $('input[name="program"]').val(progid);
 $('input[name="baseline"]').val(baseid);
 $('input[name="config"]').val(conf);
-<!--alert(window.location.href);-->
-<!--var url1=window.location.href.split('?');-->
-<!--window.history.pushState("", "", url1[0]);-->
-
-<!--alert(url1[0]+'==='+url1[1]);-->
 document.title=conf +' Revision ' + rev;
 window.location.href=url1[0];
-<!--location.href = window.location.href.replace(url1[1], '');-->
-<!--alert(window.location.href);-->
 if($('input[name="program"]').val()!=''||$('input[name="baseline"]').val()!=''||$('input[name="config"]').val()!=''){
 $('#headersubform').submit();}
         });
@@ -88,12 +78,6 @@ $('#headersubform').submit();}
 }
 
         function headersubform_popup(form){
-                  <!--window.open('../search?link={{ header.pk|searchscramble }}&readonly=1', '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes');-->
-             <!--window.open('', '', 'width=400,height=400,resizeable,scrollbars');-->
-             <!--for(i=0;i<5;i++){-->
-             <!--window.open('form', '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes');-->
-             <!--form.target = 'form';-->
-             <!--}-->
 
              for(j=0; j<2; j++){
              mywin=window.open(form, '_blank', 'left=100,top=100,height=640,width=1024,menubar=no,toolbar=no,location=no,resizable=yes,scrollbars=yes');
