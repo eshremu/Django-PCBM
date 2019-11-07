@@ -37,7 +37,58 @@ function cust_filter(customer){
     } else {
         $('#cu_filter').html('Customer <span class="caret"></span>');
     }
-    updateFilters();
+     updateFilters();
+}
+
+// S-14610: Actions- On Hold: Tier 1 Customer Unit/Customer name logic change - Added below block for customer unit filtering when
+// on-hold page(similar to Approvals page)
+function cust_hold_filter(cuid, cuname){
+       if(cuname !== 'All') {
+            $('#cu_filter').html(cuname +" <span class=\"caret\"></span>");
+            if(cuname == 'AT&T' || cuname == 'Sprint' || cuname == 'T-Mobile' || cuname == 'Verizon'){
+                  $('#cname_filter').hide();
+                  $('#cnamefil').hide();
+            }else{
+                  $('#cname_filter').show();
+                  $('#cnamefil').show();
+                  populateCustomernameonCu(cuid);
+            }
+       } else {
+            $('#cu_filter').html('Customer <span class="caret"></span>');
+            populateCustomernameonCu(cuid);
+       }
+       updateFilters();
+}
+
+// S-14610: Actions- On Hold: Tier 1 Customer Unit/Customer name logic change - Added below block for populating customer name
+// dropdown when on-hold page(similar to Approvals page)
+function populateCustomernameonCu(customer,index){
+     index = typeof(index) !== 'undefined' ? index : 0;
+        $.ajax({
+                url: approvals_customer_customername_url,
+                type: "POST",
+                data: {
+                    data: customer
+                },
+                headers:{
+                    'X-CSRFToken': getcookie('csrftoken')
+                },
+                success: function(data) {
+
+                     $('#cnamefil').find('option:gt(' + index + ')').remove();
+
+                     $('#cname_filter').replaceWith('<select id="cnamefil" type="button" name="cnamefil" onChange ="custname_filter()" style="background-color:#DDDDDD; border:1px solid transparent;" class="btn dropdown-toggle" data-toggle="dropdown">Catalog<option value="All">All</option></select>');
+                     for (var key in data){
+                        if(data.hasOwnProperty(key)){
+                              $('#cnamefil').append('<option style="background-color:white; border-radius:4px; " value="' + key + '">'+data[key]);
+                        }
+                     }
+                },
+                error: function(xhr, status, error){
+                    $('#myModal').modal('hide');
+                    console.log('Error returned from list call', status, error);
+                }
+        });
 }
 
 // S-12405:Actions & Approvals adjustments - Added below block to function Baseline field filter accordingly
@@ -45,7 +96,7 @@ function catalog_filter(cat){
     if(cat){                                        // For CU dependent catalog
         $("#baseline_filter").html(cat + "&nbsp;<span class='caret'></span>");
     }
-    else if($("#basefil").val() !== "All"){         // For CNAME dependent catalog
+    else if($("#basefil").val() !== "All"){            // For CNAME dependent catalog
         $("#baseline_filter").html($("#basefil").val() + "&nbsp;<span class='caret'></span>");
     }
     else{
@@ -240,8 +291,9 @@ function custname_filter(custname){
         $('#cname_filter').html(custname +"<span class=\"caret\"></span>");
     }
     updateFilters();
+
 //  S-12405: Actions & Approvals adjustments - Added below if else condition since the catalog filter will get populated
-// based on selected CNAME only if selected CU is not Tier-1(AT&T,Veriozon,Sprint,T-Mobile)
+// based on selected CNAME only if selected CU is not Tier-1(AT&T,Verizon,Sprint,T-Mobile)
     if(customerunit != 'AT_T' && customerunit != 'Verizon' && customerunit != 'Sprint' && customerunit != 'T-Mobile'){
          $("#catfilterdropdown").hide();
          populateCatalogonCname(custname);
@@ -250,17 +302,22 @@ function custname_filter(custname){
 
 function updateFilters(){
     var customer = $('#cu_filter').text().trim().replace(/&/g, "_").replace(/ /g, '-_');
-    var request = $("#request_filter").text().trim();
-    // S-12405:Actions & Approvals adjustments - Added below line to pick the text on page load
-    var baseline1 = $("#baseline_filter").text();
-    // S-12405:Actions & Approvals adjustments - Added below line to pick the baseline value on selection
-    var baseline2 = $("#basefil").val();
-    if(baseline1){
-        baseline = baseline1.trim();
-    }else{
-        baseline = baseline2.trim();
-    }
 
+  // S-14610: Actions- On Hold: Tier 1 Customer Unit/Customer name logic change - Added below block to prepare the value for baseline & request
+  // type only when NOT on On-Hold page
+    var endhold = window.location.href.indexOf("hold");
+        if(endhold == -1){
+            var request = $("#request_filter").text().trim();
+            // S-12405:Actions & Approvals adjustments - Added below line to pick the text on page load
+            var baseline1 = $("#baseline_filter").text();
+            // S-12405:Actions & Approvals adjustments - Added below line to pick the baseline value on selection
+            var baseline2 = $("#basefil").val();
+            if(baseline1){
+                baseline = baseline1.trim();
+            }else{
+                baseline = baseline2.trim();
+            }
+        }
     var cuname = $('#cname_filter').text();
 
     $('tbody tr').show();
@@ -274,26 +331,37 @@ function updateFilters(){
 
     for (var row in rows) {
         let hide = false;
-        // S-12405:Actions & Approvals adjustments - Deleted customer unit condition block since,filtering happens on new page redirection
-
+        // S-12405: Actions & Approvals adjustments - Deleted customer unit condition block since,filtering happens on new page redirection
+        // S-14610: Actions- On Hold: Tier 1 Customer Unit/Customer name logic change - Added back the code below since, filtering doesn't
+        // happen on new page redirection in Actions-On hold page(hence, checks first if hold page or not)
+        if(endhold > -1){
+            if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){
+                    hide = true;
+            }
+        }
         // S-12405: Actions & Approvals adjustments - Added below for customer name
-        if(cuname !== "All" && cuname !== "Customer Name" && !$(rows[row]).hasClass(cuname)){
-                hide = true;
+        if(cuname){
+            if(cuname !== "All" && cuname !== "Customer Name" && !$(rows[row]).hasClass(cuname)){
+                    hide = true;
+            }
         }
 
 // S-11553: Actions tab changes : Changed Baseline to Catalog when we select All
 // S-12405: Actions & Approvals adjustments - Changed condition block for baseline filtering
-        if(baseline !== "Catalog" && baseline !== "All" && !$(rows[row]).hasClass(baseline)){
-                hide = true;
-        }
-
-        if(request !== "Request Type"){
-            var request_row = $(rows[row]).find('td:nth-of-type(11):contains("' + request + '")');
-            if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
-                hide = true;
+// S-14610: Actions- On Hold: Tier 1 Customer Unit/Customer name logic change - Added below if condition to check conditions for baseline & request
+// type only when NOT on On-Hold page
+          if(endhold == -1){
+            if(baseline !== "Catalog" && baseline !== "All" && !$(rows[row]).hasClass(baseline)){
+                    hide = true;
             }
-        }
 
+            if(request !== "Request Type"){
+                var request_row = $(rows[row]).find('td:nth-of-type(11):contains("' + request + '")');
+                if (!(request_row.length !== 0 && $(request_row[0]).text() == request)) {
+                    hide = true;
+                }
+            }
+          }
         if (hide){
             $(rows[row]).hide();
             $(rows[row]).find('input').removeAttr('checked');

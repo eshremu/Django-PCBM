@@ -27,14 +27,10 @@
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
                 <button id="cname_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown" >Customer Name<span class="caret"></span></button>
-                <ul class="dropdown-menu" style="overflow:scroll; height:300px;">
-                    <li><a onclick="custname_filter('All');">All </a></li>
+                <ul id='custname' class="dropdown-menu" style="overflow:scroll; height:300px;">
                     {% for customername in customername_list %}
-                      {% if customername != 'All' %}
-                          <li><a onclick="custname_filter('{{ customername }}');">{{ customername }} </a></li>
-                      {% else %}
+                    <!--S-14608: Actions-In Process: Tier 1 Customer Unit/Customer name logic change - Removed the cust name if condition block-->
                         <li><a  href="{% url 'bomconfig:action_inprocess' %}" onclick="custname_filter('{{ customername }}');">{{ customername }}</a></li>
-                      {% endif %}
                     {% endfor %}
                 </ul>
             </li>
@@ -43,7 +39,7 @@
             <li class="dropdown" style="list-style-type: none;">
                 <!--S-11553: Actions tab changes : Changed Baseline to Catalog in Filter Button-->
                 <button id="baseline_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Catalog<span class="caret"></span></button>
-                <!-- S-12405:Actions & Approvals adjustments - Commented & removed below block as the baseline gets populated based on customer name now-->
+                <!-- S-12405: Actions & Approvals adjustments - Commented & removed below block as the baseline gets populated based on customer name now-->
                 <ul id="catfilterdropdown" class="dropdown-menu">
                     {% for baseline in baselines %}
                             <li><a href="#" onclick="catalog_filter('{{ baseline }}')">{{ baseline }}</a></li>
@@ -74,7 +70,7 @@
                     <thead>
                         <tr class="{% for cust in customer_list %}{{ cust|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
 <!--                            <th></th><th style="width:15px;"></th>-->
-                        <!-- S-14498: Actions - In Process: Select all checkbox implementation:- Commented above line. Added below line to show checkbox fir select all-->
+                        <!-- S-14498: Actions - In Process: Select all checkbox implementation:- Commented above line. Added below line to show checkbox for select all-->
                             <th style="width: 20px;"><input class="selectall" type="checkbox"></th>
                             <th></th>
                             <th>Configuration Designation</th><th style="width:25px;"></th>
@@ -184,8 +180,17 @@
 <!--S-12405:Actions & Approvals adjustments - Added below URL to populate baseline list based on CNAME selection -->
                 var action_customername_baseline_url = "{% url 'bomconfig:action_customername_baseline' %}";
                 var baselinelist = "{{baselines}}";
+
+<!-- S-14608: Actions-In Process: Tier 1 Customer Unit/Customer name logic change - Added below condition to check
+<!-- if Tier-1 customers,  then cust name filter will be hidden -->
+                 if(custid == 1 || custid == 2 || custid == 3 || custid == 4){
+                      $('#cname_filter').hide();
+                 }
             </script>
             {% else %}
+<!--S-14608: Actions-In Process: Tier 1 Customer Unit/Customer name logic change - Added below script to hide-->
+<!-- cust name filter if no records found in any CU, since custid value is not present here to check which CU it is -->
+                <script> $('#cname_filter').hide();</script>
                 <h5>NO IN-PROCESS RECORDS</h5>
             {% endif %}
 {% endblock %}

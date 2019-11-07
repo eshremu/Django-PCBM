@@ -2,15 +2,26 @@
 {% load bomconfig_customtemplatetags %}
 {% load staticfiles %}
 {% block subcontent %}
-        <script>$('button[value="hold"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');</script>
+        <script>
+        $('button[value="hold"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+<!--    S-14610: Actions- On Hold: Tier 1 Customer Unit/Customer name logic change - Added below URL declaration to populate the customer name field-->
+            var approvals_customer_customername_url = "{% url 'bomconfig:approvals_customer_customername' %}";
+        </script>
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
                 <button id="cu_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown">Customer <span class="caret"></span></button>
                 <ul class="dropdown-menu">
                     {% for customer in customer_list %}
-                    <li><a href="#" onclick="cust_filter('{{ customer|replace:"& _"|replacewhitespace:"-_" }}');">{{ customer }}</a></li>
+        <!-- S-14610: Actions- On Hold: Tier 1 Customer Unit/Customer name logic change - Changed below function call from cust_filter to cust_hold_filter -->
+                    <li><a href="#" onclick="cust_hold_filter('{{ customer.id }}','{{ customer }}');">{{ customer }}</a></li>
                     {% endfor %}
                 </ul>
+            </li>
+        </ul>
+<!-- S-14610: Actions- On Hold: Tier 1 Customer Unit/Customer name logic change - Added below block for customer name filter field -->
+        <ul class="btn" style="border: none; padding: 0;">
+            <li class="dropdown" style="list-style-type: none;">
+                <button id="cname_filter" class="btn dropdown-toggle" type="button" data-toggle="dropdown" >Customer Name<span class="caret"></span></button>
             </li>
         </ul>
 
@@ -18,7 +29,7 @@
             {% if on_hold %}
             <form id="hold_action" onsubmit="return false;">
                 <button id="unhold" class="btn" value="unhold">Remove from Hold</button>
-                <table>
+                <table id="in_process_records">
                     <thead>
                         <tr class="{% for customer in customer_list %}{{ customer|replace:"& _"|replacewhitespace:"-_" }} {% endfor %}">
                             <th></th>
