@@ -30,7 +30,7 @@
                 <ul id='custname' class="dropdown-menu" style="overflow:scroll; height:300px;">
                     {% for customername in customername_list %}
                     <!--S-14608: Actions-In Process: Tier 1 Customer Unit/Customer name logic change - Removed the cust name if condition block-->
-                        <li><a  href="{% url 'bomconfig:action_inprocess' %}" onclick="custname_filter('{{ customername }}');">{{ customername }}</a></li>
+                        <li><a onclick="custname_filter('{{ customername }}');">{{ customername }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
