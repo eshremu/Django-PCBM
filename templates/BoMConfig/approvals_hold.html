@@ -194,14 +194,26 @@
     }
 
     function cust_filter(cuid, cuname){
-           if(cuname !== 'All') {
-                $('#cu_filter').html(cuname +" <span class=\"caret\"></span>");
-           } else {
-                $('#cu_filter').html('Customer <span class="caret"></span>');
-           }
-           updateFilters();
-           populateCustomernameonCu(cuid);
+       if(cuname !== 'All') {
+            $('#cu_filter').html(cuname +" <span class=\"caret\"></span>");
+
+    <!-- S-14612: Approvals- Show On Hold : Tier 1 Customer Unit/Customer name logic change: Added below condition to check-->
+    <!-- if Tier-1 customers, then cust name filter will be hidden-->
+            if(cuname == 'AT&T' || cuname == 'Sprint' || cuname == 'T-Mobile' || cuname == 'Verizon'){
+                  $('#cname_filter').hide();
+                  $('#cnamefil').hide();
+            }else{
+                  $('#cname_filter').show();
+                  $('#cnamefil').show();
+                  populateCustomernameonCu(cuid);
+            }
+       } else {
+            $('#cu_filter').html('Customer <span class="caret"></span>');
+            populateCustomernameonCu(cuid);
+       }
+       updateFilters();
     }
+
 
     function request_filter(request){
         if(request !== "All"){
@@ -279,7 +291,7 @@
             $('tbody tr').show();
 
             var rows = $('#hold_approval_records tbody tr').toArray();
-<!--alert(customer+'&#45;&#45;'+cuname);-->
+
             for (var row in rows) {
                 let hide = false;
                 if(customer !== "Customer" && !$(rows[row]).hasClass(customer)){

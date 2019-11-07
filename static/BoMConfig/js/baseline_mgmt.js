@@ -91,15 +91,25 @@ function process(){
 
 function cust_filter(customer){
     if(customer !== 'All') {
-        $('tbody tr').not('.' + customer).css('display','none');
-        $('tbody tr.' + customer).css('display','');
-        $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
+            $('tbody tr').not('.' + customer).css('display','none');
+            $('tbody tr.' + customer).css('display','');
+            $('#cu_filter').html(customer.replace('-_',' ').replace("_","&") +" <span class=\"caret\"></span>");
+
+// S-14607: Catalog Tab- Tier 1 Customer Unit/Customer name logic change: Added below condition to check if Tier-1 customers, then cust name
+// filter will be hidden
+             if(customer == 'AT_T' || customer == 'Sprint' || customer == 'T-Mobile' || customer == 'Verizon'){
+                  $('#cname_filter').hide();
+                  $('#cnamefil').hide();
+             }else{
+                  $('#cname_filter').show();
+                  $('#cnamefil').show();
+     // S-11565:Baseline tab - main page adjustments - Added below to call function to fetch cust name list based on selected CU
+                  list_react_filler($('#cu_filter').text());
+             }
     } else {
         $('tbody tr').css('display', '');
         $('#cu_filter').html('Customer <span class="caret"></span>');
     }
-// S-11565:Baseline tab - main page adjustments - Added below to call function to fetch cust name list based on selected CU
-    list_react_filler($('#cu_filter').text());
     table.draw();
 }
 

@@ -350,7 +350,7 @@ def ActionCustomer(oRequest, iCustId=''):
     # end if
 
     # S-12405: Actions & Approvals adjustments - Added below if else condition since the catalog filter will get populated based on CU
-    # if selected CU is Tier-1(AT&T,Veriozon,Sprint,T-Mobile) else will be blank initially & get populated on selection of CNAME in Actions- In Process Page
+    # if selected CU is Tier-1(AT&T,Verizon,Sprint,T-Mobile) else will be blank initially & get populated on selection of CNAME in Actions- In Process Page
     if iCustId == '1' or iCustId == '2' or iCustId == '3' or iCustId == '4':
         baseline = ['All'] + sorted(list(
             set(
@@ -498,7 +498,7 @@ def ActiveCustomer(oRequest, iCustId=''):
     # end if
 
     # S-12405: Actions & Approvals adjustments - Added below if else condition since the catalog filter will get populated based on CU
-    # if selected CU is Tier-1(AT&T,Veriozon,Sprint,T-Mobile) else will be blank initially & get populated on selection of CNAME in Actions-Documents Page
+    # if selected CU is Tier-1(AT&T,Verizon,Sprint,T-Mobile) else will be blank initially & get populated on selection of CNAME in Actions-Documents Page
     if iCustId == '1' or iCustId == '2' or iCustId == '3' or iCustId == '4':
         baseline = ['All'] + sorted(list(
             set(
@@ -514,6 +514,7 @@ def ActiveCustomer(oRequest, iCustId=''):
     else:
         baseline = ''
 
+# S-14609: Actions - Documents: Tier 1 Customer Unit / Customer name logic change - Added custid parameter inside dContext to send the CU ID
     dContext = {
         'in_process': Header.objects.filter(
             configuration_status__name='In Process/Pending').filter(baseline__isdeleted=0).filter(
@@ -543,6 +544,7 @@ def ActiveCustomer(oRequest, iCustId=''):
                      'PPM Catalog Mgmt.', 'Customer #1', 'Customer #2',
                      'Customer Warehouse', 'Ericsson VAR',
                      'Catalog Release & Dist.'],
+        'custid': iCustId,
     }
 
     return Default(oRequest, 'BoMConfig/actions_active_customer.html', dContext)

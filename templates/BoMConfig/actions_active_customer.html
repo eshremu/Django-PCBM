@@ -2,10 +2,6 @@
 {% load bomconfig_customtemplatetags %}
 {% load staticfiles %}
 {% block subcontent %}
-        <script>$('button[value="active"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
-<!--S-12405: Actions & Approvals adjustments - Added the URL below for populating the baseline dropdown based on selected CNAME -->
-            var action_customername_baseline_url = "{% url 'bomconfig:action_customername_baseline' %}";
-        </script>
         <div id="hintBox"></div>
         <ul class="btn" style="border: none; padding: 0;">
             <li class="dropdown" style="list-style-type: none;">
@@ -229,7 +225,22 @@
                     </tbody>
                 </table>
             </form>
+            <script>
+                $('button[value="active"]').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+<!--S-12405: Actions & Approvals adjustments - Added the URL below for populating the baseline dropdown based on selected CNAME -->
+                var action_customername_baseline_url = "{% url 'bomconfig:action_customername_baseline' %}";
+
+<!-- S-14609: Actions- Documents : Tier 1 Customer Unit/Customer name logic change - Added below variable to store the CU id and then the -->
+<!--condition below to check if it's Tier-1 customers, if yes, then cust name filter will be hidden -->
+                var custid = {{custid}};
+                if(custid == 1 || custid == 2 || custid == 3 || custid == 4){
+                      $('#cname_filter').hide();
+                }
+            </script>
             {% else %}
+<!-- S-14609: Actions- Documents : Tier 1 Customer Unit/Customer name logic change - Added below script to hide-->
+<!-- cust name filter if no records found in any CU, since custid value is not present here to check which CU it is -->
+                <script> $('#cname_filter').hide();</script>
                 <h5>NO ACTIVE RECORDS</h5>
             {% endif %}
 {% endblock %}

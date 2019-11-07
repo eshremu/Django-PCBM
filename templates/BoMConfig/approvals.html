@@ -341,11 +341,22 @@
         function cust_filter(cuid, cuname){
            if(cuname !== 'All') {
                 $('#cu_filter').html(cuname +" <span class=\"caret\"></span>");
+
+        <!-- S-14611: Approvals- In Process/Pending:Tier 1 Customer Unit/Customer name logic change: Added below condition to check-->
+        <!--  if Tier-1 customers, then cust name filter will be hidden-->
+                if(cuname == 'AT&T' || cuname == 'Sprint' || cuname == 'T-Mobile' || cuname == 'Verizon'){
+                      $('#cname_filter').hide();
+                      $('#cnamefil').hide();
+                }else{
+                      $('#cname_filter').show();
+                      $('#cnamefil').show();
+                      populateCustomernameonCu(cuid);
+                }
            } else {
                 $('#cu_filter').html('Customer <span class="caret"></span>');
+                populateCustomernameonCu(cuid);
            }
            updateFilters();
-           populateCustomernameonCu(cuid);
         }
 
         function request_filter(request){
