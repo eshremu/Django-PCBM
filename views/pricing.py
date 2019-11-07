@@ -1313,7 +1313,10 @@ def MultiRevConfigPricing(oRequest):
 
     # If POSTing data
     if oRequest.method == 'POST' and oRequest.POST:
-        sConfig = oRequest.POST['config'] if 'config' in oRequest.POST else None
+        # sConfig = oRequest.POST['config'] if 'config' in oRequest.POST else None
+        # D-08002: Cannot save pricing changes for OPTIONAL-HW RBS 6000: Modified Sconfig
+        sConfig0 = oRequest.POST['config'] if 'config' in oRequest.POST else None
+        sConfig = sConfig0.replace('%20', ' ')
         # Uncommented below line because the Multi Rev saving wasnt working without the program info
         iProgram = oRequest.POST.get('iProgId', None)
         iBaseline = oRequest.POST.get('iBaseId', None)
@@ -1373,7 +1376,9 @@ def MultiRevConfigPricing(oRequest):
             if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
                 # Ensure user has not changed the configuration value prior to
                 # saving
-                if oRequest.POST['config'] == oRequest.POST['initial']:
+                # if oRequest.POST['config'] == oRequest.POST['initial']:
+    # D-08002: Cannot save pricing changes for OPTIONAL-HW RBS 6000: replaced oRequest.POST['config'] with sConfig
+                if sConfig == oRequest.POST['initial']:
                     # net_total = 0
                     for dLine in json.loads(oRequest.POST['data_form']):
                         # Change dLine to dict with str keys
@@ -1463,7 +1468,10 @@ def MultiRevConfigPricing(oRequest):
     # end if
     if oRequest.method == 'GET' and oRequest.GET:
 
-        sConfig = oRequest.GET['iConf'] if 'iConf' in oRequest.GET else None
+        # sConfig = oRequest.GET['iConf'] if 'iConf' in oRequest.GET else None
+        # D-08002: Cannot save pricing changes for OPTIONAL-HW RBS 6000: modified sConfig
+        sConfig0 = oRequest.GET['iConf'] if 'iConf' in oRequest.GET else None
+        sConfig = sConfig0.replace('%20', ' ')
 
         iBaseline = oRequest.GET.get('iBaseId', None)
 
@@ -1509,7 +1517,9 @@ def MultiRevConfigPricing(oRequest):
             if 'action' in oRequest.POST and oRequest.POST['action'] == 'save':
                 # Ensure user has not changed the configuration value prior to
                 # saving
-                if oRequest.GET['config'] == oRequest.GET['initial']:
+                # D-08002: Cannot save pricing changes for OPTIONAL-HW RBS 6000: replaced oRequest.GET['config'] with sConfig
+                if sConfig == oRequest.GET['initial']:
+                # if oRequest.GET['config'] == oRequest.GET['initial']:
                     # net_total = 0
                     for dLine in json.loads(oRequest.GET['data_form']):
                         # Change dLine to dict with str keys
