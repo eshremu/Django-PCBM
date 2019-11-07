@@ -2533,8 +2533,11 @@ def ConfigPriceDownload(oRequest):
 
     if oRequest.POST:
         # Retrieve desired Header object and determine filename
+  # D-08002: Cannot save pricing changes for OPTIONAL-HW RBS 6000: modified sConfig and in line 2540 replaced oRequest.POST['config'] with sConfig
+        sConfig0 = oRequest.POST['config'] if 'config' in oRequest.POST else None
+        sConfig = sConfig0.replace('%20', ' ')
         oHeader = Header.objects.get(
-            configuration_designation=oRequest.POST['config'],
+            configuration_designation=sConfig,
             baseline=Baseline_Revision.objects.get(
                 id=oRequest.POST['baseline']) or None)
         # S-05923: Pricing - Restrict View commented out below line to download configs which don't have program.
