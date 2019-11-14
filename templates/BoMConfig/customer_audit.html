@@ -17,8 +17,9 @@
         {% endfor %}
         </select>
 <!--  S-12407: Customer Audit - Search/Audit adjustments :- Added below field for Customer name selection-->
-        <label for="cuname">Customer Name: </label>
-        <select id="cuname" name="cuname">
+<!--  S-14613: Customer Audit - Search/ Audit:Tier 1 Customer Unit/Customer name logic change: Changed the style below  as display none -->
+        <label id="cnamelabel" for="cuname" style="display:none;">Customer Name: </label>
+        <select id="cuname" name="cuname" style="display:none;">
             <option value="" >-------</option>
         </select>
     </form>

@@ -233,7 +233,7 @@ function duplicateCheck(list, allowBlank){
                 duplicates.push(list[i]);
             }
         }
-    }
+   }
 
     if(duplicates.length > 0){
         var message = 'Multiple entries found for part number(s):<br>';
@@ -302,16 +302,32 @@ function list_react_filler(parent, child, index){
     }
 
 $(document).ready(function(){
-    $('a.headtitle:contains("Customer Audit")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
+   $('a.headtitle:contains("Customer Audit")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 
 //  D-07795: Customer Audit / Search Tab: Customer name clearing on save, no selections available in dropdown:- Added below block to
 // load the customer_name list on page load
     $(window).load(function () {
-        list_react_filler('customer_unit', 'customer_name');
+//  S-14613: Customer Audit - Search/ Audit:Tier 1 Customer Unit/Customer name logic change: Added below condition to show the custname field on
+// loading the page after save only for Non Tier-1 customers
+         if(cuname != '1' && cuname != '2' && cuname != '3' && cuname != '4'){
+            $('#cnamelabel').show();
+            $('#cuname').show();
+            list_react_filler('customer_unit', 'customer_name');
+         }
     });
 
     $('#customer-select').change(function(){
-        list_react_filler('customer_unit', 'customer_name');
+        var cuname = $('#customer-select').val();
+//  S-14613: Customer Audit - Search/ Audit:Tier 1 Customer Unit/Customer name logic change: Added below condition to show the custname field on
+// selecting the CU only for Non Tier-1 customers
+        if(cuname != '1' && cuname != '2' && cuname != '3' && cuname != '4'){
+            $('#cnamelabel').show();
+            $('#cuname').show();
+            list_react_filler('customer_unit', 'customer_name');
+        }else{
+            $('#cnamelabel').hide();
+            $('#cuname').hide();
+        }
     });
 
     $(document).on('change','#customer-select,#override', function(){
