@@ -309,6 +309,7 @@ $(document).ready(function(){
     $(window).load(function () {
 //  S-14613: Customer Audit - Search/ Audit:Tier 1 Customer Unit/Customer name logic change: Added below condition to show the custname field on
 // loading the page after save only for Non Tier-1 customers
+         var cuname = $('#customer-select').val();
          if(cuname != '1' && cuname != '2' && cuname != '3' && cuname != '4'){
             $('#cnamelabel').show();
             $('#cuname').show();
