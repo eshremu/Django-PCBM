@@ -301,7 +301,7 @@ function list_react_filler(parent, child, index){
             }
     }
 
-$(document).ready(function(){
+$(document).ready(function(){alert('testing phase');
    $('a.headtitle:contains("Customer Audit")').css('outline','5px auto -webkit-focus-ring-color').css('background-color','#cccccc');
 
 //  D-07795: Customer Audit / Search Tab: Customer name clearing on save, no selections available in dropdown:- Added below block to
