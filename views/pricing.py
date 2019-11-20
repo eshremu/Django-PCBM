@@ -19,7 +19,7 @@ import zipfile
 import json
 import datetime
 import itertools
-
+import re
 
 @login_required
 def PartPricing(oRequest):
@@ -131,16 +131,37 @@ def PartPricing(oRequest):
                                 elif (datetime.datetime.strptime(aRowToSave[5],'%m/%d/%Y').date() == oCurrentPriceObj.valid_from_date and \
                                 datetime.datetime.strptime(aRowToSave[6],'%m/%d/%Y').date() != oCurrentPriceObj.valid_to_date and \
                                 oCurrentPriceObj.unit_price == float(aRowToSave[4])):
-                                    oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(
-                                        aRowToSave[6], '%m/%d/%Y').date()
-                                    oCurrentPriceObj.is_current_active = True
-                                    oCurrentPriceObj.save()
-                                    break
-                                else:
-                                    oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(aRowToSave[6],
-                                                                                                '%m/%d/%Y').date()
-                                    oCurrentPriceObj.is_current_active = True
-                                    oCurrentPriceObj.save()
+                        # D-07529: Not all lines processed in Price upload: Added below conditions to check valid-to first before editing, it will only
+                        # allow to save valid-to date for a row if it is not lying in the same range of the price-list.
+                                    aPricingList = PricingObject.objects.filter(
+                                        customer=REF_CUSTOMER.objects.get(
+                                            name=aRowToSave[1]),
+                                        part=PartBase.objects.get(
+                                            product_number__iexact=aRowToSave[0] or oRequest.POST.get('initial', None)),
+                                        is_current_active=True,
+                                        spud=REF_SPUD.objects.get(name=aRowToSave[3]) if aRowToSave[3] not in (
+                                            '(None)', '', None, 'null') else None)
+
+                                    avalid_to_date = [
+                                        oRow.valid_to_date
+                                        for oRow in aPricingList
+                                    ]
+                                    avalid_from_date = [
+                                        oRow.valid_from_date
+                                        for oRow in aPricingList
+                                    ]
+
+                                    for i, j in zip(avalid_from_date, avalid_to_date):
+                                        D1 = datetime.date.toordinal(i)
+                                        D2 = datetime.date.toordinal(j)
+                                        D3 = datetime.date.toordinal(datetime.datetime.strptime(aRowToSave[6], '%m/%d/%Y').date())
+                                        errorfound = False
+                                        D4 = datetime.date.toordinal(oCurrentPriceObj.valid_to_date)
+
+                                    
+                                        if D3 in range(D1, D2) and D3>D4:
+                                            errorfound=True
+                                            break
                                     break
 
                             if not oCurrentPriceObj or \
@@ -263,59 +284,75 @@ def PartPricing(oRequest):
                                         )
                                     else:
 
-                                        avalid_to_date= [
+                                        avalid_to_date= sorted([
                                                 oRow.valid_to_date
-                                            for oRow in aPricingList
-                                        ]
-                                        max_date=max(d for d in avalid_to_date if isinstance(d, datetime.date))
+                                                for oRow in aPricingList
+                                        ])
 
-                                        if datetime.datetime.strptime(aRowToSave[5],'%m/%d/%Y').date()< max_date:
-                                            errorfound = True
-                                            break
-                                        else:
-                                            oNewPriceObj = PricingObject.objects.create(
-                                                part=PartBase.objects.get(
-                                                    product_number__iexact=aRowToSave[0] or
-                                                                           oRequest.POST.get('initial', None)),
-                                                customer=REF_CUSTOMER.objects.get(
-                                                    name=aRowToSave[1]),
-                                                sold_to=aRowToSave[2] if aRowToSave[2] not
-                                                                         in ('(None)', None, '', 'null') else None,
-                                                spud=REF_SPUD.objects.get(
-                                                    name=aRowToSave[3]) if aRowToSave[3] not
-                                                                           in (
-                                                                               '(None)', '', None, 'null') else None,
-                                                # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
-                                                # commented-out aRowToSave[4] and changed aRowToSave[5] to aRowToSave[7] -> aRowToSave[4] to aRowToSave[6]
-                                                # technology=REF_TECHNOLOGY.objects.get(
-                                                #     name=aRowToSave[4]) if aRowToSave[4] not
-                                                # in ('(None)', '', None, 'null') else None,
-                                                is_current_active=True,
-                                                unit_price=aRowToSave[4],
-                                                # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed valid_to_date to aRowToSave[7] and valid_from_date to aRowToSave[6]
-                                                valid_from_date=datetime.datetime.strptime(
-                                                    aRowToSave[5],
-                                                    '%m/%d/%Y'
-                                                ).date() if aRowToSave[5] else None,
-                                                valid_to_date=datetime.datetime.strptime(
-                                                    aRowToSave[6],
-                                                    '%m/%d/%Y'
-                                                ).date() if aRowToSave[6] else None,
-                                                # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
-                                                # commented-out aRowToSave[8] to aRowToSave[10] and changed aRowToSave[11] to aRowToSave[7] for comments
-                                                # cutover_date=datetime.datetime.strptime(
-                                                #     aRowToSave[8],
-                                                #     '%m/%d/%Y'
-                                                # ).date() if aRowToSave[8] else None,
-                                                # price_erosion=eval(
-                                                #     aRowToSave[9]
-                                                # ) if aRowToSave[9] else False,
-                                                # erosion_rate=float(
-                                                #     aRowToSave[10]
-                                                # ) if aRowToSave[10] else None,
-                                                comments=aRowToSave[7]
-                                                # previous_pricing_object=oCurrentPriceObj
-                                            )
+                                # D-07529: Not all lines processed in Price upload: commented-out below max-date and modified logic as follows
+                                        # max_date=max(d for d in avalid_to_date if isinstance(d, datetime.date))
+
+                                        avalid_from_date = sorted([
+                                            oRow.valid_from_date
+                                            for oRow in aPricingList
+                                        ])
+                                # D-07529: Not all lines processed in Price upload: commented-out max date and added below loop to check if given date range lies in-between
+                                # date series. If not it will add the date range in the series else flag it in UI.
+                                        for i, j in zip(avalid_from_date, avalid_to_date):
+                                            D1 = datetime.date.toordinal(i)
+                                            D2 = datetime.date.toordinal(j)
+                                            D3 = datetime.date.toordinal(
+                                                datetime.datetime.strptime(aRowToSave[6], '%m/%d/%Y').date())
+                                            errorfound = False
+
+                                            if D3 in range(D1, D2):
+                                                errorfound = True
+                                                break
+
+                                    if not errorfound:
+                                        oNewPriceObj = PricingObject.objects.create(
+                                            part=PartBase.objects.get(
+                                                product_number__iexact=aRowToSave[0] or
+                                                                       oRequest.POST.get('initial', None)),
+                                            customer=REF_CUSTOMER.objects.get(
+                                                name=aRowToSave[1]),
+                                            sold_to=aRowToSave[2] if aRowToSave[2] not
+                                                                     in ('(None)', None, '', 'null') else None,
+                                            spud=REF_SPUD.objects.get(
+                                                name=aRowToSave[3]) if aRowToSave[3] not
+                                                                       in (
+                                                                           '(None)', '', None, 'null') else None,
+                                            # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
+                                            # commented-out aRowToSave[4] and changed aRowToSave[5] to aRowToSave[7] -> aRowToSave[4] to aRowToSave[6]
+                                            # technology=REF_TECHNOLOGY.objects.get(
+                                            #     name=aRowToSave[4]) if aRowToSave[4] not
+                                            # in ('(None)', '', None, 'null') else None,
+                                            is_current_active=True,
+                                            unit_price=aRowToSave[4],
+                                            # S-05771 Swap position of Valid from and Valid to fields in Pricing-> Unit Price Management tab for all customers(changed valid_to_date to aRowToSave[7] and valid_from_date to aRowToSave[6]
+                                            valid_from_date=datetime.datetime.strptime(
+                                                aRowToSave[5],
+                                                '%m/%d/%Y'
+                                            ).date() if aRowToSave[5] else None,
+                                            valid_to_date=datetime.datetime.strptime(
+                                                aRowToSave[6],
+                                                '%m/%d/%Y'
+                                            ).date() if aRowToSave[6] else None,
+                                            # S-11541: Upload - pricing for list of parts in pricing tab:hide the fields Technology, Cut-over data, Price Erosion, and Erosion Rate.
+                                            # commented-out aRowToSave[8] to aRowToSave[10] and changed aRowToSave[11] to aRowToSave[7] for comments
+                                            # cutover_date=datetime.datetime.strptime(
+                                            #     aRowToSave[8],
+                                            #     '%m/%d/%Y'
+                                            # ).date() if aRowToSave[8] else None,
+                                            # price_erosion=eval(
+                                            #     aRowToSave[9]
+                                            # ) if aRowToSave[9] else False,
+                                            # erosion_rate=float(
+                                            #     aRowToSave[10]
+                                            # ) if aRowToSave[10] else None,
+                                            comments=aRowToSave[7]
+                                            # previous_pricing_object=oCurrentPriceObj
+                                        )
 
                                     # Update any configurations that are in-process
                                     # or pending approval by CPM to use the new
@@ -371,6 +408,11 @@ def PartPricing(oRequest):
                     # end for
                 # end if
 
+                    if oCurrentPriceObj is not None and not errorfound:
+                        oCurrentPriceObj.valid_to_date = datetime.datetime.strptime(
+                            aRowToSave[6], '%m/%d/%Y').date()
+                        oCurrentPriceObj.is_current_active = True
+                        oCurrentPriceObj.save()
                 # Retrieve all active PricingObjects that are associated to the
                 # PartBase
                 aPriceObjs = PricingObject.objects.filter(
@@ -718,44 +760,57 @@ def ProcessPriceUpload(oStream, oCustomer, oUser):
                         is_current_active=True
                     )
                 else:
-
-                    avalid_to_date = [
+                    avalid_to_date = sorted([
                         oRow.valid_to_date
                         for oRow in aPricingList
-                    ]
+                    ])
+        # D-07529: Not all lines processed in Price upload: Added below valid from dates list
+                    avalid_from_date = sorted([
+                        oRow.valid_from_date
+                        for oRow in aPricingList
+                    ])
+        # D-07529: Not all lines processed in Price upload: commented-out max date and added below loop to check if given date range lies in-between
+        # date series. If not it will add the date range in the series else flag it in the mail.
+                    # max_date = max(d for d in avalid_to_date if isinstance(d, datetime.date))
+                    for i, j in zip(avalid_from_date, avalid_to_date):
+                        D1 = datetime.date.toordinal(i)
+                        D2 = datetime.date.toordinal(j)
+                        D3 = datetime.date.toordinal(vf_temp)
+                        errorfound = False
 
-                    max_date = max(d for d in avalid_to_date if isinstance(d, datetime.date))
+                        if D3 in range(D1, D2):
+                            errorfound = True
+                            break
+                # D-07529: Not all lines processed in Price upload: commented-out max date comparison and modified logic to create new Price-object
+                if not errorfound:
+                    # if max_date <= datetime.datetime.date(vf_temp):
+                    oNewPriceObj = PricingObject.objects.create(
+                        part=PartBase.objects.get(
+                            product_number__iexact=tPart[0]),
+                        spud=REF_SPUD.objects.get(name__iexact=tPart[3]) if tPart[3] not in ('(None)', '', None, 'null') else None,
+                        customer=REF_CUSTOMER.objects.get(
+                                                name=tPart[1]),
+                        sold_to=tPart[2] if tPart[2] not
+                                            in ('(None)', '', None, 'null') else None,
+                        unit_price=tPart[5],
+                        valid_from_date=vf_temp if vf_temp is not None else None,
+                        valid_to_date=vt_temp if vt_temp is not None else None,
+                        # valid_from_date=datetime.datetime.strftime(vf_temp,
+                        #                         '%Y-%m-%d'
+                        #                     ) if vf_temp not in ('', '(None)') else None,
+                        # valid_to_date=datetime.datetime.strftime(vt_temp,
+                        #                                          '%Y-%m-%d'
+                        #                                          ) if vt_temp is not None else None,
+                        technology=REF_TECHNOLOGY.objects.get(
+                            name=tPart[4]) if tPart[4] not
+                                              in ('(None)', '', None, 'null') else None,
+                        comments=tPart[11] if tPart[11] not
+                                              in ('(None)', '', None, 'null') else None,
+                        is_current_active=True,
 
-                    if max_date <= datetime.datetime.date(vf_temp):
-                        oNewPriceObj = PricingObject.objects.create(
-                            part=PartBase.objects.get(
-                                product_number__iexact=tPart[0]),
-                            spud=REF_SPUD.objects.get(name__iexact=tPart[3]) if tPart[3] not
-                                                                                in (
-                                                                                '(None)', '', None, 'null') else None,
-                            customer=REF_CUSTOMER.objects.get(
-                                                    name=tPart[1]),
-                            sold_to=tPart[2] if tPart[2] not
-                                                in ('(None)', '', None, 'null') else None,
-                            unit_price=tPart[5],
-                            valid_from_date=vf_temp if vf_temp is not None else None,
-                            valid_to_date=vt_temp if vt_temp is not None else None,
-                            # valid_from_date=datetime.datetime.strftime(vf_temp,
-                            #                         '%Y-%m-%d'
-                            #                     ) if vf_temp not in ('', '(None)') else None,
-                            # valid_to_date=datetime.datetime.strftime(vt_temp,
-                            #                                          '%Y-%m-%d'
-                            #                                          ) if vt_temp is not None else None,
-                            technology=REF_TECHNOLOGY.objects.get(
-                                name=tPart[4]) if tPart[4] not
-                                                  in ('(None)', '', None, 'null') else None,
-                            comments=tPart[11] if tPart[11] not
-                                                  in ('(None)', '', None, 'null') else None,
-                            is_current_active=True,
-
-                        )
-                    else:
-                        aDupDates.append(tPart)
+                    )
+                else:
+                    aDupDates.append(tPart)
             except PricingObject.DoesNotExist:
                 oNewPriceObj = None
         # end if
